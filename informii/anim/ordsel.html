@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Ordenación por Selección</title>
+    <style>
+        /* --- Estilos (Sin cambios respecto a la versión anterior) --- */
+        body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px;background-color:#f4f4f4;min-height:100vh}h1{text-align:center;margin-bottom:20px}#controls{margin-bottom:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;width:95%;max-width:800px}#visualization-area{width:95%;max-width:900px;display:flex;flex-direction:column;align-items:center;margin-bottom:20px}#visualization-container{display:flex;align-items:flex-end;height:250px;width:100%;margin-top:10px;padding-top:30px;padding-bottom:10px;padding-left:10px;padding-right:10px;border:1px solid #ccc;background-color:#fff;box-shadow:2px 2px 5px rgba(0,0,0,.1);min-height:150px;overflow-x:auto;position:relative;box-sizing:border-box}#indices-container{display:flex;align-items:flex-start;height:20px;width:100%;padding:0 10px;box-sizing:border-box;margin-top:5px;overflow:hidden}
+        #status,#explanation{font-size:1em;text-align:center;min-height:1.5em;width:90%;max-width:800px;background-color:#e9e9e9;padding:10px;border-radius:5px;margin-top:10px}#explanation{font-style:italic;color:#333;margin-bottom:20px}
+        #code-area{width:90%;max-width:800px;margin-top:20px;padding-bottom:20px}#code-area h2{text-align:center;margin-bottom:5px;font-size:1.1em}#code-container{background-color:#2d2d2d;color:#ccc;padding:5px 5px;border-radius:5px;font-family:'Courier New',Courier,monospace;font-size:.9em;line-height:.6;white-space:pre;overflow-x:auto}.code-line{display:block;transition:background-color .3s ease;border-radius:3px;padding:0 5px;margin:0}.highlight-line{background-color:#555;color:#fff;font-weight:700}
+        button,label,input[type=range],input[type=number]{padding:8px 12px;font-size:14px;cursor:pointer}label{cursor:default}
+        .bar{display:inline-block;background-color:steelblue;margin:0 1px;width:20px;position:relative;bottom:0;transition:background-color .3s ease,height .3s ease,transform .5s ease,border .1s ease-out;overflow:visible;flex-shrink:0;box-sizing:border-box}.index-label{display:inline-block;text-align:center;font-size:11px;color:#333;margin:0 1px;width:20px;line-height:20px;flex-shrink:0}.bar-value{position:absolute;top:-17px;left:50%;transform:translateX(-50%);font-size:11px;color:#222;background-color:rgba(255,255,255,.7);padding:1px 3px;border-radius:2px;white-space:nowrap;z-index:5}.bar::after{content:attr(data-value);position:absolute;bottom:110%;left:50%;transform:translateX(-50%);background-color:rgba(0,0,0,.8);color:#fff;padding:3px 6px;border-radius:3px;font-size:12px;white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s;z-index:15}.bar:hover::after{opacity:1;visibility:visible}
+        .bar-sorted{background-color:mediumseagreen !important}.bar-i-marker{background-color:gold !important}.bar-posMin-marker{background-color:darkviolet !important}.bar-comparing-j-marker{background-color:lightcoral !important}.bar-i-posMin-coincide{background:linear-gradient(to right,gold 50%,darkviolet 50%) !important}
+        .bar-swap-animating{border:2px dashed #000 !important;z-index:10}.bar-noop-swap-flash{border:5px solid lime !important}
+    </style>
+</head>
+<body>
+
+    <h1>Visualización del Algoritmo de Ordenación por Selección</h1>
+
+    <div id="controls">
+        <button id="btn-reset">Generar Nuevo Array</button>
+        <button id="btn-manual-input">Introducir Manualmente</button>
+        <label for="array-size">Tamaño:</label>
+        <input type="number" id="array-size" value="15" min="5" max="40" step="1" readonly>
+         <label for="speed">Velocidad:</label>
+        <input type="range" id="speed" min="50" max="1000" value="500" step="50">
+        <button id="btn-start">Iniciar</button>
+        <button id="btn-step">Paso Siguiente</button>
+        <button id="btn-pause" disabled>Pausar</button>
+    </div>
+
+    <div id="visualization-area">
+         <div id="visualization-container"></div>
+        <div id="indices-container"></div>
+    </div>
+
+    <div id="status">Cargando...</div>
+    <div id="explanation">Visualizador del algoritmo de ordenación por selección.</div>
+
+    <div id="code-area">
+        <h2>Código del Algoritmo (Scala):</h2>
+        <div id="code-container">
+            <code id="code-display">
+<span id="line-1" class="code-line">def ordenarSelección[A](xs: Array[A])(using ord: Ordering[A]): Unit =</span>
+<span id="line-2" class="code-line">  import ord.*</span>
+<span id="line-3" class="code-line">  for i <- 0 until xs.length - 1 do</span>
+<span id="line-4" class="code-line">    var posMin = i</span>
+<span id="line-5" class="code-line">    for j <- i + 1 until xs.length do</span>
+<span id="line-6" class="code-line">      if xs(j) < xs(posMin) then</span>
+<span id="line-7" class="code-line">        posMin = j</span>
+<span id="line-8" class="code-line">    intercambiar(i, posMin)</span>
+            </code>
+        </div>
+    </div>
+
+
+    <script>
+        // --- Variables Globales (sin cambios) ---
+        var arraySizeInput = document.getElementById('array-size'); var visualizationContainer = document.getElementById('visualization-container'); var indicesContainer = document.getElementById('indices-container'); var codeDisplay = document.getElementById('code-display'); var statusDiv = document.getElementById('status'); var explanationDiv = document.getElementById('explanation'); var speedSlider = document.getElementById('speed'); var btnReset = document.getElementById('btn-reset'); var btnStart = document.getElementById('btn-start'); var btnStep = document.getElementById('btn-step'); var btnPause = document.getElementById('btn-pause'); var btnManualInput = document.getElementById('btn-manual-input');
+        if (!visualizationContainer || !indicesContainer || !statusDiv || !explanationDiv || !btnStart || !btnManualInput) { console.error("FATAL: Elementos DOM no encontrados."); if (statusDiv) statusDiv.textContent = "Error crítico."; }
+        var array = []; var i = 0, j = 0, posMin = 0, isSorting = false, isPaused = false, isStepMode = false, timeoutId = null, currentStepAction = null, delay = 500, animationDuration = 500, currentHighlightedLine = null, currentBarWidth = 20, currentBarMargin = 1; var lastHighlightInfo = null;
+
+        // --- Funciones Algoritmo (sin cambios) ---
+        function intercambiar(p1, p2) { var temp = array[p1]; array[p1] = array[p2]; array[p2] = temp; }
+
+        // --- Funciones de Control del Algoritmo ---
+        function selectionSortStep() { /* Sin cambios */ if (!isSorting || (isPaused && !isStepMode)) return; if (isStepMode && timeoutId) { clearTimeout(timeoutId); timeoutId = null; } clearTimeout(timeoutId); timeoutId = null; if (currentStepAction) { currentStepAction(); } else { finishSort(); } if (isSorting && !isPaused && !isStepMode && currentStepAction && !timeoutId) { timeoutId = setTimeout(selectionSortStep, delay); } if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function startOuterLoop() { /* Sin cambios */ highlightCodeLine(3); if (i >= array.length - 1) { currentStepAction = null; lastHighlightInfo = { type: 'final' }; finishSort(); return; } statusDiv.textContent = `Iteración ${i}: Iniciando búsqueda de mínimo.`; explanationDiv.textContent = `Sublista no ordenada: xs[${i}] en adelante.`; var initialHighlight = { type: 'outer_loop_start' }; highlightState(initialHighlight); lastHighlightInfo = initialHighlight; timeoutId = setTimeout(() => { if (!isSorting) return; posMin = i; highlightCodeLine(4); statusDiv.textContent = `Iteración ${i}: posMin inicializado.`; explanationDiv.textContent = `posMin = ${i} (valor: ${array[i]}) [Amarillo/Morado].`; var highlightInfo = { type: 'posMin_initialized' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; timeoutId = setTimeout(() => { if (!isSorting) return; j = i + 1; currentStepAction = prepareComparison; if (isSorting && !isPaused && !isStepMode) { clearTimeout(timeoutId); timeoutId = setTimeout(selectionSortStep, delay * 0.7); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }, isStepMode ? 40 : Math.min(delay * 0.4, 150)); }, isStepMode ? 30 : Math.min(delay * 0.2, 100)); }
+        function prepareComparison() { /* Sin cambios */ highlightCodeLine(5); if (j >= array.length) { statusDiv.textContent = `Iteración ${i}: Fin búsqueda. Mínimo en xs[${posMin}] = ${array[posMin]} [Morado].`; explanationDiv.textContent = `Preparando intercambio final con xs[${i}] [Amarillo].`; var highlightInfo = { type: 'before_swap' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = prepareSwap; if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(selectionSortStep, delay); } return; } statusDiv.textContent = `Iteración ${i}: Preparando comparación j=${j} [Rojo Claro] con posMin=${posMin} [Morado].`; explanationDiv.textContent = `Siguiente paso: Evaluar if xs[j] < xs[posMin].`; var highlightInfo = { type: 'comparing' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = evaluateComparison; if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(selectionSortStep, delay * 0.5); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function evaluateComparison() { /* Sin cambios */ highlightCodeLine(6); statusDiv.textContent = `Iteración ${i}: Evaluando si xs[${j}] (${array[j]}) < xs[${posMin}] (${array[posMin]}).`; var highlightInfo = { type: 'comparing' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; if (array[j] < array[posMin]) { explanationDiv.textContent = `Sí, es menor (${array[j]} < ${array[posMin]}). Siguiente paso: actualizar posMin.`; currentStepAction = assignNewMin; } else { explanationDiv.textContent = `No, no es menor (${array[j]} >= ${array[posMin]}). Siguiente paso: avanzar j.`; currentStepAction = incrementJ; } if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(selectionSortStep, delay * 0.7); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function assignNewMin() { /* Sin cambios */ highlightCodeLine(7); let oldPosMin = posMin; posMin = j; statusDiv.textContent = `Iteración ${i}: posMin actualizado a ${j}.`; explanationDiv.textContent = `Nuevo mínimo es xs[${posMin}] = ${array[posMin]} [Morado].`; var highlightInfo = { type: 'new_min_assigned' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = incrementJ; if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(selectionSortStep, delay * 0.8); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function incrementJ() { /* Sin cambios */ highlightCodeLine(5); j++; statusDiv.textContent = `Iteración ${i}: j incrementado a ${j}.`; explanationDiv.textContent = `Preparando siguiente comparación o fin de bucle j.`; currentStepAction = prepareComparison; if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(selectionSortStep, delay * 0.3); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function prepareSwap() { /* Sin cambios */ highlightCodeLine(8); statusDiv.textContent = `Iteración ${i}: Mínimo xs[${posMin}]=${array[posMin]} [Morado] encontrado.`; explanationDiv.textContent = `PAUSA antes de intercambiar xs[${i}] [Amarillo] y xs[${posMin}] [Morado].`; var highlightInfo = { type: 'before_swap' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; var pauseDuration = isStepMode ? 50 : delay * 0.8; timeoutId = setTimeout(function() { if (!isSorting) return; currentStepAction = doSwap; if (isSorting && !isPaused && !isStepMode) { selectionSortStep(); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }, pauseDuration); }
+
+        // --- MODIFICADO: doSwap ---
+        function doSwap() {
+             if (i === posMin) {
+                 // --- Intercambio no necesario ---
+                 statusDiv.textContent = `Iteración ${i}: Mínimo ya en posición (i == posMin). Flash!`;
+                 explanationDiv.textContent = "No se necesita intercambio.";
+                 highlightCodeLine(8);
+
+                 var flashHighlightInfo = { type: 'noop_swap_flash' };
+                 highlightState(flashHighlightInfo);
+                 lastHighlightInfo = flashHighlightInfo;
+
+                 timeoutId = setTimeout(() => {
+                     if (!isSorting) return;
+                     // Quitar flash y mostrar estado intermedio post-swap
+                     highlightCodeLine(3); // Resaltar for i
+                     i++; // Incrementar i ANTES de dibujar
+
+                     // Mostrar estado con 'i' amarillo y resto azul/verde
+                     var postFlashHighlight = { type: 'post_swap_pre_next_i' };
+                     highlightState(postFlashHighlight);
+                     lastHighlightInfo = postFlashHighlight;
+
+                     currentStepAction = startOuterLoop;
+                     if (isSorting && !isPaused && !isStepMode) { clearTimeout(timeoutId); timeoutId = setTimeout(selectionSortStep, Math.max(50, delay * 0.5)); }
+                     else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } // PAUSA aquí
+                 }, isStepMode ? 40 : Math.min(delay * 0.4, 200)); // Duración flash
+
+                 return; // Salir, continuación en flash timeout
+             }
+
+             // --- Intercambio real necesario ---
+             highlightCodeLine(8);
+             statusDiv.textContent = `Iteración ${i}: Animando intercambio xs[${i}] y xs[${posMin}].`; explanationDiv.textContent = "Moviendo barras...";
+             var barElements = visualizationContainer.children; var barI = barElements[i]; var barMin = barElements[posMin];
+             var distance = (posMin - i) * (currentBarWidth + currentBarMargin * 2);
+             if(barI) { barI.classList.add('bar-swap-animating'); barI.style.transform = 'translateX(' + distance + 'px)'; }
+             if(barMin) { barMin.classList.add('bar-swap-animating'); barMin.style.transform = 'translateX(' + (-distance) + 'px)'; }
+
+             timeoutId = setTimeout(function() {
+                if (!isSorting) return;
+                // Limpiar animación
+                if(barI) { barI.style.transform = ''; barI.classList.remove('bar-swap-animating'); }
+                if(barMin) { barMin.style.transform = ''; barMin.classList.remove('bar-swap-animating'); }
+                // Realizar intercambio
+                intercambiar(i, posMin);
+                // Guardar 'i' actual para mensajes
+                let completed_i = i;
+                statusDiv.textContent = `Iteración ${completed_i}: Intercambio completado.`;
+                explanationDiv.textContent = `Elemento xs[${completed_i}] en posición final. Preparando iteración ${completed_i + 1}.`;
+                // Incrementar i
+                i++;
+                currentStepAction = startOuterLoop;
+                highlightCodeLine(3); // Resaltar for i
+
+                // Mostrar estado intermedio: verde hasta nuevo i-1, amarillo en nuevo i
+                var highlightInfo = { type: 'post_swap_pre_next_i' };
+                highlightState(highlightInfo);
+                lastHighlightInfo = highlightInfo;
+
+                // Programar siguiente paso
+                if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(selectionSortStep, delay); }
+                else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } // PAUSA aquí
+            }, animationDuration);
+        }
+
+
+        // --- Funciones de Visualización ---
+        // --- MODIFICADO: drawArray ---
+        function drawArray(highlightInfo) {
+            if (!visualizationContainer || !indicesContainer) { console.error("Error drawArray: Contenedor(es) no encontrado(s)."); return; }
+
+            // Cálculos de tamaño (sin cambios)
+            var containerHeight = visualizationContainer.clientHeight; var containerWidth = visualizationContainer.clientWidth; var effectiveWidth = containerWidth - parseFloat(getComputedStyle(visualizationContainer).paddingLeft) - parseFloat(getComputedStyle(visualizationContainer).paddingRight); var effectiveHeight = containerHeight - parseFloat(getComputedStyle(visualizationContainer).paddingTop) - parseFloat(getComputedStyle(visualizationContainer).paddingBottom); if (effectiveHeight <= 0) effectiveHeight = 100; if (effectiveWidth <= 0) effectiveWidth = 500; visualizationContainer.innerHTML = ''; indicesContainer.innerHTML = ''; if (!array || array.length === 0) return; var maxValue = 0; for (let k = 0; k < array.length; k++) { if (typeof array[k] !== 'number' || isNaN(array[k])) { console.error("Error drawArray: Elemento no numérico en índice", k); continue; } if (array[k] > maxValue) maxValue = array[k]; } if (maxValue <= 0) maxValue = 1; var calculatedWidth = Math.floor(effectiveWidth / array.length); currentBarMargin = 1; currentBarWidth = Math.max(3, calculatedWidth - (currentBarMargin * 2)); if (array.length > 40) { currentBarMargin = 0.5; currentBarWidth = Math.max(1, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); } else if (array.length > 30) { currentBarMargin = 0.5; currentBarWidth = Math.max(2, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); }
+
+            // Creación y coloreado de barras
+            for (var k = 0; k < array.length; k++) {
+                 if (typeof array[k] !== 'number' || isNaN(array[k])) continue;
+                var bar = document.createElement('div'); bar.className = 'bar';
+                var barHeight = Math.max(5, (array[k] / maxValue) * effectiveHeight);
+                bar.style.height = barHeight + 'px'; bar.style.width = currentBarWidth + 'px';
+                bar.style.marginLeft = currentBarMargin + 'px'; bar.style.marginRight = currentBarMargin + 'px';
+                bar.setAttribute('data-value', array[k]);
+                var valueSpan = document.createElement('span'); valueSpan.className = 'bar-value'; valueSpan.textContent = array[k]; bar.appendChild(valueSpan);
+                var indexLabel = document.createElement('span'); indexLabel.className = 'index-label'; indexLabel.textContent = k;
+                indexLabel.style.width = currentBarWidth + 'px'; indexLabel.style.marginLeft = currentBarMargin + 'px'; indexLabel.style.marginRight = currentBarMargin + 'px';
+
+                const infoType = highlightInfo ? highlightInfo.type : null;
+                const isFinalState = infoType === 'final';
+
+                // 1. Estado Final
+                if (isFinalState) {
+                     bar.classList.add('bar-sorted'); // Todo verde
+                }
+                // 2. Durante la Ordenación
+                else if (isSorting || isPaused) {
+                    // Verde si ya está ordenado (k < i)
+                    if (k < i) { bar.classList.add('bar-sorted'); }
+
+                    // Aplicar marcadores i, posMin, j basados en el estado actual
+                    const isI = (k === i);
+                    const isPosMin = (k === posMin);
+                    // j es relevante solo en ciertas fases del bucle interno
+                    const isInnerLoopActive = infoType && ['comparing', 'new_min_assigned', 'prepareComparison', 'evaluateComparison'].includes(infoType);
+                    const isJ = isInnerLoopActive && (k === j && j < array.length);
+
+                    // --- Aplicar Fondos con Prioridad ---
+                    if (infoType === 'post_swap_pre_next_i') { // Estado especial post-swap
+                         if (isI) { // El NUEVO i
+                             bar.classList.add('bar-i-marker'); // Amarillo
+                         }
+                         // No pintar posMin ni j aquí
+                    } else if (infoType === 'outer_loop_start') {
+                         // No pintar nada especial, solo verde/azul
+                    } else { // Lógica para otros estados (posMin_initialized, comparing, etc.)
+                        if (isI && isPosMin) {
+                            bar.classList.add('bar-i-posMin-coincide'); // Mitad/Mitad
+                        } else if (isI) {
+                            bar.classList.add('bar-i-marker'); // Amarillo
+                        } else if (isPosMin) {
+                            if (k >= i) { bar.classList.add('bar-posMin-marker'); } // Morado (si no es verde)
+                        } else if (isJ) {
+                            if (k > i) { bar.classList.add('bar-comparing-j-marker');} // Rojo Claro (si no es verde/amarillo/morado)
+                        }
+                    }
+
+
+                    // --- Resaltados Temporales (Bordes) ---
+                    bar.style.borderStyle = ''; bar.style.borderColor = ''; // Reset border
+
+                    // Flash No-Op Swap (borde lima)
+                    if (infoType === 'noop_swap_flash' && k === i) {
+                         bar.classList.add('bar-noop-swap-flash');
+                     }
+                     // Borde punteado azul antes del swap real
+                     else if (infoType === 'before_swap') {
+                        if (k === i || k === posMin) {
+                             bar.style.borderStyle = 'dotted'; bar.style.borderColor = 'blue';
+                        }
+                    }
+                }
+                // Color por defecto (steelblue) si no aplica nada más
+
+                visualizationContainer.appendChild(bar);
+                indicesContainer.appendChild(indexLabel);
+            }
+        }
+        function highlightState(highlightInfo) { drawArray(highlightInfo); }
+        function highlightFinalSortedState() { drawArray({ type: 'final' }); }
+        function highlightCodeLine(lineId) { /* Sin cambios */ let fullLineId = typeof lineId === 'number' ? 'line-' + lineId : lineId; if (currentHighlightedLine) { var prevLine = document.getElementById(currentHighlightedLine); if (prevLine) prevLine.classList.remove('highlight-line'); } if (fullLineId !== null) { var currentLine = document.getElementById(fullLineId); if (currentLine) { currentLine.classList.add('highlight-line'); currentHighlightedLine = fullLineId; } else { console.warn("highlightCodeLine: Línea no encontrada -", fullLineId); currentHighlightedLine = null; } } else { currentHighlightedLine = null; } }
+
+        // --- Funciones de Control General ---
+        function generateArray() { /* Sin cambios */ console.log("generateArray: Iniciando..."); if (!arraySizeInput) { console.error("generateArray: Input de tamaño no encontrado."); if(statusDiv) statusDiv.textContent = "Error: No se puede leer tamaño."; return; } var size = parseInt(arraySizeInput.value, 10); if (isNaN(size) || size < 5 || size > 40) { alert("Tamaño entre 5 y 40."); size = 15; arraySizeInput.value = size; } array = []; for (var k = 0; k < size; k++) { array.push(Math.floor(Math.random() * 100) + 1); } console.log("generateArray: Array creado:", array); resetSortState(); drawArray(null); if (statusDiv) statusDiv.textContent = "Nuevo array. Pulsa Iniciar."; if (explanationDiv) explanationDiv.textContent = "Busca el mínimo y lo intercambia."; highlightCodeLine(null); console.log("generateArray: Finalizado."); }
+        function promptForManualArray() { /* Sin cambios */ if (isSorting && !isPaused) { alert("Detén o pausa la animación antes de introducir un array."); return; } const userInput = prompt("Introduce los valores del array separados por comas (ej: 50, 20, 85, 15, 42):", array.join(', ')); if (userInput === null) return; const parsedInput = userInput.split(/[\s,]+/).filter(s => s.trim() !== '').map(s => parseInt(s.trim(), 10)); if (parsedInput.length === 0 || parsedInput.some(isNaN)) { alert("Entrada inválida. Asegúrate de introducir números separados por comas."); return; } if (parsedInput.length < 5 || parsedInput.length > 40) { alert(`El tamaño del array debe estar entre 5 y 40 elementos. Has introducido ${parsedInput.length}.`); return; } array = parsedInput; resetSortState(); drawArray(null); if (statusDiv) statusDiv.textContent = "Array manual cargado. Pulsa Iniciar."; if (explanationDiv) explanationDiv.textContent = "Busca el mínimo y lo intercambia."; highlightCodeLine(null); if(arraySizeInput) arraySizeInput.value = array.length; }
+        function resetSortState() { /* Sin cambios */ console.log("resetSortState: Reseteando estado."); i = 0; j = 0; posMin = 0; isSorting = false; isPaused = false; isStepMode = false; currentStepAction = null; lastHighlightInfo = null; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } highlightCodeLine(null); updateButtonStates(); }
+        function startSort() { /* Sin cambios */ console.log("startSort: Click detectado."); if (!visualizationContainer || !statusDiv || !btnPause) { console.error("startSort: Faltan elementos críticos."); return; } if (isSorting && !isPaused) { console.log("startSort: Ya está ordenando."); return; } if (!array || array.length < 2) { if(statusDiv) statusDiv.textContent = "Genera un array primero."; console.log("startSort: Array vacío."); return; } isSorting = true; isPaused = false; isStepMode = false; if (currentStepAction === null) { i = 0; currentStepAction = startOuterLoop; console.log("startSort: Iniciando.");} else { console.log("startSort: Reanudando.");} if (statusDiv) statusDiv.textContent = "Iniciando ordenación..."; updateButtonStates(); selectionSortStep(); }
+        function pauseSort() { /* Sin cambios */ console.log("pauseSort: Click detectado."); if (!isSorting || isPaused) { console.log("pauseSort: No está ordenando o ya pausado."); return; } isPaused = true; isStepMode = false; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; console.log("pauseSort: Timeout detenido."); } if (statusDiv) statusDiv.textContent = "Pausado."; updateButtonStates(); }
+        function stepForward() { /* Sin cambios */ console.log("stepForward: Click detectado."); if (!visualizationContainer || !statusDiv) { console.error("stepForward: Faltan elementos críticos."); return; } if (!array || array.length < 2) { if(statusDiv) statusDiv.textContent = "Genera un array primero."; console.log("stepForward: Array vacío."); return; } if (!isSorting && currentStepAction === null && i >= array.length -1) { console.log("stepForward: Ordenación completada. Resetear?"); resetSortState(); } if (currentStepAction === null || !isSorting) { if (!isSorting || i >= array.length -1) resetSortState(); i = (currentStepAction === null && i >= array.length - 1) ? 0 : i; currentStepAction = startOuterLoop; isSorting = true; console.log("stepForward: Configurando para paso."); } isPaused = true; isStepMode = true; if (statusDiv) statusDiv.textContent = "Ejecutando paso..."; updateButtonStates(); selectionSortStep(); }
+        function finishSort() { /* Sin cambios */ console.log("finishSort: Ordenación completada."); isSorting = false; isPaused = false; isStepMode = false; currentStepAction = null; lastHighlightInfo = { type: 'final' }; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } updateButtonStates(); highlightFinalSortedState(); if (statusDiv) statusDiv.textContent = "¡Array Ordenado!"; if (explanationDiv) explanationDiv.textContent = "La ordenación por selección ha finalizado."; highlightCodeLine(null); }
+        function updateButtonStates() { /* Sin cambios */ try { const running = isSorting && !isPaused; if(btnStart) btnStart.disabled = running; if(btnPause) btnPause.disabled = !isSorting || isPaused; if(btnStep) btnStep.disabled = running; if(btnReset) btnReset.disabled = running; if(btnManualInput) btnManualInput.disabled = running; if(speedSlider) speedSlider.disabled = running; } catch (e) { console.error("Error actualizando botones:", e); } }
+
+        // --- Event Listeners & Inicialización ---
+        if (btnReset) btnReset.addEventListener('click', generateArray); else console.warn("Botón Reset no encontrado.");
+        if (btnManualInput) btnManualInput.addEventListener('click', promptForManualArray); else console.warn("Botón Manual Input no encontrado.");
+        if (btnStart) btnStart.addEventListener('click', startSort); else console.warn("Botón Start no encontrado.");
+        if (btnPause) btnPause.addEventListener('click', pauseSort); else console.warn("Botón Pause no encontrado.");
+        if (btnStep) btnStep.addEventListener('click', stepForward); else console.warn("Botón Step no encontrado.");
+        if (speedSlider) { speedSlider.addEventListener('input', function() { delay = 1050 - parseInt(this.value, 10); animationDuration = Math.max(100, Math.min(500, delay * 0.8)); }); } else { console.warn("Slider velocidad no encontrado."); }
+
+        window.onload = function() { /* Sin cambios */ console.log("window.onload: Página cargada."); try { if (speedSlider) { delay = 1050 - parseInt(speedSlider.value, 10); animationDuration = Math.max(100, Math.min(500, delay * 0.8)); } else { delay = 500; animationDuration = 400; } setTimeout(generateArray, 100); } catch (e) { console.error("Error en window.onload:", e); if(statusDiv) statusDiv.textContent = "Error al inicializar."; } };
+        var resizeTimeout; window.addEventListener('resize', function() { /* Sin cambios */ clearTimeout(resizeTimeout); resizeTimeout = setTimeout(function() { console.log("window.resize: Redibujando."); drawArray(isSorting || isPaused ? lastHighlightInfo : null); }, 250); });
+        console.log("Script principal cargado.");
+
+    </script>
+
+</body>
+</html>
