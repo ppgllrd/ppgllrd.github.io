@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Búsqueda Binaria</title>
+    <style>
+        /* --- Estilos Generales y Controles (sin cambios) --- */
+        body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px;background-color:#f4f4f4;min-height:100vh}h1{text-align:center;margin-bottom:20px}#controls{margin-bottom:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;width:95%;max-width:800px}#visualization-area{width:95%;max-width:900px;display:flex;flex-direction:column;align-items:center;margin-bottom:20px}#visualization-container{display:flex;align-items:flex-end;height:250px;width:100%;margin-top:10px;padding-top:30px;padding-bottom:10px;padding-left:10px;padding-right:10px;border:1px solid #ccc;background-color:#fff;box-shadow:2px 2px 5px rgba(0,0,0,.1);min-height:150px;overflow-x:auto;position:relative;box-sizing:border-box}#indices-container{display:flex;align-items:flex-start;height:20px;width:100%;padding:0 10px;box-sizing:border-box;margin-top:5px;overflow:hidden}
+        #status,#explanation{font-size:1em;text-align:center;min-height:1.5em;width:90%;max-width:800px;background-color:#e9e9e9;padding:10px;border-radius:5px;margin-top:10px}#explanation{font-style:italic;color:#333;margin-bottom:20px}
+        #code-area{width:90%;max-width:800px;margin-top:20px;padding-bottom:20px}#code-area h2{text-align:center;margin-bottom:5px;font-size:1.1em}#code-container{background-color:#2d2d2d;color:#ccc;padding:5px 5px;border-radius:5px;font-family:'Courier New',Courier,monospace;font-size:.9em;line-height:.6;white-space:pre;overflow-x:auto}.code-line{display:block;transition:background-color .3s ease;border-radius:3px;padding:0 5px;margin:0}.highlight-line{background-color:#555;color:#fff;font-weight:700}
+        button,label,input[type=range],input[type=number]{padding:8px 12px;font-size:14px;cursor:pointer}label{cursor:default}
+
+        /* --- Estilos Barras, Índices, Resaltado --- */
+        .bar { display: inline-block; background-color: steelblue; margin: 0 1px; width: 20px; position: relative; bottom: 0; transition: background-color 0.4s ease, opacity 0.4s ease, border 0.2s ease; overflow: visible; flex-shrink: 0; box-sizing: border-box; opacity: 1; }
+        .index-label { display: inline-block; text-align: center; font-size: 11px; color: #333; margin: 0 1px; width: 20px; line-height: 20px; flex-shrink: 0; }
+        .bar-value { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #222; background-color: rgba(255,255,255,.7); padding: 3px 6px; border-radius: 2px; white-space: nowrap; z-index: 5; }
+        .bar::after { content: attr(data-value); position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,.8); color: #fff; padding: 3px 6px; border-radius: 3px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity .2s,visibility .2s; z-index: 15; }
+        .bar:hover::after { opacity: 1; visibility: visible; }
+
+        /* --- Colores de estado Búsqueda Binaria --- */
+        .bar-discarded { background-color: #d3d3d3 !important; opacity: 0.5; }
+        /* 2. Color izq cambiado a naranja */
+        .bar-izq-marker { border-left: 4px solid darkorange; }
+        .bar-der-marker { border-right: 4px solid red; }
+        .bar-cen-marker { background-color: limegreen !important; border: 2px solid darkgreen; }
+        .bar-found { background-color: cyan !important; border: 3px solid navy; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Visualización Búsqueda Binaria</h1>
+
+    <div id="controls">
+        <button id="btn-reset">Generar Nuevo Array</button>
+        <button id="btn-manual-input">Introducir Manualmente</button>
+        <label for="array-size">Tamaño:</label>
+        <input type="number" id="array-size" value="20" min="5" max="50" step="1">
+        <label for="target-value">Buscar:</label>
+        <input type="number" id="target-value" value="42" step="1">
+         <label for="speed">Velocidad:</label>
+        <input type="range" id="speed" min="50" max="1000" value="700" step="50">
+        <button id="btn-start">Iniciar Búsqueda</button>
+        <button id="btn-step">Paso Siguiente</button>
+        <button id="btn-pause" disabled>Pausar</button>
+    </div>
+
+    <div id="visualization-area">
+         <div id="visualization-container"></div>
+        <div id="indices-container"></div>
+    </div>
+
+    <div id="status">Listo para empezar. Genera/introduce un array ORDENADO y el valor a buscar.</div>
+    <div id="explanation">La búsqueda binaria encuentra eficientemente un elemento en un array ORDENADO.</div>
+
+    <div id="code-area">
+        <h2>Código del Algoritmo (Scala):</h2>
+        <div id="code-container">
+            <code id="code-display">
+<span id="line-bs-1" class="code-line">def búsquedaBinaria[A](x: A, xs: Array[A])(using ord: Ordering[A]): Option[Int] =</span>
+<span id="line-bs-2" class="code-line">  import ord.*</span>
+<span id="line-bs-3" class="code-line">
+<span id="line-bs-4" class="code-line">  var índice: Option[Int] = None</span>
+<span id="line-bs-5" class="code-line">  var izq = 0</span>
+<span id="line-bs-6" class="code-line">  var der = xs.length - 1</span>
+<span id="line-bs-7" class="code-line">
+<span id="line-bs-8" class="code-line">  while índice.isEmpty && izq <= der do</span>
+<span id="line-bs-9" class="code-line">    val cen = izq + (der - izq) / 2</span>
+<span id="line-bs-10" class="code-line">    val y = xs(cen)</span>
+<span id="line-bs-11" class="code-line">    if x == y then</span>
+<span id="line-bs-12" class="code-line">      índice = Some(cen)</span>
+<span id="line-bs-13" class="code-line">    else if x > y then</span>
+<span id="line-bs-14" class="code-line">      izq = cen + 1</span>
+<span id="line-bs-15" class="code-line">    else</span>
+<span id="line-bs-16" class="code-line">      der = cen - 1</span>
+<span id="line-bs-17" class="code-line">
+<span id="line-bs-18" class="code-line">  índice</span>
+            </code>
+        </div>
+    </div>
+
+    <script>
+        // --- Variables Globales (sin cambios) ---
+        var arraySizeInput = document.getElementById('array-size'); var visualizationContainer = document.getElementById('visualization-container'); var indicesContainer = document.getElementById('indices-container'); var codeDisplay = document.getElementById('code-display'); var statusDiv = document.getElementById('status'); var explanationDiv = document.getElementById('explanation'); var speedSlider = document.getElementById('speed'); var btnReset = document.getElementById('btn-reset'); var btnStart = document.getElementById('btn-start'); var btnStep = document.getElementById('btn-step'); var btnPause = document.getElementById('btn-pause'); var btnManualInput = document.getElementById('btn-manual-input'); var targetInput = document.getElementById('target-value');
+        if (!visualizationContainer || !indicesContainer || !statusDiv || !explanationDiv || !btnStart || !btnManualInput || !targetInput) { console.error("FATAL: Elementos DOM no encontrados."); if (statusDiv) statusDiv.textContent = "Error crítico."; }
+        var array = []; var target = null; var izq = 0; var der = 0; var cen = -1; var foundIndex = null; var isSearching = false; var isPaused = false, isStepMode = false, timeoutId = null, currentStepAction = null, delay = 500, animationDuration = 300; var currentHighlightedLine = null, currentBarWidth = 20, currentBarMargin = 1; var lastHighlightInfo = null;
+
+        // --- Funciones de Control del Algoritmo ---
+        function binarySearchStep() { /* Sin cambios */ if (!isSearching || (isPaused && !isStepMode)) return; if (isStepMode && timeoutId) { clearTimeout(timeoutId); timeoutId = null; } clearTimeout(timeoutId); timeoutId = null; if (currentStepAction) { currentStepAction(); } else { /* Fin implícito gestionado en finishSearch */ } if (isSearching && !isPaused && !isStepMode && currentStepAction && !timeoutId) { timeoutId = setTimeout(binarySearchStep, delay); } if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function startBinarySearch() { /* Sin cambios */ highlightCodeLine('line-bs-1'); target = parseInt(targetInput.value, 10); if (isNaN(target)) { alert("Introduce un número válido para buscar."); return; } foundIndex = null; izq = 0; highlightCodeLine('line-bs-5'); der = array.length - 1; highlightCodeLine('line-bs-6'); cen = -1; statusDiv.textContent = `Iniciando búsqueda de ${target}.`; explanationDiv.textContent = `Estableciendo espacio inicial [${izq}, ${der}].`; var highlightInfo = { type: 'init' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = checkLoopCondition; if (isSearching && !isPaused && !isStepMode) { timeoutId = setTimeout(binarySearchStep, delay * 0.8); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+
+        // --- MODIFICADO: checkLoopCondition ---
+        function checkLoopCondition() {
+             highlightCodeLine('line-bs-8');
+             statusDiv.textContent = `Evaluando condición: índice no encontrado (${foundIndex === null}) Y ${izq} <= ${der}.`;
+
+            if (foundIndex === null && izq <= der) {
+                 explanationDiv.textContent = "Condición verdadera. Entrando al bucle.";
+                 currentStepAction = calculateCenter;
+            } else {
+                 // 1. Visualizar izq > der
+                 if (foundIndex === null) { // Si no se encontró Y izq > der
+                     explanationDiv.textContent = `Condición falsa (${izq} > ${der}). Fin del bucle. Elemento no encontrado.`;
+                     foundIndex = -1; // Marcar como no encontrado explícitamente
+                     // El estado 'not_found' en finishSearch atenuará todo
+                 } else { // Si se encontró (foundIndex >= 0)
+                      explanationDiv.textContent = "Condición falsa (índice ya encontrado). Fin del bucle.";
+                 }
+                 highlightCodeLine('line-bs-18'); // Ir a la línea del return
+                 currentStepAction = finishSearch; // Ir directamente a finalizar
+            }
+             lastHighlightInfo = { type: 'check_loop' };
+
+             if (isSearching && !isPaused && !isStepMode) { timeoutId = setTimeout(binarySearchStep, delay * 0.6); }
+             else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } // PAUSA
+        }
+
+        function calculateCenter() { /* Sin cambios */ highlightCodeLine('line-bs-9'); cen = izq + Math.floor((der - izq) / 2); statusDiv.textContent = `Calculando centro: cen = ${cen}.`; explanationDiv.textContent = `Resaltando centro xs[${cen}] = ${array[cen]} [Verde].`; var highlightInfo = { type: 'center_calculated' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = compareCenter; if (isSearching && !isPaused && !isStepMode) { timeoutId = setTimeout(binarySearchStep, delay); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function compareCenter() { /* Sin cambios */ highlightCodeLine('line-bs-10'); highlightCodeLine('line-bs-11'); let y = array[cen]; statusDiv.textContent = `Comparando objetivo ${target} con xs[${cen}] (${y}).`; var highlightInfo = { type: 'comparing_center' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; if (target === y) { explanationDiv.textContent = `¡Encontrado! ${target} == ${y}.`; highlightCodeLine('line-bs-12'); currentStepAction = targetFound; } else if (target > y) { explanationDiv.textContent = `${target} > ${y}. Objetivo está a la derecha.`; highlightCodeLine('line-bs-14'); currentStepAction = adjustLeft; } else { explanationDiv.textContent = `${target} < ${y}. Objetivo está a la izquierda.`; highlightCodeLine('line-bs-16'); currentStepAction = adjustRight; } if (isSearching && !isPaused && !isStepMode) { timeoutId = setTimeout(binarySearchStep, delay * 1.1); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function targetFound() { /* Sin cambios */ foundIndex = cen; statusDiv.textContent = `Elemento ${target} encontrado en el índice ${cen}.`; explanationDiv.textContent = "Búsqueda finalizada con éxito."; var highlightInfo = { type: 'found' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = finishSearch; if (isSearching && !isPaused && !isStepMode) { timeoutId = setTimeout(binarySearchStep, delay * 1.5); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function adjustLeft() { /* Sin cambios */
+            izq = cen + 1;
+            statusDiv.textContent = `Ajustando límite izquierdo: izq = ${izq}.`;
+            explanationDiv.textContent = `Descartando mitad izquierda (índices < ${izq}).`;
+            cen = -1;
+            var highlightInfo = { type: 'adjust_bounds' };
+            highlightState(highlightInfo);
+            lastHighlightInfo = highlightInfo;
+            currentStepAction = checkLoopCondition;
+            if (isSearching && !isPaused && !isStepMode) {
+                timeoutId = setTimeout(binarySearchStep, delay);
+            } else if (isStepMode) {
+                isPaused = true;
+                isStepMode = false;
+                updateButtonStates();
+            }
+        }
+        function adjustRight() { /* Sin cambios */
+            der = cen - 1;
+            statusDiv.textContent = `Ajustando límite derecho: der = ${der}.`;
+            explanationDiv.textContent = `Descartando mitad derecha (índices > ${der}).`;
+            cen = -1;
+            var highlightInfo = { type: 'adjust_bounds' };
+            highlightState(highlightInfo);
+            lastHighlightInfo = highlightInfo;
+            currentStepAction = checkLoopCondition;
+            if (isSearching && !isPaused && !isStepMode) {
+                timeoutId = setTimeout(binarySearchStep, delay);
+            } else if (isStepMode) {
+                isPaused = true;
+                isStepMode = false;
+                updateButtonStates();
+            }
+        }
+
+        // --- MODIFICADO: finishSearch ---
+        function finishSearch() {
+            highlightCodeLine('line-bs-18');
+            isSearching = false; isPaused = false; isStepMode = false;
+            currentStepAction = null;
+
+            if (foundIndex !== null && foundIndex >= 0) { // Encontrado
+                 statusDiv.textContent = `Finalizado: Elemento ${target} encontrado en índice ${foundIndex}.`;
+                 explanationDiv.textContent = "";
+                 lastHighlightInfo = { type: 'found' };
+                 highlightState(lastHighlightInfo); // Asegurar que quede resaltado
+            } else { // No encontrado (implica foundIndex = -1 o null y loop terminado)
+                 foundIndex = -1; // Asegurar estado no encontrado
+                 statusDiv.textContent = `Finalizado: Elemento ${target} no encontrado en el array.`;
+                 explanationDiv.textContent = `(Condición ${izq} <= ${der} es falsa)`;
+                 lastHighlightInfo = { type: 'not_found' };
+                 highlightState(lastHighlightInfo); // Atenuar todo
+            }
+
+            if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+            updateButtonStates();
+            // Asegurar que los marcadores se queden al final si no se encuentra
+            drawArray(lastHighlightInfo);
+        }
+
+
+        // --- Funciones de Visualización ---
+        // --- MODIFICADO: drawArray ---
+        function drawArray(highlightInfo) {
+            if (!visualizationContainer || !indicesContainer) return;
+            // Cálculos de tamaño (sin cambios)
+            var containerHeight = visualizationContainer.clientHeight; var containerWidth = visualizationContainer.clientWidth; var effectiveWidth = containerWidth - parseFloat(getComputedStyle(visualizationContainer).paddingLeft) - parseFloat(getComputedStyle(visualizationContainer).paddingRight); var effectiveHeight = containerHeight - parseFloat(getComputedStyle(visualizationContainer).paddingTop) - parseFloat(getComputedStyle(visualizationContainer).paddingBottom); if (effectiveHeight <= 0) effectiveHeight = 100; if (effectiveWidth <= 0) effectiveWidth = 500; visualizationContainer.innerHTML = ''; indicesContainer.innerHTML = ''; if (!array || array.length === 0) return; var maxValue = 0; for (let k = 0; k < array.length; k++) { if (typeof array[k] === 'number' && !isNaN(array[k]) && array[k] > maxValue) maxValue = array[k]; } if (maxValue <= 0) maxValue = 1; var calculatedWidth = Math.floor(effectiveWidth / array.length); currentBarMargin = 1; currentBarWidth = Math.max(3, calculatedWidth - (currentBarMargin * 2)); if (array.length > 40) { currentBarMargin = 0.5; currentBarWidth = Math.max(1, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); } else if (array.length > 30) { currentBarMargin = 0.5; currentBarWidth = Math.max(2, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); }
+
+            for (var k = 0; k < array.length; k++) {
+                 if (typeof array[k] !== 'number' || isNaN(array[k])) continue;
+                var bar = document.createElement('div'); bar.className = 'bar';
+                var barHeight = Math.max(5, (array[k] / maxValue) * effectiveHeight);
+                bar.style.height = barHeight + 'px'; bar.style.width = currentBarWidth + 'px';
+                bar.style.marginLeft = currentBarMargin + 'px'; bar.style.marginRight = currentBarMargin + 'px';
+                bar.setAttribute('data-value', array[k]);
+                var valueSpan = document.createElement('span'); valueSpan.className = 'bar-value'; valueSpan.textContent = array[k]; bar.appendChild(valueSpan);
+                var indexLabel = document.createElement('span'); indexLabel.className = 'index-label'; indexLabel.textContent = k;
+                indexLabel.style.width = currentBarWidth + 'px'; indexLabel.style.marginLeft = currentBarMargin + 'px'; indexLabel.style.marginRight = currentBarMargin + 'px';
+
+                const infoType = highlightInfo ? highlightInfo.type : null;
+
+                // Aplicar estilos basados en el estado de búsqueda
+                if (infoType === 'found') { // Encontrado (final)
+                    if (k === foundIndex) bar.classList.add('bar-found');
+                    else bar.classList.add('bar-discarded');
+                } else if (infoType === 'not_found') { // No encontrado (final)
+                     bar.classList.add('bar-discarded'); // Atenuar todo
+                } else if (isSearching || isPaused) { // Durante la búsqueda
+                    const isInSearchSpace = k >= izq && k <= der;
+
+                    if (isInSearchSpace) {
+                        // Marcar bordes izq y der (naranja y rojo)
+                        if (k === izq) bar.classList.add('bar-izq-marker');
+                        if (k === der) bar.classList.add('bar-der-marker');
+                        // Marcar centro si es relevante
+                        if (cen === k && (infoType === 'center_calculated' || infoType === 'comparing_center')) {
+                            bar.classList.add('bar-cen-marker');
+                        }
+                        // Color base 'steelblue' para espacio activo
+                    } else {
+                        bar.classList.add('bar-discarded'); // Atenuar fuera del espacio
+                    }
+                }
+                // Color base 'steelblue' si no está buscando y no es estado final
+
+                visualizationContainer.appendChild(bar);
+                indicesContainer.appendChild(indexLabel);
+            }
+
+            // Asegurar que siempre se muestren izq y der
+            if ((isSearching || isPaused || (foundIndex === -1)) && array.length > 0) {
+                 const bars = visualizationContainer.querySelectorAll('.bar');
+                if (izq >= 0 && izq < array.length && bars[izq]) {
+                     bars[izq].classList.add('bar-izq-marker');
+                }
+                if (der >= 0 && der < array.length && bars[der]) {
+                     bars[der].classList.add('bar-der-marker');
+                }
+            }
+        }
+        function highlightState(highlightInfo) { drawArray(highlightInfo); }
+        function highlightFinalSortedState() { /* No relevante */ }
+        function highlightCodeLine(lineId) { /* Sin cambios */ if (currentHighlightedLine) { var prevLine = document.getElementById(currentHighlightedLine); if (prevLine) prevLine.classList.remove('highlight-line'); } if (lineId !== null) { var currentLine = document.getElementById(lineId); if (currentLine) { currentLine.classList.add('highlight-line'); currentHighlightedLine = lineId; } else { console.warn("highlightCodeLine: Línea no encontrada -", lineId); currentHighlightedLine = null; } } else { currentHighlightedLine = null; } }
+
+        // --- Funciones de Control General ---
+        function generateArray() { console.log("generateArray"); if (!arraySizeInput) return; var size = parseInt(arraySizeInput.value, 10); if (isNaN(size) || size < 5 || size > 50) { alert("Tamaño entre 5 y 50."); size = 20; arraySizeInput.value = size; } array = []; for (let k = 0; k < size; k++) { array.push(Math.floor(Math.random() * 100) + 1); } array.sort((a, b) => a - b); console.log("Array generado y ORDENADO:", array); resetBinarySearchState(); drawArray(null); statusDiv.textContent = "Nuevo array ORDENADO generado. Introduce valor a buscar."; explanationDiv.textContent = "La búsqueda binaria requiere un array ordenado."; highlightCodeLine(null); }
+        function promptForManualArray() { if (isSearching && !isPaused) { alert("Detén o pausa la animación."); return; } const userInput = prompt("Introduce valores ORDENADOS separados por comas:", array.join(', ')); if (userInput === null) return; const parsedInput = userInput.split(/[\s,]+/).filter(s => s.trim() !== '').map(s => parseInt(s.trim(), 10)); if (parsedInput.length === 0 || parsedInput.some(isNaN)) { alert("Entrada inválida."); return; } if (parsedInput.length < 5 || parsedInput.length > 50) { alert(`Tamaño entre 5 y 50. Introducidos: ${parsedInput.length}.`); return; } let sorted = true; for (let k = 1; k < parsedInput.length; k++) { if (parsedInput[k] < parsedInput[k-1]) { sorted = false; break; } } if (!sorted) { const sortConfirm = confirm("El array introducido no parece estar ordenado. ¿Quieres ordenarlo automáticamente?"); if (sortConfirm) { parsedInput.sort((a, b) => a - b); } else { alert("Búsqueda binaria requiere un array ordenado."); return; } } array = parsedInput; resetBinarySearchState(); drawArray(null); statusDiv.textContent = "Array manual cargado y ORDENADO. Introduce valor a buscar."; explanationDiv.textContent = "La búsqueda binaria requiere un array ordenado."; highlightCodeLine(null); if(arraySizeInput) arraySizeInput.value = array.length; }
+        function resetBinarySearchState() { console.log("resetBinarySearchState"); target = null; izq = 0; der = 0; cen = -1; foundIndex = null; isSearching = false; isPaused = false; isStepMode = false; currentStepAction = null; lastHighlightInfo = null; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } highlightCodeLine(null); updateButtonStates(); }
+        function startAlgorithm() { console.log("startAlgorithm"); if (isSearching && !isPaused) return; if (!array || array.length === 0) { if(statusDiv) statusDiv.textContent="Genera/introduce un array."; return; } target = parseInt(targetInput.value, 10); if (isNaN(target)) { alert("Introduce un número válido para buscar."); return; } isSearching = true; isPaused = false; isStepMode = false; if (currentStepAction === null || foundIndex !== null ) { currentStepAction = startBinarySearch; } statusDiv.textContent = `Iniciando búsqueda de ${target}...`; updateButtonStates(); binarySearchStep(); }
+        function pauseAlgorithm() { console.log("pauseAlgorithm"); if (!isSearching || isPaused) return; isPaused = true; isStepMode = false; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } if (statusDiv) statusDiv.textContent = "Pausado."; updateButtonStates(); }
+        function stepForward() { console.log("stepForward"); if (!array || array.length === 0) { if(statusDiv) statusDiv.textContent="Genera/introduce un array."; return; } target = parseInt(targetInput.value, 10); if (isNaN(target)) { alert("Introduce un número válido para buscar."); return; } if (!isSearching || isPaused) { if (!isSearching || foundIndex !== null) { resetBinarySearchState(); currentStepAction = startBinarySearch; } isSearching = true; isPaused = true; isStepMode = true; if(statusDiv) statusDiv.textContent = "Ejecutando paso..."; updateButtonStates(); binarySearchStep(); } }
+        function finishSearch() { console.log("finishSearch logic called"); isSearching = false; isPaused = false; isStepMode = false; currentStepAction = null; if (foundIndex === null) foundIndex = -1; highlightCodeLine('line-bs-18'); updateButtonStates(); if(foundIndex >= 0) { statusDiv.textContent = `Finalizado: Encontrado en índice ${foundIndex}.`; explanationDiv.textContent = ""; lastHighlightInfo = {type: 'found'}; highlightState(lastHighlightInfo);} else {statusDiv.textContent = `Finalizado: No encontrado.`; explanationDiv.textContent = `(${izq} > ${der})`; lastHighlightInfo = {type: 'not_found'}; highlightState(lastHighlightInfo);} }
+        function updateButtonStates() { try { const running = isSearching && !isPaused; const finished = !isSearching && foundIndex !== null; btnStart.disabled = running || finished; btnPause.disabled = !isSearching || isPaused; btnStep.disabled = running || finished; btnReset.disabled = running; btnManualInput.disabled = running; arraySizeInput.disabled = running; targetInput.disabled = running; speedSlider.disabled = running; } catch (e) { console.error("Error actualizando botones:", e); } }
+
+        // --- Event Listeners & Inicialización ---
+        if (btnReset) btnReset.addEventListener('click', generateArray); else console.warn("Botón Reset no encontrado."); if (btnManualInput) btnManualInput.addEventListener('click', promptForManualArray); else console.warn("Botón Manual Input no encontrado."); if (btnStart) btnStart.addEventListener('click', startAlgorithm); else console.warn("Botón Start no encontrado."); if (btnPause) btnPause.addEventListener('click', pauseAlgorithm); else console.warn("Botón Pause no encontrado."); if (btnStep) btnStep.addEventListener('click', stepForward); else console.warn("Botón Step no encontrado."); if (speedSlider) { speedSlider.addEventListener('input', function() { delay = 1050 - parseInt(this.value, 10); }); } else { console.warn("Slider velocidad no encontrado."); } if (arraySizeInput) { arraySizeInput.addEventListener('change', generateArray); } else { console.warn("Input tamaño no encontrado."); }
+        window.onload = function() { console.log("window.onload"); try { if (speedSlider) { delay = 1050 - parseInt(speedSlider.value, 10); } else { delay = 500; } setTimeout(generateArray, 100); } catch (e) { console.error("Error onload:", e); if(statusDiv) statusDiv.textContent = "Error inicializar."; } };
+        var resizeTimeout; window.addEventListener('resize', function() { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(function() { console.log("window.resize"); drawArray(isSearching || isPaused ? lastHighlightInfo : null); }, 250); });
+        console.log("Script Búsqueda Binaria cargado.");
+
+    </script>
+
+</body>
+</html>
