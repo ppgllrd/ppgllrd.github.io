@@ -104,18 +104,40 @@
         var currentIndex = 0;
         var foundIndex = null;
         var isSearching = false;
-        var isPaused = false, isStepMode = false, timeoutId = null, currentStepAction = null, delay = 500, animationDuration = 300;
+        var isPaused = false, isStepMode = false, timeoutId = null, currentStepAction = null, animationDuration = 300;
         var currentHighlightedLine = null, currentBarWidth = 20, currentBarMargin = 1;
         var lastHighlightInfo = null;
 
+         // Inicializar delay inmediatamente
+        var delay = 500;
+
         // --- Funciones de Control del Algoritmo ---
-        function linearSearchStep() {
+       function linearSearchStep() {
             if (!isSearching || (isPaused && !isStepMode)) return;
-            if (isStepMode && timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
-            clearTimeout(timeoutId); timeoutId = null;
-            if (currentStepAction) { currentStepAction(); }
-            if (isSearching && !isPaused && !isStepMode && currentStepAction && !timeoutId) { timeoutId = setTimeout(linearSearchStep, delay); }
-            if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); }
+
+            if (isStepMode && timeoutId) {
+                clearTimeout(timeoutId);
+                timeoutId = null;
+            }
+
+            clearTimeout(timeoutId);
+            timeoutId = null;
+
+            if (currentStepAction) {
+                currentStepAction();
+            } else {
+                /* Fin implícito gestionado en finishSearch */
+            }
+
+            if (isSearching && !isPaused && !isStepMode && currentStepAction && !timeoutId) {
+                timeoutId = setTimeout(linearSearchStep, delay);
+            }
+
+            if (isStepMode) {
+                isPaused = true;
+                isStepMode = false;
+                updateButtonStates();
+            }
         }
 
         function startLinearSearch() {
@@ -136,7 +158,7 @@
             else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); }
         }
 
-        function checkLoopCondition() {
+       function checkLoopCondition() {
             highlightCodeLine('line-ls-4');
             statusDiv.textContent = `Evaluando condición: índice no encontrado (${foundIndex === null}) Y  i < xs.length (${currentIndex} < ${array.length}).`;
             if (foundIndex === null && currentIndex < array.length) {
@@ -148,7 +170,7 @@
                 currentStepAction = finishSearch;
             }
             lastHighlightInfo = { type: 'check_loop' };
-             if (isSearching && !isPaused && !isStepMode) { timeoutId = setTimeout(linearSearchStep, delay * 0.6); }
+           if (isSearching && !isPaused && !isStepMode) { timeoutId = setTimeout(linearSearchStep, delay * 0.6); }
             else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); }
         }
 
@@ -181,10 +203,6 @@
             } else {
                 statusDiv.textContent = `${target} != ${array[currentIndex]}.  Avanzando al siguiente elemento.`;
                 explanationDiv.textContent = "Descartando y avanzando...";
-                //NO se descarta aquí. Se descarta en incrementIndex
-                //var highlightInfo = { type: 'discard', index: currentIndex };
-               // highlightState(highlightInfo);
-               // lastHighlightInfo = highlightInfo;
                 highlightCodeLine('line-ls-8');
                 currentStepAction = incrementIndex;
             }
@@ -205,15 +223,16 @@
         }
 
         function incrementIndex() {
+            statusDiv.textContent = `Incrementando índice: i = ${currentIndex}.`;
+            explanationDiv.textContent = `Avanzando al siguiente elemento.`;
             highlightCodeLine('line-ls-8');
-            statusDiv.textContent = `Avanzando al siguiente elemento y descartando el anterior.`;
-            explanationDiv.textContent = `Incrementando índice: i = ${currentIndex}.`;
-            //DESCARTE AQUÍ (al incrementar i, descartamos el valor anterior
-             let discardIndex = currentIndex;
-            currentIndex++;
-            var highlightInfo = { type: 'discard', index: discardIndex };
+
+           //DESCARTE AQUÍ (al incrementar i, descartamos el valor anterior
+            var highlightInfo = { type: 'discard', index: currentIndex };
             highlightState(highlightInfo);
             lastHighlightInfo = highlightInfo;
+            discardIndex = currentIndex;
+            currentIndex++;
 
 
             currentStepAction = checkLoopCondition;
@@ -239,15 +258,12 @@
             if (foundIndex !== null && foundIndex >= 0) { // Encontrado
                 statusDiv.textContent = `Finalizado: Elemento ${target} encontrado en índice ${foundIndex}.`;
                 explanationDiv.textContent = "";
-                 highlightState(finalHighlightInfo);
-
+                highlightState(finalHighlightInfo);
             } else { // No encontrado
                 foundIndex = -1;
                 statusDiv.textContent = `Finalizado: Elemento ${target} no encontrado en el array.`;
                 explanationDiv.textContent = "Búsqueda completada sin éxito.";
                 highlightState(finalHighlightInfo);
-
-
             }
 
             lastHighlightInfo = finalHighlightInfo;
@@ -286,7 +302,7 @@
                     bar.classList.add('bar-found');
                      bar.classList.remove('bar-comparing');
                      bar.classList.remove('bar-discarded');
-                } else if (infoType === 'discard' && k === highlightIndex) {
+                } else if (infoType === 'discard' && k === highlightIndex && highlightIndex < currentIndex) {
                     bar.classList.add('bar-discarded');
                      bar.classList.remove('bar-comparing');
                 } else if (isSearching || isPaused) {
@@ -295,9 +311,8 @@
                          bar.classList.remove('bar-comparing');
 
                      }
-                }
-                 else if (infoType === 'not_found' || (infoType === 'finish' && highlightInfo.index == -1)) {
-                  bar.classList.add('bar-discarded');
+                } else if (infoType === 'not_found' || (infoType === 'finish' && highlightInfo.index == -1)) {
+                    bar.classList.add('bar-discarded');
                    bar.classList.remove('bar-comparing');
                    bar.classList.remove('bar-found');
 
@@ -351,8 +366,30 @@
 
         // --- Event Listeners & Inicialización ---
         if (btnReset) btnReset.addEventListener('click', generateArray); else console.warn("Botón Reset no encontrado."); if (btnManualInput) btnManualInput.addEventListener('click', promptForManualArray); else console.warn("Botón Manual Input no encontrado."); if (btnStart) btnStart.addEventListener('click', startAlgorithm); else console.warn("Botón Start no encontrado."); if (btnPause) btnPause.addEventListener('click', pauseAlgorithm); else console.warn("Botón Pause no encontrado."); if (btnStep) btnStep.addEventListener('click', stepForward); else console.warn("Botón Step no encontrado."); if (speedSlider) { speedSlider.addEventListener('input', function() { delay = 1050 - parseInt(this.value, 10); }); } else { console.warn("Slider velocidad no encontrado."); } if (arraySizeInput) { arraySizeInput.addEventListener('change', generateArray); } else { console.warn("Input tamaño no encontrado."); }
-        window.onload = function() { console.log("window.onload"); try { if (speedSlider) { delay = 1050 - parseInt(this.value, 10); } else { delay = 500; } setTimeout(generateArray, 100); } catch (e) { console.error("Error onload:", e); if(statusDiv) statusDiv.textContent = "Error inicializar."; } };
-        var resizeTimeout; window.addEventListener('resize', function() { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(function() { drawArray(isSearching || isPaused ? lastHighlightInfo : null); }, 250); });
+
+        window.onload = function() {
+            console.log("window.onload");
+            try {
+                if (speedSlider) {
+                    delay = 1050 - parseInt(speedSlider.value, 10);
+                } else {
+                    delay = 500;
+                }
+                setTimeout(generateArray, 100);
+
+            } catch (e) {
+                console.error("Error onload:", e);
+                if(statusDiv) statusDiv.textContent = "Error inicializar.";
+            }
+        };
+
+        var resizeTimeout;
+        window.addEventListener('resize', function() {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(function() {
+                drawArray(isSearching || isPaused ? lastHighlightInfo : null);
+            }, 250);
+        });
     </script>
 
 </body>
