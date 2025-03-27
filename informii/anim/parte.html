@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Partición Quicksort</title>
+    <style>
+        /* --- Estilos Generales (Sin cambios) --- */
+        body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px;background-color:#f4f4f4;min-height:100vh}h1{text-align:center;margin-bottom:20px}#controls{margin-bottom:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;width:95%;max-width:800px}#visualization-area{width:95%;max-width:900px;display:flex;flex-direction:column;align-items:center;margin-bottom:20px}#visualization-container{display:flex;align-items:flex-end;height:250px;width:100%;margin-top:10px;padding-top:30px;padding-bottom:10px;padding-left:10px;padding-right:10px;border:1px solid #ccc;background-color:#fff;box-shadow:2px 2px 5px rgba(0,0,0,.1);min-height:150px;overflow-x:auto;position:relative;box-sizing:border-box}#indices-container{display:flex;align-items:flex-start;height:20px;width:100%;padding:0 10px;box-sizing:border-box;margin-top:5px;overflow:hidden}
+        #status,#explanation{font-size:1em;text-align:center;min-height:1.5em;width:90%;max-width:800px;background-color:#e9e9e9;padding:10px;border-radius:5px;margin-top:10px}#explanation{font-style:italic;color:#333;margin-bottom:20px}
+        #code-area{width:90%;max-width:800px;margin-top:20px;padding-bottom:20px}#code-area h2{text-align:center;margin-bottom:5px;font-size:1.1em}#code-container{background-color:#2d2d2d;color:#ccc;padding:5px 5px;border-radius:5px;font-family:'Courier New',Courier,monospace;font-size:.9em;line-height:.6;white-space:pre;overflow-x:auto}.code-line{display:block;transition:background-color .3s ease;border-radius:3px;padding:0 5px;margin:0}.highlight-line{background-color:#555;color:#fff;font-weight:700}
+        button,label,input[type=range],input[type=number]{padding:8px 12px;font-size:14px;cursor:pointer}label{cursor:default}
+
+        /* --- Estilos Barras, Índices, Resaltado --- */
+        .bar {
+            display: inline-block; background-color: steelblue; margin: 0 1px; width: 20px;
+            position: relative; bottom: 0;
+            transition: background-color 0.3s ease, height 0.3s ease, transform 0.5s ease, border 0.1s ease-out; /* ease-out para flash */
+            overflow: visible; flex-shrink: 0; box-sizing: border-box;
+        }
+        .index-label { display: inline-block; text-align: center; font-size: 11px; color: #333; margin: 0 1px; width: 20px; line-height: 20px; flex-shrink: 0; }
+        .bar-value { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: 11px; color: #222; background-color: rgba(255,255,255,.7); padding: 3px 6px; border-radius: 2px; white-space: nowrap; z-index: 5; }
+        .bar::after { /* Tooltip */ content: attr(data-value); position: absolute; top: -20px; left: 50%; transform: translateX(-50%); background-color: rgba(0,0,0,.8); color: #fff; padding: 3px 6px; border-radius: 3px; font-size: 12px; white-space: nowrap; opacity: 0; visibility: hidden; transition: opacity .2s,visibility .2s; z-index: 15; }
+        .bar:hover::after { opacity: 1; visibility: visible; }
+
+        /* --- Colores de Estado --- */
+        .bar-boundary { background-color: lightgray; border: 1px dotted #555; }
+        .bar-pivot { background-color: cyan; border: 2px solid #008b8b; }
+        .bar-p-marker { background-color: gold !important; }
+        .bar-i-marker { background-color: lightcoral !important; }
+        .bar-pi-coincide { background: linear-gradient(to right, gold 50%, lightcoral 50%) !important; }
+        .bar-partition-lt { background-color: mediumseagreen; }
+        .bar-partition-gt { background-color: tomato; }
+
+        /* Animación y Flash */
+        .bar-swap-animating { border: 2px dashed #000 !important; z-index: 10; }
+        /* 1. Flash p==i Mejorado */
+        .bar-noop-flash-enhanced { border: 5px solid yellow !important; /* Borde amarillo brillante y grueso */ }
+
+    </style>
+</head>
+<body>
+
+    <h1>Visualización del Algoritmo de Partición (Quicksort)</h1>
+
+    <div id="controls">
+        <button id="btn-reset">Generar Nuevo Array</button>
+        <!-- 2. Botón Input Manual -->
+        <button id="btn-manual-input">Introducir Manualmente</button>
+        <label for="array-size">Tamaño:</label>
+        <input type="number" id="array-size" value="15" min="5" max="40" step="1" readonly> <!-- readonly para evitar confusión con manual -->
+         <label for="speed">Velocidad:</label>
+        <input type="range" id="speed" min="50" max="1000" value="500" step="50">
+        <button id="btn-start">Iniciar Partición</button>
+        <button id="btn-step">Paso Siguiente</button>
+        <button id="btn-pause" disabled>Pausar</button>
+    </div>
+
+    <div id="visualization-area">
+         <div id="visualization-container"></div>
+        <div id="indices-container"></div>
+    </div>
+
+    <div id="status">Listo para empezar. Genera un array o introduce valores manualmente.</div>
+    <div id="explanation">El algoritmo de partición reorganiza el array alrededor de un pivote.</div>
+
+    <div id="code-area">
+        <h2>Código del Algoritmo (Scala):</h2>
+        <div id="code-container">
+            <code id="code-display">
+<span id="line-p-1" class="code-line">def parte(izq: Int, der: Int): Int =</span>
+<span id="line-p-2" class="code-line">  val cen = izq + (der - izq) / 2</span>
+<span id="line-p-3" class="code-line">  val pivot = xs(cen)</span>
+<span id="line-p-4" class="code-line">  intercambiar(cen, der)</span>
+<span id="line-p-5" class="code-line">  var p = izq</span>
+<span id="line-p-6" class="code-line">  for i <- izq until der do</span>
+<span id="line-p-7" class="code-line">    if xs(i) <= pivot then</span>
+<span id="line-p-8" class="code-line">      intercambiar(i, p)</span>
+<span id="line-p-9" class="code-line">      p += 1</span>
+<span id="line-p-10" class="code-line">  intercambiar(p, der)</span>
+<span id="line-p-11" class="code-line">  p</span>
+            </code>
+        </div>
+    </div>
+
+    <script>
+        // --- Variables Globales ---
+        var array = [], arraySizeInput = document.getElementById('array-size'), visualizationContainer = document.getElementById('visualization-container'), indicesContainer = document.getElementById('indices-container'), codeDisplay = document.getElementById('code-display'), statusDiv = document.getElementById('status'), explanationDiv = document.getElementById('explanation'), speedSlider = document.getElementById('speed'), btnReset = document.getElementById('btn-reset'), btnStart = document.getElementById('btn-start'), btnStep = document.getElementById('btn-step'), btnPause = document.getElementById('btn-pause');
+        var btnManualInput = document.getElementById('btn-manual-input'); // 2. Referencia botón manual
+        var izq = 0, der = 0, cen = 0, pivotValue = null, p = 0, i = 0;
+        var pivotIndexCurrent = -1;
+        var isSorting = false, isPaused = false, isStepMode = false, timeoutId = null, currentStepAction = null, delay = 500, animationDuration = 500, currentHighlightedLine = null, currentBarWidth = 20, currentBarMargin = 1;
+        var lastHighlightInfo = null;
+
+        // --- Funciones Algoritmo ---
+        function intercambiar(p1, p2) { /* Sin cambios */ if (p1 === pivotIndexCurrent) pivotIndexCurrent = p2; else if (p2 === pivotIndexCurrent) pivotIndexCurrent = p1; var temp = array[p1]; array[p1] = array[p2]; array[p2] = temp; }
+
+        // --- Funciones de Control del Algoritmo (Con mensajes cambiados) ---
+        function partitionStep() { /* Sin cambios */ if (!isSorting || (isPaused && !isStepMode)) return; if (isStepMode && timeoutId) { clearTimeout(timeoutId); timeoutId = null; } clearTimeout(timeoutId); timeoutId = null; if (currentStepAction) { currentStepAction(); } else { finishPartition(); } if (isSorting && !isPaused && !isStepMode && currentStepAction && !timeoutId) { timeoutId = setTimeout(partitionStep, delay); } if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function startPartition() { highlightCodeLine('line-p-1'); izq = 0; der = array.length - 1; cen = 0; pivotValue = null; p = 0; i = 0; pivotIndexCurrent = -1; if (izq >= der) { statusDiv.textContent = "No se necesita partición."; explanationDiv.textContent = ""; finishPartition(); return; }
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Iniciando partición (izq=${izq}, der=${der}).`; explanationDiv.textContent = "Seleccionando pivote...";
+            var highlightInfo = { type: 'init' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = selectPivot; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay); }
+        function selectPivot() { highlightCodeLine('line-p-2'); cen = izq + Math.floor((der - izq) / 2); highlightCodeLine('line-p-3'); pivotValue = array[cen]; pivotIndexCurrent = cen;
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Pivote seleccionado en xs[${cen}] = ${pivotValue}.`; explanationDiv.textContent = "Pausa tras seleccionar pivote...";
+            var highlightInfo = { type: 'pivot_selected' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; timeoutId = setTimeout(() => { if (!isSorting) return;
+                explanationDiv.textContent = "Preparando mover pivote al final...";
+                highlightCodeLine('line-p-4'); currentStepAction = swapPivotToRight_Prepare; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 0.6); else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }, isStepMode ? 50 : delay * 0.5); }
+        function swapPivotToRight_Prepare() {
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Moviendo pivote xs[${cen}] a xs[${der}].`;
+            if (cen === der) { explanationDiv.textContent = "Pivote ya está a la derecha. No swap."; currentStepAction = initializePointers; }
+            else { explanationDiv.textContent = "PAUSA antes de intercambiar pivote..."; var highlightInfo = { type: 'swap_pivot_right_prepare' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = swapPivotToRight_Animate; } if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * (cen !== der ? 0.8 : 0.1)); }
+        function swapPivotToRight_Animate() {
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Animando intercambio xs[${cen}] y xs[${der}].`; explanationDiv.textContent = "Moviendo barras...";
+            animateSwap(cen, der, swapPivotToRight_Complete); }
+        function swapPivotToRight_Complete() { if (cen !== der) { intercambiar(cen, der); }
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Pivote (${pivotValue}) movido a xs[${der}].`; explanationDiv.textContent = "Inicializando punteros p e i.";
+            var highlightInfo = { type: 'pivot_at_right_no_bounds' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = initializePointers; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay); }
+        function initializePointers() { highlightCodeLine('line-p-5'); p = izq; highlightCodeLine('line-p-6'); i = izq;
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `p = ${p}, i = ${i}. Iniciando bucle.`; explanationDiv.textContent = `Comparando xs[${izq}]...xs[${der-1}] con pivote (${pivotValue}).`;
+            var highlightInfo = { type: 'loop_start' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = partitionLoop_CheckCondition; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay); }
+        function partitionLoop_CheckCondition() { highlightCodeLine('line-p-6'); if (i < der) {
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `i=${i}. Comparando xs[${i}]...`; currentStepAction = partitionLoop_Compare; }
+            else { statusDiv.textContent = `i=${i}. Fin del bucle.`; explanationDiv.textContent = "Preparando mover pivote a posición final..."; currentStepAction = swapPivotToFinal_Prepare; } lastHighlightInfo = { type: 'loop_check', i_val: i }; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 0.5); }
+        function partitionLoop_Compare() { highlightCodeLine('line-p-7');
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Comparando xs[${i}] (${array[i]}) con pivote (${pivotValue}).`;
+            var highlightInfo = { type: 'comparing' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; timeoutId = setTimeout(() => { if (!isSorting) return; if (array[i] <= pivotValue) {
+                // 3. Mensajes cambiados
+                explanationDiv.textContent = `xs[${i}] (${array[i]}) <= pivote. Preparando swap con xs[${p}] (${array[p]}).`;
+                currentStepAction = swapElementWithP_Prepare; }
+                else {
+                // 3. Mensajes cambiados
+                explanationDiv.textContent = `xs[${i}] (${array[i]}) > pivote. Avanzando i.`; currentStepAction = incrementI; }
+                if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 0.7); else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }, isStepMode ? 50 : Math.min(delay / 2, 200)); }
+
+        // --- MODIFICADO: swapElementWithP_Prepare (Usa flash mejorado) ---
+        function swapElementWithP_Prepare() {
+            highlightCodeLine('line-p-8');
+            if (i === p) {
+                // 3. Mensajes cambiados
+                statusDiv.textContent = `xs[${i}] <= pivote (i == p). Flash no-swap.`; explanationDiv.textContent = "Incrementando p...";
+                // 1. Usar tipo de flash mejorado
+                var flashHighlightInfo = { type: 'compare_le_noop_flash_enhanced' };
+                highlightState(flashHighlightInfo); lastHighlightInfo = flashHighlightInfo;
+                timeoutId = setTimeout(() => {
+                    if (!isSorting) return;
+                    var normalHighlightInfo = { type: 'compare_le_no_swap_post_flash' };
+                    highlightState(normalHighlightInfo); lastHighlightInfo = normalHighlightInfo;
+                    currentStepAction = incrementP;
+                    if (isSorting && !isPaused && !isStepMode) { clearTimeout(timeoutId); timeoutId = setTimeout(partitionStep, Math.max(50, delay * 0.1)); }
+                    else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); }
+                }, isStepMode ? 40 : Math.min(delay * 0.3, 150)); // Duración flash
+            } else {
+                // 3. Mensajes cambiados
+                statusDiv.textContent = `xs[${i}] <= pivote. Preparando swap xs[${i}] con xs[${p}].`;
+                explanationDiv.textContent = "PAUSA antes de swap...";
+                var highlightInfo = { type: 'swap_ip_prepare' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = swapElementWithP_Animate;
+                if (isSorting && !isPaused && !isStepMode) { clearTimeout(timeoutId); timeoutId = setTimeout(partitionStep, delay * 0.8); }
+                else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); }
+            }
+        }
+
+        function swapElementWithP_Animate() {
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Animando swap xs[${i}] (${array[i]}) y xs[${p}] (${array[p]}).`; explanationDiv.textContent = "Moviendo barras...";
+            animateSwap(i, p, swapElementWithP_Complete); }
+        function swapElementWithP_Complete() { if (i !== p) { intercambiar(i, p); statusDiv.textContent = "Swap completado."; } explanationDiv.textContent = "Incrementando p..."; var highlightInfo = { type: 'after_swap_ip' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = incrementP; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay); }
+        function incrementP() { /* Sin cambios */ highlightCodeLine('line-p-9'); p++; statusDiv.textContent = `p incrementado a ${p}.`; explanationDiv.textContent = "Avanzando i..."; var highlightInfo = { type: 'p_incremented' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = incrementI; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 0.5); }
+        function incrementI() { /* Sin cambios */ highlightCodeLine('line-p-6'); i++; statusDiv.textContent = `i incrementado a ${i}.`; explanationDiv.textContent = "Volviendo a comprobar condición..."; var highlightInfo = { type: 'i_incremented', i_val: i }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = partitionLoop_CheckCondition; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 0.5); }
+        function swapPivotToFinal_Prepare() { highlightCodeLine('line-p-10');
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Bucle terminado. Preparando swap final: pivote xs[${der}] con xs[${p}].`;
+            if (p === der) { explanationDiv.textContent = "Pivote ya en posición final. No swap."; pivotIndexCurrent = p; currentStepAction = finishPartition; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 0.3); else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+            else { explanationDiv.textContent = "PAUSA antes de intercambio final del pivote..."; var highlightInfo = { type: 'swap_final_pivot_prepare' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = swapPivotToFinal_Animate; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 0.9); else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } } }
+        function swapPivotToFinal_Animate() {
+            // 3. Mensajes cambiados
+            statusDiv.textContent = `Animando swap final xs[${p}] y xs[${der}].`; explanationDiv.textContent = "Moviendo barras...";
+            animateSwap(p, der, swapPivotToFinal_Complete); }
+        function swapPivotToFinal_Complete() { if (p !== der) { intercambiar(p, der); } pivotIndexCurrent = p;
+            // 3. Mensajes cambiados
+            statusDiv.textContent = "Intercambio final completado."; explanationDiv.textContent = `Pivote (${pivotValue}) ahora en posición final xs[${p}].`;
+            var highlightInfo = { type: 'pivot_in_final_pos' }; highlightState(highlightInfo); lastHighlightInfo = highlightInfo; currentStepAction = finishPartition; if (isSorting && !isPaused && !isStepMode) timeoutId = setTimeout(partitionStep, delay * 1.2); else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
+        function finishPartition() { /* Sin cambios */ highlightCodeLine('line-p-11'); isSorting = false; isPaused = false; isStepMode = false; currentStepAction = null; lastHighlightInfo = { type: 'final' }; statusDiv.textContent = `Partición completada. Índice final pivote: ${p}.`; explanationDiv.textContent = "Elementos <= pivote (verde), > pivote (rojo). Pivote (cyan)."; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } updateButtonStates(); highlightFinalPartitionState(); }
+
+        // --- Funciones de Animación y Visualización ---
+        function animateSwap(index1, index2, callback) { /* Sin cambios */ var barElements = visualizationContainer.children; var bar1 = barElements[index1]; var bar2 = barElements[index2]; var distance = (index2 - index1) * (currentBarWidth + currentBarMargin * 2); if (bar1) { bar1.classList.add('bar-swap-animating'); bar1.style.transform = 'translateX(' + distance + 'px)'; } if (bar2) { bar2.classList.add('bar-swap-animating'); bar2.style.transform = 'translateX(' + (-distance) + 'px)'; } timeoutId = setTimeout(function() { if (bar1) { bar1.style.transform = ''; bar1.classList.remove('bar-swap-animating'); } if (bar2) { bar2.style.transform = ''; bar2.classList.remove('bar-swap-animating'); } if (callback) { callback(); } else { console.warn("animateSwap sin callback"); if (isSorting && !isPaused && !isStepMode && currentStepAction) { clearTimeout(timeoutId); timeoutId = setTimeout(partitionStep, delay); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } } }, animationDuration); }
+
+        // --- MODIFICADO: drawArray (Aplica flash mejorado) ---
+        function drawArray(highlightInfo) {
+            if (!visualizationContainer || !indicesContainer) return;
+
+            // Cálculos de tamaño (sin cambios)
+            var containerHeight = visualizationContainer.clientHeight; var containerWidth = visualizationContainer.clientWidth; var effectiveWidth = containerWidth - parseFloat(getComputedStyle(visualizationContainer).paddingLeft) - parseFloat(getComputedStyle(visualizationContainer).paddingRight); var effectiveHeight = containerHeight - parseFloat(getComputedStyle(visualizationContainer).paddingTop) - parseFloat(getComputedStyle(visualizationContainer).paddingBottom); if (effectiveHeight <= 0) effectiveHeight = 100; if (effectiveWidth <= 0) effectiveWidth = 500; visualizationContainer.innerHTML = ''; indicesContainer.innerHTML = ''; if (!array || array.length === 0) return; var maxValue = 0; for (let k = 0; k < array.length; k++) { if (typeof array[k] === 'number' && !isNaN(array[k]) && array[k] > maxValue) maxValue = array[k]; } if (maxValue <= 0) maxValue = 1; var calculatedWidth = Math.floor(effectiveWidth / array.length); currentBarMargin = 1; currentBarWidth = Math.max(3, calculatedWidth - (currentBarMargin * 2)); if (array.length > 40) { currentBarMargin = 0.5; currentBarWidth = Math.max(1, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); } else if (array.length > 30) { currentBarMargin = 0.5; currentBarWidth = Math.max(2, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); }
+
+            // Creación y coloreado de barras
+            for (let k = 0; k < array.length; k++) {
+                if (typeof array[k] !== 'number' || isNaN(array[k])) continue;
+                var bar = document.createElement('div'); bar.className = 'bar';
+                var barHeight = Math.max(5, (array[k] / maxValue) * effectiveHeight);
+                bar.style.height = barHeight + 'px'; bar.style.width = currentBarWidth + 'px';
+                bar.style.marginLeft = currentBarMargin + 'px'; bar.style.marginRight = currentBarMargin + 'px';
+                bar.setAttribute('data-value', array[k]);
+                var valueSpan = document.createElement('span'); valueSpan.className = 'bar-value'; valueSpan.textContent = array[k]; bar.appendChild(valueSpan);
+                var indexLabel = document.createElement('span'); indexLabel.className = 'index-label'; indexLabel.textContent = k;
+                indexLabel.style.width = currentBarWidth + 'px'; indexLabel.style.marginLeft = currentBarMargin + 'px'; indexLabel.style.marginRight = currentBarMargin + 'px';
+
+                const infoType = highlightInfo ? highlightInfo.type : null;
+                const isFinal = infoType === 'final';
+
+                // 1. Estado Final
+                if (isFinal) { if (k === pivotIndexCurrent) { bar.classList.add('bar-pivot'); } else if (array[k] <= pivotValue) { bar.classList.add('bar-partition-lt'); } else { bar.classList.add('bar-partition-gt'); } }
+                // 2. Durante la Partición
+                else if (isSorting || isPaused) {
+                    if (k < p) { bar.classList.add('bar-partition-lt'); }
+                    const showBoundaries = ['init', 'pivot_selected', 'swap_pivot_right_prepare', 'swap_pivot_right_animate'].includes(infoType);
+                    if (showBoundaries && (k === izq || k === der)) { bar.classList.add('bar-boundary'); }
+                    if (k === pivotIndexCurrent) { bar.classList.remove('bar-partition-lt', 'bar-boundary'); bar.classList.add('bar-pivot'); }
+                    const pointersRelevant = infoType && !['init', 'pivot_selected', 'swap_pivot_right_prepare', 'swap_pivot_right_animate', 'pivot_at_right_no_bounds'].includes(infoType);
+                    const current_i = (highlightInfo && highlightInfo.i_val !== undefined) ? highlightInfo.i_val : i;
+                    if (pointersRelevant) {
+                        if (k === p && k === current_i && current_i < der) { bar.classList.add('bar-pi-coincide'); }
+                        else if (k === p) { bar.classList.add('bar-p-marker'); }
+                        else if (k === current_i && current_i < der) { if (k !== pivotIndexCurrent) { bar.classList.add('bar-i-marker'); } }
+                    }
+                    // Resaltado temporal para swaps (borde punteado)
+                    bar.style.borderStyle = ''; bar.style.borderColor = ''; // Reset border
+                    if (infoType === 'swap_pivot_right_prepare' || infoType === 'swap_pivot_right_animate') { if (k === cen || k === der) bar.style.borderStyle = 'dotted'; bar.style.borderColor = 'red'; }
+                    else if (infoType === 'swap_ip_prepare' || infoType === 'swap_ip_animate') { if (k === i || k === p) bar.style.borderStyle = 'dotted'; bar.style.borderColor = 'blue'; }
+                    else if (infoType === 'swap_final_pivot_prepare' || infoType === 'swap_final_pivot_animate') { if (k === p || k === der) bar.style.borderStyle = 'dotted'; bar.style.borderColor = 'green'; }
+                    // Resaltado para Flash No-Op (borde grueso amarillo)
+                    // 1. Aplicar clase de flash mejorada
+                    else if (infoType === 'compare_le_noop_flash_enhanced' && k === p) {
+                        bar.classList.add('bar-noop-flash-enhanced');
+                    }
+                }
+                visualizationContainer.appendChild(bar);
+                indicesContainer.appendChild(indexLabel);
+            }
+        }
+        function highlightState(highlightInfo) { drawArray(highlightInfo); }
+        function highlightFinalPartitionState() { drawArray({ type: 'final' }); }
+        function highlightCodeLine(lineId) { /* Sin cambios */ if (currentHighlightedLine) { var prevLine = document.getElementById(currentHighlightedLine); if (prevLine) prevLine.classList.remove('highlight-line'); } if (lineId !== null) { var currentLine = document.getElementById(lineId); if (currentLine) { currentLine.classList.add('highlight-line'); currentHighlightedLine = lineId; } else { console.warn("highlightCodeLine: Línea no encontrada -", lineId); currentHighlightedLine = null; } } else { currentHighlightedLine = null; } }
+
+        // --- Funciones de Control General ---
+        function generateArray() { /* Sin cambios */ console.log("generateArray"); if (!arraySizeInput) return; var size = parseInt(arraySizeInput.value, 10); if (isNaN(size) || size < 5 || size > 40) { alert("Tamaño entre 5 y 40."); size = 15; arraySizeInput.value = size; } array = []; for (let k = 0; k < size; k++) { array.push(Math.floor(Math.random() * 100) + 1); } resetPartitionState(); drawArray(null); if (statusDiv) statusDiv.textContent = "Nuevo array. Pulsa Iniciar Partición."; if (explanationDiv) explanationDiv.textContent = "El algoritmo reorganiza el array alrededor de un pivote."; highlightCodeLine(null); }
+
+        // --- NUEVA FUNCION: promptForManualArray ---
+        function promptForManualArray() {
+            if (isSorting && !isPaused) {
+                alert("Detén o pausa la animación antes de introducir un array.");
+                return;
+            }
+            const userInput = prompt("Introduce los valores del array separados por comas (ej: 50, 20, 85, 15, 42):", array.join(', ')); // Sugerir array actual
+
+            if (userInput === null) { // Usuario canceló
+                return;
+            }
+
+            const parsedInput = userInput
+                .split(/[\s,]+/) // Separar por comas o espacios
+                .filter(s => s.trim() !== '') // Quitar vacíos
+                .map(s => parseInt(s.trim(), 10)); // Convertir a número
+
+            if (parsedInput.length === 0 || parsedInput.some(isNaN)) {
+                alert("Entrada inválida. Asegúrate de introducir números separados por comas.");
+                return;
+            }
+
+            // Validación de tamaño (opcional, quitar si se quiere permitir cualquier tamaño)
+            if (parsedInput.length < 5 || parsedInput.length > 40) {
+                 alert(`El tamaño del array debe estar entre 5 y 40 elementos. Has introducido ${parsedInput.length}.`);
+                 return;
+             }
+
+
+            array = parsedInput; // Actualizar array global
+            resetPartitionState(); // Resetear estado del algoritmo
+            drawArray(null); // Dibujar nuevo array
+            if (statusDiv) statusDiv.textContent = "Array manual cargado. Pulsa Iniciar Partición.";
+            if (explanationDiv) explanationDiv.textContent = "El algoritmo reorganiza el array alrededor de un pivote.";
+            highlightCodeLine(null);
+            // Actualizar input de tamaño (opcional)
+            if(arraySizeInput) arraySizeInput.value = array.length;
+        }
+
+
+        function resetPartitionState() { /* Sin cambios */ console.log("resetPartitionState"); izq = 0; der = 0; cen = 0; pivotValue = null; p = 0; i = 0; pivotIndexCurrent = -1; isSorting = false; isPaused = false; isStepMode = false; currentStepAction = null; lastHighlightInfo = null; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } highlightCodeLine(null); updateButtonStates(); }
+        function startAlgorithm() { /* Sin cambios */ console.log("startAlgorithm"); if (isSorting && !isPaused) return; if (!array || array.length === 0) { if(statusDiv) statusDiv.textContent="Genera un array."; return; } isSorting = true; isPaused = false; isStepMode = false; if (currentStepAction === null) { currentStepAction = startPartition; } if (statusDiv) statusDiv.textContent = "Iniciando partición..."; updateButtonStates(); partitionStep(); }
+        function pauseAlgorithm() { /* Sin cambios */ console.log("pauseAlgorithm"); if (!isSorting || isPaused) return; isPaused = true; isStepMode = false; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } if (statusDiv) statusDiv.textContent = "Pausado."; updateButtonStates(); }
+        function stepForward() { /* Sin cambios */ console.log("stepForward"); if (!array || array.length === 0) { if(statusDiv) statusDiv.textContent="Genera un array."; return; } if (!isSorting && currentStepAction === null) { console.log("Reiniciando para paso a paso."); resetPartitionState(); drawArray(null); isSorting = true; isPaused = true; isStepMode = true; currentStepAction = startPartition; statusDiv.textContent = "Listo para el primer paso."; updateButtonStates(); return; } if (!isSorting || isPaused) { if (!isSorting) { resetPartitionState(); currentStepAction = startPartition; } else if (currentStepAction === null) { return; } isSorting = true; isPaused = true; isStepMode = true; if(statusDiv) statusDiv.textContent = "Ejecutando paso..."; updateButtonStates(); partitionStep(); } }
+
+        // --- MODIFICADO: updateButtonStates (Deshabilitar botón manual) ---
+        function updateButtonStates() {
+            try {
+                const running = isSorting && !isPaused;
+                if(btnStart) btnStart.disabled = running;
+                if(btnPause) btnPause.disabled = !isSorting || isPaused;
+                if(btnStep) btnStep.disabled = running;
+                if(btnReset) btnReset.disabled = running;
+                if(btnManualInput) btnManualInput.disabled = running; // 2. Deshabilitar botón manual
+                // arraySizeInput es readonly, no necesita deshabilitarse
+                if(speedSlider) speedSlider.disabled = running;
+            } catch (e) { console.error("Error actualizando botones:", e); }
+        }
+
+        // --- Event Listeners & Inicialización ---
+        if (btnReset) btnReset.addEventListener('click', generateArray); else console.warn("Botón Reset no encontrado.");
+        // 2. Añadir listener para botón manual
+        if (btnManualInput) btnManualInput.addEventListener('click', promptForManualArray); else console.warn("Botón Manual Input no encontrado.");
+        if (btnStart) btnStart.addEventListener('click', startAlgorithm); else console.warn("Botón Start no encontrado.");
+        if (btnPause) btnPause.addEventListener('click', pauseAlgorithm); else console.warn("Botón Pause no encontrado.");
+        if (btnStep) btnStep.addEventListener('click', stepForward); else console.warn("Botón Step no encontrado.");
+        if (speedSlider) { speedSlider.addEventListener('input', function() { delay = 1050 - parseInt(this.value, 10); animationDuration = Math.max(100, Math.min(500, delay * 0.8)); }); } else { console.warn("Slider velocidad no encontrado."); }
+        // No necesitamos listener para arraySizeInput si es readonly
+        // if (arraySizeInput) { arraySizeInput.addEventListener('change', generateArray); } else { console.warn("Input tamaño no encontrado."); }
+
+        window.onload = function() { /* Sin cambios */ console.log("window.onload"); try { if (speedSlider) { delay = 1050 - parseInt(speedSlider.value, 10); animationDuration = Math.max(100, Math.min(500, delay * 0.8)); } else { delay = 500; animationDuration = 400; } setTimeout(generateArray, 100); } catch (e) { console.error("Error onload:", e); if(statusDiv) statusDiv.textContent = "Error inicializar."; } };
+        var resizeTimeout; window.addEventListener('resize', function() { /* Sin cambios */ clearTimeout(resizeTimeout); resizeTimeout = setTimeout(function() { console.log("window.resize"); drawArray(isSorting || isPaused ? lastHighlightInfo : null); }, 250); });
+        console.log("Script principal partición cargado.");
+
+    </script>
+
+</body>
+</html>
