@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Ordenación por Burbuja</title>
+    <style>
+        /* --- ESTILOS GENERALES --- */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1,
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        /* Contenedor principal de la visualización */
+        #visualization-container {
+            position: relative;
+            margin-bottom: 90px; /* Espacio para índices y punteros */
+            height: 280px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        /* Contenedor de las barras del array */
+        #array-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 95%;
+            width: 100%;
+            position: relative;
+            gap: 2px;
+            bottom: 5px;
+        }
+
+        /* Estilo base para cada barra representando un elemento del array */
+        .bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-color: steelblue; /* Color por defecto */
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            position: relative;
+            transition: background-color 0.4s ease, height 0.3s ease, transform 0.3s ease-in-out; /* Añadido transform */
+            box-sizing: border-box;
+            border: 1px solid #eee;
+            outline: 2px solid transparent;
+            outline-offset: -2px;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            bottom: 10px; /* Espacio debajo para el índice */
+        }
+
+        /* Estilo para el valor numérico mostrado DENTRO de la barra */
+        .bar-value {
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            z-index: 1;
+            text-shadow: 1px 1px 2px black;
+            position: absolute;
+            bottom: 5px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* --- CONTENEDOR Y ESTILOS PARA ÍNDICES NUMÉRICOS BAJO LAS BARRAS --- */
+        #index-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            bottom: 5px; /* Justo debajo de las barras */
+            left: 10px;
+            right: 10px;
+            height: 20px;
+            gap: 2px; /* Mismo espacio que las barras */
+            pointer-events: none; /* No interfiere con clics */
+            z-index: 5;
+        }
+
+        .index-label {
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px; /* Coincide con max-width de barras */
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* --- ESTADOS DE LAS BARRAS DURANTE LA ORDENACIÓN --- */
+        /* Barra en la posición 'i' (límite del bucle externo) - Menos énfasis visual */
+        .bar.bar-i-marker {
+             /* Podríamos añadir un borde sutil si quisiéramos marcar el límite i */
+             /* border-left: 2px dotted mediumpurple; */
+        }
+
+        /* Barra siendo comparada por 'j' */
+        .bar.bar-comparing-j {
+            background-color: rgba(255, 165, 0, 0.8) !important; /* Naranja */
+        }
+
+         /* Barra siendo comparada en 'j+1' */
+        .bar.bar-comparing-jPlus1 {
+            background-color: rgba(255, 190, 50, 0.8) !important; /* Naranja más claro */
+        }
+
+        /* Borde rojo para indicar elementos a punto de intercambiarse (durante el flash) */
+        .bar.bar-red-border {
+            outline-width: 3px;
+            z-index: 10;
+            outline-color: red !important;
+        }
+
+        /* Barra ya ordenada (al final del array en Bubble Sort) */
+        .bar.bar-sorted {
+            background-color: mediumseagreen !important;
+            outline-color: transparent !important; /* Sin borde especial */
+        }
+
+        /* Usado para el efecto de parpadeo (flash) de los bordes */
+        .bar.bar-flash-off {
+            outline-color: transparent !important;
+        }
+
+        /* --- CONTENEDOR Y ESTILOS DE PUNTEROS (i, j, j+1) --- */
+        #pointers-container {
+            position: absolute;
+            bottom: -85px; /* Debajo de los índices */
+            left: 0;
+            width: 100%;
+            height: 70px; /* Altura suficiente */
+            pointer-events: none;
+        }
+
+        .pointer {
+            position: absolute;
+            transform: translateX(-50%);
+            background-color: rgba(50, 50, 50, 0.8);
+            color: white;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: left 0.3s ease-in-out; /* Animación de movimiento más rápida */
+            visibility: hidden;
+            z-index: 20;
+            min-width: 15px;
+            text-align: center;
+        }
+
+        /* Flecha indicadora del puntero */
+        .pointer::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -7px;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+        }
+
+        #pointer-i {
+            background-color: #9370DB; /* Morado medio para 'i' */
+            bottom: 45px; /* Posición vertical más alta */
+        }
+
+        #pointer-i::before {
+            border-bottom: 7px solid #9370DB;
+        }
+
+        #pointer-j {
+            background-color: rgba(255, 165, 0, 0.9); /* Naranja para 'j' */
+            bottom: 22px; /* Posición vertical intermedia */
+        }
+
+        #pointer-j::before {
+            border-bottom: 7px solid rgba(255, 165, 0, 0.9);
+        }
+
+        #pointer-jPlus1 {
+             background-color: rgba(255, 190, 50, 0.9); /* Naranja claro para 'j+1' */
+            bottom: 0; /* Posición vertical más baja */
+        }
+
+        #pointer-jPlus1::before {
+            border-bottom: 7px solid rgba(255, 190, 50, 0.9);
+        }
+
+        /* --- CONTROLES (Botones, Sliders) --- */
+        #controls-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #eee;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #controls-container button {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f8f8;
+            color: #333;
+            font-size: 14px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        #controls-container button:hover:not(:disabled) {
+            background-color: #e0e0e0;
+            border-color: #aaa;
+        }
+
+        #controls-container button:disabled {
+            background-color: #cccccc;
+            color: #888;
+            cursor: not-allowed;
+            border-color: #bbb;
+        }
+
+        #start-pause-btn { background-color: #60a5fa; color: white; border-color: #3b82f6; }
+        #step-btn { background-color: #fbbf24; color: white; border-color: #f59e0b; }
+        #reset-btn { background-color: #f87171; color: white; border-color: #ef4444; }
+
+        .size-control label { margin-right: 5px; }
+        .size-control span { min-width: 25px; text-align: center; padding: 5px 8px; background-color: white; border: 1px solid #ccc; border-radius: 3px; display: inline-block; }
+        .size-control button { font-weight: bold; padding: 4px 8px; font-weight: bold; min-width: 25px; }
+        .speed-control label { margin-right: 5px; }
+        .speed-control input[type="range"] { cursor: pointer; width: 100px; }
+
+        /* --- CONTENEDOR DE CÓDIGO --- */
+        #code-container {
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #2d2d2d; /* Fondo oscuro */
+            color: #ccc; /* Texto claro */
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            line-height: 1;
+            overflow-x: auto;
+            visibility: hidden;
+        }
+
+        #code-container h2 {
+            color: #eee; margin: 0 0 10px 0; font-size: 16px; border-bottom: 1px solid #555; padding-bottom: 5px;
+        }
+
+        #code-listing span[data-line] {
+            padding: 2px 0; display: inline-block; width: 100%; border-radius: 3px; transition: background-color 0.3s ease; line-height: normal; white-space: pre;
+        }
+
+        #code-listing span[data-line].highlight-line {
+            background-color: rgba(255, 255, 100, 0.25); /* Amarillo translúcido */
+        }
+
+        /* --- COLOREADO DE SINTAXIS (Igual que antes) --- */
+        #code-listing .syntax-keyword { color: #569cd6; }
+        #code-listing .syntax-type { color: #4ec9b0; }
+        #code-listing .syntax-function { color: #dcdcaa; }
+        #code-listing .syntax-operator { color: #b5cea8; }
+        #code-listing .syntax-comment { color: #6a9955; font-style: italic; }
+        #code-listing .syntax-variable { color: #9cdcfe; }
+        #code-listing .syntax-generic { color: #4ec9b0; }
+        #code-listing .syntax-package { color: #ce9178; }
+        #code-listing .syntax-number { color: #b5cea8; }
+        #code-listing .syntax-using { color: #C586C0; } /* Púrpura para using */
+
+    </style>
+</head>
+
+<body>
+    <h1>Visualización Ordenación por Burbuja</h1>
+    <div id="visualization-container">
+        <div id="array-container"></div>
+        <div id="index-container"></div>
+        <div id="pointers-container">
+            <div class="pointer" id="pointer-i">tam</div>
+            <div class="pointer" id="pointer-j">i</div>
+            <div class="pointer" id="pointer-jPlus1">i+1</div>
+        </div>
+    </div>
+    <div id="controls-container">
+        <div class="control-group">
+            <button id="start-pause-btn">Iniciar</button>
+            <button id="step-btn">Paso Siguiente</button>
+            <button id="reset-btn">Resetear</button>
+        </div>
+        <div class="control-group speed-control">
+            <label for="speed-slider">Velocidad:</label>
+            <input type="range" id="speed-slider" min="0" max="100" value="50">
+        </div>
+        <div class="control-group size-control">
+            <label>Tamaño:</label>
+            <button id="decrease-size-btn">-</button>
+            <span id="size-display">10</span>
+            <button id="increase-size-btn">+</button>
+        </div>
+        <div class="control-group">
+            <button id="random-array-btn">Generar</button>
+            <button id="manual-input-btn">Introducir Datos</button>
+        </div>
+    </div>
+    <div id="code-container">
+        <h2>Algoritmo (Scala):</h2>
+        <pre><code id="code-listing">
+<span data-line="0"><span class="syntax-keyword">def</span> <span class="syntax-function">burbuja</span>[<span class="syntax-generic">A</span>](<span class="syntax-variable">xs</span>: <span class="syntax-type">Array</span>[<span class="syntax-generic">A</span>])(<span class="syntax-using">using</span> <span class="syntax-variable">ord</span>: <span class="syntax-type">Ordering</span>[<span class="syntax-generic">A</span>]): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span></span>
+<span data-line="1">  <span class="syntax-keyword">import</span> <span class="syntax-package">ord</span><span class="syntax-operator">.*</span></span>
+<span data-line="2"></span>
+<span data-line="3">  <span class="syntax-keyword">def</span> <span class="syntax-function">enOrden</span>(<span class="syntax-variable">i</span>: <span class="syntax-type">Int</span>, <span class="syntax-variable">j</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span></span>
+<span data-line="4">    <span class="syntax-keyword">if</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">i</span>) <span class="syntax-operator">&gt;</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">j</span>) <span class="syntax-keyword">then</span>        <span class="syntax-comment">// Compara elementos adyacentes</span></span>
+<span data-line="5">      <span class="syntax-keyword">val</span> <span class="syntax-variable">temp</span> <span class="syntax-operator">=</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">i</span>)</span>
+<span data-line="6">      <span class="syntax-variable">xs</span>(<span class="syntax-variable">i</span>) <span class="syntax-operator">=</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">j</span>)</span>
+<span data-line="7">      <span class="syntax-variable">xs</span>(<span class="syntax-variable">j</span>) <span class="syntax-operator">=</span> <span class="syntax-variable">temp</span></span>
+<span data-line="8"></span>
+<span data-line="9">  <span class="syntax-keyword">for</span> <span class="syntax-variable">i</span> <span class="syntax-operator">&lt;-</span> 0 <span class="syntax-keyword">until</span> <span class="syntax-variable">xs</span><span class="syntax-operator">.</span><span class="syntax-variable">length</span> <span class="syntax-operator">-</span> 1 <span class="syntax-keyword">do</span>  <span class="syntax-comment">// Bucle externo: número de pasadas</span></span>
+<span data-line="10">   <span class="syntax-keyword">for</span> <span class="syntax-variable">j</span> <span class="syntax-operator">&lt;-</span> 0 <span class="syntax-keyword">until</span> <span class="syntax-variable">xs</span><span class="syntax-operator">.</span><span class="syntax-variable">length</span> <span class="syntax-operator">-</span> (<span class="syntax-variable">i</span> <span class="syntax-operator">+</span> 1) <span class="syntax-keyword">do</span> <span class="syntax-comment">// Bucle interno: comparaciones</span></span>
+<span data-line="11">     <span class="syntax-function">enOrden</span>(<span class="syntax-variable">j</span>, <span class="syntax-variable">j</span> <span class="syntax-operator">+</span> 1)            <span class="syntax-comment">// Llama a la comparación/intercambio</span></span>
+<span data-line="12"></span>
+<span data-line="13"><span class="syntax-comment">// Fin del algoritmo</span></span>
+        </code></pre>
+    </div>
+
+    <script>
+        (function () { // IIFE
+
+            // --- Referencias a Elementos del DOM ---
+            const arrayContainer = document.getElementById('array-container');
+            const indexContainer = document.getElementById('index-container');
+            const pointersContainer = document.getElementById('pointers-container');
+            const pointerI = document.getElementById('pointer-i');
+            const pointerJ = document.getElementById('pointer-j');
+            const pointerJPlus1 = document.getElementById('pointer-jPlus1'); // Nuevo puntero
+            const codeListing = document.getElementById('code-listing');
+            const codeLines = codeListing.querySelectorAll('span[data-line]');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            const stepBtn = document.getElementById('step-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const decreaseSizeBtn = document.getElementById('decrease-size-btn');
+            const increaseSizeBtn = document.getElementById('increase-size-btn');
+            const sizeDisplay = document.getElementById('size-display');
+            const randomArrayBtn = document.getElementById('random-array-btn');
+            const manualInputBtn = document.getElementById('manual-input-btn');
+
+            // --- Variables de Estado ---
+            let array = [];
+            let originalArray = [];
+            let bars = [];
+            let timeouts = [];
+            let animationSpeed = 500;
+            let arraySize = 10;
+            const minSize = 3;
+            const maxSize = 30;
+            let state = getDefaultState(); // Estado inicial
+            let lastHighlightInfo = null;
+            const POINTER_ANIMATION_DURATION = 300; // Duración animación punteros (más rápida)
+
+            /** Estado inicial para Bubble Sort */
+            function getDefaultState() {
+                return {
+                    i: -1,              // Índice del bucle externo
+                    j: -1,              // Índice del bucle interno (elemento izquierdo de la comparación)
+                    // j+1 se deriva de j
+                    sortedFrom: Infinity, // Índice desde el cual el array está ordenado (al final)
+                    phase: 'idle',      // Fase: 'idle', 'outer_loop_start', 'inner_loop_start', 'comparing', 'swapping', 'increment_j', 'increment_i', 'finished'
+                    currentLine: -1,    // Línea de código resaltada
+                    isRunning: false,
+                    isPaused: false,
+                    isFinished: false,
+                    isSwapping: false   // Indica si una animación de swap está en curso
+                };
+            }
+
+            /** Inicializa */
+            function init() {
+                updateSizeDisplay();
+                setupEventListeners();
+                handleSpeedChange();
+                setTimeout(generateAndReset, 50);
+            }
+
+            /** Configura listeners */
+            function setupEventListeners() {
+                startPauseBtn.onclick = handleStartPause;
+                stepBtn.onclick = () => requestStep(true); // Forzar paso manual
+                resetBtn.onclick = resetAlgorithm;
+                speedSlider.oninput = handleSpeedChange;
+                randomArrayBtn.onclick = generateAndReset;
+                manualInputBtn.onclick = promptForArrayData;
+                increaseSizeBtn.onclick = incrementSize;
+                decreaseSizeBtn.onclick = decrementSize;
+            }
+
+            /** Calcula velocidad */
+            function calculateSpeed(sliderValue) {
+                const min = 50; const max = 1500;
+                const norm = parseInt(sliderValue, 10) / 100;
+                return Math.round(max - norm * (max - min));
+            }
+
+            /** Actualiza display tamaño */
+            function updateSizeDisplay() {
+                sizeDisplay.textContent = arraySize;
+                increaseSizeBtn.disabled = arraySize >= maxSize;
+                decreaseSizeBtn.disabled = arraySize <= minSize;
+            }
+
+            /** Incrementa tamaño */
+            function incrementSize() {
+                if (arraySize < maxSize) { arraySize++; updateSizeDisplay(); generateAndReset(); }
+            }
+
+            /** Decrementa tamaño */
+            function decrementSize() {
+                if (arraySize > minSize) { arraySize--; updateSizeDisplay(); generateAndReset(); }
+            }
+
+            /** Genera array aleatorio y resetea */
+            function generateAndReset() {
+                const newA = [];
+                for (let k = 0; k < arraySize; k++) {
+                    newA.push(Math.floor(Math.random() * 90) + 10);
+                }
+                originalArray = newA.slice();
+                console.log("Array generado (Burbuja):", originalArray);
+                resetAlgorithm();
+            }
+
+            /** Pide datos manualmente */
+            function promptForArrayData() {
+                 const currentData = originalArray.join(',');
+                const input = prompt(`Introduce los números separados por comas (${minSize}-${maxSize} elementos):`, currentData);
+                if (input === null) return;
+                const parsed = input.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0);
+                if (parsed.length < minSize || parsed.length > maxSize) {
+                    alert(`Número de elementos inválido. Debe estar entre ${minSize} y ${maxSize}.`); return;
+                }
+                originalArray = parsed; arraySize = parsed.length; updateSizeDisplay();
+                console.log("Array manual (Burbuja):", originalArray);
+                resetAlgorithm();
+            }
+
+            /** Resetea algoritmo */
+            function resetAlgorithm() {
+                console.log("Reseteando algoritmo: Bubble Sort");
+                state.isFinished = true; // Marca para detener bucles
+                clearTimeouts();
+                setTimeout(resetVisuals, 50); // Pequeño delay
+            }
+
+            /** Resetea visuales */
+            function resetVisuals() {
+                console.log("Reseteando visuales (Burbuja)");
+                state = getDefaultState();
+                lastHighlightInfo = null;
+                clearTimeouts();
+                array = originalArray.slice();
+                updateSizeDisplay();
+                 if (bars && bars.length > 0) {
+                    bars.forEach(b => { b.className = 'bar'; b.style = ''; });
+                }
+                renderArray();
+                highlightCodeLine(-1);
+                updateControls();
+            }
+
+            /** Dibuja/Redibuja el array */
+            function renderArray() {
+                arrayContainer.innerHTML = '';
+                if (indexContainer) indexContainer.innerHTML = '';
+                bars = [];
+
+                if (array.length === 0) { updateAllPointers(); return; }
+                const maxValue = Math.max(...array) || 1;
+
+                for (let idx = 0; idx < array.length; idx++) {
+                    const value = array[idx];
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    const height = Math.max(5, (value / maxValue) * 95);
+                    bar.style.height = height + '%';
+                    bar.setAttribute('data-index', idx);
+                    bar.setAttribute('data-value', value);
+
+                    const barValueSpan = document.createElement('span');
+                    barValueSpan.className = 'bar-value';
+                    barValueSpan.textContent = value;
+                    bar.appendChild(barValueSpan);
+                    arrayContainer.appendChild(bar);
+                    bars.push(bar);
+
+                    if (indexContainer) {
+                        const indexLabel = document.createElement('span');
+                        indexLabel.className = 'index-label';
+                        indexLabel.textContent = idx;
+                        indexContainer.appendChild(indexLabel);
+                    }
+                }
+                // Aplicar resaltado basado en estado actual
+                bars.forEach((bar, idx) => applyHighlighting(bar, idx, lastHighlightInfo));
+                updateAllPointers();
+            }
+
+            /** Actualiza un puntero */
+            function updatePointer(pointerElement, index) {
+                if (index < 0 || index >= bars.length || !bars[index] || !pointerElement) {
+                    if (pointerElement) pointerElement.style.visibility = 'hidden';
+                    return;
+                }
+                const bar = bars[index];
+                 if (!bar) { // Seguridad extra
+                    pointerElement.style.visibility = 'hidden';
+                    return;
+                }
+                const center = bar.offsetLeft + bar.offsetWidth / 2;
+                pointerElement.style.left = center + 'px';
+                pointerElement.style.visibility = 'visible';
+            }
+
+            /** Actualiza todos los punteros */
+            function updateAllPointers() {
+                // Puntero i: puede ser útil mostrarlo en la posición length - 1 - i
+                // para indicar visualmente la zona ordenada.
+                // Si state.i es -1 al inicio, o > length-2 al final, ocultarlo.
+                const iPointerIndex = (state.i >= 0) ? array.length - 1 - state.i : -1;
+                updatePointer(pointerI, iPointerIndex); // 'i' ahora marca el inicio de la zona ordenada
+
+                updatePointer(pointerJ, state.j);
+                // jPlus1 es j+1, ocúltalo si j es inválido o si j+1 está fuera de límites
+                const jPlus1Index = (state.j >= 0 && state.j + 1 < array.length) ? state.j + 1 : -1;
+                updatePointer(pointerJPlus1, jPlus1Index);
+            }
+
+
+            /** Aplica estilos a una barra según el estado */
+            function applyHighlighting(bar, k, highlightInfo) {
+                bar.classList.remove(
+                    'bar-sorted', 'bar-comparing-j', 'bar-comparing-jPlus1',
+                    'bar-red-border', 'bar-flash-off', 'bar-i-marker'
+                );
+                bar.style.outlineColor = '';
+
+                const infoType = highlightInfo ? highlightInfo.type : null;
+                const current_i = state.i;
+                const current_j = state.j;
+                const current_sortedFrom = state.sortedFrom;
+                const isFinished = state.isFinished;
+
+                // 1. Barras ordenadas (al final del array)
+                if (isFinished || k >= current_sortedFrom) {
+                    bar.classList.add('bar-sorted');
+                     // Manejar flash rojo durante swap incluso en zona 'ordenada' (poco probable en bubble sort estándar)
+                    if (infoType === 'before_swap_visual' && (k === highlightInfo.idx1 || k === highlightInfo.idx2)) {
+                        bar.classList.add('bar-red-border');
+                    }
+                    return; // No más estilos si está ordenada
+                }
+
+                 // 2. Resaltado de 'i' marker (opcional, puede ser sutil)
+                 // if (k === array.length - 1 - current_i && current_i >= 0) {
+                 //    bar.classList.add('bar-i-marker');
+                 // }
+
+                // 3. Resaltado especial durante el flash previo al intercambio
+                if (infoType === 'before_swap_visual' && (k === highlightInfo.idx1 || k === highlightInfo.idx2)) {
+                    bar.classList.add('bar-red-border');
+                    // No aplicar otros resaltados (j, j+1) durante el flash
+                } else if (infoType === 'comparing') {
+                    // 4. Resaltado durante la comparación
+                    if (k === current_j) {
+                        bar.classList.add('bar-comparing-j');
+                    }
+                    if (k === current_j + 1) {
+                        bar.classList.add('bar-comparing-jPlus1');
+                    }
+                }
+
+                // 5. Limpieza del estado de flash si no estamos en esa fase
+                if (infoType !== 'before_swap_visual') {
+                    bar.classList.remove('bar-flash-off');
+                }
+            }
+
+
+            /** Guarda info de resaltado y redibuja */
+            function highlightState(highlightInfo) {
+                lastHighlightInfo = highlightInfo;
+                renderArray(); // Redibuja aplicando nuevos resaltados
+            }
+
+            /** Resalta línea de código */
+            function highlightCodeLine(lineNumber) {
+                if (lineNumber === state.currentLine) return;
+                codeLines.forEach(line => line.classList.remove('highlight-line'));
+                if (lineNumber >= 0) {
+                    const lineElement = codeListing.querySelector(`span[data-line="${lineNumber}"]`);
+                    if (lineElement) lineElement.classList.add('highlight-line');
+                }
+                state.currentLine = lineNumber;
+            }
+
+            /** Flash en bordes antes del swap */
+            function flashBorders(index1, index2, repetitions, duration, callback) {
+                let count = 0;
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+                const totalToggles = repetitions * 2;
+
+                function toggle() {
+                    if (!state.isSwapping || count >= totalToggles) {
+                        if (bar1) bar1.classList.remove('bar-flash-off', 'bar-red-border');
+                        if (bar2) bar2.classList.remove('bar-flash-off', 'bar-red-border');
+                        if (bar1) applyHighlighting(bar1, index1, lastHighlightInfo); // Reaplicar estado normal
+                        if (bar2) applyHighlighting(bar2, index2, lastHighlightInfo);
+                        if (callback) callback();
+                        return;
+                    }
+
+                    if (bar1) { bar1.classList.toggle('bar-flash-off'); if (!bar1.classList.contains('bar-red-border')) bar1.classList.add('bar-red-border'); }
+                    if (bar2) { bar2.classList.toggle('bar-flash-off'); if (!bar2.classList.contains('bar-red-border')) bar2.classList.add('bar-red-border'); }
+
+                    count++;
+                    timeouts.push(setTimeout(toggle, duration));
+                }
+
+                if (bar1) bar1.classList.add('bar-red-border');
+                if (bar2) bar2.classList.add('bar-red-border');
+                timeouts.push(setTimeout(toggle, 5)); // Inicio
+            }
+
+            /**
+             * Ejecuta un paso lógico del algoritmo de Ordenación por Burbuja.
+             * @returns {boolean} Devuelve `true` si la ejecución automática debe continuar.
+             */
+            function bubbleSortStep() {
+                if (state.isFinished || state.isSwapping) return false;
+
+                let continueAuto = true;
+
+                switch (state.phase) {
+                    case 'idle':
+                        highlightCodeLine(0); // def burbuja
+                        state.i = -1;
+                        state.j = -1;
+                        state.sortedFrom = array.length; // Inicialmente, nada está ordenado
+                        state.phase = 'outer_loop_start';
+                        break;
+
+                    case 'outer_loop_start':
+                        state.i++; // Avanza el contador de pasadas
+                        // Comprueba si terminó el bucle externo
+                        if (state.i >= array.length - 1) {
+                            state.phase = 'finished';
+                        } else {
+                            highlightCodeLine(9); // for i <- ...
+                            state.j = -1; // Resetea j para el nuevo bucle interno
+                            // Marcar la zona ordenada de la pasada anterior
+                            state.sortedFrom = array.length - state.i; // sortedFrom = length - 1 para i=1, etc.
+                             highlightState({ type: 'start_outer_loop', i: state.i, sortedFrom: state.sortedFrom });
+                            state.phase = 'inner_loop_start';
+                        }
+                        break;
+
+                    case 'inner_loop_start': // También usado para incrementar j
+                    case 'increment_j':
+                        state.j++; // Avanza j
+                         // Límite del bucle interno: length - (i + 1) - 1 = length - i - 2
+                        const innerLoopLimit = array.length - state.i - 2;
+
+                        if (state.j > innerLoopLimit) {
+                            // Termina el bucle interno, vuelve al externo
+                             highlightCodeLine(9); // Volver a marcar el for i
+                            state.phase = 'outer_loop_start';
+                        } else {
+                             highlightCodeLine(10); // for j <- ...
+                             // Mover punteros j y j+1
+                             highlightState({ type: 'next_j_step', j: state.j });
+
+                             // Pequeña pausa para ver movimiento de punteros antes de comparar
+                             state.phase = 'delay_before_compare';
+                             continueAuto = false;
+                             timeouts.push(setTimeout(() => {
+                                if (!state.isPaused && state.phase === 'delay_before_compare') {
+                                    requestStep(false); // Solicita siguiente paso automático
+                                }
+                             }, POINTER_ANIMATION_DURATION));
+                        }
+                        break;
+
+                     case 'delay_before_compare':
+                        state.phase = 'comparing';
+                        continueAuto = bubbleSortStep(); // Ejecuta la comparación inmediatamente
+                        return continueAuto; // Devuelve resultado
+
+                    case 'comparing':
+                        highlightCodeLine(11); // enOrden(j, j + 1) o línea if dentro
+                        highlightCodeLine(4);  // if xs(i) > xs(j) then ...
+                        const index1 = state.j;
+                        const index2 = state.j + 1;
+                        // Resalta las barras j y j+1 que se comparan
+                        highlightState({ type: 'comparing' });
+
+                        // Compara los elementos
+                        if (index1 < array.length && index2 < array.length && array[index1] > array[index2]) {
+                            state.phase = 'swapping'; // Necesita intercambiar
+                        } else {
+                            state.phase = 'increment_j'; // No necesita swap, pasa al siguiente j
+                        }
+                        break;
+
+                    case 'swapping':
+                        highlightCodeLine(5); // val temp = ... (o inicio del bloque swap)
+                        highlightCodeLine(6);
+                        highlightCodeLine(7);
+                        const swapIdx1 = state.j;
+                        const swapIdx2 = state.j + 1;
+
+                        state.isSwapping = true;
+                        updateControls();
+                         // Prepara visualización para flash
+                        highlightState({ type: 'before_swap_visual', idx1: swapIdx1, idx2: swapIdx2 });
+
+                        const flashDuration = animationSpeed * 0.15;
+                        const flashRepetitions = 2;
+
+                        flashBorders(swapIdx1, swapIdx2, flashRepetitions, flashDuration, () => {
+                            if (!state.isSwapping) return; // Si se canceló
+
+                             const pauseAfterFlash = Math.max(50, animationSpeed * 0.1);
+                             timeouts.push(setTimeout(() => {
+                                if (!state.isSwapping) return;
+
+                                animateSwap_Fixed(swapIdx1, swapIdx2, () => {
+                                    // Callback después de que termina la animación de swap
+                                    state.isSwapping = false;
+                                    state.phase = 'increment_j'; // Después de un swap, continuar con el siguiente j
+                                     highlightState({ type: 'after_swap_completed' }); // Limpiar resaltado de swap
+                                    updateControls();
+
+                                    if (state.isRunning && !state.isPaused) {
+                                        requestStep(false); // Continuar automáticamente
+                                    }
+                                });
+                            }, pauseAfterFlash));
+                        });
+                        continueAuto = false; // Pausar auto-ejecución durante swap/flash
+                        break;
+
+                    case 'finished':
+                        state.i = array.length - 2;
+                        state.j = 0;
+                
+                        highlightCodeLine(13); // Línea comentario final
+                        state.sortedFrom = 0; // Todo ordenado
+                        state.isFinished = true;
+                        state.isRunning = false;
+                        highlightState({ type: 'final' }); // Marcar todo como ordenado
+                        console.log("Ordenación (Burbuja) completada.");
+                        updateControls();
+                        continueAuto = false;
+                        break;
+                }
+
+                if (!state.isSwapping) {
+                    updateControls();
+                }
+                return continueAuto;
+            }
+
+
+            /** Anima el intercambio visual de dos barras */
+            function animateSwap_Fixed(index1, index2, callback) {
+                console.log("Animando intercambio (Burbuja):", index1, index2);
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+
+                if (!bar1 || !bar2) {
+                    console.error("Error: Barras no encontradas para intercambio:", index1, index2);
+                    state.isSwapping = false; if (callback) callback(); return;
+                }
+
+                const bar1ValueSpan = bar1.querySelector('.bar-value');
+                const bar2ValueSpan = bar2.querySelector('.bar-value');
+                const moveDuration = Math.max(animationSpeed * 0.7, 150); // 70% velocidad, min 150ms
+                const transitionTransform = `transform ${moveDuration / 1000}s ease-in-out`;
+
+                // Guardar transiciones originales para restaurar
+                const originalTransition1 = bar1.style.transition;
+                const originalTransition2 = bar2.style.transition;
+
+                // Aplicar transición solo para transform
+                bar1.style.transition = transitionTransform;
+                bar2.style.transition = transitionTransform;
+
+                const distance = bar2.offsetLeft - bar1.offsetLeft;
+                bar1.style.transform = `translateX(${distance}px)`;
+                bar2.style.transform = `translateX(${-distance}px)`;
+
+                // Intercambio lógico en el array
+                const tempValue = array[index1];
+                array[index1] = array[index2];
+                array[index2] = tempValue;
+
+                // Actualizar data-value
+                bar1.setAttribute('data-value', array[index1]);
+                bar2.setAttribute('data-value', array[index2]);
+
+                timeouts.push(setTimeout(() => {
+                    // Al terminar el movimiento:
+                    const v1_new = array[index1];
+                    const v2_new = array[index2];
+                    const maxValue = Math.max(...(array.length > 0 ? array : [100])) || 1;
+                    const h1_new = Math.max(5, (v1_new / maxValue) * 95) + '%';
+                    const h2_new = Math.max(5, (v2_new / maxValue) * 95) + '%';
+
+                    // Quitar transición de transform y resetear para fijar posición
+                    bar1.style.transition = 'none'; // Quitar transición específica
+                    bar2.style.transition = 'none';
+                    bar1.style.height = h1_new;
+                    if (bar1ValueSpan) bar1ValueSpan.textContent = v1_new;
+                    bar1.style.transform = ''; // Resetear transform
+
+                    bar2.style.height = h2_new;
+                    if (bar2ValueSpan) bar2ValueSpan.textContent = v2_new;
+                    bar2.style.transform = ''; // Resetear transform
+
+                    // Forzar reflow
+                    void bar1.offsetHeight; void bar2.offsetHeight;
+
+                    // Restaurar transiciones originales (o por defecto si no había)
+                    bar1.style.transition = originalTransition1 || '';
+                    bar2.style.transition = originalTransition2 || '';
+
+                    if (callback) {
+                        callback();
+                    } else {
+                         state.isSwapping = false; updateControls();
+                    }
+                }, moveDuration));
+            }
+
+            // --- Lógica de Control ---
+
+            /** Maneja Start/Pause/Continue/Restart */
+            function handleStartPause() {
+                if (state.isFinished && state.phase === 'finished') {
+                    resetAlgorithm();
+                    setTimeout(() => {
+                        state.isRunning = true; state.isPaused = false; state.isFinished = false;
+                        state.phase = 'idle'; // Empezar desde el principio
+                        requestStep(false); // Iniciar primer paso
+                        updateControls();
+                    }, 100);
+                    return;
+                }
+
+                if (state.isRunning) { // Corriendo -> Pausar
+                    state.isPaused = true; state.isRunning = false; clearTimeouts();
+                } else { // Pausado o Idle -> (Re)anudar
+                    state.isPaused = false; state.isRunning = true;
+                     if (state.phase === 'idle' || state.phase === 'finished') { // Si estaba en idle o finalizado (pero no final final)
+                        state.phase = 'idle'; state.isFinished = false;
+                    }
+                    requestStep(false); // Solicitar siguiente paso
+                }
+                updateControls();
+            }
+
+            /** Solicita siguiente paso (manual o auto) */
+            function requestStep(force) {
+                clearTimeouts();
+
+                if (state.isSwapping && !force) {
+                    console.log("Petición paso ignorada: esperando fin swap."); return;
+                }
+
+                if (force) { // Paso manual
+                    if (state.isRunning) { // Si corría auto, pausar
+                        state.isPaused = true; state.isRunning = false; updateControls();
+                    }
+                    if (!state.isSwapping) { // Ejecutar solo si no hay swap en curso
+                        bubbleSortStep();
+                    }
+                } else if (state.isRunning && !state.isPaused) { // Paso automático
+                    const continueAuto = bubbleSortStep(); // Ejecuta paso lógico
+
+                    // Si el paso indica continuar y el estado es correcto
+                    if (continueAuto && state.isRunning && !state.isPaused && !state.isFinished && !state.isSwapping) {
+                        timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                    } else if (state.isFinished || state.isPaused || state.isSwapping) {
+                        // Si cambió estado, actualizar controles
+                        updateControls();
+                    }
+                }
+            }
+
+            /** Limpia timeouts */
+            function clearTimeouts() {
+                timeouts.forEach(clearTimeout); timeouts = [];
+            }
+
+            /** Maneja cambio de velocidad */
+            function handleSpeedChange() {
+                animationSpeed = calculateSpeed(speedSlider.value);
+                if (state.isRunning && !state.isPaused && !state.isSwapping) {
+                    clearTimeouts(); // Cancela timeout actual
+                    timeouts.push(setTimeout(() => requestStep(false), animationSpeed)); // Reprograma con nueva velocidad
+                }
+            }
+
+            /** Actualiza estado de controles */
+            function updateControls() {
+                const isRunningAuto = state.isRunning && !state.isPaused;
+                const isBusy = isRunningAuto || state.isSwapping;
+
+                stepBtn.disabled = state.isFinished || isBusy;
+                startPauseBtn.disabled = (state.isFinished && state.phase === 'finished') || state.isSwapping;
+                resetBtn.disabled = (state.phase === 'idle' && !state.isRunning && !state.isSwapping && !state.isPaused) || state.isSwapping;
+                randomArrayBtn.disabled = isBusy;
+                manualInputBtn.disabled = isBusy;
+                increaseSizeBtn.disabled = arraySize >= maxSize || isBusy;
+                decreaseSizeBtn.disabled = arraySize <= minSize || isBusy;
+                speedSlider.disabled = isBusy;
+
+                if (state.isFinished && state.phase === 'finished') {
+                    startPauseBtn.textContent = 'Reiniciar';
+                } else if (isRunningAuto) {
+                    startPauseBtn.textContent = 'Pausar';
+                } else {
+                    startPauseBtn.textContent = (state.phase === 'idle' && !state.isPaused) ? 'Iniciar' : 'Continuar';
+                }
+            }
+
+            // --- Inicio ---
+            document.addEventListener('DOMContentLoaded', init);
+
+        })(); // Fin IIFE
+    </script>
+
+</body>
+</html>
