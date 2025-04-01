@@ -1,0 +1,979 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Partición Quicksort</title>
+    <style>
+        /* --- ESTILOS CSS GENERALES --- */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1,
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+     /* Contenedor principal de la visualización */
+     #visualization-container {
+            position: relative;
+            /* Margen inferior aumentado para dejar espacio a índices y punteros */
+            margin-bottom: 90px;
+            height: 280px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        /* Contenedor de las barras del array */
+        #array-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 95%;
+            width: 100%;
+            position: relative;
+            gap: 2px;
+            bottom: 5px;
+        }
+
+        /* Estilo base para cada barra representando un elemento del array */
+        .bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-color: steelblue;
+            /* Color por defecto: no comprobado */
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            position: relative;
+            /* Necesario para posicionar el índice absoluto */
+            transition: background-color 0.4s ease, height 0.3s ease;
+            box-sizing: border-box;
+            border: 1px solid #eee;
+            outline: 2px solid transparent;
+            outline-offset: -2px;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            bottom: 10px;
+            /* Espacio debajo para el índice */
+        }
+
+        /* Estilo para el valor numérico mostrado DENTRO de la barra */
+        .bar-value {
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            z-index: 1;
+            text-shadow: 1px 1px 2px black;
+            position: absolute;
+            /* Posición relativa a la barra padre */
+            bottom: 5px;
+            /* Colocar encima del espacio para el índice */
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* --- CONTENEDOR Y ESTILOS PARA ÍNDICES NUMÉRICOS BAJO LAS BARRAS --- */
+        #index-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            bottom: 5px;
+            /* Posicionado justo debajo de las barras */
+            left: 10px;
+            right: 10px;
+            height: 20px;
+            gap: 2px;
+            /* Mismo espacio que las barras */
+            pointer-events: none;
+            /* No interfiere con clics */
+            z-index: 5;
+        }
+
+        .index-label {
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            /* Coincide con max-width de barras */
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* --- ESTILOS ESTADOS VISUALES DE BARRAS --- */
+        .bar.bar-partitioned-left {
+            background-color: mediumseagreen;
+        }
+
+        /* Verde (izquierda de p final) */
+        .bar.bar-partitioned-right {
+            background-color: lightcoral;
+        }
+
+        /* Rojo (derecha de p final) */
+        .bar.bar-pivot-magenta {
+            background-color: mediumpurple !important;
+            color: black !important;
+        }
+
+        /* Púrpura (pivote en pos. final) */
+        .bar.bar-comparing-i {
+            background-color: rgba(255, 165, 0, 0.8) !important;
+        }
+
+        /* Naranja (comparando i) */
+        .bar.bar-initial-pivot {
+            background-color: mediumpurple;
+            outline-width: 2px;
+        }
+
+        /* Púrpura inicial */
+        .bar.bar-pivot-at-der {
+            background-color: lightslategray;
+            border-color: dimgray;
+        }
+
+        /* Gris (pivote movido a der temporalmente) */
+        .bar.bar-red-border {
+            outline-width: 3px;
+            z-index: 10;
+            outline-color: red !important;
+        }
+
+        /* Borde rojo (swap) */
+        .bar.bar-flash-off {
+            outline-color: transparent !important;
+        }
+
+        /* Para efecto flash */
+
+
+        /* --- ESTILOS PUNTEROS Y MARCADORES --- */
+        #pointers-container {
+            position: absolute;
+            bottom: -60px;
+            /* Posición bajo los índices */
+            left: 0;
+            width: 100%;
+            height: 50px;
+            pointer-events: none;
+        }
+
+        .pointer {
+            position: absolute;
+            transform: translateX(-50%);
+            background-color: rgba(50, 50, 50, 0.8);
+            color: white;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: left 0.4s ease-in-out;
+            visibility: hidden;
+            z-index: 20;
+            min-width: 15px;
+            text-align: center;
+        }
+
+        .pointer::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -7px;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            /* border-bottom set per pointer */
+        }
+
+        #pointerI {
+            background-color: rgba(255, 165, 0, 0.8);
+            bottom: 22px;
+        }
+
+        /* 'i' Naranja */
+        #pointerI::before {
+            border-bottom: 7px solid rgba(255, 165, 0, 0.8);
+        }
+
+        #pointerP {
+            background-color: mediumpurple;
+            bottom: 0px;
+        }
+
+        /* 'p' Púrpura */
+        #pointerP::before {
+            border-bottom: 7px solid mediumpurple;
+        }
+
+        .marker {
+    position: absolute;
+    bottom: -24px;
+    font-size: 10px;
+    font-weight: bold;
+    padding: 1px 3px;
+    color: white;
+    border-radius: 2px;
+    visibility: hidden;
+    transform: translateX(-50%);
+}
+
+.marker::before {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: -7px;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+}
+
+#markerIzq {
+    background-color: #3b82f6;
+}
+
+#markerIzq::before {
+    border-bottom: 7px solid #3b82f6;
+}
+
+#markerDer {
+    background-color: #ef4444;
+}
+
+#markerDer::before {
+    border-bottom: 7px solid #ef4444;
+}
+
+#markerCen {
+    background-color: mediumvioletred;
+}
+
+#markerCen::before {
+    border-bottom: 7px solid mediumvioletred;
+}
+        /* --- ESTILOS CONTROLES Y CÓDIGO --- */
+        #controls-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #eee;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #controls-container button {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f8f8;
+            color: #333;
+            font-size: 14px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        #controls-container button:hover:not(:disabled) {
+            background-color: #e0e0e0;
+            border-color: #aaa;
+        }
+
+        #controls-container button:disabled {
+            background-color: #cccccc;
+            color: #888;
+            cursor: not-allowed;
+            border-color: #bbb;
+        }
+
+        #start-pause-btn {
+            background-color: #60a5fa;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        #step-btn {
+            background-color: #fbbf24;
+            color: white;
+            border-color: #f59e0b;
+        }
+
+        #reset-btn {
+            background-color: #f87171;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .size-control label {
+            margin-right: 5px;
+        }
+
+        .size-control span {
+            min-width: 25px;
+            text-align: center;
+            padding: 5px 8px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .size-control button {
+            font-weight: bold;
+            padding: 4px 8px;
+            font-weight: bold;
+            min-width: 25px;
+        }
+
+        .speed-control label {
+            margin-right: 5px;
+        }
+
+        .speed-control input[type="range"] {
+            cursor: pointer;
+            width: 100px;
+        }
+
+        #code-container {
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #2d2d2d;
+            color: #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            line-height: 1;
+            overflow-x: auto;
+        }
+
+        #code-container h2 {
+            color: #eee;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+
+        #code-listing span[data-line] {
+            padding: 2px 0;
+            display: inline-block;
+            width: 100%;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+            line-height: normal;
+            white-space: pre;
+        }
+
+        #code-listing span[data-line].highlight-line {
+            background-color: rgba(255, 255, 100, 0.25);
+        }
+
+        #code-listing .syntax-keyword {
+            color: #569cd6;
+        }
+
+        #code-listing .syntax-type {
+            color: #4ec9b0;
+        }
+
+        #code-listing .syntax-function {
+            color: #dcdcaa;
+        }
+
+        #code-listing .syntax-operator {
+            color: #b5cea8;
+        }
+
+        #code-listing .syntax-comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        #code-listing .syntax-variable {
+            color: #9cdcfe;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Visualización Partición Quicksort</h1>
+    <div id="visualization-container">
+        <div id="array-container"></div>
+        <div id="index-container"></div>
+        <div id="pointers-container">
+            <div class="pointer" id="pointerI">i</div>
+            <div class="pointer" id="pointerP">p</div>
+            <div id="markerIzq" class="marker">izq</div>
+            <div id="markerDer" class="marker">der</div>
+            <div id="markerCen" class="marker">cen</div>
+        </div>
+    </div>
+    <div id="controls-container">
+        <div class="control-group"> <button id="start-pause-btn">Iniciar</button> <button id="step-btn">Paso
+                Siguiente</button> <button id="reset-btn">Resetear</button> </div>
+        <div class="control-group speed-control"> <label for="speed-slider">Velocidad:</label> <input type="range"
+                id="speed-slider" min="0" max="100" value="50"> </div>
+        <div class="control-group size-control"> <label>Tamaño:</label> <button id="decrease-size-btn">-</button> <span
+                id="size-display">11</span> <button id="increase-size-btn">+</button> </div>
+        <div class="control-group"> <button id="random-array-btn">Generar</button> <button
+                id="manual-input-btn">Introducir Datos</button> </div>
+    </div>
+    <div id="code-container">
+        <h2>Algoritmo (Scala):</h2>
+        <pre><code id="code-listing">
+<span data-line="0"><span class="syntax-keyword">def</span> <span class="syntax-function">parte</span>(<span class="syntax-variable">izq</span>: <span class="syntax-type">Int</span>, <span class="syntax-variable">der</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Int</span> <span class="syntax-operator">=</span></span>
+<span data-line="1">  <span class="syntax-keyword">val</span> <span class="syntax-variable">cen</span> <span class="syntax-operator">=</span> <span class="syntax-variable">izq</span> <span class="syntax-operator">+</span> (<span class="syntax-variable">der</span> <span class="syntax-operator">-</span> <span class="syntax-variable">izq</span>) <span class="syntax-operator">/</span> 2</span>
+<span data-line="2">  <span class="syntax-keyword">val</span> <span class="syntax-variable">pivot</span> <span class="syntax-operator">=</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">cen</span>)</span>
+<span data-line="3">  <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">cen</span>, <span class="syntax-variable">der</span>)   <span class="syntax-comment">// mover pivot al final</span></span>
+<span data-line="4">  <span class="syntax-keyword">var</span> <span class="syntax-variable">p</span> <span class="syntax-operator">=</span> <span class="syntax-variable">izq</span></span>
+<span data-line="5">  <span class="syntax-keyword">for</span> <span class="syntax-variable">i</span> <span class="syntax-operator">&lt;-</span> <span class="syntax-variable">izq</span> <span class="syntax-keyword">until</span> <span class="syntax-variable">der</span> <span class="syntax-keyword">do</span></span>
+<span data-line="6">    <span class="syntax-keyword">if</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">i</span>) <span class="syntax-operator">&lt;=</span> <span class="syntax-variable">pivot</span> <span class="syntax-keyword">then</span></span>
+<span data-line="7">      <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">i</span>, <span class="syntax-variable">p</span>)   <span class="syntax-comment">// empujar elemento menor a la izquierda</span></span>
+<span data-line="8">      <span class="syntax-variable">p</span> <span class="syntax-operator">+=</span> 1</span>
+<span data-line="9">  </span> 
+<span data-line="10">  <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">p</span>, <span class="syntax-variable">der</span>)     <span class="syntax-comment">// mover pivot a su posición final</span></span>
+<span data-line="11">  <span class="syntax-variable">p</span><span class="syntax-comment">                        // devolver posición final del pivot</span></span>
+<span data-line="12"></span> 
+        </code></pre>
+    </div>
+
+    <script>
+        // Envoltura IIFE para evitar contaminación del ámbito global
+        (function () {
+
+            // --- Selección de Elementos DOM ---
+            const arrayContainer = document.getElementById('array-container');
+            const indexContainer = document.getElementById('index-container');
+            const pointersContainer = document.getElementById('pointers-container');
+            const pointerI = document.getElementById('pointerI');
+            const pointerP = document.getElementById('pointerP');
+            const markerIzq = document.getElementById('markerIzq');
+            const markerDer = document.getElementById('markerDer');
+            const markerCen = document.getElementById('markerCen');
+            const codeListing = document.getElementById('code-listing');
+            const codeLines = codeListing.querySelectorAll('span[data-line]');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            const stepBtn = document.getElementById('step-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const decreaseSizeBtn = document.getElementById('decrease-size-btn');
+            const increaseSizeBtn = document.getElementById('increase-size-btn');
+            const sizeDisplay = document.getElementById('size-display');
+            const randomArrayBtn = document.getElementById('random-array-btn');
+            const manualInputBtn = document.getElementById('manual-input-btn');
+
+            // --- Variables de Estado Globales del Módulo ---
+            let array = [];         // El array de datos actual
+            let originalArray = []; // Copia del array original
+            let bars = [];          // Elementos DOM de las barras
+            let timeouts = [];      // IDs de timeouts
+            let animationSpeed = 500; // Velocidad base (ms)
+            let arraySize = 11;     // Tamaño inicial
+            const minSize = 3;      // Tamaño mínimo
+            const maxSize = 30;     // Tamaño máximo
+            let state = getDefaultState(); // Estado del algoritmo
+            let lastHighlightInfo = null; // Última info para resaltar
+            const POINTER_ANIMATION_DURATION = 400; // Duración CSS
+
+            /**
+             * Devuelve un objeto representando el estado inicial o reseteado del algoritmo.
+             * @returns {object} Estado inicial.
+             */
+            function getDefaultState() {
+                return {
+                    izq: -1, der: -1, cen: -1, pivotValue: null, pivotOriginalIndex: -1,
+                    pivotCurrentIndex: -1, pivotIdentified: false, p: -1, i: -1,
+                    phase: 'idle', currentLine: -1, isRunning: false, isPaused: false,
+                    isFinished: false, isSwapping: false
+                };
+            }
+
+            // --- Inicialización y Configuración de Eventos ---
+
+            /**
+             * Función principal de inicialización.
+             */
+            function init() {
+                updateSizeDisplay();
+                setupEventListeners();
+                handleSpeedChange();
+                setTimeout(generateAndReset, 50);
+            }
+
+            /**
+             * Asigna manejadores de eventos a los controles.
+             */
+            function setupEventListeners() {
+                startPauseBtn.onclick = handleStartPause;
+                stepBtn.onclick = () => requestStep(true);
+                resetBtn.onclick = resetAlgorithm;
+                speedSlider.oninput = handleSpeedChange;
+                randomArrayBtn.onclick = generateAndReset;
+                manualInputBtn.onclick = promptForArrayData;
+                increaseSizeBtn.onclick = incrementSize;
+                decreaseSizeBtn.onclick = decrementSize;
+            }
+
+            /**
+             * Calcula la duración de la animación (ms) desde el slider (0=rápido, 100=lento).
+             * @param {string|number} sliderValue - Valor del slider (0-100).
+             * @returns {number} Duración en ms.
+             */
+            function calculateSpeed(sliderValue) {
+                const min = 50, max = 1500;
+                const norm = parseInt(sliderValue, 10) / 100;
+                return Math.round(max - norm * (max - min));
+            }
+
+            /**
+             * Actualiza display de tamaño y habilita/deshabilita botones +/-.
+             */
+            function updateSizeDisplay() {
+                sizeDisplay.textContent = arraySize;
+                increaseSizeBtn.disabled = arraySize >= maxSize;
+                decreaseSizeBtn.disabled = arraySize <= minSize;
+            }
+
+            /**
+             * Incrementa tamaño y regenera.
+             */
+            function incrementSize() {
+                if (arraySize < maxSize) {
+                    arraySize++;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+
+            /**
+             * Decrementa tamaño y regenera.
+             */
+            function decrementSize() {
+                if (arraySize > minSize) {
+                    arraySize--;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+
+            /**
+             * Genera array aleatorio y resetea.
+             */
+            function generateAndReset() {
+                const newA = [];
+                for (let k = 0; k < arraySize; k++) {
+                    newA.push(Math.floor(Math.random() * 90) + 10);
+                }
+                originalArray = newA.slice();
+                console.log("Gen:", originalArray);
+                resetAlgorithm();
+            }
+
+            /**
+             * Pide datos manuales, valida y resetea.
+             */
+            function promptForArrayData() {
+                const currentData = originalArray.join(',');
+                const input = prompt(`Introduce elementos separados por coma (${minSize}-${maxSize} elementos, 1-99):`, currentData);
+                if (input === null) return;
+                const parsed = input.split(',')
+                    .map(s => parseInt(s.trim(), 10))
+                    .filter(n => !isNaN(n) && n > 0 && n < 100);
+                if (parsed.length < minSize || parsed.length > maxSize) {
+                    alert(`Entrada inválida. Se requieren entre ${minSize} y ${maxSize} números válidos (1-99).`);
+                    return;
+                }
+                originalArray = parsed;
+                arraySize = originalArray.length;
+                updateSizeDisplay();
+                console.log("Manual:", originalArray);
+                resetAlgorithm();
+            }
+
+            /**
+             * Inicia el reseteo del algoritmo.
+             */
+            function resetAlgorithm() {
+                console.log("Reset Alg: Partition");
+                state.isFinished = true;
+                clearTimeouts();
+                setTimeout(resetVisuals, 50);
+            }
+
+            /**
+             * Restaura la UI al estado inicial.
+             */
+            function resetVisuals() {
+                console.log("Reset Visuals: Partition");
+                highlightCodeLine(-1); // Quitar resaltado de código
+                state = getDefaultState();
+                lastHighlightInfo = null;
+                clearTimeouts();
+                array = originalArray.slice();
+                updateSizeDisplay();
+                if (bars && bars.length > 0) {
+                    bars.forEach(b => { if (b) { b.className = 'bar'; b.style = ''; } });
+                }
+                renderArray(); // Dibujar array e índices
+                updateControls();
+            }
+
+            // --- Renderizado y Actualizaciones Visuales ---
+
+            /**
+             * Renderiza el array completo, incluyendo barras e índices.
+             */
+            function renderArray() {
+                arrayContainer.innerHTML = ''; // Limpiar barras
+                if (indexContainer) indexContainer.innerHTML = ''; // Limpiar índices
+                bars = []; // Resetear array DOM
+
+                if (array.length === 0) {
+                    updateAllPointers();
+                    updateMarkers();
+                    return;
+                }
+
+                const maxV = Math.max(...array) || 1; // Valor máximo
+
+                // Crear barras e índices
+                for (let idx = 0; idx < array.length; idx++) {
+                    const val = array[idx];
+                    const bar = document.createElement('div'); bar.className = 'bar';
+                    const h = Math.max(5, (val / maxV) * 95); bar.style.height = h + '%';
+                    bars.push(bar); // Guardar referencia DOM
+                    const bv = document.createElement('span'); bv.className = 'bar-value'; bv.textContent = val; bar.appendChild(bv);
+                    bar.setAttribute('data-index', idx); bar.setAttribute('data-value', val);
+                    arrayContainer.appendChild(bar);
+
+                    if (indexContainer) {
+                        const indexLabel = document.createElement('span');
+                        indexLabel.className = 'index-label';
+                        indexLabel.textContent = idx;
+                        indexContainer.appendChild(indexLabel);
+                    }
+                }
+
+                // Aplicar estilos y actualizar punteros/marcadores
+                bars.forEach((bar, idx) => { applyHighlighting(bar, idx, lastHighlightInfo); });
+                updateAllPointers();
+                updateMarkers();
+            }
+
+            /**
+             * Actualiza la posición de punteros (i, p).
+             */
+            function updateAllPointers() {
+                updatePointer(pointerI, state.i);
+                updatePointer(pointerP, state.p);
+            }
+
+            /**
+             * Actualiza la posición de marcadores (izq, der, cen).
+             */
+            function updateMarkers() {
+                updateMarker(markerIzq, state.izq);
+                updateMarker(markerDer, state.der);
+                updateMarker(markerCen, state.cen);
+            }
+
+            /**
+             * Función genérica para posicionar un elemento sobre una barra.
+             * @param {HTMLElement} element - El elemento a posicionar.
+             * @param {number} index - El índice de la barra.
+             */
+            function updatePointer(element, index) { updateElementPosition(element, index); }
+            function updateMarker(element, index) { updateElementPosition(element, index); }
+            function updateElementPosition(element, index) {
+                if (index < 0 || index >= bars.length || !bars[index] || !element) {
+                    if (element) element.style.visibility = 'hidden';
+                    return;
+                }
+                const bar = bars[index];
+                if (!bar) { element.style.visibility = 'hidden'; return; }
+                const center = bar.offsetLeft + bar.offsetWidth / 2;
+                element.style.left = center + 'px';
+                element.style.visibility = 'visible';
+            }
+
+            /**
+             * Aplica estilos CSS a una barra según el estado actual del algoritmo.
+             * @param {HTMLElement} bar - La barra a estilizar.
+             * @param {number} k - El índice de la barra.
+             * @param {object | null} highlightInfo - Info del estado actual.
+             */
+            function applyHighlighting(bar, k, highlightInfo) {
+                // Resetear clases específicas
+                bar.classList.remove('bar-comparing-i', 'bar-red-border', 'bar-initial-pivot', 'bar-pivot-at-der', 'bar-flash-off', 'bar-pivot-magenta', 'bar-partitioned-left', 'bar-partitioned-right');
+                bar.style.outlineColor = '';
+
+                const infoType = highlightInfo ? highlightInfo.type : null;
+                const current_i = state.i; const current_p = state.p;
+                const pivotOriginalIdx = state.pivotOriginalIndex;
+                const pivotCurrentIdx = state.pivotCurrentIndex;
+                const isPivotIdentified = state.pivotIdentified;
+                const isFinished = state.isFinished;
+                const actualFinalPivotIndex = (state.phase === 'finished' || state.phase === 'return_p') ? state.p : -1;
+
+                // 1. Coloreado Final (si el algoritmo terminó)
+                if (isFinished && (state.phase === 'finished' || state.phase === 'return_p')) {
+                    if (k === actualFinalPivotIndex) { bar.classList.add('bar-pivot-magenta'); return; }
+                    // *** MODIFICADO: Añadido el 'else if' y 'else' para rojo y verde finales ***
+                    else if (k < actualFinalPivotIndex) { bar.classList.add('bar-partitioned-left'); return; } // Verde Final
+                    else { bar.classList.add('bar-partitioned-right'); return; } // Rojo Final
+                    return;
+                }
+                // Coloreado tentativo durante el último swap
+                else if (isFinished) {
+                    if (k === state.p) { bar.classList.add('bar-pivot-magenta'); }
+                    // *** MODIFICADO: Añadido el 'else if' y 'else' para rojo y verde tentativos ***
+                    else if (k < state.p) { bar.classList.add('bar-partitioned-left'); }
+                    else { bar.classList.add('bar-partitioned-right'); }
+                    // Permite otros estilos (borde rojo) durante el swap
+                }
+
+                // 2. Pivote Identificado (Púrpura)
+                if (isPivotIdentified && k === pivotCurrentIdx && !isFinished) {
+                    bar.classList.add('bar-pivot-magenta');
+                }
+
+                // 3. Particionado Izquierda (Verde - si no pivote y no terminado)
+                if (!isFinished && current_p > state.izq && k < current_p && k !== pivotCurrentIdx) {
+                    if (!bar.classList.contains('bar-pivot-magenta')) {
+                        bar.classList.add('bar-partitioned-left');
+                    }
+                }
+
+                // 4. Resaltados Temporales / De Acción
+                if (infoType === 'before_swap_visual' && (k === highlightInfo.idx1 || k === highlightInfo.idx2)) {
+                    bar.classList.add('bar-red-border');
+                }
+                if (k === current_i && infoType === 'evaluating_if') {
+                    bar.classList.add('bar-comparing-i');
+                }
+                if (infoType === 'calculated_center' && k === pivotOriginalIdx && !isPivotIdentified) {
+                    bar.classList.add('bar-initial-pivot');
+                }
+                if (infoType === 'pivot_moved_to_der' && k === pivotCurrentIdx && !isPivotIdentified) {
+                    if (!bar.classList.contains('bar-pivot-magenta')) {
+                        bar.classList.add('bar-pivot-at-der');
+                    }
+                }
+                if (infoType !== 'before_swap_visual') {
+                    bar.classList.remove('bar-flash-off');
+                }
+            }
+
+            /**
+             * Fuerza un re-renderizado basado en la última info de estado.
+             * @param {object | null} highlightInfo - Información para applyHighlighting.
+             */
+            function highlightState(highlightInfo) {
+                lastHighlightInfo = highlightInfo;
+                renderArray();
+            }
+
+            /**
+             * Resalta una línea de código.
+             * @param {number} lineNumber - Número de línea (data-line) o -1 para limpiar.
+             */
+            function highlightCodeLine(lineNumber) {
+                if (lineNumber === state.currentLine) return;
+                codeLines.forEach(line => line.classList.remove('highlight-line'));
+                if (lineNumber >= 0) {
+                    const el = codeListing.querySelector(`span[data-line="${lineNumber}"]`);
+                    if (el) el.classList.add('highlight-line');
+                }
+                state.currentLine = lineNumber;
+            }
+
+            // --- Efectos Visuales de Intercambio ---
+
+            /**
+             * Efecto flash en bordes de barras.
+             */
+            function flashBorders(index1, index2, repetitions, duration, callback) {
+                let count = 0; const bar1 = bars[index1]; const bar2 = bars[index2]; const totalToggles = repetitions * 2;
+                function toggle() { if (!state.isSwapping || count >= totalToggles) { if (bar1) bar1.classList.remove('bar-flash-off'); if (bar2) bar2.classList.remove('bar-flash-off'); if (callback) callback(); return; } if (bar1) bar1.classList.toggle('bar-flash-off'); if (bar2) bar2.classList.toggle('bar-flash-off'); count++; timeouts.push(setTimeout(toggle, duration)); }
+                if (bar1) bar1.classList.remove('bar-flash-off'); if (bar2) bar2.classList.remove('bar-flash-off');
+                timeouts.push(setTimeout(toggle, 50));
+            }
+
+            /**
+             * Anima el intercambio visual y lógico de dos barras.
+             */
+            function animateSwap_Fixed(index1, index2, callback) {
+                console.log("Animating swap (Fixed):", index1, index2);
+                const bar1 = bars[index1]; const bar2 = bars[index2];
+                if (!bar1 || !bar2) { console.error("Bars not found for swap:", index1, index2); state.isSwapping = false; if (callback) callback(); return; }
+                const b1v = bar1.querySelector('.bar-value'); const b2v = bar2.querySelector('.bar-value');
+                const dur = Math.max(animationSpeed * 0.8, 180);
+                const tT = `transform ${dur / 1000}s ease-in-out`;
+                bar1.style.transition = tT; bar2.style.transition = tT;
+                const dist = bar2.offsetLeft - bar1.offsetLeft;
+                bar1.style.transform = `translateX(${dist}px)`; bar2.style.transform = `translateX(${-dist}px)`;
+                // Swap lógico
+                const tempValue = array[index1]; array[index1] = array[index2]; array[index2] = tempValue;
+                bar1.setAttribute('data-value', array[index1]); bar2.setAttribute('data-value', array[index2]);
+                // Timeout para actualizar UI post-animación
+                timeouts.push(setTimeout(() => {
+                    const v1_new = array[index1]; const v2_new = array[index2];
+                    const maxV = Math.max(...(array.length > 0 ? array : [100])) || 1;
+                    const h1_new = Math.max(5, (v1_new / maxV) * 95) + '%'; const h2_new = Math.max(5, (v2_new / maxV) * 95) + '%';
+                    bar1.style.transition = 'none'; bar2.style.transition = 'none';
+                    bar1.style.height = h1_new; if (b1v) b1v.textContent = v1_new; bar1.style.transform = '';
+                    bar2.style.height = h2_new; if (b2v) b2v.textContent = v2_new; bar2.style.transform = '';
+                    void bar1.offsetHeight; void bar2.offsetHeight; // Forzar reflujo
+                    bar1.style.transition = ''; bar2.style.transition = '';
+                    if (callback) { callback(); } else { state.isSwapping = false; updateControls(); }
+                }, dur));
+            }
+
+
+            // --- Máquina de Estados del Algoritmo de Partición ---
+
+            /**
+             * Ejecuta un paso lógico del algoritmo de partición.
+             * @returns {boolean} True si la animación debe continuar automáticamente.
+             */
+            function partitionStep() {
+                if (state.isFinished || state.isSwapping) return false;
+                let continueAuto = true;
+
+                switch (state.phase) {
+                    case 'idle': highlightCodeLine(0); state.izq = 0; state.der = array.length - 1; if (state.izq >= state.der) { state.phase = 'finished'; state.isFinished = true; highlightCodeLine(11); } else { state.phase = 'calculate_center'; } updateMarkers(); break;
+                    case 'calculate_center': highlightCodeLine(1); state.cen = state.izq + Math.floor((state.der - state.izq) / 2); updateMarkers(); highlightState({ type: 'calculated_center' }); state.phase = 'get_pivot_value'; break;
+                    case 'get_pivot_value': highlightCodeLine(2); state.pivotValue = array[state.cen]; state.pivotOriginalIndex = state.cen; state.pivotCurrentIndex = state.cen; state.pivotIdentified = true; highlightState({ type: 'got_pivot_value' }); state.phase = 'swap_pivot_to_der_start'; break;
+                    case 'swap_pivot_to_der_start': highlightCodeLine(3); const idxCen = state.pivotOriginalIndex; const idxDer = state.der; if (idxCen === idxDer) { state.pivotCurrentIndex = idxDer; highlightState({ type: 'pivot_moved_to_der' }); state.phase = 'init_p'; break; } state.isSwapping = true; updateControls(); highlightState({ type: 'before_swap_visual', idx1: idxCen, idx2: idxDer }); flashBorders(idxCen, idxDer, 4, animationSpeed * 0.3, () => { if (!state.isSwapping) return; const pause = Math.max(50, animationSpeed * 0.1); timeouts.push(setTimeout(() => { if (!state.isSwapping) return; animateSwap_Fixed(idxCen, idxDer, () => { state.pivotCurrentIndex = idxDer; state.isSwapping = false; state.phase = 'swap_pivot_to_der_finish'; if (state.isRunning && !state.isPaused) requestStep(false); else updateControls(); }); }, pause)); }); continueAuto = false; break;
+                    case 'swap_pivot_to_der_finish': highlightState({ type: 'pivot_moved_to_der' }); state.phase = 'init_p'; break;
+                    case 'init_p': highlightCodeLine(4); state.p = state.izq; highlightState({ type: 'p_initialized' }); state.phase = 'init_i'; break;
+                    case 'init_i': highlightCodeLine(5); state.i = state.izq - 1; highlightState({ type: 'loop_init' }); state.phase = 'increment_i'; break;
+                    case 'increment_i': state.i++; highlightCodeLine(5); highlightState({ type: 'next_i_step' }); if (state.i >= state.der) { highlightCodeLine(9); state.phase = 'final_swap_start'; } else { state.phase = 'delay_before_if'; continueAuto = false; timeouts.push(setTimeout(() => { if (!state.isPaused && state.phase === 'delay_before_if') requestStep(false); }, POINTER_ANIMATION_DURATION)); } break;
+                    case 'delay_before_if': state.phase = 'evaluating_if'; continueAuto = partitionStep(); return continueAuto;
+                    case 'evaluating_if': highlightCodeLine(6); highlightState({ type: 'evaluating_if' }); if (array[state.i] <= state.pivotValue) { state.phase = 'swap_i_p_start'; } else { state.phase = 'increment_i'; } break;
+                    case 'swap_i_p_start': highlightCodeLine(7); const idxI = state.i; const idxP = state.p; if (idxI === idxP) { highlightState({ type: 'no_swap_needed' }); state.phase = 'increment_p'; break; } state.isSwapping = true; updateControls(); highlightState({ type: 'before_swap_visual', idx1: idxI, idx2: idxP }); flashBorders(idxI, idxP, 4, animationSpeed * 0.3, () => { if (!state.isSwapping) return; const pause = Math.max(50, animationSpeed * 0.1); timeouts.push(setTimeout(() => { if (!state.isSwapping) return; animateSwap_Fixed(idxI, idxP, () => { state.isSwapping = false; state.phase = 'swap_i_p_finish'; if (state.isRunning && !state.isPaused) requestStep(false); else updateControls(); }); }, pause)); }); continueAuto = false; break;
+                    case 'swap_i_p_finish': highlightState({ type: 'after_swap_i_p' }); state.phase = 'increment_p'; break;
+                    case 'increment_p': highlightCodeLine(8); state.p++; highlightState({ type: 'p_incremented' }); state.phase = 'increment_i'; break;
+                    case 'final_swap_start': highlightCodeLine(10); const finalP = state.p; const pivotAtDerIdx = state.pivotCurrentIndex; if (finalP === pivotAtDerIdx) { state.pivotCurrentIndex = finalP; highlightState({ type: 'pivot_final_no_swap' }); state.phase = 'return_p'; break; } state.isSwapping = true; updateControls(); highlightState({ type: 'before_swap_visual', idx1: finalP, idx2: pivotAtDerIdx }); flashBorders(finalP, pivotAtDerIdx, 4, animationSpeed * 0.3, () => { if (!state.isSwapping) return; const pause = Math.max(50, animationSpeed * 0.1); timeouts.push(setTimeout(() => { if (!state.isSwapping) return; animateSwap_Fixed(finalP, pivotAtDerIdx, () => { state.pivotCurrentIndex = finalP; state.isSwapping = false; state.phase = 'final_swap_finish'; if (state.isRunning && !state.isPaused) requestStep(false); else updateControls(); }); }, pause)); }); continueAuto = false; break;
+                    case 'final_swap_finish': highlightState({ type: 'pivot_placed_final' }); state.phase = 'return_p'; break;
+                    case 'return_p': highlightCodeLine(11); state.isFinished = true; state.isRunning = false; highlightState({ type: 'reached_return_p' }); console.log(`Partition finished. Pivot final index: ${state.p}`); updateControls(); continueAuto = false; state.phase = 'finished'; break;
+                    case 'finished': continueAuto = false; break;
+                } // Fin switch
+
+                if (!state.isSwapping) { updateControls(); }
+                return continueAuto;
+            }
+
+            // --- Funciones de Control de la Animación ---
+
+            /**
+             * Maneja el botón Iniciar/Pausar/Continuar/Reiniciar.
+             */
+            function handleStartPause() {
+                if (state.isFinished) {
+                    resetAlgorithm();
+                    setTimeout(() => { state.isRunning = true; state.isPaused = false; state.phase = 'idle'; requestStep(false); updateControls(); }, 100);
+                    return;
+                }
+                if (state.isRunning) { state.isPaused = true; state.isRunning = false; clearTimeouts(); }
+                else { state.isPaused = false; state.isRunning = true; if (state.phase === 'idle' || state.phase === 'finished') { state.phase = 'idle'; state.isFinished = false; } requestStep(false); }
+                updateControls();
+            }
+
+            /**
+             * Solicita la ejecución de un paso.
+             * @param {boolean} force - True para paso manual.
+             */
+            function requestStep(force) {
+                clearTimeouts();
+                if (state.isSwapping && !force) { console.log("Step ignored: waiting for swap."); return; }
+                if (force) { if (state.isRunning) { state.isPaused = true; state.isRunning = false; updateControls(); } if (!state.isSwapping) { partitionStep(); } }
+                else if (state.isRunning && !state.isPaused) { const continueAuto = partitionStep(); if (continueAuto && state.isRunning && !state.isPaused && !state.isFinished && !state.isSwapping) { timeouts.push(setTimeout(() => requestStep(false), animationSpeed)); } else if (state.isFinished || state.isPaused || state.isSwapping) { updateControls(); } }
+            }
+
+            /**
+             * Cancela todos los timeouts pendientes.
+             */
+            function clearTimeouts() {
+                timeouts.forEach(clearTimeout);
+                timeouts = [];
+            }
+
+            /**
+             * Maneja el cambio en el slider de velocidad.
+             */
+            function handleSpeedChange() {
+                animationSpeed = calculateSpeed(speedSlider.value);
+                if (state.isRunning && !state.isPaused && !state.isSwapping) {
+                    clearTimeouts();
+                    timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                }
+            }
+
+            /**
+             * Actualiza el estado y texto de los botones de control.
+             */
+            function updateControls() {
+                const isRunningAuto = state.isRunning && !state.isPaused;
+                const isBusy = isRunningAuto || state.isSwapping;
+                stepBtn.disabled = state.isFinished || isBusy;
+                startPauseBtn.disabled = state.isSwapping || (state.isFinished && state.phase === 'finished');
+                resetBtn.disabled = state.isSwapping || (state.phase === 'idle' && !state.isRunning);
+                randomArrayBtn.disabled = isBusy;
+                manualInputBtn.disabled = isBusy;
+                increaseSizeBtn.disabled = arraySize >= maxSize || isBusy;
+                decreaseSizeBtn.disabled = arraySize <= minSize || isBusy;
+                speedSlider.disabled = isBusy;
+                if (state.isFinished && state.phase === 'finished') { startPauseBtn.textContent = 'Reiniciar'; }
+                else if (isRunningAuto) { startPauseBtn.textContent = 'Pausar'; }
+                else { startPauseBtn.textContent = (state.phase === 'idle' || state.phase === 'finished') ? 'Iniciar' : 'Continuar'; }
+            }
+
+            // --- Punto de Entrada ---
+            document.addEventListener('DOMContentLoaded', init);
+
+        })(); // Fin IIFE
+    </script>
+
+</body>
+
+</html>

@@ -1,0 +1,1332 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Ordenación por Selección</title>
+    <style>
+        /* --- ESTILOS GENERALES --- */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1,
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+
+        /* Contenedor principal de la visualización */
+        #visualization-container {
+            position: relative;
+            /* Margen inferior aumentado para dejar espacio a índices y punteros */
+            margin-bottom: 90px;
+            height: 280px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        /* Contenedor de las barras del array */
+        #array-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 95%;
+            width: 100%;
+            position: relative;
+            gap: 2px;
+            bottom: 5px;
+        }
+
+        /* Estilo base para cada barra representando un elemento del array */
+        .bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-color: steelblue;
+            /* Color por defecto: no comprobado */
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            position: relative;
+            /* Necesario para posicionar el índice absoluto */
+            transition: background-color 0.4s ease, height 0.3s ease;
+            box-sizing: border-box;
+            border: 1px solid #eee;
+            outline: 2px solid transparent;
+            outline-offset: -2px;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            bottom: 10px;
+            /* Espacio debajo para el índice */
+        }
+
+        /* Estilo para el valor numérico mostrado DENTRO de la barra */
+        .bar-value {
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            z-index: 1;
+            text-shadow: 1px 1px 2px black;
+            position: absolute;
+            /* Posición relativa a la barra padre */
+            bottom: 5px;
+            /* Colocar encima del espacio para el índice */
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* --- CONTENEDOR Y ESTILOS PARA ÍNDICES NUMÉRICOS BAJO LAS BARRAS --- */
+        #index-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            bottom: 5px;
+            /* Posicionado justo debajo de las barras */
+            left: 10px;
+            right: 10px;
+            height: 20px;
+            gap: 2px;
+            /* Mismo espacio que las barras */
+            pointer-events: none;
+            /* No interfiere con clics */
+            z-index: 5;
+        }
+
+        .index-label {
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            /* Coincide con max-width de barras */
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* --- ESTADOS DE LAS BARRAS DURANTE LA ORDENACIÓN --- */
+        /* Barra en la posición 'i' (límite de la parte ordenada) */
+        .bar.bar-i {
+            background-color: mediumpurple !important;
+            z-index: 10;
+            /* Asegura visibilidad */
+        }
+
+        /* Barra siendo comparada por 'j' */
+        .bar.bar-comparing-j {
+            background-color: rgba(255, 165, 0, 0.8) !important;
+        }
+
+        /* Borde rojo para indicar elementos a punto de intercambiarse (durante el flash) */
+        .bar.bar-red-border {
+            outline-width: 3px;
+            z-index: 10;
+            /* Asegura que el borde sea visible */
+            outline-color: red !important;
+        }
+
+        /* Borde verde para la barra en posMin */
+        .bar.bar-green-border {
+            outline-width: 3px;
+            z-index: 10;
+            /* Asegura visibilidad */
+            outline-color: limegreen !important;
+        }
+
+
+        /* Barra ya ordenada (a la izquierda de 'i') */
+        .bar.bar-sorted {
+            background-color: mediumseagreen !important;
+            /* Cambio requerido */
+            outline-color: transparent !important;
+            /* Sin borde especial */
+        }
+
+        /* Usado para el efecto de parpadeo (flash) de los bordes */
+        .bar.bar-flash-off {
+            outline-color: transparent !important;
+        }
+
+
+        /* --- CONTENEDOR Y ESTILOS DE PUNTEROS (i, j, posMin) --- */
+        #pointers-container {
+            position: absolute;
+            bottom: -85px;
+            /* Posicionado debajo de los índices */
+            left: 0;
+            width: 100%;
+            height: 70px;
+            /* Altura suficiente para los 3 punteros */
+            pointer-events: none;
+            /* No interfiere con clics */
+        }
+
+        .pointer {
+            position: absolute;
+            transform: translateX(-50%);
+            /* Centrado horizontalmente */
+            background-color: rgba(50, 50, 50, 0.8);
+            /* Base oscura */
+            color: white;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            /* Evita que el texto se parta */
+            transition: left 0.4s ease-in-out;
+            /* Animación de movimiento */
+            visibility: hidden;
+            /* Oculto por defecto */
+            z-index: 20;
+            /* Por encima de las barras e índices */
+            min-width: 15px;
+            text-align: center;
+        }
+
+        /* Flecha indicadora del puntero */
+        .pointer::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -7px;
+            /* Posiciona la flecha sobre el cuadro */
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            /* El color del borde inferior se define por puntero */
+        }
+
+        #pointer-i {
+            background-color: mediumpurple;
+            /* Cambio requerido */
+            bottom: 45px;
+            /* Posición vertical más alta */
+        }
+
+        #pointer-i::before {
+            border-bottom: 7px solid mediumpurple;
+            /* Cambio requerido */
+        }
+
+        #pointer-j {
+            background-color: rgba(255, 165, 0, 0.8);
+            /* Naranja para 'j' */
+            bottom: 22px;
+            /* Posición vertical intermedia */
+        }
+
+        #pointer-j::before {
+            border-bottom: 7px solid rgba(255, 165, 0, 0.8);
+        }
+
+        #pointer-posMin {
+            background-color: rgba(0, 128, 0, 0.8);
+            /* Verde para 'posMin' */
+            bottom: 0;
+            /* Posición vertical más baja */
+        }
+
+        #pointer-posMin::before {
+            border-bottom: 7px solid rgba(0, 128, 0, 0.8);
+        }
+
+
+        /* --- CONTROLES (Botones, Sliders) --- */
+        #controls-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #eee;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #controls-container button {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f8f8;
+            color: #333;
+            font-size: 14px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        #controls-container button:hover:not(:disabled) {
+            background-color: #e0e0e0;
+            border-color: #aaa;
+        }
+
+        #controls-container button:disabled {
+            background-color: #cccccc;
+            color: #888;
+            cursor: not-allowed;
+            border-color: #bbb;
+        }
+
+        /* Estilos específicos de botones */
+        #start-pause-btn {
+            background-color: #60a5fa;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        #step-btn {
+            background-color: #fbbf24;
+            color: white;
+            border-color: #f59e0b;
+        }
+
+        #reset-btn {
+            background-color: #f87171;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .size-control label {
+            margin-right: 5px;
+        }
+
+        .size-control span {
+            min-width: 25px;
+            text-align: center;
+            padding: 5px 8px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .size-control button {
+            font-weight: bold;
+            padding: 4px 8px;
+            font-weight: bold;
+            min-width: 25px;
+        }
+
+        .speed-control label {
+            margin-right: 5px;
+        }
+
+        .speed-control input[type="range"] {
+            cursor: pointer;
+            width: 100px;
+        }
+
+        /* --- CONTENEDOR DE CÓDIGO --- */
+        #code-container {
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #2d2d2d;
+            /* Fondo oscuro */
+            color: #ccc;
+            /* Texto claro */
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            line-height: 1;
+            overflow-x: auto;
+            /* Scroll horizontal si el código es largo */
+        }
+
+        #code-container h2 {
+            color: #eee;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+
+        /* Estilo para cada línea de código */
+        #code-listing span[data-line] {
+            padding: 2px 0;
+            display: inline-block;
+            width: 100%;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+            line-height: normal;
+            white-space: pre;
+            /* Mantiene espacios y saltos de línea */
+        }
+
+        /* Resaltado de la línea de código actual */
+        #code-listing span[data-line].highlight-line {
+            background-color: rgba(255, 255, 100, 0.25);
+            /* Amarillo translúcido */
+        }
+
+        /* --- COLOREADO DE SINTAXIS (Ejemplo básico) --- */
+        #code-listing .syntax-keyword {
+            color: #569cd6;
+        }
+
+        /* Azul para keywords */
+        #code-listing .syntax-type {
+            color: #4ec9b0;
+        }
+
+        /* Turquesa para tipos */
+        #code-listing .syntax-function {
+            color: #dcdcaa;
+        }
+
+        /* Amarillo claro para funciones */
+        #code-listing .syntax-operator {
+            color: #b5cea8;
+        }
+
+        /* Verde claro para operadores */
+        #code-listing .syntax-comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        /* Verde oscuro para comentarios */
+        #code-listing .syntax-variable {
+            color: #9cdcfe;
+        }
+
+        /* Azul claro para variables */
+        #code-listing .syntax-generic {
+            color: #4ec9b0;
+        }
+
+        /* Mismo que tipos */
+        #code-listing .syntax-package {
+            color: #ce9178;
+        }
+
+        /* Naranja para paquetes */
+        #code-listing .syntax-number {
+            color: #b5cea8;
+        }
+
+        /* Mismo que operadores */
+    </style>
+</head>
+
+<body>
+    <h1>Visualización Ordenación por Selección</h1>
+    <div id="visualization-container">
+        <div id="array-container"></div>
+        <div id="index-container"></div>
+        <div id="pointers-container">
+            <div class="pointer" id="pointer-i">i</div>
+            <div class="pointer" id="pointer-j">j</div>
+            <div class="pointer" id="pointer-posMin">posMin</div>
+        </div>
+    </div>
+    <div id="controls-container">
+        <div class="control-group">
+            <button id="start-pause-btn">Iniciar</button>
+            <button id="step-btn">Paso Siguiente</button>
+            <button id="reset-btn">Resetear</button>
+        </div>
+        <div class="control-group speed-control">
+            <label for="speed-slider">Velocidad:</label>
+            <input type="range" id="speed-slider" min="0" max="100" value="50">
+        </div>
+        <div class="control-group size-control">
+            <label>Tamaño:</label>
+            <button id="decrease-size-btn">-</button>
+            <span id="size-display">10</span>
+            <button id="increase-size-btn">+</button>
+        </div>
+        <div class="control-group">
+            <button id="random-array-btn">Generar</button>
+            <button id="manual-input-btn">Introducir Datos</button>
+        </div>
+    </div>
+    <div id="code-container">
+        <h2>Algoritmo (Scala):</h2>
+        <pre><code id="code-listing">
+<span data-line="0"><span class="syntax-keyword">def</span> <span class="syntax-function">ordenarSelección</span>[<span class="syntax-generic">A</span>](<span class="syntax-variable">xs</span>: <span class="syntax-type">Array</span>[<span class="syntax-generic">A</span>]): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span></span>
+<span data-line="1">  <span class="syntax-keyword">import</span> <span class="syntax-package">ord</span><span class="syntax-operator">.</span><span class="syntax-operator">*</span></span>
+<span data-line="2"></span>
+<span data-line="3">  <span class="syntax-keyword">def</span> <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">p1</span>: <span class="syntax-type">Int</span>, <span class="syntax-variable">p2</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span> ...</span>
+<span data-line="4"></span>
+<span data-line="5">  <span class="syntax-keyword">for</span> <span class="syntax-variable">i</span> <span class="syntax-operator">&lt;-</span> 0 <span class="syntax-keyword">until</span> <span class="syntax-variable">xs</span><span class="syntax-operator">.</span><span class="syntax-variable">length</span> <span class="syntax-operator">-</span> 1 <span class="syntax-keyword">do</span></span>
+<span data-line="6">    <span class="syntax-keyword">var</span> <span class="syntax-variable">posMin</span> <span class="syntax-operator">=</span> <span class="syntax-variable">i</span>          <span class="syntax-comment">// Suponemos inicialmente que el mínimo está en i</span></span>
+<span data-line="7">    <span class="syntax-keyword">for</span> <span class="syntax-variable">j</span> <span class="syntax-operator">&lt;-</span> <span class="syntax-variable">i</span> <span class="syntax-operator">+</span> 1 <span class="syntax-keyword">until</span> <span class="syntax-variable">xs</span><span class="syntax-operator">.</span><span class="syntax-variable">length</span> <span class="syntax-keyword">do</span></span>
+<span data-line="8">      <span class="syntax-keyword">if</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">j</span>) <span class="syntax-operator">&lt;</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">posMin</span>) <span class="syntax-keyword">then</span> <span class="syntax-comment">// Si encontramos un elemento menor</span></span>
+<span data-line="9">        <span class="syntax-variable">posMin</span> <span class="syntax-operator">=</span> <span class="syntax-variable">j</span>               <span class="syntax-comment">// Actualizamos la posición del mínimo</span></span>
+<span data-line="10"></span>
+<span data-line="11">    <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">i</span>, <span class="syntax-variable">posMin</span>) <span class="syntax-comment">// Intercambiamos el mínimo encontrado con el elemento en i</span></span>
+        </code></pre>
+    </div>
+
+    <script>
+        (function () { // IIFE para encapsular el script
+
+            // --- Referencias a Elementos del DOM ---
+            const arrayContainer = document.getElementById('array-container');
+            const indexContainer = document.getElementById('index-container'); // Contenedor de índices
+            const pointersContainer = document.getElementById('pointers-container');
+            const pointerI = document.getElementById('pointer-i');
+            const pointerJ = document.getElementById('pointer-j');
+            const pointerPosMin = document.getElementById('pointer-posMin');
+            const codeListing = document.getElementById('code-listing');
+            const codeLines = codeListing.querySelectorAll('span[data-line]');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            const stepBtn = document.getElementById('step-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const decreaseSizeBtn = document.getElementById('decrease-size-btn');
+            const increaseSizeBtn = document.getElementById('increase-size-btn');
+            const sizeDisplay = document.getElementById('size-display');
+            const randomArrayBtn = document.getElementById('random-array-btn');
+            const manualInputBtn = document.getElementById('manual-input-btn');
+
+            // --- Variables de Estado ---
+            let array = [];                     // Array actual siendo ordenado
+            let originalArray = [];             // Copia del array original para resetear
+            let bars = [];                      // Referencias a los elementos DIV de las barras
+            let timeouts = [];                  // Almacena IDs de timeouts para poder cancelarlos
+            let animationSpeed = 500;           // Velocidad inicial de la animación (ms)
+            let arraySize = 10;                 // Tamaño inicial del array
+            const minSize = 3;                  // Tamaño mínimo permitido
+            const maxSize = 30;                 // Tamaño máximo permitido
+            let state = getDefaultState();      // Objeto que contiene el estado actual del algoritmo
+            let lastHighlightInfo = null;       // Información sobre el último resaltado aplicado
+            const POINTER_ANIMATION_DURATION = 400; // Duración de la animación de los punteros
+
+            /**
+             * Devuelve el objeto de estado inicial por defecto para el algoritmo.
+             * @returns {object} Estado inicial.
+             */
+            function getDefaultState() {
+                return {
+                    i: -1,          // Índice del bucle externo
+                    j: -1,          // Índice del bucle interno
+                    posMin: -1,     // Índice del mínimo encontrado en el bucle interno
+                    prevJ: -1,      // Valor anterior de 'j' (para quitar resaltado)
+                    sortedUntil: -1,// Índice hasta el cual el array está ordenado
+                    phase: 'idle',  // Fase actual del algoritmo ('idle', 'outer_loop', 'inner_loop', etc.)
+                    currentLine: -1,// Línea de código resaltada actualmente
+                    isRunning: false, // Si la animación automática está activa
+                    isPaused: false,  // Si la animación automática está pausada
+                    isFinished: false,// Si el algoritmo ha terminado
+                    isSwapping: false // Si se está realizando una animación de intercambio
+                };
+            }
+
+            /**
+             * Inicializa la visualización: configura listeners y genera el primer array.
+             */
+            function init() {
+                updateSizeDisplay();
+                setupEventListeners();
+                handleSpeedChange(); // Establece la velocidad inicial
+                // Pequeño retraso para asegurar que todo esté listo antes de generar
+                setTimeout(generateAndReset, 50);
+            }
+
+            /**
+             * Configura los event listeners para los controles de la interfaz.
+             */
+            function setupEventListeners() {
+                startPauseBtn.onclick = handleStartPause;
+                stepBtn.onclick = () => requestStep(true); // Forzar paso manual
+                resetBtn.onclick = resetAlgorithm;
+                speedSlider.oninput = handleSpeedChange;
+                randomArrayBtn.onclick = generateAndReset;
+                manualInputBtn.onclick = promptForArrayData;
+                increaseSizeBtn.onclick = incrementSize;
+                decreaseSizeBtn.onclick = decrementSize;
+            }
+
+            /**
+             * Calcula la duración de la pausa en ms basada en el valor del slider.
+             * El slider va de 0 (más rápido) a 100 (más lento).
+             * @param {string|number} sliderValue - Valor actual del slider (0-100).
+             * @returns {number} Duración de la animación en milisegundos.
+             */
+            function calculateSpeed(sliderValue) {
+                const min = 50; // Duración mínima (más rápido)
+                const max = 1500; // Duración máxima (más lento)
+                const norm = parseInt(sliderValue, 10) / 100; // Normaliza a 0-1
+                // Interpola linealmente entre max y min (invertido porque 0 es rápido)
+                return Math.round(max - norm * (max - min));
+            }
+
+            /** Actualiza el indicador numérico del tamaño del array. */
+            function updateSizeDisplay() {
+                sizeDisplay.textContent = arraySize;
+                increaseSizeBtn.disabled = arraySize >= maxSize;
+                decreaseSizeBtn.disabled = arraySize <= minSize;
+            }
+
+            /** Incrementa el tamaño del array y regenera la visualización. */
+            function incrementSize() {
+                if (arraySize < maxSize) {
+                    arraySize++;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+
+            /** Decrementa el tamaño del array y regenera la visualización. */
+            function decrementSize() {
+                if (arraySize > minSize) {
+                    arraySize--;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+
+            /** Genera un nuevo array aleatorio y resetea la visualización. */
+            function generateAndReset() {
+                const newA = [];
+                for (let k = 0; k < arraySize; k++) {
+                    // Números aleatorios entre 10 y 99
+                    newA.push(Math.floor(Math.random() * 90) + 10);
+                }
+                originalArray = newA.slice(); // Guarda como original
+                console.log("Array generado:", originalArray);
+                resetAlgorithm(); // Resetea al estado inicial con el nuevo array
+            }
+
+            /**
+             * Solicita al usuario que introduzca los datos del array manualmente.
+             */
+            function promptForArrayData() {
+                const currentData = originalArray.join(',');
+                const input = prompt(`Introduce los números separados por comas (${minSize}-${maxSize} elementos):`, currentData);
+
+                if (input === null) return; // Usuario canceló
+
+                const parsed = input.split(',')
+                    .map(s => parseInt(s.trim(), 10))
+                    .filter(n => !isNaN(n) && n > 0); // Filtra no números y negativos/cero
+
+                if (parsed.length < minSize || parsed.length > maxSize) {
+                    alert(`Número de elementos inválido. Debe estar entre ${minSize} y ${maxSize}.`);
+                    return;
+                }
+
+                originalArray = parsed;
+                arraySize = parsed.length;
+                updateSizeDisplay();
+                console.log("Array manual:", originalArray);
+                resetAlgorithm(); // Resetea con los datos introducidos
+            }
+
+            /**
+             * Resetea el estado del algoritmo y la visualización a su punto inicial
+             * usando el `originalArray` actual. Cancela animaciones pendientes.
+             */
+            function resetAlgorithm() {
+                console.log("Reseteando algoritmo: Selection Sort");
+                state.isFinished = true; // Marca como finalizado para detener cualquier bucle
+                clearTimeouts(); // Cancela todos los timeouts pendientes
+                // Pequeño retraso para asegurar que los timeouts se limpien antes de redibujar
+                setTimeout(resetVisuals, 50);
+            }
+
+            /**
+             * Restaura la visualización al estado inicial (barras, punteros, código).
+             */
+            function resetVisuals() {
+                console.log("Reseteando visuales");
+                state = getDefaultState(); // Restaura el estado lógico
+                lastHighlightInfo = null;
+                clearTimeouts(); // Asegura de nuevo por si acaso
+                array = originalArray.slice(); // Copia el array original para trabajar
+                updateSizeDisplay(); // Asegura que el display de tamaño es correcto
+                if (bars && bars.length > 0) { // Limpia estilos de barras existentes
+                    bars.forEach(b => {
+                        b.className = 'bar'; // Clase base
+                        b.style = ''; // Elimina estilos inline
+                    });
+                }
+                renderArray(); // Dibuja el array inicial
+                highlightCodeLine(-1); // Deselecciona cualquier línea de código
+                updateControls(); // Actualiza el estado de los botones
+            }
+
+            /**
+             * (Re)dibuja las barras del array y los índices numéricos en el DOM.
+             * Se basa en el estado actual de `array` y `state`.
+             */
+            function renderArray() {
+                arrayContainer.innerHTML = ''; // Limpia barras anteriores
+                if (indexContainer) indexContainer.innerHTML = ''; // Limpia índices anteriores
+                bars = []; // Resetea la lista de referencias a barras
+
+                if (array.length === 0) {
+                    updateAllPointers(); // Oculta punteros si no hay array
+                    return;
+                }
+
+                // Encuentra el valor máximo para escalar las alturas
+                const maxValue = Math.max(...array) || 1;
+
+                for (let idx = 0; idx < array.length; idx++) {
+                    const value = array[idx];
+
+                    // Crea el elemento DIV para la barra
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    // Calcula la altura proporcional (mínimo 5% para ser visible)
+                    const height = Math.max(5, (value / maxValue) * 95);
+                    bar.style.height = height + '%';
+                    bar.setAttribute('data-index', idx); // Guarda índice y valor para referencia
+                    bar.setAttribute('data-value', value);
+
+                    // Añade el valor numérico dentro de la barra
+                    const barValueSpan = document.createElement('span');
+                    barValueSpan.className = 'bar-value';
+                    barValueSpan.textContent = value;
+                    bar.appendChild(barValueSpan);
+
+                    arrayContainer.appendChild(bar); // Añade la barra al contenedor
+                    bars.push(bar); // Guarda la referencia
+
+                    // Crea y añade la etiqueta del índice numérico debajo de la barra
+                    if (indexContainer) {
+                        const indexLabel = document.createElement('span');
+                        indexLabel.className = 'index-label';
+                        indexLabel.textContent = idx;
+                        indexContainer.appendChild(indexLabel);
+                    }
+                }
+
+                // Aplica el resaltado inicial a todas las barras según el estado actual
+                bars.forEach((bar, idx) => {
+                    applyHighlighting(bar, idx, lastHighlightInfo);
+                });
+
+                updateAllPointers(); // Actualiza la posición de los punteros
+            }
+
+            /**
+             * Actualiza la posición y visibilidad de un puntero específico (i, j, posMin).
+             * @param {HTMLElement} pointerElement - El elemento DOM del puntero.
+             * @param {number} index - El índice del array al que debe apuntar (-1 para ocultar).
+             */
+            function updatePointer(pointerElement, index) {
+                // Oculta el puntero si el índice es inválido o no hay barra correspondiente
+                if (index < 0 || index >= bars.length || !bars[index] || !pointerElement) {
+                    if (pointerElement) pointerElement.style.visibility = 'hidden';
+                    return;
+                }
+                const bar = bars[index];
+                if (!bar) { // Comprobación extra
+                    pointerElement.style.visibility = 'hidden';
+                    return;
+                }
+                // Calcula la posición central de la barra destino
+                const center = bar.offsetLeft + bar.offsetWidth / 2;
+                pointerElement.style.left = center + 'px'; // Mueve el puntero horizontalmente
+                pointerElement.style.visibility = 'visible'; // Lo hace visible
+            }
+
+            /** Actualiza la posición de todos los punteros (i, j, posMin). */
+            function updateAllPointers() {
+                updatePointer(pointerI, state.i);
+                updatePointer(pointerJ, state.j);
+                updatePointer(pointerPosMin, state.posMin);
+            }
+
+            /**
+             * Aplica los estilos CSS (clases) correctos a una barra específica
+             * basándose en el estado actual del algoritmo y la información de resaltado.
+             * @param {HTMLElement} bar - El elemento DOM de la barra.
+             * @param {number} k - El índice de esta barra en el array.
+             * @param {object|null} highlightInfo - Información adicional sobre el estado (ej. tipo de operación).
+             */
+            function applyHighlighting(bar, k, highlightInfo) {
+                // Primero, elimina todas las clases de estado para empezar limpio
+                bar.classList.remove(
+                    'bar-sorted', 'bar-comparing-j', 'bar-red-border',
+                    'bar-flash-off', 'bar-i', 'bar-green-border'
+                );
+                bar.style.outlineColor = ''; // Resetea color de borde explícito si lo hubiera
+
+                const infoType = highlightInfo ? highlightInfo.type : null;
+                const current_i = state.i;
+                const current_j = state.j;
+                const current_posMin = state.posMin;
+                const current_sortedUntil = state.sortedUntil;
+                const isFinished = state.isFinished;
+
+                // 1. Barras ordenadas (finalizadas)
+                if (isFinished || k <= current_sortedUntil) {
+                    bar.classList.add('bar-sorted');
+                    // Si estamos justo antes del swap, las barras a intercambiar pueden
+                    // estar en la zona 'ordenada' visualmente, pero necesitan flash rojo.
+                    if (infoType === 'before_swap_visual' && (k === highlightInfo.idx1 || k === highlightInfo.idx2)) {
+                        bar.classList.add('bar-red-border');
+                    }
+                    return; // No se aplican más estilos si está ordenada
+                }
+
+                // 2. Resaltado especial durante el flash previo al intercambio
+                if (infoType === 'before_swap_visual' && (k === highlightInfo.idx1 || k === highlightInfo.idx2)) {
+                    bar.classList.add('bar-red-border');
+                    // No aplicar otros resaltados (i, posMin) durante el flash para evitar conflictos
+                } else {
+                    // 3. Resaltados normales durante la búsqueda
+                    if (k === current_i) {
+                        bar.classList.add('bar-i'); // Barra en la posición 'i'
+                    }
+                    if (k === current_posMin) {
+                        bar.classList.add('bar-green-border'); // Borde verde para posMin
+                    }
+                    if (k === current_j && infoType === 'evaluating_if') {
+                        bar.classList.add('bar-comparing-j'); // Barra siendo comparada por 'j'
+                    }
+                }
+
+                // 4. Limpieza del estado de flash si no estamos en esa fase
+                if (infoType !== 'before_swap_visual') {
+                    bar.classList.remove('bar-flash-off');
+                }
+            }
+
+            /**
+             * Guarda la información de resaltado y fuerza un redibujado del array.
+             * @param {object} highlightInfo - Información sobre qué resaltar.
+             */
+            function highlightState(highlightInfo) {
+                lastHighlightInfo = highlightInfo;
+                renderArray(); // Redibuja todo el array aplicando los nuevos resaltados
+            }
+
+            /**
+             * Resalta una línea específica en el pseudocódigo.
+             * @param {number} lineNumber - El número de línea a resaltar (-1 para ninguna).
+             */
+            function highlightCodeLine(lineNumber) {
+                if (lineNumber === state.currentLine) return; // Evita trabajo innecesario
+
+                // Quita el resaltado de la línea anterior
+                codeLines.forEach(line => line.classList.remove('highlight-line'));
+
+                // Resalta la nueva línea si es válida
+                if (lineNumber >= 0) {
+                    const lineElement = codeListing.querySelector(`span[data-line="${lineNumber}"]`);
+                    if (lineElement) {
+                        lineElement.classList.add('highlight-line');
+                    }
+                }
+                state.currentLine = lineNumber; // Actualiza el estado
+            }
+
+            /**
+             * Realiza un efecto de parpadeo (flash) en los bordes de dos barras.
+             * Usado justo antes de un intercambio para indicar qué elementos se mueven.
+             * @param {number} index1 - Índice de la primera barra.
+             * @param {number} index2 - Índice de la segunda barra.
+             * @param {number} repetitions - Número de veces que parpadea el borde.
+             * @param {number} duration - Duración de cada estado (encendido/apagado) del parpadeo.
+             * @param {function} callback - Función a ejecutar cuando termina el parpadeo.
+             */
+            function flashBorders(index1, index2, repetitions, duration, callback) {
+                let count = 0;
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+                const totalToggles = repetitions * 2; // Cada repetición tiene on y off
+
+                function toggle() {
+                    // Si se canceló el swap o se completó el parpadeo, limpiar y llamar al callback
+                    if (!state.isSwapping || count >= totalToggles) {
+                        if (bar1) bar1.classList.remove('bar-flash-off', 'bar-red-border');
+                        if (bar2) bar2.classList.remove('bar-flash-off', 'bar-red-border');
+                        // Reaplicar resaltado normal después del flash
+                        if (bar1) applyHighlighting(bar1, index1, lastHighlightInfo);
+                        if (bar2) applyHighlighting(bar2, index2, lastHighlightInfo);
+                        if (callback) callback();
+                        return;
+                    }
+
+                    // Alterna la clase 'bar-flash-off' para mostrar/ocultar el borde rojo
+                    if (bar1) {
+                        bar1.classList.toggle('bar-flash-off');
+                        // Asegura que el borde rojo esté presente (se oculta con 'bar-flash-off')
+                        if (!bar1.classList.contains('bar-red-border')) bar1.classList.add('bar-red-border');
+                    }
+                    if (bar2) {
+                        bar2.classList.toggle('bar-flash-off');
+                        if (!bar2.classList.contains('bar-red-border')) bar2.classList.add('bar-red-border');
+                    }
+
+                    count++;
+                    // Programa el siguiente toggle
+                    timeouts.push(setTimeout(toggle, duration));
+                }
+
+                // Inicia el parpadeo asegurando que el borde rojo esté visible al principio
+                if (bar1) bar1.classList.add('bar-red-border');
+                if (bar2) bar2.classList.add('bar-red-border');
+                timeouts.push(setTimeout(toggle, 5)); // Pequeña espera inicial
+            }
+
+            /**
+             * Ejecuta un único paso lógico del algoritmo de Ordenación por Selección.
+             * Actualiza el estado (`state`) y llama a las funciones de resaltado correspondientes.
+             * @returns {boolean} Devuelve `true` si la ejecución automática debe continuar, `false` si debe pausar.
+             */
+            function selectionSortStep() {
+                // No hacer nada si ya terminó o si está en medio de una animación de swap
+                if (state.isFinished || state.isSwapping) return false;
+
+                let continueAuto = true; // Por defecto, la animación automática continúa
+
+                switch (state.phase) {
+                    // Estado inicial antes de empezar
+                    case 'idle':
+                        state.i = -1;
+                        state.sortedUntil = -1;
+                        highlightCodeLine(0); // Resalta la definición de la función
+                        state.phase = 'outer_loop'; // Pasa a la siguiente fase
+                        break;
+
+                    // Inicio o continuación del bucle externo (variable 'i')
+                    case 'outer_loop':
+                        state.i++; // Avanza 'i'
+                        // Comprueba si hemos terminado de ordenar (i llega al penúltimo elemento)
+                        if (state.i >= array.length - 1) {
+                            state.phase = 'finished'; // Termina el algoritmo
+                        } else {
+                            highlightCodeLine(5); // Resalta inicio del bucle for(i)
+                            state.posMin = -1; // Resetea posMin para la nueva pasada
+                            state.j = -1; // Resetea j
+                            state.prevJ = -1;
+                            // Actualiza visualización para mostrar el nuevo 'i'
+                            highlightState({ type: 'start_outer', i: state.i });
+                            state.phase = 'init_posMin'; // Pasa a inicializar posMin
+                        }
+                        break;
+
+                    // Inicializa posMin al valor de i
+                    case 'init_posMin':
+                        highlightCodeLine(6); // Resalta var posMin = i
+                        state.posMin = state.i;
+                        highlightState({ type: 'set_posMin' }); // Actualiza visualización mostrando posMin
+                        state.j = state.i; // 'j' empezará a buscar desde i+1
+                        state.prevJ = -1;
+                        state.phase = 'increment_j_initial'; // Pasa a iniciar el bucle interno
+                        break;
+
+                    // Inicio o continuación del bucle interno (variable 'j')
+                    case 'increment_j_initial': // Primera iteración del bucle interno
+                    case 'increment_j':         // Siguientes iteraciones
+                        state.prevJ = state.j; // Guarda el 'j' anterior para quitarle el resaltado
+                        state.j++; // Avanza 'j'
+                        highlightCodeLine(7); // Resalta inicio del bucle for(j)
+                        // Actualiza visualización para mover el puntero 'j'
+                        highlightState({ type: 'next_j_step', prevJ: state.prevJ });
+
+                        // Comprueba si el bucle interno ha terminado
+                        if (state.j >= array.length) {
+                            highlightCodeLine(10); // Línea vacía antes del intercambio
+                            state.phase = 'swapping'; // Pasa a la fase de intercambio
+                        } else {
+                            // Pausa breve antes de evaluar la condición 'if' para que se vea el movimiento de 'j'
+                            state.phase = 'delay_before_if';
+                            continueAuto = false; // Pausa la ejecución automática temporalmente
+                            timeouts.push(setTimeout(() => {
+                                // Solo continúa si no se ha pausado manualmente mientras tanto
+                                if (!state.isPaused && state.phase === 'delay_before_if') {
+                                    requestStep(false); // Solicita el siguiente paso automático
+                                }
+                            }, POINTER_ANIMATION_DURATION)); // Espera la duración de la animación del puntero
+                        }
+                        break;
+
+                    // Estado intermedio después de mover 'j' y antes de evaluar el 'if'
+                    case 'delay_before_if':
+                        state.phase = 'evaluating_if'; // Ahora sí, evalúa
+                        continueAuto = selectionSortStep(); // Ejecuta inmediatamente la siguiente fase
+                        return continueAuto; // Devuelve el resultado de esa ejecución
+
+                    // Evalúa la condición if (xs(j) < xs(posMin))
+                    case 'evaluating_if':
+                        highlightCodeLine(8); // Resalta la línea del 'if'
+                        // Resalta la barra 'j' para indicar comparación
+                        highlightState({ type: 'evaluating_if' });
+                        const valueJ = array[state.j];
+                        const valuePosMin = array[state.posMin];
+                        // Compara los valores
+                        if (valueJ < valuePosMin) {
+                            state.phase = 'updating_min'; // Si j es menor, actualiza posMin
+                        } else {
+                            state.phase = 'increment_j'; // Si no, sigue buscando con el siguiente j
+                        }
+                        break;
+
+                    // Actualiza posMin porque se encontró un nuevo mínimo en j
+                    case 'updating_min':
+                        highlightCodeLine(9); // Resalta posMin = j
+                        const oldPosMin = state.posMin; // Guarda el anterior para visualización
+                        state.posMin = state.j;
+                        // Actualiza visualización para mover el puntero posMin
+                        highlightState({ type: 'posMin_updated', oldPosMin: oldPosMin });
+                        state.phase = 'increment_j'; // Vuelve al bucle interno para seguir buscando
+                        break;
+
+                    // Fase de intercambio entre el elemento en 'i' y el mínimo encontrado en 'posMin'
+                    case 'swapping':
+                        highlightCodeLine(11); // Resalta la llamada a intercambiar
+                        const index1 = state.i;
+                        const index2 = state.posMin;
+
+                        // Solo intercambia si posMin cambió (es decir, no es igual a i)
+                        // y si posMin es un índice válido (seguridad)
+                        if (index1 !== index2 && index2 >= 0) {
+                            state.isSwapping = true; // Marca que estamos animando un swap
+                            updateControls(); // Deshabilita botones durante el swap
+                            // Prepara visualización para el flash
+                            highlightState({ type: 'before_swap_visual', idx1: index1, idx2: index2 });
+
+                            // Calcula duración y repeticiones del flash basadas en la velocidad
+                            const flashDuration = animationSpeed * 0.15;
+                            const flashRepetitions = 2; // 2 parpadeos rápidos
+
+                            // Inicia el efecto de flash
+                            flashBorders(index1, index2, flashRepetitions, flashDuration, () => {
+                                // Esta función se ejecuta CUANDO TERMINA el flash
+
+                                // Comprueba si el swap sigue siendo válido (no se reseteó/pausó)
+                                if (!state.isSwapping) return;
+
+                                // Pausa muy breve después del flash y antes de la animación de movimiento
+                                const pauseAfterFlash = Math.max(50, animationSpeed * 0.1);
+                                timeouts.push(setTimeout(() => {
+                                    if (!state.isSwapping) return; // Comprueba de nuevo
+
+                                    // Inicia la animación visual del intercambio de barras
+                                    animateSwap_Fixed(index1, index2, () => {
+                                        // Esta función se ejecuta CUANDO TERMINA la animación de swap
+
+                                        state.sortedUntil = state.i; // Marca el elemento 'i' como ordenado
+                                        state.isSwapping = false; // Termina el estado de swapping
+
+                                        // Comprueba si el algoritmo ha terminado después de este swap
+                                        if (state.i >= array.length - 2) {
+                                            state.phase = 'finished'; // Va a la fase final
+                                        } else {
+                                            state.phase = 'outer_loop'; // Vuelve al bucle externo para el siguiente 'i'
+                                        }
+                                        // Actualiza visualización post-swap (marca 'i' como ordenado)
+                                        highlightState({ type: 'after_swap_completed' });
+                                        updateControls(); // Rehabilita botones
+
+                                        // Si terminó, ejecuta el paso 'finished'
+                                        if (state.phase === 'finished') {
+                                            selectionSortStep();
+                                        } else if (state.isRunning && !state.isPaused) {
+                                            // Si estaba en ejecución automática, solicita el siguiente paso
+                                            requestStep(false);
+                                        }
+                                    });
+                                }, pauseAfterFlash));
+                            });
+                            continueAuto = false; // Pausa la ejecución automática mientras dura el flash/swap
+                        } else {
+                            // No hubo necesidad de intercambiar (el mínimo ya estaba en i)
+                            console.log("Intercambio no necesario: i === posMin en índice", index1);
+                            state.sortedUntil = state.i; // Marca 'i' como ordenado igualmente
+                            // Actualiza visualización (sin swap, solo marca como ordenado)
+                            highlightState({ type: 'after_swap_no_change' });
+                            // Comprueba si el algoritmo terminó
+                            if (state.i >= array.length - 2) {
+                                state.phase = 'finished';
+                            } else {
+                                state.phase = 'outer_loop'; // Pasa al siguiente 'i'
+                            }
+                        }
+                        break;
+
+                    // Fase final del algoritmo
+                    case 'finished':
+                        highlightCodeLine(13); // Resalta línea comentario final (o última línea relevante)
+                        state.sortedUntil = array.length - 1; // Marca todo el array como ordenado
+                        state.isFinished = true; // Marca estado como finalizado
+                        state.isRunning = false; // Detiene ejecución automática
+                        // Actualiza visualización final (todo verde)
+                        highlightState({ type: 'final' });
+                        console.log("Ordenación completada.");
+                        updateControls(); // Actualiza botones (ej. "Reiniciar")
+                        continueAuto = false; // Detiene cualquier continuación automática
+                        break;
+                }
+
+                // Actualiza el estado de los controles si no estamos en medio de un swap
+                // (durante el swap se controlan específicamente en sus callbacks)
+                if (!state.isSwapping) {
+                    updateControls();
+                }
+                return continueAuto; // Indica si la ejecución automática debe seguir
+            }
+
+            /**
+             * Anima el intercambio visual de dos barras (movimiento y cambio de altura/valor).
+             * @param {number} index1 - Índice de la primera barra.
+             * @param {number} index2 - Índice de la segunda barra.
+             * @param {function} callback - Función a ejecutar cuando la animación termine.
+             */
+            function animateSwap_Fixed(index1, index2, callback) {
+                console.log("Animando intercambio:", index1, index2);
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+
+                // Seguridad: si las barras no existen, cancela
+                if (!bar1 || !bar2) {
+                    console.error("Error: Barras no encontradas para intercambio:", index1, index2);
+                    state.isSwapping = false;
+                    if (callback) callback();
+                    return;
+                }
+
+                const bar1ValueSpan = bar1.querySelector('.bar-value');
+                const bar2ValueSpan = bar2.querySelector('.bar-value');
+
+                // Duración de la animación de movimiento
+                const moveDuration = Math.max(animationSpeed * 0.8, 180); // 80% de la velocidad, mínimo 180ms
+                const transitionTransform = `transform ${moveDuration / 1000}s ease-in-out`;
+
+                // Aplica la transición solo para la propiedad 'transform'
+                bar1.style.transition = transitionTransform;
+                bar2.style.transition = transitionTransform;
+
+                // Calcula la distancia horizontal entre las barras
+                const distance = bar2.offsetLeft - bar1.offsetLeft;
+
+                // Mueve las barras usando transform: translateX
+                bar1.style.transform = `translateX(${distance}px)`;
+                bar2.style.transform = `translateX(${-distance}px)`;
+
+                // Realiza el intercambio lógico en el array de datos AHORA,
+                // mientras las barras se mueven visualmente.
+                const tempValue = array[index1];
+                array[index1] = array[index2];
+                array[index2] = tempValue;
+
+                // Actualiza los atributos data-value (útil para depuración o lógica futura)
+                bar1.setAttribute('data-value', array[index1]);
+                bar2.setAttribute('data-value', array[index2]);
+
+                // Programa la finalización de la animación
+                timeouts.push(setTimeout(() => {
+                    // Al terminar el movimiento:
+                    const v1_new = array[index1]; // Nuevo valor de la barra que AHORA está en index1
+                    const v2_new = array[index2]; // Nuevo valor de la barra que AHORA está en index2
+                    const maxValue = Math.max(...(array.length > 0 ? array : [100])) || 1;
+                    const h1_new = Math.max(5, (v1_new / maxValue) * 95) + '%'; // Nueva altura
+                    const h2_new = Math.max(5, (v2_new / maxValue) * 95) + '%'; // Nueva altura
+
+                    // Quita la transición y resetea transform para "fijar" las barras en su nueva posición visual
+                    // y permitir que el cambio de altura ocurra instantáneamente (o con la transición por defecto).
+                    bar1.style.transition = 'none'; // Quita transición específica de transform
+                    bar2.style.transition = 'none';
+                    bar1.style.height = h1_new; // Actualiza altura
+                    if (bar1ValueSpan) bar1ValueSpan.textContent = v1_new; // Actualiza texto
+                    bar1.style.transform = ''; // Resetea transform
+
+                    bar2.style.height = h2_new; // Actualiza altura
+                    if (bar2ValueSpan) bar2ValueSpan.textContent = v2_new; // Actualiza texto
+                    bar2.style.transform = ''; // Resetea transform
+
+                    // Forzar reflow (repintado) para asegurar que los cambios se apliquen antes de restaurar transiciones
+                    void bar1.offsetHeight;
+                    void bar2.offsetHeight;
+
+                    // Restaura las transiciones CSS por defecto definidas en la hoja de estilos
+                    bar1.style.transition = '';
+                    bar2.style.transition = '';
+
+                    // Llama al callback para indicar que la animación terminó
+                    if (callback) {
+                        callback();
+                    } else {
+                        // Si no hay callback, al menos actualiza el estado de swapping
+                        state.isSwapping = false;
+                        updateControls();
+                    }
+                }, moveDuration)); // Espera a que termine la animación de movimiento
+            }
+
+            // --- Lógica de Control de la Animación ---
+
+            /**
+             * Maneja el clic en el botón Iniciar/Pausar/Continuar/Reiniciar.
+             */
+            function handleStartPause() {
+                // Si el algoritmo ya terminó, resetéalo y empieza de nuevo
+                if (state.isFinished && state.phase === 'finished') {
+                    resetAlgorithm();
+                    // Espera un poco a que el reseteo visual termine antes de iniciar
+                    setTimeout(() => {
+                        state.isRunning = true;
+                        state.isPaused = false;
+                        state.isFinished = false; // Importante: marcar como no finalizado
+                        state.phase = 'idle'; // Empezar desde el principio
+                        requestStep(false); // Inicia el primer paso automático
+                        updateControls();
+                    }, 100); // Tiempo suficiente para resetVisuals
+                    return;
+                }
+
+                // Si está corriendo, pausar
+                if (state.isRunning) {
+                    state.isPaused = true;
+                    state.isRunning = false;
+                    clearTimeouts(); // Cancela el próximo paso automático programado
+                }
+                // Si está pausado o en estado inicial ('idle'), (re)anudar
+                else {
+                    state.isPaused = false;
+                    state.isRunning = true;
+                    // Si estaba en 'idle' o 'finished' (pero no 'finished' final), reinicia fase si es necesario
+                    if (state.phase === 'idle' || state.phase === 'finished') {
+                        state.phase = 'idle';
+                        state.isFinished = false;
+                    }
+                    requestStep(false); // Solicita el siguiente paso (o el primero)
+                }
+                updateControls(); // Actualiza el texto y estado del botón
+            }
+
+            /**
+             * Solicita la ejecución del siguiente paso del algoritmo.
+             * Puede ser un paso manual (forzado) o automático.
+             * @param {boolean} force - True si es un paso manual (ignora estado de pausa/swap).
+             */
+            function requestStep(force) {
+                clearTimeouts(); // Cancela cualquier paso automático anterior programado
+
+                // Si estamos en medio de un swap y NO es un paso forzado, no hacer nada
+                // (esperar a que termine el swap)
+                if (state.isSwapping && !force) {
+                    console.log("Petición de paso ignorada: esperando fin de intercambio.");
+                    return;
+                }
+
+                // Si es un paso manual (botón 'Paso Siguiente')
+                if (force) {
+                    // Si estaba corriendo automáticamente, pausar primero
+                    if (state.isRunning) {
+                        state.isPaused = true;
+                        state.isRunning = false;
+                        updateControls(); // Actualiza botón a 'Continuar'
+                    }
+                    // Ejecuta un paso lógico solo si no está en medio de un swap
+                    // (forzar no debería interrumpir la animación visual del swap)
+                    if (!state.isSwapping) {
+                        selectionSortStep();
+                    }
+                }
+                // Si es una solicitud de paso automático (isRunning y no pausado)
+                else if (state.isRunning && !state.isPaused) {
+                    // Ejecuta un paso lógico
+                    const continueAuto = selectionSortStep();
+
+                    // Si el paso lógico indica que se debe continuar automáticamente
+                    // y el estado sigue siendo de ejecución (no terminado, no pausado, no swappeando)
+                    if (continueAuto && state.isRunning && !state.isPaused && !state.isFinished && !state.isSwapping) {
+                        // Programa el siguiente paso automático después de la pausa definida por la velocidad
+                        timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                    } else if (state.isFinished || state.isPaused || state.isSwapping) {
+                        // Si el estado cambió a finalizado, pausado o swappeando, actualiza los controles
+                        updateControls();
+                    }
+                }
+            }
+
+            /** Cancela todos los timeouts pendientes almacenados en el array `timeouts`. */
+            function clearTimeouts() {
+                timeouts.forEach(clearTimeout);
+                timeouts = []; // Vacía el array
+            }
+
+            /** Maneja el cambio en el slider de velocidad. */
+            function handleSpeedChange() {
+                animationSpeed = calculateSpeed(speedSlider.value); // Calcula la nueva duración
+                // Si está corriendo, reajusta el timeout para el próximo paso
+                if (state.isRunning && !state.isPaused && !state.isSwapping) {
+                    clearTimeouts(); // Cancela el timeout actual
+                    // Programa el siguiente paso con la nueva velocidad
+                    timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                }
+            }
+
+            /**
+             * Actualiza el estado (habilitado/deshabilitado, texto) de los botones
+             * y controles según el estado actual del algoritmo.
+             */
+            function updateControls() {
+                const isRunningAuto = state.isRunning && !state.isPaused;
+                // El sistema está "ocupado" si está corriendo automáticamente o animando un swap
+                const isBusy = isRunningAuto || state.isSwapping;
+
+                stepBtn.disabled = state.isFinished || isBusy; // Deshabilitado si terminó o está ocupado
+                // Botón Start/Pause deshabilitado solo si terminó O si está en swap (no durante pausa)
+                startPauseBtn.disabled = (state.isFinished && state.phase === 'finished') || state.isSwapping;
+                // Reset deshabilitado si está en estado inicial absoluto O si está en swap
+                resetBtn.disabled = (state.phase === 'idle' && !state.isRunning && !state.isSwapping && !state.isPaused) || state.isSwapping;
+                // Controles de generación/tamaño deshabilitados si está ocupado
+                randomArrayBtn.disabled = isBusy;
+                manualInputBtn.disabled = isBusy;
+                increaseSizeBtn.disabled = arraySize >= maxSize || isBusy;
+                decreaseSizeBtn.disabled = arraySize <= minSize || isBusy;
+                speedSlider.disabled = isBusy;
+
+                // Actualiza el texto del botón principal
+                if (state.isFinished && state.phase === 'finished') {
+                    startPauseBtn.textContent = 'Reiniciar';
+                } else if (isRunningAuto) {
+                    startPauseBtn.textContent = 'Pausar';
+                } else {
+                    // Si no está corriendo, puede ser 'Iniciar' (si está en idle) o 'Continuar' (si está pausado)
+                    startPauseBtn.textContent = (state.phase === 'idle' && !state.isPaused) ? 'Iniciar' : 'Continuar';
+                }
+            }
+
+            // --- Inicio de la Ejecución ---
+            // Espera a que el DOM esté completamente cargado antes de inicializar
+            document.addEventListener('DOMContentLoaded', init);
+
+        })(); // Fin del IIFE
+    </script>
+
+</body>
+
+</html>

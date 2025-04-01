@@ -1,128 +1,1114 @@
 <!DOCTYPE html>
 <html lang="es">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Visualización Quicksort (Árbol Recursivo)</title>
+    <title>Visualización Quicksort Completo</title>
     <style>
-        /* --- Estilos (Sin cambios) --- */
-        body{font-family:sans-serif;display:flex;flex-direction:column;align-items:center;padding:20px;background-color:#f4f4f4;min-height:100vh}h1{text-align:center;margin-bottom:20px}#controls{margin-bottom:20px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:center;width:95%;max-width:800px}
-        #status,#explanation{font-size:1em;text-align:center;min-height:1.5em;width:90%;max-width:800px;background-color:#e9e9e9;padding:10px;border-radius:5px;margin-top:10px}#explanation{font-style:italic;color:#333;margin-bottom:20px}
-        #code-area{width:90%;max-width:800px;margin-top:20px;padding-bottom:20px}#code-area h2{text-align:center;margin-bottom:5px;font-size:1.1em}#code-container{background-color:#2d2d2d;color:#ccc;padding:5px 5px;border-radius:5px;font-family:'Courier New',Courier,monospace;font-size:.9em;line-height:.6;white-space:pre;overflow-x:auto}.code-line{display:block;transition:background-color .3s ease;border-radius:3px;padding:0 5px;margin:0}.highlight-line{background-color:#555;color:#fff;font-weight:700}
-        button,label,input[type=range],input[type=number]{padding:8px 12px;font-size:14px;cursor:pointer}label{cursor:default}
-        #visualization-area{width:95%;max-width:1000px;display:flex;flex-direction:column;align-items:center;margin-bottom:20px}#tree-visualization{width:100%;height:250px;margin-bottom:15px;border:1px solid #b0b0b0;background-color:#fdfdfd;overflow:auto}#array-visualization{width:100%;display:flex;flex-direction:column;align-items:center}#visualization-container{display:flex;align-items:flex-end;height:200px;width:100%;margin-top:10px;padding:10px;border:1px solid #ccc;background-color:#fff;box-shadow:2px 2px 5px rgba(0,0,0,.1);min-height:100px;overflow-x:auto;position:relative;box-sizing:border-box}#indices-container{display:flex;align-items:flex-start;height:20px;width:100%;padding:0 10px;box-sizing:border-box;margin-top:5px;overflow:hidden}
-        .tree-node{transition:fill .3s ease,stroke .3s ease}.tree-node-pending{fill:#f0f0f0;stroke:#ccc}.tree-node-active{fill:#fffacd;stroke:orange;stroke-width:3}.tree-node-partitioned{fill:#add8e6;stroke:#4682b4}.tree-node-completed{fill:#90ee90;stroke:#2e8b57}.tree-edge{stroke:#888;stroke-width:1.5}.node-text{font-size:11px;font-family:sans-serif;text-anchor:middle;dominant-baseline:middle;pointer-events:none;fill:#333}
-        .bar{display:inline-block;background-color:steelblue;margin:0 1px;width:20px;position:relative;bottom:0;transition:background-color .3s ease,height .3s ease,border .2s ease;overflow:visible;flex-shrink:0;box-sizing:border-box}.index-label{display:inline-block;text-align:center;font-size:11px;color:#333;margin:0 1px;width:20px;line-height:20px;flex-shrink:0}.bar-value{position:absolute;top:-20px;left:50%;transform:translateX(-50%);font-size:11px;color:#222;background-color:rgba(255,255,255,.7);padding:3px 6px;border-radius:2px;white-space:nowrap;z-index:5}.bar::after{content:attr(data-value);position:absolute;top:-20px;left:50%;transform:translateX(-50%);background-color:rgba(0,0,0,.8);color:#fff;padding:3px 6px;border-radius:3px;font-size:12px;white-space:nowrap;opacity:0;visibility:hidden;transition:opacity .2s,visibility .2s;z-index:15}.bar:hover::after{opacity:1;visibility:visible}
-        .bar-active-subarray{background-color:#e8e8e8 !important}.bar-pivot-final{background-color:cyan !important;border:1px solid navy}.bar-partitioned-lt{background-color:lightgreen !important}.bar-partitioned-gt{background-color:lightsalmon !important}.bar-fully-sorted{background-color:mediumseagreen !important;border:none}
+        /* --- ESTILOS CSS GENERALES --- */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
 
+        h1,
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+        #visualization-container {
+            position: relative;
+            /* Aumentado margen inferior para los punteros */
+            margin-bottom: 10px;
+            /* Ajustado de 85px */
+            height: 680px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            overflow: hidden;
+        }
+
+        #array-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 70%;
+            width: 100%;
+            position: relative;
+            gap: 2px;
+            padding-bottom: 25px;
+            box-sizing: border-box;
+            bottom: 70px;
+        }
+
+        /* --- ESTILOS BARRAS DEL ARRAY --- */
+        .bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-color: steelblue;
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            position: relative;
+            transition: background-color 0.3s ease, height 0.3s ease, outline 0.15s ease-in-out, transform 0.5s ease-in-out, opacity 0.4s ease;
+            box-sizing: border-box;
+            border: 1px solid #eee;
+            outline: 2px solid transparent;
+            outline-offset: -2px;
+            transform-origin: bottom;
+        }
+
+        .bar-value {
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            padding-bottom: 5px;
+            z-index: 1;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        /* --- ESTILOS ÍNDICES DEL ARRAY --- */
+        #index-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            bottom: 80px;
+            left: 10px;
+            right: 10px;
+            height: 20px;
+            gap: 2px;
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        .index-label {
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* --- ESTILOS ESTADOS VISUALES DE BARRAS --- */
+        .bar.bar-inactive {
+            opacity: 0.3;
+        }
+
+        .bar.bar-inactive:not(.bar-pivot-processing):not(.bar-pivot-finalized) {
+            background-color: lightgray !important;
+        }
+
+        .bar.bar-inactive .bar-value {
+            color: #555;
+            text-shadow: none;
+        }
+
+        .bar.bar-partitioned-left {
+            background-color: mediumseagreen;
+        }
+
+        .bar.bar-partitioned-right {
+            background-color: lightcoral;
+        }
+
+        .bar.bar-comparing-i {
+            background-color: rgba(255, 165, 0, 0.9) !important;
+        }
+
+        .bar.bar-red-border {
+            outline: 3px solid red !important;
+            z-index: 10;
+        }
+
+        .bar.bar-flash-off {
+            outline-color: transparent !important;
+        }
+
+        .bar.bar-pivot-processing {
+            background-color: mediumpurple !important;
+            color: black !important;
+            opacity: 1 !important;
+        }
+
+        .bar.bar-pivot-finalized {
+            background-color: darkorchid !important;
+            color: white !important;
+            opacity: 1 !important;
+        }
+
+        /* --- ESTILOS PUNTEROS Y MARCADORES --- */
+        #pointers-container {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            width: 100%;
+            height: 65px;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        .pointer,
+        .marker {
+            position: absolute;
+            transform: translateX(-50%);
+            background-color: rgba(50, 50, 50, 0.8);
+            color: white;
+            padding: 1px 4px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: left 0.4s ease-in-out, visibility 0s linear 0s;
+            visibility: hidden;
+            z-index: 20;
+            min-width: 20px;
+            text-align: center;
+        }
+
+        .pointer::before,
+        .marker::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -7px;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 5px solid transparent;
+            border-right: 5px solid transparent;
+        }
+
+        #pointerAuxIzq {
+            background-color: #3b82f6;
+            bottom: 44px;
+            z-index: 22;
+        }
+
+        #pointerAuxIzq::before {
+            border-bottom: 7px solid #3b82f6;
+        }
+
+        #pointerAuxDer {
+            background-color: #ef4444;
+            bottom: 44px;
+            z-index: 22;
+        }
+
+        #pointerAuxDer::before {
+            border-bottom: 7px solid #ef4444;
+        }
+
+        #pointerI {
+            background-color: rgba(255, 165, 0, 0.9);
+            bottom: 22px;
+            z-index: 21;
+        }
+
+        #pointerI::before {
+            border-bottom: 7px solid rgba(255, 165, 0, 0.9);
+        }
+
+        #pointerP {
+            background-color: mediumvioletred;
+            bottom: 0px;
+            z-index: 21;
+        }
+
+        #pointerP::before {
+            border-bottom: 7px solid mediumvioletred;
+        }
+
+        #markerCen {
+            background-color: darkorchid;
+            bottom: 0px;
+            z-index: 20;
+        }
+
+        #markerCen::before {
+            border-bottom: 7px solid darkorchid;
+        }
+
+        /* --- ESTILOS CONTROLES Y CÓDIGO --- */
+        /* ... (Resto de CSS sin cambios) ... */
+        #controls-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #eee;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #controls-container button {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f8f8;
+            color: #333;
+            font-size: 14px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        #controls-container button:hover:not(:disabled) {
+            background-color: #e0e0e0;
+            border-color: #aaa;
+        }
+
+        #controls-container button:disabled {
+            background-color: #cccccc;
+            color: #888;
+            cursor: not-allowed;
+            border-color: #bbb;
+        }
+
+        #start-pause-btn {
+            background-color: #60a5fa;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        #step-btn {
+            background-color: #fbbf24;
+            color: white;
+            border-color: #f59e0b;
+        }
+
+        #reset-btn {
+            background-color: #f87171;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .size-control label {
+            margin-right: 5px;
+        }
+
+        .size-control span {
+            min-width: 25px;
+            text-align: center;
+            padding: 5px 8px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .size-control button {
+            font-weight: bold;
+            padding: 4px 8px;
+            font-weight: bold;
+            min-width: 25px;
+        }
+
+        .speed-control label {
+            margin-right: 5px;
+        }
+
+        .speed-control input[type="range"] {
+            cursor: pointer;
+            width: 100px;
+        }
+
+        #code-container {
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #2d2d2d;
+            color: #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            line-height: 1;
+            overflow-x: auto;
+        }
+
+        #code-container h2 {
+            color: #eee;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+
+        #code-listing span[data-line] {
+            padding: 2px 0;
+            display: inline-block;
+            width: 100%;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+            line-height: normal;
+            white-space: pre;
+        }
+
+        #code-listing span[data-line].highlight-line {
+            background-color: rgba(255, 255, 100, 0.25);
+        }
+
+        #code-listing .syntax-keyword {
+            color: #569cd6;
+        }
+
+        #code-listing .syntax-type {
+            color: #4ec9b0;
+        }
+
+        #code-listing .syntax-function {
+            color: #dcdcaa;
+        }
+
+        #code-listing .syntax-operator {
+            color: #b5cea8;
+        }
+
+        #code-listing .syntax-comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        #code-listing .syntax-variable {
+            color: #9cdcfe;
+        }
     </style>
 </head>
+
 <body>
-
-    <h1>Visualización Quicksort (Árbol Recursivo)</h1>
-
-    <div id="controls">
-        <button id="btn-reset">Generar Nuevo Array</button>
-        <button id="btn-manual-input">Introducir</button>
-        <label for="array-size">Tamaño:</label>
-        <!-- 1. Quitar readonly -->
-        <input type="number" id="array-size" value="15" min="5" max="40" step="1">
-         <label for="speed">Velocidad:</label>
-        <input type="range" id="speed" min="50" max="1000" value="500" step="50">
-        <button id="btn-start">Iniciar Quicksort</button>
-        <button id="btn-step">Paso Siguiente</button>
-        <button id="btn-pause" disabled>Pausar</button>
-    </div>
-
-    <div id="visualization-area">
-        <div id="tree-visualization">
-            <svg id="tree-svg" width="100%" height="100%" style="min-width: 600px;"></svg>
-        </div>
-        <div id="array-visualization">
-            <div id="visualization-container"></div>
-            <div id="indices-container"></div>
+    <h1>Visualización Quicksort</h1>
+    <div id="visualization-container">
+        <div id="array-container"></div>
+        <div id="index-container"></div>
+        <div id="pointers-container">
+            <div class="pointer" id="pointerAuxIzq">izq</div>
+            <div class="pointer" id="pointerAuxDer">der</div>
+            <div class="pointer" id="pointerI">i</div>
+            <div class="pointer" id="pointerP">p</div>
+            <div class="marker" id="markerCen">cen</div>
         </div>
     </div>
-
-    <div id="status">Listo para empezar. Genera un array o introduce valores.</div>
-    <div id="explanation">Visualización de las llamadas recursivas y el resultado de la partición en Quicksort.</div>
-
-    <div id="code-area">
-        <h2>Código del Algoritmo (Scala):</h2>
-        <div id="code-container">
-             <code id="code-display">
-<span id="line-qs-1" class="code-line">def quickSort[A](xs: Array[A])(using ord: Ordering[A]): Unit =</span>
-<span id="line-qs-2" class="code-line">  import ord.*</span>
-<span id="line-qs-3" class="code-line"> </span>
-<span id="line-qs-4" class="code-line">  def aux(izq: Int, der: Int): Unit =</span>
-<span id="line-qs-5" class="code-line">    if izq < der then</span>
-<span id="line-qs-6" class="code-line">      // --- Partición (Simulada) ---</span>
-<span id="line-qs-7" class="code-line">      val posPivot = parte(izq, der)</span>
-<span id="line-qs-8" class="code-line">      // ---------------------------</span>
-<span id="line-qs-9" class="code-line">      aux(izq, posPivot - 1)</span>
-<span id="line-qs-10" class="code-line">      aux(posPivot + 1, der)</span>
-<span id="line-qs-11" class="code-line">    // else: Caso base (izq >= der)</span>
-<span id="line-qs-12" class="code-line"></span>
-<span id="line-qs-13" class="code-line"> // Llamada inicial</span>
-<span id="line-qs-14" class="code-line"> aux(0, xs.length - 1)</span>
-            </code>
-        </div>
+    <div id="controls-container">
+        <div class="control-group"> <button id="start-pause-btn">Iniciar</button> 
+            <!-- <button id="step-btn">Paso Siguiente</button> -->
+            <button id="reset-btn">Resetear</button> </div> 
+        <div class="control-group speed-control"> <label for="speed-slider">Velocidad:</label> <input type="range"
+                id="speed-slider" min="0" max="100" value="50"> </div>
+        <div class="control-group size-control"> <label>Tamaño:</label> <button id="decrease-size-btn">-</button> <span
+                id="size-display">11</span> <button id="increase-size-btn">+</button> </div>
+        <div class="control-group"> <button id="random-array-btn">Generar</button> <button
+                id="manual-input-btn">Introducir Datos</button> </div>
+    </div>
+    <div id="code-container">
+        <h2>Algoritmo (Scala):</h2>
+        <pre><code id="code-listing">
+ <span data-line="L0"><span class="syntax-keyword">def</span> <span class="syntax-function">quickSort</span>[<span class="syntax-type">A</span>](<span class="syntax-variable">xs</span>: <span class="syntax-type">Array</span>[<span class="syntax-type">A</span>])(<span class="syntax-keyword">using</span> <span class="syntax-variable">ord</span>: <span class="syntax-type">Ordering</span>[<span class="syntax-type">A</span>]): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span></span>
+ <span data-line="L2">  <span class="syntax-keyword">import</span> <span class="syntax-variable">ord</span>.<span class="syntax-operator">*</span></span>
+ <span data-line="L3">  </span>
+ <span data-line="P0"><span class="syntax-keyword">  def</span> <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">p1</span>: <span class="syntax-type">Int</span>, <span class="syntax-variable">p2</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span><span class="syntax-comment"> ... </span></span>
+ <span data-line="P1">  </span>
+ <span data-line="P2"><span class="syntax-keyword">  def</span> <span class="syntax-function">parte</span>(<span class="syntax-variable">izq</span>: <span class="syntax-type">Int</span>, <span class="syntax-variable">der</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Int</span> <span class="syntax-operator">=</span></span>
+ <span data-line="P3">    <span class="syntax-keyword">val</span> <span class="syntax-variable">cen</span> <span class="syntax-operator">=</span> <span class="syntax-variable">izq</span> <span class="syntax-operator">+</span> (<span class="syntax-variable">der</span> <span class="syntax-operator">-</span> <span class="syntax-variable">izq</span>) <span class="syntax-operator">/</span> 2</span>
+ <span data-line="P4">    <span class="syntax-keyword">val</span> <span class="syntax-variable">pivot</span> <span class="syntax-operator">=</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">cen</span>)</span>
+ <span data-line="P5">    <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">cen</span>, <span class="syntax-variable">der</span>)</span>
+ <span data-line="P6">    <span class="syntax-keyword">var</span> <span class="syntax-variable">p</span> <span class="syntax-operator">=</span> <span class="syntax-variable">izq</span></span>
+ <span data-line="P7">    <span class="syntax-keyword">for</span> <span class="syntax-variable">i</span> <span class="syntax-operator">&lt;-</span> <span class="syntax-variable">izq</span> <span class="syntax-keyword">until</span> <span class="syntax-variable">der</span> <span class="syntax-keyword">do</span></span>
+ <span data-line="P8">      <span class="syntax-keyword">if</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">i</span>) <span class="syntax-operator">&lt;=</span> <span class="syntax-variable">pivot</span> <span class="syntax-keyword">then</span></span>
+ <span data-line="P9">        <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">i</span>, <span class="syntax-variable">p</span>)</span>
+ <span data-line="P10">        <span class="syntax-variable">p</span> <span class="syntax-operator">+=</span> 1</span>
+ <span data-line="P11">    <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">p</span>, <span class="syntax-variable">der</span>)</span>
+ <span data-line="P12">    <span class="syntax-variable">p</span></span>
+ <span data-line="P13">  </span>
+ <span data-line="A0"><span class="syntax-keyword">  def</span> <span class="syntax-function">aux</span>(<span class="syntax-variable">izq</span>: <span class="syntax-type">Int</span>, <span class="syntax-variable">der</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span></span>
+ <span data-line="A1">    <span class="syntax-keyword">if</span> <span class="syntax-variable">izq</span> <span class="syntax-operator">&lt;</span> <span class="syntax-variable">der</span> <span class="syntax-keyword">then</span></span>
+ <span data-line="A2">      <span class="syntax-keyword">val</span> <span class="syntax-variable">posPivot</span> <span class="syntax-operator">=</span> <span class="syntax-function">parte</span>(<span class="syntax-variable">izq</span>, <span class="syntax-variable">der</span>)</span>
+ <span data-line="A3">      <span class="syntax-function">aux</span>(<span class="syntax-variable">izq</span>, <span class="syntax-variable">posPivot</span> <span class="syntax-operator">-</span> 1)   <span class="syntax-comment">// ordenar elementos menores</span></span>
+ <span data-line="A4">      <span class="syntax-function">aux</span>(<span class="syntax-variable">posPivot</span> <span class="syntax-operator">+</span> 1, <span class="syntax-variable">der</span>)   <span class="syntax-comment">// ordenar elementos mayores</span></span>
+ <span data-line="A5">  <span class="syntax-comment">  // else: caso base (izq >= der)</span></span>
+ <span data-line="A6">  </span>
+ <span data-line="L4">  <span class="syntax-function">aux</span>(0, <span class="syntax-variable">xs</span>.<span class="syntax-variable">length</span> <span class="syntax-operator">-</span> 1)        <span class="syntax-comment">// llamada inicial</span></span>
+         </code></pre>
     </div>
 
     <script>
-        // --- Variables Globales (sin cambios) ---
-        var arraySizeInput = document.getElementById('array-size'); var visualizationContainer = document.getElementById('visualization-container'); var indicesContainer = document.getElementById('indices-container'); var treeSvg = document.getElementById('tree-svg'); var codeDisplay = document.getElementById('code-display'); var statusDiv = document.getElementById('status'); var explanationDiv = document.getElementById('explanation'); var speedSlider = document.getElementById('speed'); var btnReset = document.getElementById('btn-reset'); var btnStart = document.getElementById('btn-start'); var btnStep = document.getElementById('btn-step'); var btnPause = document.getElementById('btn-pause'); var btnManualInput = document.getElementById('btn-manual-input');
-        if (!visualizationContainer || !indicesContainer || !treeSvg || !statusDiv || !explanationDiv || !btnStart || !btnManualInput) { console.error("FATAL: Elementos DOM no encontrados."); if (statusDiv) statusDiv.textContent = "Error crítico."; }
-        var array = []; var callStack = []; var treeNodes = {}; var nextNodeId = 0; var currentIzq = -1, currentDer = -1, currentNodeId = -1; var currentPivot = -1; var sortedStatus = []; var isSorting = false, isPaused = false, isStepMode = false, timeoutId = null, currentStepAction = null, delay = 500, animationDuration = 100; var currentHighlightedLine = null, currentBarWidth = 20, currentBarMargin = 1; var lastHighlightInfo = null;
-        const NODE_WIDTH = 60; const NODE_HEIGHT = 30; const LEVEL_HEIGHT = 60; const HORIZ_SPACING_FACTOR = 1.2;
+        // Envoltura IIFE
+        (function () {
 
-        // --- Funciones Algoritmo (sin cambios) ---
-        function intercambiar(p1, p2) { var temp = array[p1]; array[p1] = array[p2]; array[p2] = temp; }
-        function simulatePartition(izq, der) { if (izq >= der) return izq; let cen = izq + Math.floor((der - izq) / 2); let pivotValue = array[cen]; intercambiar(cen, der); let p = izq; for (let i = izq; i < der; i++) { if (array[i] <= pivotValue) { intercambiar(i, p); p++; } } intercambiar(p, der); return p; }
+            // --- Selección de Elementos DOM ---
+            const arrayContainer = document.getElementById('array-container');
+            const indexContainer = document.getElementById('index-container');
+            const pointersContainer = document.getElementById('pointers-container');
+            const pointerAuxIzq = document.getElementById('pointerAuxIzq');
+            // NUEVO
+            const pointerAuxDer = document.getElementById('pointerAuxDer');
+            // NUEVO
+            const pointerI = document.getElementById('pointerI');
+            const pointerP = document.getElementById('pointerP');
+            const markerCen = document.getElementById('markerCen');
+            const codeListing = document.getElementById('code-listing');
+            const codeLines = codeListing.querySelectorAll('span[data-line]');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            // const stepBtn = document.getElementById('step-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const decreaseSizeBtn = document.getElementById('decrease-size-btn');
+            const increaseSizeBtn = document.getElementById('increase-size-btn');
+            const sizeDisplay = document.getElementById('size-display');
+            const randomArrayBtn = document.getElementById('random-array-btn');
+            const manualInputBtn = document.getElementById('manual-input-btn');
 
-        // --- Funciones de Control del Algoritmo (sin cambios) ---
-        function quickSortStep() { if (!isSorting || (isPaused && !isStepMode)) return; if (isStepMode && timeoutId) { clearTimeout(timeoutId); timeoutId = null; } clearTimeout(timeoutId); timeoutId = null; if (currentStepAction) { currentStepAction(); } else { if (callStack.length === 0 && currentNodeId === -1) { finishSort(); } else { currentStepAction = processNextNode; quickSortStep(); } } if (isSorting && !isPaused && !isStepMode && currentStepAction && !timeoutId) { timeoutId = setTimeout(quickSortStep, delay); } if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
-        function startQuickSortTree() { highlightCodeLine('line-qs-14'); callStack = []; treeNodes = {}; nextNodeId = 0; sortedStatus = new Array(array.length).fill(false); currentIzq = -1; currentDer = -1; currentNodeId = -1; currentPivot = -1; treeSvg.innerHTML = ''; if (array.length > 0) { let rootId = createTreeNode(0, array.length - 1, null, 0); callStack.push([0, array.length - 1, rootId]); treeNodes[rootId].status = 'pending'; drawTree(); statusDiv.textContent = "Iniciando Quicksort."; explanationDiv.textContent = `Añadido nodo raíz [0, ${array.length - 1}] a la pila.`; } else { statusDiv.textContent = "Array vacío."; explanationDiv.textContent = ""; } currentStepAction = processNextNode; if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(quickSortStep, delay * 0.5); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
-        function processNextNode() { highlightCodeLine('line-qs-4'); if (callStack.length === 0) { currentStepAction = null; finishSort(); return; } [currentIzq, currentDer, currentNodeId] = callStack.pop(); currentPivot = -1; treeNodes[currentNodeId].status = 'active'; statusDiv.textContent = `Procesando nodo ${currentNodeId}: [${currentIzq}, ${currentDer}].`; explanationDiv.textContent = `Resaltando rango en árbol y barras...`; drawTree(); drawArray({ type: 'show_subarray', izq: currentIzq, der: currentDer }); lastHighlightInfo = { type: 'show_subarray', izq: currentIzq, der: currentDer }; timeoutId = setTimeout(() => { if (!isSorting) return; highlightCodeLine('line-qs-5'); statusDiv.textContent = `Evaluando if ${currentIzq} < ${currentDer}.`; if (currentIzq < currentDer) { explanationDiv.textContent = `Verdadero. Se particionará [${currentIzq}, ${currentDer}].`; currentStepAction = performPartitionTree; } else { explanationDiv.textContent = `Falso (Caso Base). Nodo ${currentNodeId}: [${currentIzq}, ${currentDer}] completado.`; highlightCodeLine('line-qs-11'); treeNodes[currentNodeId].status = 'completed'; markSubArraySorted(currentIzq, currentDer); currentStepAction = processNextNode; } if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(quickSortStep, delay); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }, isStepMode ? 50 : delay * 0.8); }
-        function performPartitionTree() { highlightCodeLine('line-qs-7'); statusDiv.textContent = `Nodo ${currentNodeId}: Particionando [${currentIzq}, ${currentDer}]... (Simulado)`; explanationDiv.textContent = `Llamada simulada a 'parte'.`; currentPivot = simulatePartition(currentIzq, currentDer); treeNodes[currentNodeId].pivotPos = currentPivot; treeNodes[currentNodeId].status = 'partitioned'; if(currentPivot >= 0 && currentPivot < sortedStatus.length) { sortedStatus[currentPivot] = true; } drawArray({ type: 'partition_done', izq: currentIzq, der: currentDer, pivot: currentPivot }); lastHighlightInfo = { type: 'partition_done', izq: currentIzq, der: currentDer, pivot: currentPivot }; drawTree(); statusDiv.textContent = `Nodo ${currentNodeId}: Partición completada.`; explanationDiv.textContent = `Pivote final en ${currentPivot}. Preparando llamadas recursivas.`; timeoutId = setTimeout(() => { if (!isSorting) return; currentStepAction = createAndPushChildren; if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(quickSortStep, delay * 1.1); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }, isStepMode ? 50 : delay * 1.1); }
-        function createAndPushChildren() { let parentNode = treeNodes[currentNodeId]; let leftId = null, rightId = null; let rightIzq = currentPivot + 1; let rightDer = currentDer; let leftIzq = currentIzq; let leftDer = currentPivot - 1; statusDiv.textContent = `Nodo ${currentNodeId}: Creando y añadiendo hijos a la pila.`; explanationDiv.textContent = ""; if (rightIzq < rightDer) { highlightCodeLine('line-qs-10'); rightId = createTreeNode(rightIzq, rightDer, currentNodeId, parentNode.depth + 1); treeNodes[rightId].status = 'pending'; callStack.push([rightIzq, rightDer, rightId]); explanationDiv.textContent += `Añadido hijo derecho [${rightIzq}, ${rightDer}] (Nodo ${rightId}). `; } else { markSubArraySorted(rightIzq, rightDer); explanationDiv.textContent += `Rango derecho [${rightIzq}, ${rightDer}] es caso base. `; } if (leftIzq < leftDer) { highlightCodeLine('line-qs-9'); leftId = createTreeNode(leftIzq, leftDer, currentNodeId, parentNode.depth + 1); treeNodes[leftId].status = 'pending'; callStack.push([leftIzq, leftDer, leftId]); explanationDiv.textContent += `Añadido hijo izquierdo [${leftIzq}, ${leftDer}] (Nodo ${leftId}). `; } else { markSubArraySorted(leftIzq, leftDer); explanationDiv.textContent += `Rango izquierdo [${leftIzq}, ${leftDer}] es caso base. `; } parentNode.childrenIds = [leftId, rightId]; drawTree(); currentIzq = -1; currentDer = -1; currentNodeId = -1; currentPivot = -1; drawArray({ type: 'subproblems_pushed' }); lastHighlightInfo = { type: 'subproblems_pushed' }; currentStepAction = processNextNode; if (isSorting && !isPaused && !isStepMode) { timeoutId = setTimeout(quickSortStep, delay * 0.8); } else if (isStepMode) { isPaused = true; isStepMode = false; updateButtonStates(); } }
-        function createTreeNode(izq, der, parentId, depth) { const id = nextNodeId++; treeNodes[id] = { id: id, izq: izq, der: der, parentId: parentId, childrenIds: [null, null], status: 'pending', depth: depth, x: 0, y: 0, pivotPos: -1 }; return id; }
-        function markSubArraySorted(izq, der) { for (let k = izq; k <= der; k++) { if (k >= 0 && k < sortedStatus.length) { sortedStatus[k] = true; } } drawArray(lastHighlightInfo ? {...lastHighlightInfo, type: 'marked_sorted'} : { type: 'marked_sorted' }); }
+            // --- Variables de Estado Globales ---
+            let array = [];
+            let originalArray = [];
+            let bars = [];
+            let timeouts = [];
+            let animationSpeed = 500;
+            let arraySize = 11;
+            const minSize = 3;
+            const maxSize = 30;
+            const riseAmountPerLevel = 35;
+            let state = getDefaultState();
+            let partitionState = getPartitionDefaultState();
+            const POINTER_ANIMATION_DURATION = 400;
 
-        // --- Funciones de Visualización (sin cambios) ---
-        function drawArray(highlightInfo) { if (!visualizationContainer || !indicesContainer) return; var containerHeight = visualizationContainer.clientHeight; var containerWidth = visualizationContainer.clientWidth; var effectiveWidth = containerWidth - parseFloat(getComputedStyle(visualizationContainer).paddingLeft) - parseFloat(getComputedStyle(visualizationContainer).paddingRight); var effectiveHeight = containerHeight - parseFloat(getComputedStyle(visualizationContainer).paddingTop) - parseFloat(getComputedStyle(visualizationContainer).paddingBottom); if (effectiveHeight <= 0) effectiveHeight = 100; if (effectiveWidth <= 0) effectiveWidth = 500; visualizationContainer.innerHTML = ''; indicesContainer.innerHTML = ''; if (!array || array.length === 0) return; var maxValue = 0; for (let k = 0; k < array.length; k++) { if (typeof array[k] === 'number' && !isNaN(array[k]) && array[k] > maxValue) maxValue = array[k]; } if (maxValue <= 0) maxValue = 1; var calculatedWidth = Math.floor(effectiveWidth / array.length); currentBarMargin = 1; currentBarWidth = Math.max(3, calculatedWidth - (currentBarMargin * 2)); if (array.length > 40) { currentBarMargin = 0.5; currentBarWidth = Math.max(1, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); } else if (array.length > 30) { currentBarMargin = 0.5; currentBarWidth = Math.max(2, Math.floor(effectiveWidth / array.length) - (currentBarMargin*2)); } for (var k = 0; k < array.length; k++) { if (typeof array[k] !== 'number' || isNaN(array[k])) continue; var bar = document.createElement('div'); bar.className = 'bar'; var barHeight = Math.max(5, (array[k] / maxValue) * effectiveHeight); bar.style.height = barHeight + 'px'; bar.style.width = currentBarWidth + 'px'; bar.style.marginLeft = currentBarMargin + 'px'; bar.style.marginRight = currentBarMargin + 'px'; bar.setAttribute('data-value', array[k]); var valueSpan = document.createElement('span'); valueSpan.className = 'bar-value'; valueSpan.textContent = array[k]; bar.appendChild(valueSpan); var indexLabel = document.createElement('span'); indexLabel.className = 'index-label'; indexLabel.textContent = k; indexLabel.style.width = currentBarWidth + 'px'; indexLabel.style.marginLeft = currentBarMargin + 'px'; indexLabel.style.marginRight = currentBarMargin + 'px'; const infoType = highlightInfo ? highlightInfo.type : null; if (sortedStatus[k]) { bar.classList.add('bar-fully-sorted'); } else if (isSorting || isPaused) { const currentIzqB = highlightInfo?.izq ?? -1; const currentDerB = highlightInfo?.der ?? -1; const currentPivotB = highlightInfo?.pivot ?? -1; const isInActiveRange = k >= currentIzqB && k <= currentDerB; if (infoType === 'show_subarray' && isInActiveRange) { bar.classList.add('bar-active-subarray'); } else if (infoType === 'partition_done' && isInActiveRange) { if (k === currentPivotB) bar.classList.add('bar-pivot-final'); else if (k < currentPivotB) bar.classList.add('bar-partitioned-lt'); else bar.classList.add('bar-partitioned-gt'); } } visualizationContainer.appendChild(bar); indicesContainer.appendChild(indexLabel); } }
-        function drawTree() { treeSvg.innerHTML = ''; const svgWidth = treeSvg.clientWidth || 600; const nodesAtDepth = {}; let maxDepth = 0; for (const id in treeNodes) { const node = treeNodes[id]; node.y = (node.depth + 0.5) * LEVEL_HEIGHT; maxDepth = Math.max(maxDepth, node.depth); if (!nodesAtDepth[node.depth]) { nodesAtDepth[node.depth] = []; } nodesAtDepth[node.depth].push(node); } for (let depth = 0; depth <= maxDepth; depth++) { if (!nodesAtDepth[depth]) continue; const levelNodes = nodesAtDepth[depth]; const levelWidth = levelNodes.length * NODE_WIDTH * HORIZ_SPACING_FACTOR; const startX = (svgWidth - levelWidth) / 2; levelNodes.sort((a,b) => a.izq - b.izq); for(let i = 0; i < levelNodes.length; i++) { const node = levelNodes[i]; node.x = startX + (i + 0.5) * NODE_WIDTH * HORIZ_SPACING_FACTOR; } } for (const id in treeNodes) { const node = treeNodes[id]; if (node.parentId !== null && treeNodes[node.parentId]) { const parent = treeNodes[node.parentId]; drawTreeEdge(parent.x, parent.y + NODE_HEIGHT / 2, node.x, node.y - NODE_HEIGHT / 2); } } for (const id in treeNodes) { drawTreeNode(treeNodes[id]); } const requiredHeight = (maxDepth + 1.5) * LEVEL_HEIGHT; treeSvg.setAttribute('viewBox', `0 0 ${svgWidth} ${Math.max(treeSvg.clientHeight || 250, requiredHeight)}`); }
-        function drawTreeNode(node) { const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect'); rect.setAttribute('x', node.x - NODE_WIDTH / 2); rect.setAttribute('y', node.y - NODE_HEIGHT / 2); rect.setAttribute('width', NODE_WIDTH); rect.setAttribute('height', NODE_HEIGHT); rect.setAttribute('rx', 3); rect.setAttribute('ry', 3); rect.classList.add('tree-node'); rect.classList.add(`tree-node-${node.status}`); rect.id = `node-${node.id}`; treeSvg.appendChild(rect); const text = document.createElementNS('http://www.w3.org/2000/svg', 'text'); text.setAttribute('x', node.x); text.setAttribute('y', node.y); text.classList.add('node-text'); if (node.status === 'completed') { text.textContent = '✓'; text.style.fontSize = '16px'; text.style.fill = 'darkgreen'; } else { text.textContent = `[${node.izq}, ${node.der}]`; } treeSvg.appendChild(text); }
-        function drawTreeEdge(x1, y1, x2, y2) { const line = document.createElementNS('http://www.w3.org/2000/svg', 'line'); line.setAttribute('x1', x1); line.setAttribute('y1', y1); line.setAttribute('x2', x2); line.setAttribute('y2', y2); line.classList.add('tree-edge'); treeSvg.appendChild(line); }
-        function highlightState(highlightInfo) { drawArray(highlightInfo); }
-        function highlightFinalSortedState() { drawArray({ type: 'final' }); }
-        function highlightCodeLine(lineId) { /* Sin cambios */ if (currentHighlightedLine) { var prevLine = document.getElementById(currentHighlightedLine); if (prevLine) prevLine.classList.remove('highlight-line'); } if (lineId !== null) { var currentLine = document.getElementById(lineId); if (currentLine) { currentLine.classList.add('highlight-line'); currentHighlightedLine = lineId; } else { console.warn("highlightCodeLine: Línea no encontrada -", lineId); currentHighlightedLine = null; } } else { currentHighlightedLine = null; } }
+            function getDefaultState() {
+                return { callStack: [], isPivotFinalized: [], elementDepth: [], isRunning: false, isPaused: false, isFinished: true, isSwapping: false, currentLine: null, };
+            }
+            function getPartitionDefaultState() {
+                return { active: false, izq: -1, der: -1, cen: -1, pivotValue: null, pivotOriginalIndex: -1, pivotCurrentIndex: -1, pivotIdentified: false, p: -1, i: -1, phase: 'idle', finalPivotPos: -1, isSwappingVisual: false, flashOff: false, swapIdx1: -1, swapIdx2: -1 };
+            }
 
-        // --- Funciones de Control General (sin cambios) ---
-        function generateArray() { console.log("generateArray"); if (!arraySizeInput) return; var size = parseInt(arraySizeInput.value, 10); if (isNaN(size) || size < 5 || size > 40) { alert("Tamaño entre 5 y 40."); size = 15; arraySizeInput.value = size; } array = []; for (let k = 0; k < size; k++) { array.push(Math.floor(Math.random() * 100) + 1); } sortedStatus = new Array(array.length).fill(false); resetQuickSortState(); drawArray(null); drawTree(); if (statusDiv) statusDiv.textContent = "Nuevo array. Pulsa Iniciar."; if (explanationDiv) explanationDiv.textContent = "Visualización de Quicksort."; highlightCodeLine(null); }
-        function promptForManualArray() { if (isSorting && !isPaused) { alert("Detén o pausa la animación."); return; } const userInput = prompt("Valores separados por comas:", array.join(', ')); if (userInput === null) return; const parsedInput = userInput.split(/[\s,]+/).filter(s => s.trim() !== '').map(s => parseInt(s.trim(), 10)); if (parsedInput.length === 0 || parsedInput.some(isNaN)) { alert("Entrada inválida."); return; } if (parsedInput.length < 5 || parsedInput.length > 40) { alert(`Tamaño entre 5 y 40. Introducidos: ${parsedInput.length}.`); return; } array = parsedInput; sortedStatus = new Array(array.length).fill(false); resetQuickSortState(); drawArray(null); drawTree(); if (statusDiv) statusDiv.textContent = "Array manual cargado."; if (explanationDiv) explanationDiv.textContent = "Visualización de Quicksort."; highlightCodeLine(null); if(arraySizeInput) arraySizeInput.value = array.length; }
-        function resetQuickSortState() { console.log("resetQuickSortState"); callStack = []; treeNodes = {}; nextNodeId = 0; currentIzq = -1; currentDer = -1; currentNodeId = -1; currentPivot = -1; isSorting = false; isPaused = false; isStepMode = false; currentStepAction = null; lastHighlightInfo = null; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } highlightCodeLine(null); updateButtonStates(); treeSvg.innerHTML = ''; }
-        function startAlgorithm() { console.log("startAlgorithm"); if (isSorting && !isPaused) return; if (!array || array.length === 0) { if(statusDiv) statusDiv.textContent="Genera un array."; return; } isSorting = true; isPaused = false; isStepMode = false; if (currentStepAction === null) { currentStepAction = startQuickSortTree; } if (statusDiv) statusDiv.textContent = "Iniciando Quicksort..."; updateButtonStates(); quickSortStep(); }
-        function pauseAlgorithm() { console.log("pauseAlgorithm"); if (!isSorting || isPaused) return; isPaused = true; isStepMode = false; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } if (statusDiv) statusDiv.textContent = "Pausado."; updateButtonStates(); }
-        function stepForward() { console.log("stepForward"); if (!array || array.length === 0) { if(statusDiv) statusDiv.textContent="Genera un array."; return; } if (!isSorting && currentStepAction === null && callStack.length === 0) { console.log("Reiniciando para paso a paso."); resetQuickSortState(); drawArray(null); drawTree(); sortedStatus = new Array(array.length).fill(false); } if (!isSorting || isPaused) { if (!isSorting || (currentStepAction === null && callStack.length === 0)) { resetQuickSortState(); sortedStatus = new Array(array.length).fill(false); currentStepAction = startQuickSortTree; } isSorting = true; isPaused = true; isStepMode = true; if(statusDiv) statusDiv.textContent = "Ejecutando paso..."; updateButtonStates(); quickSortStep(); } }
-        function finishSort() { console.log("finishSort"); isSorting = false; isPaused = false; isStepMode = false; currentStepAction = null; lastHighlightInfo = { type: 'final' }; if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; } sortedStatus = new Array(array.length).fill(true); highlightFinalSortedState(); for(const id in treeNodes) { treeNodes[id].status = 'completed'; } drawTree(); if (statusDiv) statusDiv.textContent = "¡Array Ordenado con Quicksort!"; if (explanationDiv) explanationDiv.textContent = ""; highlightCodeLine(null); updateButtonStates(); }
-        function updateButtonStates() { try { const running = isSorting && !isPaused; if(btnStart) btnStart.disabled = running; if(btnPause) btnPause.disabled = !isSorting || isPaused; if(btnStep) btnStep.disabled = running; if(btnReset) btnReset.disabled = running; if(btnManualInput) btnManualInput.disabled = running; if(speedSlider) speedSlider.disabled = running; } catch (e) { console.error("Error actualizando botones:", e); } }
+            // --- Inicialización y Configuración ---
+            function init() {
+                updateSizeDisplay();
+                setupEventListeners();
+                handleSpeedChange();
+                setTimeout(generateAndReset, 50);
+            }
+            function setupEventListeners() {
+                startPauseBtn.onclick = handleStartPause;
+                // stepBtn.onclick = () => requestStep(true);
+                resetBtn.onclick = resetAlgorithm;
+                speedSlider.oninput = handleSpeedChange;
+                randomArrayBtn.onclick = generateAndReset;
+                manualInputBtn.onclick = promptForArrayData;
+                increaseSizeBtn.onclick = incrementSize;
+                decreaseSizeBtn.onclick = decrementSize;
+            }
+            function calculateSpeed(sliderValue) {
+                const min = 50, max = 1500;
+                const norm = parseInt(sliderValue, 10) / 100;
+                return Math.round(max - norm * (max - min));
+            }
+            function updateSizeDisplay() {
+                sizeDisplay.textContent = arraySize;
+                increaseSizeBtn.disabled = arraySize >= maxSize;
+                decreaseSizeBtn.disabled = arraySize <= minSize;
+            }
+            function incrementSize() {
+                if (arraySize < maxSize) {
+                    arraySize++;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+            function decrementSize() {
+                if (arraySize > minSize) {
+                    arraySize--;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+            function generateAndReset() {
+                const newA = [];
+                for (let k = 0;
+                    k < arraySize;
+                    k++) {
+                        newA.push(Math.floor(Math.random() * 90) + 10);
+                } originalArray = newA.slice();
+                resetAlgorithm();
+            }
+            function promptForArrayData() {
+                const currentData = originalArray.join(',');
+                const input = prompt(`Introduce elementos separados por coma (${minSize}-${maxSize} elementos, 1-99):`, currentData);
+                if (input === null) return;
+                const parsed = input.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n > 0 && n < 100);
+                if (parsed.length < minSize || parsed.length > maxSize) {
+                    alert(`Entrada inválida. Se requieren entre ${minSize} y ${maxSize} números válidos (1-99).`);
+                    return;
+                } originalArray = parsed;
+                arraySize = originalArray.length;
+                updateSizeDisplay();
+                resetAlgorithm();
+            }
+            function resetAlgorithm() {
+                console.log("Reset Alg: Quicksort");
+                clearTimeouts();
+                state = getDefaultState();
+                partitionState = getPartitionDefaultState();
+                array = originalArray.slice();
+                state.isPivotFinalized = new Array(array.length).fill(false);
+                state.elementDepth = new Array(array.length).fill(0);
+                state.isFinished = true;
+                state.isRunning = false;
+                state.isPaused = false;
+                renderArray();
+                highlightCodeLine(null);
+                updateControls();
+                updateAllPointersAndMarkers(-1, -1);
+            }
 
-        // --- Event Listeners & Inicialización ---
-        if (btnReset) btnReset.addEventListener('click', generateArray); else console.warn("Botón Reset no encontrado.");
-        if (btnManualInput) btnManualInput.addEventListener('click', promptForManualArray); else console.warn("Botón Manual Input no encontrado.");
-        if (btnStart) btnStart.addEventListener('click', startAlgorithm); else console.warn("Botón Start no encontrado.");
-        if (btnPause) btnPause.addEventListener('click', pauseAlgorithm); else console.warn("Botón Pause no encontrado.");
-        if (btnStep) btnStep.addEventListener('click', stepForward); else console.warn("Botón Step no encontrado.");
-        if (speedSlider) { speedSlider.addEventListener('input', function() { delay = 1050 - parseInt(this.value, 10); /* animationDuration es casi irrelevante */ }); } else { console.warn("Slider velocidad no encontrado."); }
-        // 2. Reactivar listener para input de tamaño
-        if (arraySizeInput) { arraySizeInput.addEventListener('change', generateArray); } else { console.warn("Input tamaño no encontrado."); }
+            // --- Renderizado y Actualizaciones Visuales ---
+            function renderArray() {
+                arrayContainer.innerHTML = '';
+                if (indexContainer) indexContainer.innerHTML = '';
+                bars = [];
+                if (array.length === 0) return;
+                const maxV = Math.max(...array) || 1;
+                const currentCall = state.callStack.length > 0 ? state.callStack[state.callStack.length - 1] : null;
+                const activeIzq = currentCall ? currentCall.izq : -1;
+                const activeDer = currentCall ? currentCall.der : -1;
+                for (let idx = 0;
+                    idx < array.length;
+                    idx++) {
+                        const val = array[idx];
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    const h = Math.max(5, (val / maxV) * 95);
+                    bar.style.height = h + '%';
+                    bars.push(bar);
+                    const bv = document.createElement('span');
+                    bv.className = 'bar-value';
+                    bv.textContent = val;
+                    bar.appendChild(bv);
+                    bar.setAttribute('data-index', idx);
+                    bar.setAttribute('data-value', val);
+                    applyBarStyling(bar, idx, activeIzq, activeDer);
+                    arrayContainer.appendChild(bar);
+                    if (indexContainer) {
+                        const indexLabel = document.createElement('span');
+                        indexLabel.className = 'index-label';
+                        indexLabel.textContent = idx;
+                        indexContainer.appendChild(indexLabel);
+                    }
+                } updateAllPointersAndMarkers(activeIzq, activeDer);
+            }
+            function applyBarStyling(bar, k, activeIzq, activeDer) {
+                bar.classList.remove('bar-inactive', 'bar-partitioned-left', 'bar-partitioned-right', 'bar-comparing-i', 'bar-pivot-processing', 'bar-pivot-finalized', 'bar-red-border', 'bar-flash-off');
+                bar.style.outlineColor = '';
+                bar.style.opacity = '1';
+                const yOffset = -state.elementDepth[k] * riseAmountPerLevel;
+                bar.style.transform = `translateY(${yOffset}px)`;
+                if (state.isPivotFinalized[k]) {
+                    bar.classList.add('bar-pivot-finalized');
+                } let isCurrentPivotProcessing = false;
+                if (partitionState.active && partitionState.pivotIdentified && k === partitionState.pivotCurrentIndex) {
+                    if (!state.isPivotFinalized[k]) {
+                        bar.classList.add('bar-pivot-processing');
+                        isCurrentPivotProcessing = true;
+                        bar.style.opacity = '1';
+                    }
+                } const isCurrentActiveSegment = activeIzq !== -1 && k >= activeIzq && k <= activeDer;
+                if (!isCurrentActiveSegment && activeIzq !== -1) {
+                    if (!isCurrentPivotProcessing && !state.isPivotFinalized[k]) {
+                        bar.classList.add('bar-inactive');
+                    }
+                } else if (isCurrentActiveSegment && partitionState.active && !isCurrentPivotProcessing && !state.isPivotFinalized[k]) {
+                    const p_izq = partitionState.izq, p_p = partitionState.p, p_i = partitionState.i;
+                    if (k >= p_izq && k <= partitionState.der) {
+                        if (p_p > p_izq && k < p_p) bar.classList.add('bar-partitioned-left');
+                        if (k === p_i && partitionState.phase === 'evaluating_if') bar.classList.add('bar-comparing-i');
+                    }
+                } if (partitionState.isSwappingVisual && (k === partitionState.swapIdx1 || k === partitionState.swapIdx2)) {
+                    bar.classList.add('bar-red-border');
+                    if (partitionState.flashOff) bar.classList.add('bar-flash-off');
+                }
+            }
 
-        window.onload = function() { console.log("window.onload"); try { if (speedSlider) { delay = 1050 - parseInt(speedSlider.value, 10); } else { delay = 500; } setTimeout(generateArray, 100); } catch (e) { console.error("Error onload:", e); if(statusDiv) statusDiv.textContent = "Error inicializar."; } };
-        var resizeTimeout; window.addEventListener('resize', function() { clearTimeout(resizeTimeout); resizeTimeout = setTimeout(function() { console.log("window.resize"); drawArray(isSorting || isPaused ? lastHighlightInfo : null); drawTree(); }, 250); });
-        console.log("Script Quicksort árbol cargado.");
+            /** Actualiza todos los punteros y marcadores */
+            function updateAllPointersAndMarkers(activeIzq, activeDer) {
+                updatePointer(pointerAuxIzq, activeIzq);
+                // Usa updatePointer
+                updatePointer(pointerAuxDer, activeDer);
+                // Usa updatePointer
 
+                if (partitionState.active) {
+                    updatePointer(pointerI, partitionState.i);
+                    updatePointer(pointerP, partitionState.p);
+                    if (partitionState.phase === 'get_pivot_value') {
+                        updateMarker(markerCen, partitionState.cen);
+                    } // Usa updateMarker
+                    else {
+                        updateMarker(markerCen, -1);
+                    }
+                } else {
+                    updatePointer(pointerI, -1);
+                    updatePointer(pointerP, -1);
+                    updateMarker(markerCen, -1);
+                }
+            }
+
+            function updatePointer(element, index, hide = false) {
+                updateElementPosition(element, index, hide);
+            }
+            function updateMarker(element, index) {
+                updateElementPosition(element, index);
+            } // Puede usar la misma lógica
+            function updateElementPosition(element, index, hide = false) {
+                if (hide || index < 0 || index >= bars.length || !bars[index] || !element) {
+                    if (element) element.style.visibility = 'hidden';
+                    return;
+                } 
+                const bar = bars[index];
+                if (!bar) {
+                    element.style.visibility = 'hidden';
+                    return;
+                } const barRect = bar.getBoundingClientRect();
+                const containerRect = arrayContainer.getBoundingClientRect();
+                const centerX = (barRect.left - containerRect.left) + barRect.width / 2;
+                element.style.left = centerX + 'px';
+                element.style.visibility = 'visible';
+            }
+            function highlightCodeLine(lineId) {
+                if (lineId === state.currentLine) return;
+                codeLines.forEach(line => line.classList.remove('highlight-line'));
+                if (lineId !== null) {
+                    const el = codeListing.querySelector(`span[data-line="${lineId}"]`);
+                    if (el) el.classList.add('highlight-line');
+                    else console.warn("Code line not found:", lineId);
+                } state.currentLine = lineId;
+            }
+
+            // --- Efectos Visuales de Intercambio ---
+            function flashBorders(index1, index2, callback) {
+                let count = 0;
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+                const repetitions = 3;
+                const duration = Math.max(50, animationSpeed * 0.15);
+                const totalToggles = repetitions * 2;
+                partitionState.isSwappingVisual = true;
+                partitionState.swapIdx1 = index1;
+                partitionState.swapIdx2 = index2;
+                function toggle() {
+                    if (!state.isRunning || state.isPaused || count >= totalToggles) {
+                        partitionState.isSwappingVisual = false;
+                        renderArray();
+                        if (callback) callback();
+                        return;
+                    } partitionState.flashOff = !partitionState.flashOff;
+                    renderArray();
+                    count++;
+                    timeouts.push(setTimeout(toggle, duration));
+                } partitionState.flashOff = false;
+                renderArray();
+                timeouts.push(setTimeout(toggle, 50));
+            }
+            function animateSwap_Fixed(index1, index2, callback) {
+                state.isSwapping = true;
+                updateControls();
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+                if (!bar1 || !bar2) {
+                    console.error("Bars not found for swap:", index1, index2);
+                    const tempValue = array[index1];
+                    array[index1] = array[index2];
+                    array[index2] = tempValue;
+                    state.isSwapping = false;
+                    if (callback) callback();
+                    else updateControls();
+                    return;
+                } flashBorders(index1, index2, () => {
+                    const dur = Math.max(animationSpeed * 0.7, 150);
+                    const tT = `transform ${dur / 1000}s ease-in-out`;
+                    const currentTransformY1 = `translateY(${-state.elementDepth[index1] * riseAmountPerLevel}px)`;
+                    const currentTransformY2 = `translateY(${-state.elementDepth[index2] * riseAmountPerLevel}px)`;
+                    const dist = bar2.offsetLeft - bar1.offsetLeft;
+                    bar1.style.transition = tT;
+                    bar2.style.transition = tT;
+                    bar1.style.transform = `${currentTransformY1} translateX(${dist}px)`;
+                    bar2.style.transform = `${currentTransformY2} translateX(${-dist}px)`;
+                    const tempValue = array[index1];
+                    array[index1] = array[index2];
+                    array[index2] = tempValue;
+                    const tempDepth = state.elementDepth[index1];
+                    state.elementDepth[index1] = state.elementDepth[index2];
+                    state.elementDepth[index2] = tempDepth;
+                    bar1.setAttribute('data-value', array[index1]);
+                    bar2.setAttribute('data-value', array[index2]);
+                    timeouts.push(setTimeout(() => {
+                        bar1.style.transition = 'none';
+                        bar2.style.transition = 'none';
+                        renderArray();
+                        timeouts.push(setTimeout(() => {
+                            if (bars[index1]) bars[index1].style.transition = '';
+                            if (bars[index2]) bars[index2].style.transition = '';
+                            state.isSwapping = false;
+                            if (callback) callback();
+                            else updateControls();
+                        }, 50));
+                    }, dur + 50));
+                });
+            }
+
+            // --- Máquina de Estados Principal ---
+            function runStep() {
+                if (state.isFinished || state.isSwapping) return false;
+                let continueAuto = true;
+                const stack = state.callStack;
+                if (stack.length === 0 && !state.isFinished) {
+                    highlightCodeLine('L4');
+                    stack.push({ id: Date.now(), izq: 0, der: array.length - 1, phase: 'entry', pivotPos: -1 });
+                    renderArray();
+                    return true;
+                } if (stack.length === 0 && state.isFinished) {
+                    highlightCodeLine(null);
+                    console.log("Quicksort terminado.");
+                    state.isRunning = false;
+                    updateControls();
+                    renderArray();
+                    return false;
+                } const currentCall = stack[stack.length - 1];
+                switch (currentCall.phase) {
+                    case 'entry': highlightCodeLine('A0');
+                        currentCall.phase = 'check_condition';
+                        renderArray();
+                        break;
+                    case 'check_condition': highlightCodeLine('A1');
+                        if (currentCall.izq < currentCall.der) {
+                            currentCall.phase = 'call_partition';
+                        } else {
+                            if (currentCall.izq === currentCall.der && currentCall.izq >= 0 && currentCall.izq < array.length) {
+                                console.log(`Caso base: Finalizando lógicamente índice ${currentCall.izq}`);
+                                state.isPivotFinalized[currentCall.izq] = true;
+                            } highlightCodeLine('A5');
+                            currentCall.phase = 'done';
+                        } renderArray();
+                        break;
+                    case 'call_partition': highlightCodeLine('A2');
+                        partitionState = getPartitionDefaultState();
+                        partitionState.active = true;
+                        partitionState.izq = currentCall.izq;
+                        partitionState.der = currentCall.der;
+                        partitionState.phase = 'start';
+                        currentCall.phase = 'wait_partition';
+                        break;
+                    case 'wait_partition': const partitionFinished = partitionStep();
+                        if (partitionFinished) {
+                            partitionState.active = false;
+                            currentCall.pivotPos = partitionState.finalPivotPos;
+                            state.isPivotFinalized[currentCall.pivotPos] = true;
+                            const finishedDepth = stack.length;
+                            console.log(`Partición [${currentCall.izq}-${currentCall.der}] terminada en profundidad ${finishedDepth}. Pivot en ${currentCall.pivotPos}`);
+                            for (let k = currentCall.izq;
+                                k <= currentCall.der;
+                                k++) {
+                                    if (!state.isPivotFinalized[k]) {
+                                        state.elementDepth[k] = finishedDepth;
+                                        console.log(`  - Subiendo índice ${k} a profundidad ${finishedDepth}`);
+                                    }
+                            } highlightCodeLine('A2');
+                            currentCall.phase = 'call_left';
+                            renderArray();
+                        } else {
+                            continueAuto = !(state.isSwapping || partitionState.isSwappingVisual);
+                        } break;
+                    case 'call_left': highlightCodeLine('A3');
+                        stack.push({ id: Date.now(), izq: currentCall.izq, der: currentCall.pivotPos - 1, phase: 'entry', pivotPos: -1 });
+                        currentCall.phase = 'wait_left';
+                        renderArray();
+                        break;
+                    case 'wait_left': highlightCodeLine('A4');
+                        currentCall.phase = 'call_right';
+                        renderArray();
+                        break;
+                    case 'call_right': highlightCodeLine('A4');
+                        stack.push({ id: Date.now(), izq: currentCall.pivotPos + 1, der: currentCall.der, phase: 'entry', pivotPos: -1 });
+                        currentCall.phase = 'wait_right';
+                        renderArray();
+                        break;
+                    case 'wait_right': highlightCodeLine('A5');
+                        currentCall.phase = 'done';
+                        renderArray();
+                        break;
+                    case 'done': const completedCall = stack.pop();
+                        const parentDepth = stack.length;
+                        console.log(`Llamada [${completedCall.izq}-${completedCall.der}] completada. Volviendo a profundidad ${parentDepth}`);
+                        for (let k = completedCall.izq;
+                            k <= completedCall.der;
+                            k++) {
+                                if (state.elementDepth[k] === parentDepth + 1) {
+                                    state.elementDepth[k] = parentDepth;
+                                    console.log(`  - Bajando índice ${k} a profundidad ${parentDepth}`);
+                                } else if (state.isPivotFinalized[k] && k === completedCall.pivotPos && state.elementDepth[k] === parentDepth + 1) {
+                                    state.elementDepth[k] = parentDepth;
+                                    console.log(`  - Bajando pivote ${k} a profundidad ${parentDepth}`);
+                                }
+                        } if (stack.length > 0) {
+                            const parentCall = stack[stack.length - 1];
+                            highlightCodeLine(parentCall.phase === 'wait_left' ? 'A3' : 'A4');
+                        } else {
+                            state.isFinished = true;
+                            continueAuto = false;
+                            highlightCodeLine('L4');
+                        } renderArray();
+                        break;
+                } if (state.isSwapping || partitionState.isSwappingVisual) {
+                    continueAuto = false;
+                } updateControls();
+                return continueAuto;
+            }
+            function partitionStep() {
+                if (!partitionState.active || state.isSwapping) return false;
+                let partitionFinished = false;
+                const { izq, der } = partitionState;
+                switch (partitionState.phase) {
+                    case 'start': highlightCodeLine('P2');
+                        partitionState.phase = 'calculate_center';
+                        break;
+                    case 'calculate_center': highlightCodeLine('P3');
+                        partitionState.cen = izq + Math.floor((der - izq) / 2);
+                        partitionState.phase = 'get_pivot_value';
+                        updateMarker(markerCen, partitionState.cen);
+                        break;
+                    case 'get_pivot_value': highlightCodeLine('P4');
+                        partitionState.pivotValue = array[partitionState.cen];
+                        partitionState.pivotOriginalIndex = partitionState.cen;
+                        partitionState.pivotCurrentIndex = partitionState.cen;
+                        partitionState.pivotIdentified = true;
+                        renderArray();
+                        partitionState.phase = 'swap_pivot_to_der_start';
+                        break;
+                    case 'swap_pivot_to_der_start': highlightCodeLine('P5');
+                        const idxCen = partitionState.pivotOriginalIndex;
+                        const idxDer = der;
+                        updateMarker(markerCen, -1);
+                        if (idxCen === idxDer) {
+                            partitionState.pivotCurrentIndex = idxDer;
+                            partitionState.phase = 'init_p';
+                            renderArray();
+                        } else {
+                            state.isSwapping = true;
+                            partitionState.phase = 'swap_pivot_to_der_wait';
+                            animateSwap_Fixed(idxCen, idxDer, () => {
+                                partitionState.pivotCurrentIndex = idxDer;
+                                partitionState.phase = 'init_p';
+                                requestStep(false);
+                            });
+                            return false;
+                        } break;
+                    case 'swap_pivot_to_der_wait': return false;
+                    case 'init_p': highlightCodeLine('P6');
+                        partitionState.p = izq;
+                        updatePointer(pointerP, partitionState.p);
+                        partitionState.phase = 'init_i';
+                        renderArray();
+                        break;
+                    case 'init_i': 
+                        highlightCodeLine('P7');
+                        partitionState.i = izq;
+                        updatePointer(pointerI, partitionState.i);
+                        partitionState.phase = 'evaluating_if';
+                        renderArray();
+                        break;
+                    case 'increment_i': 
+                        partitionState.i++;
+                        updatePointer(pointerI, partitionState.i);
+                        highlightCodeLine('P7');
+                        if (partitionState.i >= der) {
+                            partitionState.phase = 'final_swap_start';
+                            updatePointer(pointerI, -1);
+                        } else {
+                            partitionState.phase = 'evaluating_if';
+                            timeouts.push(setTimeout(() => {
+                                if (state.isRunning && !state.isPaused && partitionState.phase === 'evaluating_if') requestStep(false);
+                            }, POINTER_ANIMATION_DURATION * 0.8));
+                            return false;
+                        } renderArray();
+                        break;
+                    case 'evaluating_if': highlightCodeLine('P8');
+                        renderArray();
+                        if (array[partitionState.i] <= partitionState.pivotValue) {
+                            partitionState.phase = 'swap_i_p_start';
+                        } else {
+                            partitionState.phase = 'increment_i';
+                        } break;
+                    case 'swap_i_p_start': highlightCodeLine('P9');
+                        const idxI = partitionState.i;
+                        const idxP = partitionState.p;
+                        if (idxI === idxP) {
+                            partitionState.phase = 'increment_p';
+                            renderArray();
+                        } else {
+                            state.isSwapping = true;
+                            partitionState.phase = 'swap_i_p_wait';
+                            animateSwap_Fixed(idxI, idxP, () => {
+                                partitionState.phase = 'increment_p';
+                                requestStep(false);
+                            });
+                            return false;
+                        } break;
+                    case 'swap_i_p_wait': return false;
+                    case 'increment_p': highlightCodeLine('P10');
+                        partitionState.p++;
+                        updatePointer(pointerP, partitionState.p);
+                        partitionState.phase = 'increment_i';
+                        renderArray();
+                        break;
+                    case 'final_swap_start': highlightCodeLine('P11');
+                        const finalP = partitionState.p;
+                        const pivotAtDerIdx = der;
+                        updatePointer(pointerP, -1);
+                        if (finalP === pivotAtDerIdx) {
+                            partitionState.finalPivotPos = finalP;
+                            partitionState.pivotCurrentIndex = finalP;
+                            partitionState.phase = 'return_p';
+                            renderArray();
+                        } else {
+                            state.isSwapping = true;
+                            partitionState.phase = 'final_swap_wait';
+                            animateSwap_Fixed(finalP, pivotAtDerIdx, () => {
+                                partitionState.finalPivotPos = finalP;
+                                partitionState.pivotCurrentIndex = finalP;
+                                partitionState.phase = 'return_p';
+                                requestStep(false);
+                            });
+                            return false;
+                        } break;
+                    case 'final_swap_wait': return false;
+                    case 'return_p': highlightCodeLine('P12');
+                        partitionFinished = true;
+                        break;
+                } return partitionFinished;
+            }
+
+            // --- Funciones de Control ---
+            function handleStartPause() {
+                if (state.isFinished && state.callStack.length === 0) {
+                    resetAlgorithm();
+                    setTimeout(() => {
+                        state.isFinished = false;
+                        state.isRunning = true;
+                        state.isPaused = false;
+                        requestStep(false);
+                        updateControls();
+                    }, 100);
+                } else if (state.isRunning) {
+                    state.isPaused = true;
+                    state.isRunning = false;
+                    clearTimeouts();
+                    updateControls();
+                } else {
+                    state.isPaused = false;
+                    state.isRunning = true;
+                    if (!state.isSwapping && !partitionState.isSwappingVisual) requestStep(false);
+                    updateControls();
+                }
+            }
+            function requestStep(forceManual) {
+                clearTimeouts();
+                if (state.isFinished && state.callStack.length === 0) {
+                    resetAlgorithm();
+                    setTimeout(() => {
+                        state.isFinished = false;
+                        state.isRunning = true;
+                        state.isPaused = false;
+                        requestStep(true);
+                        updateControls();
+                    }, 100);
+                    return;
+                }
+
+
+                if (state.isFinished) return;
+                if (forceManual && state.isSwapping) {
+                    console.log("Step ignored: waiting for logical swap animation.");
+                    return;
+                } if (forceManual && partitionState.isSwappingVisual && !state.isSwapping) {
+                    console.log("Step ignored: waiting for flash animation.");
+                    return;
+                } if (forceManual) {
+                    if (state.isRunning) {
+                        state.isPaused = true;
+                        state.isRunning = false;
+                        updateControls();
+                    } runStep();
+                } else if (state.isRunning && !state.isPaused) {
+                    const continueAuto = runStep();
+                    if (continueAuto && state.isRunning && !state.isPaused && !state.isFinished && !state.isSwapping && !partitionState.isSwappingVisual) {
+                        timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                    } else {
+                        updateControls();
+                    }
+                }
+            }
+            function clearTimeouts() {
+                timeouts.forEach(clearTimeout);
+                timeouts = [];
+            }
+            function handleSpeedChange() {
+                animationSpeed = calculateSpeed(speedSlider.value);
+                if (state.isRunning && !state.isPaused && !state.isSwapping && !partitionState.isSwappingVisual) {
+                    clearTimeouts();
+                    timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                }
+            }
+            function updateControls() {
+                const isRunningAuto = state.isRunning && !state.isPaused;
+                const isBusy = isRunningAuto || state.isSwapping || partitionState.isSwappingVisual;
+                // stepBtn.disabled = isBusy;
+                startPauseBtn.disabled = state.isSwapping;
+                resetBtn.disabled = state.isSwapping;
+                randomArrayBtn.disabled = isBusy;
+                manualInputBtn.disabled = isBusy;
+                increaseSizeBtn.disabled = arraySize >= maxSize || isBusy;
+                decreaseSizeBtn.disabled = arraySize <= minSize || isBusy;
+                speedSlider.disabled = isBusy;
+                if (state.isFinished && state.callStack.length === 0) startPauseBtn.textContent = 'Iniciar';
+                else if (isRunningAuto) startPauseBtn.textContent = 'Pausar';
+                else if (state.isPaused || state.isSwapping || partitionState.isSwappingVisual) startPauseBtn.textContent = 'Continuar';
+                else startPauseBtn.textContent = 'Iniciar';
+                if (!isRunningAuto && !state.isFinished && state.callStack.length > 0) {
+                    startPauseBtn.textContent = 'Continuar';
+                }
+            }
+
+            // --- Punto de Entrada ---
+            document.addEventListener('DOMContentLoaded', init);
+
+        })();
+        // Fin IIFE
     </script>
 
 </body>
+
 </html>

@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Búsqueda Binaria</title>
+    <style>
+        /* Estilos generales para el cuerpo y títulos */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1,
+        h2,
+        #target-value-display {
+            color: #333;
+            text-align: center;
+        }
+
+        /* Estilo para mostrar el valor buscado y el resultado */
+        #target-value-display {
+            margin-top: -10px;
+            margin-bottom: 10px;
+            font-size: 16px;
+            min-height: 1.2em;
+        }
+
+        #target-value-display span {
+            color: #e67e22;
+            font-weight: bold;
+        }
+
+        #target-value-display .result-found {
+            color: darkgreen;
+            font-weight: bold;
+        }
+
+        #target-value-display .result-not-found {
+            color: darkred;
+            font-weight: bold;
+        }
+
+        #target-value-display .index-value {
+            color: #333;
+            font-weight: bold;
+        }
+
+        /* Contenedor principal de la visualización */
+        #visualization-container {
+            position: relative;
+            /* Margen inferior aumentado para dejar espacio a índices y punteros */
+            margin-bottom: 90px;
+            height: 280px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        /* Contenedor de las barras del array */
+        #array-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 95%;
+            width: 100%;
+            position: relative;
+            gap: 2px;
+            bottom: 5px;
+        }
+
+        /* Estilo base para cada barra representando un elemento del array */
+        .bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-color: steelblue;
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            position: relative;
+            /* Necesario para posicionar índice/valor absoluto */
+            /* Transiciones suaves para cambios visuales */
+            transition: background-color 0.4s ease, height 0.3s ease;
+            box-sizing: border-box;
+            border: 1px solid transparent;
+            outline: 2px solid transparent;
+            outline-offset: -2px;
+            min-height: 5%;
+            /* Espacio inferior dentro de la barra para el valor y margen para el índice */
+            padding-bottom: 5px;
+            margin-bottom: 15px;
+            /* Espacio DEBAJO de la barra para el índice */
+        }
+
+        /* Estilo para el valor numérico mostrado DENTRO de la barra */
+        .bar-value {
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            z-index: 1;
+            text-shadow: 1px 1px 2px black;
+            position: absolute;
+            /* Posición relativa a la barra padre */
+            bottom: 5px;
+            /* Colocar encima del espacio para el índice */
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* Estilo para el índice mostrado DEBAJO de la barra */
+        .bar-index {
+            position: absolute;
+            bottom: -20px;
+            /* Posición debajo de la barra */
+            left: 0;
+            width: 100%;
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+            /* Color gris oscuro para el índice */
+            z-index: 1;
+        }
+
+
+        /* --- Clases de Estado Específicas de la Búsqueda Binaria --- */
+
+        /* Estilo para barras descartadas (gris claro) */
+        .bar.bar-discarded {
+            background-color: #d3d3d3 !important;
+        }
+
+        .bar.bar-discarded .bar-value {
+            color: #777;
+            text-shadow: none;
+        }
+
+        .bar.bar-discarded .bar-index {
+            color: #888;
+        }
+
+        /* Índice también atenuado */
+
+
+        /* Estilo para la barra central ('cen') durante la comparación (verde) */
+        .bar.bar-comparing-cen {
+            background-color: mediumseagreen !important;
+            z-index: 5;
+        }
+
+        .bar.bar-comparing-cen .bar-value {
+            color: white;
+            text-shadow: 1px 1px 1px black;
+        }
+
+        .bar.bar-comparing-cen .bar-index {
+            color: mediumseagreen;
+        }
+
+        /* Índice normal */
+
+
+        /* Estilo para la barra cuando se encuentra el elemento (dorado) */
+        .bar.bar-found {
+            background-color: gold !important;
+            color: black !important;
+            z-index: 10;
+        }
+
+        .bar.bar-found .bar-value {
+            color: black;
+            text-shadow: none;
+        }
+
+        .bar.bar-found .bar-index {
+            color: #333;
+        }
+
+        /* Índice normal */
+
+
+        /* --- Estilos para los Punteros (izq, der, cen) --- */
+        /* Contenedor para los punteros, posicionado debajo de las barras e índices */
+        #pointers-container {
+            position: absolute;
+            bottom: -80px;
+            left: 0;
+            width: 100%;
+            height: 70px;
+            pointer-events: none;
+            z-index: 20;
+        }
+
+        /* Estilo base de un puntero */
+        .pointer {
+            position: absolute;
+            transform: translateX(-50%);
+            background-color: rgba(50, 50, 50, 0.8);
+            color: white;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            transition: left 0.4s ease-in-out;
+            visibility: hidden;
+            min-width: 15px;
+            text-align: center;
+        }
+
+        /* Pseudo-elemento para crear el triángulo del puntero */
+        .pointer::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -7px;
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+        }
+
+        /* Puntero 'izq' (azul, arriba) */
+        #pointerIzq {
+            background-color: rgba(0, 0, 220, 0.8);
+            bottom: 43px;
+        }
+
+        #pointerIzq::before {
+            border-bottom: 7px solid rgba(0, 0, 220, 0.8);
+        }
+
+        /* Puntero 'der' (rojo, medio) */
+        #pointerDer {
+            background-color: rgba(220, 0, 0, 0.8);
+            bottom: 22px;
+        }
+
+        #pointerDer::before {
+            border-bottom: 7px solid rgba(220, 0, 0, 0.8);
+        }
+
+        /* Puntero 'cen' (verde, abajo), sin transición de posición explícita (se mueve instantáneamente) */
+        #pointerCen {
+            background-color: rgba(0, 128, 0, 0.8);
+            bottom: 0px;
+            transition: none;
+        }
+
+        #pointerCen::before {
+            border-bottom: 7px solid rgba(0, 128, 0, 0.8);
+        }
+
+
+        /* --- Estilos para Controles y Código Fuente --- */
+        #controls-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #eee;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #controls-container button {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f8f8;
+            color: #333;
+            font-size: 14px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        #controls-container button:hover:not(:disabled) {
+            background-color: #e0e0e0;
+            border-color: #aaa;
+        }
+
+        #controls-container button:disabled {
+            background-color: #cccccc;
+            color: #888;
+            cursor: not-allowed;
+            border-color: #bbb;
+        }
+
+        #start-pause-btn {
+            background-color: #60a5fa;
+            color: white;
+            border-color: #3b82f6;
+        }
+
+        #step-btn {
+            background-color: #fbbf24;
+            color: white;
+            border-color: #f59e0b;
+        }
+
+        #reset-btn {
+            background-color: #f87171;
+            color: white;
+            border-color: #ef4444;
+        }
+
+        .size-control label {
+            margin-right: 5px;
+        }
+
+        .size-control span {
+            min-width: 25px;
+            text-align: center;
+            padding: 5px 8px;
+            background-color: white;
+            border: 1px solid #ccc;
+            border-radius: 3px;
+            display: inline-block;
+        }
+
+        .size-control button {
+            font-weight: bold;
+            padding: 4px 8px;
+            font-weight: bold;
+            min-width: 25px;
+        }
+
+        .speed-control label {
+            margin-right: 5px;
+        }
+
+        .speed-control input[type="range"] {
+            cursor: pointer;
+            width: 100px;
+        }
+
+        .target-control label {
+            margin-right: 5px;
+        }
+
+        .target-control input[type="number"] {
+            padding: 6px 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            width: 60px;
+            font-size: 14px;
+            text-align: center;
+        }
+
+        .target-control input[type="number"]:disabled {
+            background-color: #eee;
+            cursor: not-allowed;
+        }
+
+        /* Contenedor para mostrar el código fuente */
+        #code-container {
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #2d2d2d;
+            color: #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            line-height: 1;
+            overflow-x: auto;
+        }
+
+        #code-container h2 {
+            color: #eee;
+            margin: 0 0 10px 0;
+            font-size: 16px;
+            border-bottom: 1px solid #555;
+            padding-bottom: 5px;
+        }
+
+        #code-listing span[data-line] {
+            padding: 2px 0;
+            display: inline-block;
+            width: 100%;
+            border-radius: 3px;
+            transition: background-color 0.3s ease;
+            line-height: normal;
+            white-space: pre;
+        }
+
+        #code-listing span[data-line].highlight-line {
+            background-color: rgba(255, 255, 100, 0.25);
+        }
+
+        /* Estilos para el resaltado de sintaxis del código Scala */
+        #code-listing .syntax-keyword {
+            color: #569cd6;
+        }
+
+        #code-listing .syntax-type {
+            color: #4ec9b0;
+        }
+
+        #code-listing .syntax-function {
+            color: #dcdcaa;
+        }
+
+        #code-listing .syntax-operator {
+            color: #b5cea8;
+        }
+
+        #code-listing .syntax-comment {
+            color: #6a9955;
+            font-style: italic;
+        }
+
+        #code-listing .syntax-variable {
+            color: #9cdcfe;
+        }
+
+        #code-listing .syntax-generic {
+            color: #4ec9b0;
+        }
+
+        #code-listing .syntax-package {
+            color: #ce9178;
+        }
+
+        #code-listing .syntax-number {
+            color: #b5cea8;
+        }
+
+        #code-listing .syntax-literal {
+            color: #ce9178;
+        }
+
+        #code-listing .syntax-parameter {
+            color: #c586c0;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Visualización Búsqueda Binaria</h1>
+    <div id="target-value-display">Buscando: <span id="target-value">?</span></div>
+
+    <div id="visualization-container">
+        <div id="array-container">
+        </div>
+        <div id="pointers-container">
+            <div class="pointer" id="pointerIzq">izq</div>
+            <div class="pointer" id="pointerDer">der</div>
+            <div class="pointer" id="pointerCen">cen</div>
+        </div>
+    </div>
+
+    <div id="controls-container">
+        <div class="control-group">
+            <button id="start-pause-btn" disabled>Iniciar</button>
+            <button id="step-btn" disabled>Paso Siguiente</button>
+            <button id="reset-btn">Resetear</button>
+        </div>
+        <div class="control-group speed-control">
+            <label for="speed-slider">Velocidad:</label>
+            <input type="range" id="speed-slider" min="0" max="100" value="50">
+        </div>
+        <div class="control-group size-control">
+            <label>Tamaño:</label>
+            <button id="decrease-size-btn">-</button>
+            <span id="size-display">10</span>
+            <button id="increase-size-btn">+</button>
+        </div>
+        <div class="control-group">
+            <button id="random-array-btn">Generar</button>
+            <button id="manual-input-btn">Introducir Datos</button>
+        </div>
+        <div class="control-group target-control">
+            <label for="target-input">Objetivo:</label>
+            <input type="number" id="target-input">
+        </div>
+    </div>
+
+    <div id="code-container">
+        <h2>Algoritmo (Scala):</h2>
+        <pre><code id="code-listing">
+    <span data-line="0"><span class="syntax-keyword">def</span> <span class="syntax-function">búsquedaBinaria</span>[<span class="syntax-generic">A</span>](<span class="syntax-variable">x</span>: <span class="syntax-generic">A</span>, <span class="syntax-variable">xs</span>: <span class="syntax-type">Array</span>[<span class="syntax-generic">A</span>])(<span class="syntax-parameter">using</span> <span class="syntax-variable">ord</span>: <span class="syntax-type">Ordering</span>[<span class="syntax-generic">A</span>]): <span class="syntax-type">Option</span>[<span class="syntax-type">Int</span>] <span class="syntax-operator">=</span></span>
+    <span data-line="1"><span class="syntax-keyword">  import</span> <span class="syntax-package">ord</span><span class="syntax-operator">.</span><span class="syntax-operator">*</span></span>
+    <span data-line="2"></span>
+    <span data-line="3">  <span class="syntax-keyword">var</span> <span class="syntax-variable">índice</span>: <span class="syntax-type">Option</span>[<span class="syntax-type">Int</span>] <span class="syntax-operator">=</span> <span class="syntax-literal">None</span></span>
+    <span data-line="4">  <span class="syntax-keyword">var</span> <span class="syntax-variable">izq</span> <span class="syntax-operator">=</span> <span class="syntax-number">0</span></span>
+    <span data-line="5">  <span class="syntax-keyword">var</span> <span class="syntax-variable">der</span> <span class="syntax-operator">=</span> <span class="syntax-variable">xs</span><span class="syntax-operator">.</span><span class="syntax-variable">length</span> <span class="syntax-operator">-</span> <span class="syntax-number">1</span></span>
+    <span data-line="6"></span>
+    <span data-line="7">  <span class="syntax-keyword">while</span> <span class="syntax-variable">índice</span><span class="syntax-operator">.</span><span class="syntax-variable">isEmpty</span> <span class="syntax-operator">&amp;&amp;</span> <span class="syntax-variable">izq</span> <span class="syntax-operator">&lt;=</span> <span class="syntax-variable">der</span> <span class="syntax-keyword">do</span></span>
+    <span data-line="8">    <span class="syntax-keyword">val</span> <span class="syntax-variable">cen</span> <span class="syntax-operator">=</span> <span class="syntax-variable">izq</span> <span class="syntax-operator">+</span> (<span class="syntax-variable">der</span> <span class="syntax-operator">-</span> <span class="syntax-variable">izq</span>) <span class="syntax-operator">/</span> <span class="syntax-number">2</span></span>
+    <span data-line="9">    <span class="syntax-keyword">val</span> <span class="syntax-variable">y</span> <span class="syntax-operator">=</span> <span class="syntax-variable">xs</span>(<span class="syntax-variable">cen</span>) <span class="syntax-comment">    // elemento central</span></span>
+    <span data-line="10">   <span class="syntax-keyword">if</span> <span class="syntax-variable">x</span> <span class="syntax-operator">==</span> <span class="syntax-variable">y</span> <span class="syntax-keyword">then</span></span>
+    <span data-line="11">     <span class="syntax-variable">índice</span> <span class="syntax-operator">=</span> <span class="syntax-function">Some</span>(<span class="syntax-variable">cen</span>)<span class="syntax-comment"> // encontrado!</span></span>
+    <span data-line="12">   <span class="syntax-keyword">else</span> <span class="syntax-keyword">if</span> <span class="syntax-variable">x</span> <span class="syntax-operator">&gt;</span> <span class="syntax-variable">y</span> <span class="syntax-keyword">then</span></span>
+    <span data-line="13">     <span class="syntax-variable">izq</span> <span class="syntax-operator">=</span> <span class="syntax-variable">cen</span> <span class="syntax-operator">+</span> <span class="syntax-number">1</span><span class="syntax-comment">      // descartar mitad izquierda</span></span>
+    <span data-line="14">   <span class="syntax-keyword">else</span></span>
+    <span data-line="15">     <span class="syntax-variable">der</span> <span class="syntax-operator">=</span> <span class="syntax-variable">cen</span> <span class="syntax-operator">-</span> <span class="syntax-number">1</span><span class="syntax-comment">      // descartar mitad derecha</span></span>
+    <span data-line="16"></span>
+    <span data-line="17"> <span class="syntax-variable">índice</span></span>
+    <span data-line="18"></span> <span class="syntax-comment">// Fin implícito</span></span>
+            </code></pre>
+    </div>
+
+    <script>
+        (function () { // Envoltura IIFE para evitar contaminación del ámbito global
+
+            // --- Selección de Elementos del DOM ---
+            // Se obtienen referencias a los elementos HTML necesarios para la visualización y control.
+            const arrayContainer = document.getElementById('array-container');
+            const pointersContainer = document.getElementById('pointers-container');
+            const pointerIzq = document.getElementById('pointerIzq');
+            const pointerDer = document.getElementById('pointerDer');
+            const pointerCen = document.getElementById('pointerCen');
+            const codeListing = document.getElementById('code-listing');
+            const codeLines = codeListing.querySelectorAll('span[data-line]');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            const stepBtn = document.getElementById('step-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const decreaseSizeBtn = document.getElementById('decrease-size-btn');
+            const increaseSizeBtn = document.getElementById('increase-size-btn');
+            const sizeDisplay = document.getElementById('size-display');
+            const randomArrayBtn = document.getElementById('random-array-btn');
+            const manualInputBtn = document.getElementById('manual-input-btn');
+            const targetInput = document.getElementById('target-input');
+            const targetValueDisplay = document.getElementById('target-value-display');
+            const targetValueSpan = document.getElementById('target-value');
+
+            // --- Variables de Estado Globales ---
+            // Almacenan el estado actual del algoritmo y la visualización.
+            let array = [];                 // El array de datos actual (ordenado)
+            let originalArray = [];         // Copia del array generado originalmente
+            let bars = [];                  // Referencias a los elementos DOM de las barras
+            let timeouts = [];              // Almacena IDs de timeouts para poder cancelarlos
+            let animationSpeed = 500;       // Velocidad base de la animación (ms)
+            let arraySize = 10;             // Tamaño actual del array
+            const minSize = 3;              // Tamaño mínimo permitido
+            const maxSize = 40;             // Tamaño máximo permitido
+            let state = getDefaultState();  // Objeto que contiene el estado del algoritmo
+            let lastHighlightInfo = null;   // Información para aplicar estilos visuales
+            let targetValue = null;         // El valor que se está buscando en el array
+            const POINTER_ANIMATION_DURATION = 400; // Duración CSS para la animación de punteros
+
+            /**
+             * Devuelve un objeto representando el estado inicial o reseteado del algoritmo.
+             * @returns {object} Estado inicial del algoritmo.
+             */
+            function getDefaultState() {
+                return {
+                    izq: -2,          // Índice izquierdo inicial (-2 indica 'no inicializado' visualmente)
+                    der: -2,          // Índice derecho inicial (-2 indica 'no inicializado' visualmente)
+                    cen: -1,          // Índice central (-1 indica 'no calculado aún')
+                    foundIndex: null, // Almacena el índice si se encuentra el elemento, null si no
+                    currentY: null,   // Almacena el valor del elemento central (xs[cen]) durante la comparación
+                    phase: 'idle',    // Fase actual de la máquina de estados del algoritmo
+                    currentLine: -1,  // Línea de código resaltada actualmente (-1 = ninguna)
+                    isRunning: false, // Indica si la animación automática está en ejecución
+                    isPaused: false,  // Indica si la animación automática está pausada
+                    isFinished: false,// Indica si el algoritmo ha terminado (encontrado o no)
+                    isComparing: false// Indica si se está en la fase visual de comparación con 'cen'
+                };
+            }
+
+            // --- Inicialización y Manejadores de Eventos ---
+
+            /**
+             * Función principal de inicialización. Se llama cuando el DOM está listo.
+             */
+            function init() {
+                updateSizeDisplay();
+                setupEventListeners();
+                handleSpeedChange();
+                setTimeout(generateAndReset, 50); // Genera un array inicial poco después de cargar
+            }
+
+            /**
+             * Asigna los manejadores de eventos a los botones y controles.
+             */
+            function setupEventListeners() {
+                startPauseBtn.onclick = handleStartPause;
+                stepBtn.onclick = () => requestStep(true); // Paso manual
+                resetBtn.onclick = resetAlgorithm;
+                speedSlider.oninput = handleSpeedChange;
+                randomArrayBtn.onclick = generateAndReset;
+                manualInputBtn.onclick = promptForArrayData;
+                increaseSizeBtn.onclick = incrementSize;
+                decreaseSizeBtn.onclick = decrementSize;
+                targetInput.oninput = handleTargetInput; // Se dispara al cambiar el valor objetivo
+            }
+
+            /**
+             * Calcula la duración de la animación (ms) a partir del valor del slider.
+             * @param {string|number} sliderValue - Valor del slider (0=rápido, 100=lento).
+             * @returns {number} Duración de la animación en milisegundos.
+             */
+            function calculateSpeed(sliderValue) { const min = 50, max = 1500, norm = parseInt(sliderValue, 10) / 100; return Math.round(max - norm * (max - min)); }
+
+            /**
+             * Actualiza el display del tamaño del array y habilita/deshabilita los botones +/-.
+             */
+            function updateSizeDisplay() { sizeDisplay.textContent = arraySize; increaseSizeBtn.disabled = arraySize >= maxSize; decreaseSizeBtn.disabled = arraySize <= minSize; }
+
+            /**
+             * Incrementa el tamaño del array y genera uno nuevo.
+             */
+            function incrementSize() { if (arraySize < maxSize) { arraySize++; updateSizeDisplay(); generateAndReset(); } }
+
+            /**
+             * Decrementa el tamaño del array y genera uno nuevo.
+             */
+            function decrementSize() { if (arraySize > minSize) { arraySize--; updateSizeDisplay(); generateAndReset(); } }
+
+            // --- Generación de Array y Establecimiento del Objetivo ---
+
+            /**
+             * Genera un nuevo array aleatorio, lo ordena y resetea la visualización.
+             * También establece un valor objetivo aleatorio.
+             */
+            function generateAndReset() {
+                const newA = [];
+                for (let k = 0; k < arraySize; k++) { newA.push(Math.floor(Math.random() * 90) + 10); }
+                newA.sort((a, b) => a - b); // La búsqueda binaria requiere un array ordenado
+                originalArray = newA.slice();
+                resetAlgorithm(true); // Reset completo
+                setRandomTargetValue(); // Elige un nuevo objetivo
+            }
+
+            /**
+             * Permite al usuario introducir datos manualmente, los ordena y resetea la visualización.
+             * También establece un valor objetivo aleatorio.
+             */
+            function promptForArrayData() {
+                const cur = originalArray.join(',');
+                const inp = prompt(`Introducir datos (${minSize}-${maxSize}), separados por comas (se ordenarán):`, cur);
+                if (inp === null) return;
+                const p = inp.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 0);
+                if (p.length < minSize || p.length > maxSize) { alert(`Tamaño inválido. Debe estar entre ${minSize} y ${maxSize}.`); return; }
+                p.sort((a, b) => a - b); // Ordenar los datos introducidos
+                originalArray = p; arraySize = p.length; updateSizeDisplay();
+                resetAlgorithm(true); // Reset completo
+                setRandomTargetValue(); // Elige un nuevo objetivo
+            }
+
+            /**
+             * Maneja la entrada del usuario en el campo del valor objetivo.
+             * Actualiza el estado y la UI correspondientemente.
+             */
+            function handleTargetInput() {
+                const value = targetInput.value;
+                // Actualiza el mensaje superior mientras no haya terminado la búsqueda
+                if (!state.isFinished) {
+                    setTargetDisplayMessage(`Buscando: <span id="target-value">${value === '' || isNaN(parseInt(value)) ? '?' : value}</span>`);
+                }
+                // Parsea y almacena el valor objetivo
+                if (value === '') { targetValue = null; }
+                else {
+                    const parsedTarget = parseInt(value, 10);
+                    if (!isNaN(parsedTarget)) {
+                        targetValue = parsedTarget;
+                        // Si el algoritmo había terminado, resetearlo para una nueva búsqueda
+                        if (state.isFinished) { resetAlgorithm(false); } // Reset parcial sin regenerar array
+                    } else { targetValue = null; }
+                }
+                updateControls(); // Actualiza el estado de los botones (ej. Iniciar)
+            }
+
+            /**
+             * Establece el contenido HTML del display del valor objetivo.
+             * @param {string} htmlMessage - El mensaje HTML a mostrar.
+             */
+            function setTargetDisplayMessage(htmlMessage) {
+                targetValueDisplay.innerHTML = htmlMessage;
+            }
+
+            /**
+             * Establece un valor objetivo aleatorio.
+             * Intenta elegir un valor existente con ~70% de probabilidad.
+             * Si elige uno no existente, intenta que sea menor, mayor o entre valores existentes.
+             */
+            function setRandomTargetValue() {
+                let randomTarget;
+                if (originalArray.length === 0) { randomTarget = ''; }
+                else {
+                    const shouldFind = Math.random() > 0.3; // 70% probabilidad de elegir uno existente
+                    if (shouldFind) {
+                        // Elige un índice aleatorio del array
+                        const randomIndex = Math.floor(Math.random() * originalArray.length);
+                        randomTarget = originalArray[randomIndex];
+                    } else {
+                        // Genera un valor que probablemente no exista
+                        const coinFlip = Math.random();
+                        if (coinFlip < 0.33) { // Menor que el mínimo
+                            randomTarget = originalArray[0] - (Math.floor(Math.random() * 5) + 1);
+                        } else if (coinFlip < 0.66) { // Mayor que el máximo
+                            randomTarget = originalArray[originalArray.length - 1] + (Math.floor(Math.random() * 5) + 1);
+                        } else { // Entre dos elementos existentes (si es posible)
+                            if (originalArray.length >= 2) {
+                                const idx = Math.floor(Math.random() * (originalArray.length - 1));
+                                if (originalArray[idx + 1] > originalArray[idx] + 1) { // Si hay hueco
+                                    randomTarget = originalArray[idx] + 1;
+                                } else { // Si no hay hueco, generar uno mayor que el máximo
+                                    randomTarget = originalArray[originalArray.length - 1] + (Math.floor(Math.random() * 3) + 1);
+                                }
+                            } else { // Si solo hay un elemento, generar uno mayor
+                                randomTarget = originalArray[0] + (Math.floor(Math.random() * 3) + 1);
+                            }
+                        }
+                        randomTarget = Math.max(0, randomTarget); // Asegurar que no sea negativo
+                    }
+                }
+                targetInput.value = randomTarget;
+                // Dispara el evento 'input' para que handleTargetInput se ejecute
+                targetInput.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+
+            // --- Lógica de Reseteo ---
+
+            /**
+             * Inicia el proceso de reseteo del algoritmo y la visualización.
+             * @param {boolean} fullReset - Indica si se debe regenerar el array.
+             */
+            function resetAlgorithm(fullReset = true) {
+                state.isFinished = true; // Marca como terminado para detener cualquier proceso
+                clearTimeouts();
+                // Retrasa el reseteo visual para asegurar que los timeouts se cancelen
+                setTimeout(() => resetVisuals(fullReset), 50);
+            }
+
+            /**
+             * Restaura la visualización y el estado del algoritmo a sus valores iniciales.
+             * @param {boolean} fullReset - Si es true, también copia el array original.
+             */
+            function resetVisuals(fullReset = true) {
+                state = getDefaultState();
+                lastHighlightInfo = null;
+                clearTimeouts();
+                // Decide si usar el array original o el último array visualizado
+                if (fullReset) {
+                    array = originalArray.slice();
+                } else {
+                    array = array.length > 0 ? array.slice() : originalArray.slice();
+                }
+                handleTargetInput(); // Refresca el display del objetivo
+                updateSizeDisplay();
+                arrayContainer.innerHTML = ''; // Limpia las barras antiguas
+                bars = []; // Resetea la referencia a las barras
+                renderArray(); // Renderiza el estado inicial
+                // Asegura que los punteros estén ocultos al inicio
+                pointerIzq.style.visibility = 'hidden';
+                pointerDer.style.visibility = 'hidden';
+                pointerCen.style.visibility = 'hidden';
+                highlightCodeLine(-2); // Limpia resaltado de código
+                updateControls(); // Actualiza estado de botones
+            }
+
+            // --- Renderizado y Actualizaciones Visuales ---
+
+            /**
+             * Renderiza o actualiza las barras del array en el contenedor.
+             * Crea las barras si no existen, o actualiza las existentes.
+             * Aplica los estilos visuales según el estado actual.
+             */
+            function renderArray() {
+                // Limpia solo si se está reseteando completamente (bars está vacío)
+                if (arrayContainer.innerHTML === '') {
+                    bars = [];
+                }
+
+                if (array.length === 0) { return; }
+                const maxV = Math.max(...array) || 1; // Valor máximo para calcular altura relativa
+
+                for (let idx = 0; idx < array.length; idx++) {
+                    const val = array[idx];
+                    let bar = bars[idx];
+                    let bv, bi; // Spans para valor e índice
+
+                    // Si la barra no existe en el DOM (o en 'bars'), la crea
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.className = 'bar';
+                        bars[idx] = bar; // Almacena la referencia al elemento DOM
+
+                        bv = document.createElement('span');
+                        bv.className = 'bar-value';
+                        bar.appendChild(bv);
+
+                        bi = document.createElement('span');
+                        bi.className = 'bar-index';
+                        bar.appendChild(bi); // Añade el span para el índice
+
+                        arrayContainer.appendChild(bar);
+                    } else {
+                        // Si la barra ya existe, obtiene sus spans interiores
+                        bv = bar.querySelector('.bar-value');
+                        bi = bar.querySelector('.bar-index');
+                    }
+
+                    // Actualiza altura, valor, índice y atributos de la barra
+                    const h = Math.max(5, (val / maxV) * 95); // Altura mínima del 5%
+                    bar.style.height = h + '%';
+                    if (bv) bv.textContent = val; // Actualiza el texto del valor
+                    if (bi) bi.textContent = idx; // Actualiza el texto del índice
+                    bar.setAttribute('data-index', idx);
+                    bar.setAttribute('data-value', val);
+
+                    // Aplica los estilos (colores, bordes) según el estado del algoritmo
+                    applyHighlighting(bar, idx, lastHighlightInfo);
+                }
+                updateAllPointers(); // Actualiza la posición de los punteros después de renderizar
+            }
+
+
+            // --- Lógica de Posicionamiento de Punteros ---
+
+            /**
+             * Actualiza la posición horizontal de un puntero (izq, der, cen) para que apunte
+             * al centro de la barra correspondiente a un índice dado.
+             * Maneja casos donde el índice está fuera de los límites del array.
+             * @param {HTMLElement} pointerElement - El elemento DOM del puntero.
+             * @param {number} index - El índice al que debe apuntar el puntero.
+             * @returns {boolean} - True si el puntero es visible, false si está oculto.
+             */
+            function updatePointer(pointerElement, index) {
+                const barCount = bars.length;
+                const POINTER_OFFSET = 5; // Pequeño desplazamiento para punteros fuera de rango
+
+                // Oculta el puntero si el índice es el estado inicial inválido (-2)
+                if (index === -2) {
+                    pointerElement.style.visibility = 'hidden';
+                    return false;
+                }
+
+                // Caso estándar: el índice está dentro de los límites del array
+                if (index >= 0 && index < barCount && bars[index]) {
+                    const bar = bars[index];
+                    let offset = 0;
+                    // Lógica especial para mostrar punteros cruzados si no se encontró
+                    if (state.isFinished && state.foundIndex === null) {
+                        if (pointerElement === pointerIzq && state.der === index) offset = -POINTER_OFFSET / 2;
+                        if (pointerElement === pointerDer && state.izq === index) offset = POINTER_OFFSET / 2;
+                    }
+                    // Calcula el centro de la barra y posiciona el puntero
+                    const center = bar.offsetLeft + bar.offsetWidth / 2 + offset;
+                    pointerElement.style.left = center + 'px';
+                    pointerElement.style.visibility = 'visible';
+                    return true;
+                }
+
+                // Caso fuera de límites: Puntero 'izq' apunta más allá del final
+                if (pointerElement === pointerIzq && index >= barCount && barCount > 0) {
+                    const lastBar = bars[barCount - 1];
+                    const position = lastBar.offsetLeft + 1.3 * lastBar.offsetWidth + POINTER_OFFSET; // Posición a la derecha de la última barra
+                    pointerElement.style.left = position + 'px';
+                    pointerElement.style.visibility = 'visible';
+                    return true;
+                }
+                // Caso fuera de límites: Puntero 'der' apunta antes del inicio
+                if (pointerElement === pointerDer && index < 0 && barCount > 0) {
+                    const firstBar = bars[0];
+                    const position = firstBar.offsetLeft - POINTER_OFFSET; // Posición a la izquierda de la primera barra
+                    pointerElement.style.left = position + 'px';
+                    pointerElement.style.visibility = 'visible';
+                    return true;
+                }
+
+                // Si ninguna condición se cumple, oculta el puntero
+                pointerElement.style.visibility = 'hidden';
+                return false;
+            }
+
+            /**
+             * Llama a updatePointer para cada uno de los tres punteros (izq, der, cen).
+             */
+            function updateAllPointers() {
+                updatePointer(pointerIzq, state.izq);
+                updatePointer(pointerDer, state.der);
+                updatePointer(pointerCen, state.cen);
+            }
+
+            // --- Aplicación de Estilos a las Barras ---
+
+            /**
+             * Aplica las clases CSS adecuadas a una barra según el estado actual del algoritmo.
+             * @param {HTMLElement} bar - El elemento DOM de la barra.
+             * @param {number} k - El índice de la barra en el array.
+             * @param {object | null} highlightInfo - Información adicional sobre el estado actual (no usado aquí).
+             */
+            function applyHighlighting(bar, k, highlightInfo) {
+                // Limpia clases de estado previas
+                bar.classList.remove('bar-discarded', 'bar-comparing-cen', 'bar-found');
+                bar.style.outlineColor = ''; // Limpia borde de comparación
+
+                // Obtiene el estado actual relevante
+                const current_izq = state.izq;
+                const current_der = state.der;
+                const current_cen = state.cen;
+                const foundIdx = state.foundIndex;
+                const isComparing = state.isComparing;
+                const isFinished = state.isFinished;
+
+                // 1. Elemento Encontrado (Prioridad máxima): Aplica clase 'bar-found'
+                if (foundIdx === k) {
+                    bar.classList.add('bar-found');
+                    return; // No aplicar más estilos si se encontró
+                }
+
+                // 2. Elemento Descartado: Aplica clase 'bar-discarded'
+                const hasStarted = current_izq !== -2 && current_der !== -2; // Punteros inicializados?
+                const isOutsideBounds = hasStarted && (k < current_izq || k > current_der); // Fuera de [izq, der]?
+                const isNotFoundFinished = isFinished && foundIdx === null; // Terminó sin encontrar?
+
+                // Marcar como descartado si está fuera de los límites actuales O si la búsqueda terminó sin éxito
+                if (isOutsideBounds || isNotFoundFinished) {
+                    if (foundIdx !== k) { // Asegurar no sobreescribir el 'found' si k fuese foundIdx
+                        bar.classList.add('bar-discarded');
+                    }
+                }
+
+                // 3. Elemento Central en Comparación: Aplica 'bar-comparing-cen'
+                // Solo si no está ya marcado como descartado y es el índice 'cen' actual y estamos comparando
+                if (!bar.classList.contains('bar-discarded') && k === current_cen && isComparing && foundIdx === null) {
+                    bar.classList.add('bar-comparing-cen');
+                }
+            }
+
+            /**
+             * Guarda la información de estado y fuerza un re-renderizado del array.
+             * @param {object | null} highlightInfo - Información para applyHighlighting.
+             */
+            function highlightState(highlightInfo) {
+                lastHighlightInfo = highlightInfo;
+                renderArray(); // Vuelve a dibujar todo el array con los nuevos estilos
+            }
+
+            /**
+             * Resalta una línea específica en el bloque de código fuente.
+             * @param {number} lineNumber - El número de línea a resaltar (basado en data-line). -1 o -2 para limpiar.
+             */
+            function highlightCodeLine(lineNumber) {
+                // Evita re-resaltar la misma línea
+                if (lineNumber === state.currentLine) return;
+
+                // Limpia resaltado anterior
+                codeLines.forEach(line => line.classList.remove('highlight-line'));
+
+                // Aplica nuevo resaltado si es un número de línea válido
+                if (lineNumber >= 0) {
+                    const el = codeListing.querySelector(`span[data-line="${lineNumber}"]`);
+                    if (el) el.classList.add('highlight-line');
+                }
+                state.currentLine = lineNumber; // Guarda la línea resaltada actualmente
+            }
+
+            // --- Lógica del Algoritmo Búsqueda Binaria (Máquina de Estados) ---
+
+            /**
+             * Ejecuta un paso lógico del algoritmo de búsqueda binaria.
+             * Es una máquina de estados que avanza a través de las fases de la búsqueda.
+             * @returns {boolean} True si la animación debe continuar automáticamente, false si debe detenerse (fin, pausa, error).
+             */
+            function binarySearchStep() {
+                // No hacer nada si ya terminó o si no hay un objetivo válido
+                if (state.isFinished || targetValue === null || isNaN(targetValue)) {
+                    if (targetValue === null || isNaN(targetValue)) {
+                        // Detiene la ejecución si el objetivo es inválido
+                        state.isRunning = false; state.isPaused = false; updateControls();
+                    }
+                    return false; // No continuar automáticamente
+                }
+
+                let continueAuto = true; // Por defecto, la animación continúa
+
+                // Máquina de estados basada en state.phase
+                switch (state.phase) {
+                    case 'idle': // Estado inicial antes de comenzar
+                        highlightCodeLine(3); // var índice = None
+                        // Reinicia variables internas
+                        state.foundIndex = null; state.isComparing = false;
+                        state.izq = -2; state.der = -2; state.cen = -1; // -2 para ocultar punteros inicialmente
+                        updateAllPointers(); // Asegura que estén ocultos
+                        state.phase = 'init_izq_der'; // Siguiente fase: inicializar izq
+                        break;
+
+                    case 'init_izq_der': // Inicializar puntero izquierdo
+                        highlightCodeLine(4); // var izq = 0
+                        state.izq = 0;
+                        highlightState({ type: 'set_izq' }); // Renderiza con 'izq' visible
+                        state.phase = 'init_der'; // Siguiente fase: inicializar der
+                        break;
+
+                    case 'init_der': // Inicializar puntero derecho
+                        highlightCodeLine(5); // var der = xs.length - 1
+                        state.der = array.length - 1;
+                        highlightState({ type: 'set_der' }); // Renderiza con 'der' visible
+                        state.phase = 'start_while'; // Siguiente fase: entrar al bucle
+                        break;
+
+                    case 'start_while': // Inicio de una iteración del bucle while
+                        highlightCodeLine(7); // while ... izq <= der
+                        state.isComparing = false; // Resetea flag de comparación visual
+                        // Oculta el puntero 'cen' si estaba visible de la iteración anterior
+                        if (state.cen !== -1) { state.cen = -1; }
+                        highlightState({ type: 'check_while', izq: state.izq, der: state.der }); // Renderiza estado actual
+
+                        // Comprueba la condición del bucle
+                        if (state.foundIndex === null && state.izq <= state.der) {
+                            state.phase = 'calculate_cen'; // Continuar dentro del bucle
+                        } else {
+                            // Salir del bucle: determinar si fue por encontrarlo o por izq > der
+                            state.phase = state.foundIndex !== null ? 'found_exit' : 'not_found_exit';
+                        }
+                        break;
+
+                    case 'calculate_cen': // Calcular el índice central
+                        highlightCodeLine(8); // val cen = ...
+                        state.cen = state.izq + Math.floor((state.der - state.izq) / 2);
+                        highlightState({ type: 'calculated_cen', cen: state.cen }); // Renderiza con 'cen' visible
+
+                        // Pausa breve para que el usuario vea el movimiento del puntero 'cen'
+                        state.phase = 'delay_before_compare';
+                        continueAuto = false; // Pausar animación automática
+                        timeouts.push(setTimeout(() => {
+                            // Continuar solo si sigue corriendo y en la misma fase
+                            if (state.isRunning && !state.isPaused && state.phase === 'delay_before_compare') {
+                                requestStep(false); // Solicitar el siguiente paso
+                            }
+                        }, POINTER_ANIMATION_DURATION)); // Duración de la animación del puntero
+                        break;
+
+                    case 'delay_before_compare': // Estado intermedio después de la pausa
+                        highlightCodeLine(9); // val y = xs(cen)
+                        // Comprobación de seguridad: ¿es 'cen' un índice válido?
+                        if (state.cen < 0 || state.cen >= array.length) {
+                            state.phase = 'not_found_exit'; // Error inesperado, tratar como no encontrado
+                            break;
+                        }
+                        state.currentY = array[state.cen]; // Obtiene el valor central
+                        state.isComparing = true; // Activa el flag para resaltar 'cen' en verde
+                        highlightState({ type: 'got_y', cen: state.cen, y: state.currentY }); // Renderiza resaltado verde
+                        state.phase = 'compare'; // Siguiente fase: comparar
+                        break;
+
+                    case 'compare': // Realizar la comparación entre objetivo y valor central
+                        highlightCodeLine(10); // if x == y
+                        // Compara targetValue con state.currentY
+                        const compareResult = targetValue === state.currentY ? 0 : (targetValue > state.currentY ? 1 : -1);
+                        // Decide la siguiente fase según el resultado
+                        if (compareResult === 0) { state.phase = 'found'; } // Encontrado
+                        else if (compareResult === 1) { state.phase = 'compare_gt'; } // Objetivo es mayor
+                        else { state.phase = 'compare_lt'; } // Objetivo es menor
+                        break;
+
+                    case 'found': // El elemento ha sido encontrado
+                        highlightCodeLine(11); // índice = Some(cen)
+                        state.foundIndex = state.cen; // Guarda el índice encontrado
+                        state.isComparing = false; // Desactiva resaltado verde
+                        highlightState({ type: 'element_found', foundIndex: state.foundIndex }); // Renderiza resaltado dorado
+                        state.phase = 'found_exit'; // Siguiente fase: salir del bucle
+                        break;
+
+                    case 'compare_gt': // El objetivo es mayor que el elemento central
+                        highlightCodeLine(12); // else if x > y
+                        state.phase = 'adjust_izq'; // Siguiente fase: ajustar 'izq'
+                        break;
+
+                    case 'adjust_izq': // Ajustar el límite izquierdo (descartar mitad izquierda)
+                        highlightCodeLine(13); // izq = cen + 1
+                        const oldIzq = state.izq; // Guarda valor antiguo para visualización (opcional)
+                        state.izq = state.cen + 1; // Actualiza 'izq'
+                        state.isComparing = false; // Desactiva resaltado verde
+                        // Renderiza el estado con 'izq' actualizado y la mitad izquierda descartada (gris)
+                        highlightState({ type: 'adjusting_izq', oldIzq: oldIzq, newIzq: state.izq, discardEnd: state.izq - 1 });
+
+                        // Pausa para que el usuario vea el ajuste de 'izq' y el descarte
+                        state.phase = 'delay_after_adjust';
+                        continueAuto = false;
+                        timeouts.push(setTimeout(() => {
+                            if (state.isRunning && !state.isPaused && state.phase === 'delay_after_adjust') {
+                                requestStep(false);
+                            }
+                        }, POINTER_ANIMATION_DURATION + 100)); // Un poco más que la animación del puntero
+                        break;
+
+                    case 'compare_lt': // El objetivo es menor que el elemento central
+                        highlightCodeLine(14); // else
+                        state.phase = 'adjust_der'; // Siguiente fase: ajustar 'der'
+                        break;
+
+                    case 'adjust_der': // Ajustar el límite derecho (descartar mitad derecha)
+                        highlightCodeLine(15); // der = cen - 1
+                        const oldDer = state.der; // Guarda valor antiguo para visualización (opcional)
+                        state.der = state.cen - 1; // Actualiza 'der'
+                        state.isComparing = false; // Desactiva resaltado verde
+                        // Renderiza el estado con 'der' actualizado y la mitad derecha descartada (gris)
+                        highlightState({ type: 'adjusting_der', oldDer: oldDer, newDer: state.der, discardStart: state.der + 1 });
+
+                        // Pausa para que el usuario vea el ajuste de 'der' y el descarte
+                        state.phase = 'delay_after_adjust';
+                        continueAuto = false;
+                        timeouts.push(setTimeout(() => {
+                            if (state.isRunning && !state.isPaused && state.phase === 'delay_after_adjust') {
+                                requestStep(false);
+                            }
+                        }, POINTER_ANIMATION_DURATION + 100)); // Un poco más que la animación del puntero
+                        break;
+
+                    case 'delay_after_adjust': // Estado intermedio después de ajustar izq/der
+                        state.phase = 'start_while'; // Volver al inicio del bucle para la siguiente iteración
+                        state.cen = -1; // Ocultar puntero 'cen'
+                        highlightCodeLine(7); // while ...
+                        highlightState({ type: 'check_while', izq: state.izq, der: state.der }); // Renderizar estado
+                        break;
+
+                    case 'found_exit': // El bucle terminó porque se encontró el elemento
+                        highlightCodeLine(17); // índice (retorno)
+                        state.isFinished = true; state.isRunning = false; state.isComparing = false;
+                        // Muestra mensaje de éxito
+                        setTargetDisplayMessage(`<span class="result-found">Encontrado</span> en índice: <span class="index-value">${state.foundIndex}</span> (índice: Some(${state.foundIndex}))`);
+                        updateControls(); // Actualiza botones
+                        continueAuto = false; // Detener animación
+                        break;
+                    case 'not_found_exit': // El bucle terminó porque izq > der (no se encontró)
+                        highlightCodeLine(17); // índice (retorno)
+                        state.isFinished = true; state.isRunning = false; state.isComparing = false;
+                        // Renderiza estado final con todo lo no encontrado descartado
+                        highlightState({ type: 'element_not_found', izq: state.izq, der: state.der });
+                        // Muestra mensaje de fracaso
+                        setTargetDisplayMessage(`<span class="result-not-found">No encontrado</span> (índice: None)`);
+                        updateControls(); // Actualiza botones
+                        continueAuto = false; // Detener animación
+                        break;
+
+                } // Fin switch
+
+                // Actualiza controles si la animación no continúa automáticamente
+                if (!state.isRunning && !state.isFinished) { updateControls(); }
+                return continueAuto; // Devuelve si la animación debe seguir
+            }
+
+
+            // --- Lógica de Control de la Animación ---
+
+            /**
+             * Maneja el botón Iniciar/Pausar/Continuar/Reiniciar.
+             * Adapta su comportamiento según el estado actual del algoritmo.
+             */
+            function handleStartPause() {
+                // Si el algoritmo ha terminado, el botón actúa como 'Reiniciar'
+                if (state.isFinished) {
+                    resetAlgorithm(false); // Reset parcial (mantiene array y objetivo)
+                    // Inicia automáticamente la búsqueda después de un breve retraso
+                    setTimeout(() => {
+                        if (targetValue !== null && !isNaN(targetValue)) { // Solo si hay objetivo válido
+                            state.isRunning = true; state.isPaused = false; state.phase = 'idle';
+                            requestStep(false); // Inicia la ejecución automática
+                        }
+                        updateControls();
+                    }, 100);
+                    return;
+                }
+                // Si está corriendo, Pausar
+                if (state.isRunning) {
+                    state.isPaused = true; state.isRunning = false; clearTimeouts();
+                }
+                // Si está pausado o inactivo, Iniciar/Continuar
+                else {
+                    if (targetValue === null || isNaN(targetValue)) return; // No iniciar sin objetivo válido
+                    state.isPaused = false; state.isRunning = true;
+                    requestStep(false); // Inicia o continúa la ejecución automática
+                }
+                updateControls(); // Actualiza el texto y estado del botón
+            }
+
+            /**
+             * Solicita la ejecución de un paso del algoritmo.
+             * @param {boolean} force - True si es un paso manual (forzado por el usuario).
+             */
+            function requestStep(force) {
+                clearTimeouts(); // Cancela cualquier paso automático pendiente
+
+                // Ignora la solicitud si no hay un objetivo válido
+                if (targetValue === null || isNaN(targetValue)) {
+                    // Si estaba corriendo, detenerlo
+                    if (state.isRunning) { state.isRunning = false; state.isPaused = false; updateControls(); }
+                    return;
+                }
+
+                if (force) { // Paso manual
+                    if (state.isRunning) { // Si estaba corriendo automáticamente, pausarlo primero
+                        state.isPaused = true; state.isRunning = false;
+                        updateControls();
+                    } else if (!state.isFinished) { // Si estaba pausado o inactivo, ejecutar un paso
+                        binarySearchStep(); // Ejecuta la lógica del algoritmo
+                        updateControls(); // Actualiza botones después del paso
+                    }
+                } else if (state.isRunning && !state.isPaused) { // Paso automático
+                    if (state.isFinished) { updateControls(); return; } // No hacer nada si ya terminó
+                    const continueAuto = binarySearchStep(); // Ejecuta la lógica del algoritmo
+                    const isWaitingForTimeout = timeouts.length > 0; // ¿Hay una pausa interna activa?
+                    // Si el paso lógico indica continuar Y no hay una pausa interna Y sigue corriendo...
+                    if (continueAuto && !isWaitingForTimeout && state.isRunning && !state.isPaused && !state.isFinished) {
+                        // Programar el siguiente paso automático
+                        timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                    } else if (state.isFinished || state.isPaused) {
+                        // Si terminó o se pausó, actualizar controles
+                        updateControls();
+                    }
+                }
+            }
+
+            /**
+             * Cancela todos los timeouts pendientes.
+             */
+            function clearTimeouts() { timeouts.forEach(clearTimeout); timeouts = []; }
+
+            /**
+             * Maneja el cambio en el slider de velocidad.
+             */
+            function handleSpeedChange() { animationSpeed = calculateSpeed(speedSlider.value); }
+
+            /**
+             * Actualiza el estado (habilitado/deshabilitado) y texto de los botones de control
+             * según el estado actual del algoritmo y la visualización.
+             */
+            function updateControls() {
+                const isRunningAuto = state.isRunning && !state.isPaused;
+                const isBusy = isRunningAuto; // Ocupado si está corriendo automáticamente
+                const hasValidTarget = targetValue !== null && !isNaN(targetValue); // ¿Hay un objetivo válido?
+
+                // Habilitar/deshabilitar botones según el estado
+                stepBtn.disabled = !hasValidTarget || state.isFinished || isBusy;
+                startPauseBtn.disabled = !hasValidTarget || state.isFinished; // Deshabilitado si no hay objetivo o ya terminó
+
+                resetBtn.disabled = isBusy; // Deshabilitado mientras corre automáticamente
+                randomArrayBtn.disabled = isBusy;
+                manualInputBtn.disabled = isBusy;
+                targetInput.disabled = isBusy;
+                increaseSizeBtn.disabled = arraySize >= maxSize || isBusy;
+                decreaseSizeBtn.disabled = arraySize <= minSize || isBusy;
+                speedSlider.disabled = isBusy;
+
+                // Actualizar texto del botón Iniciar/Pausar/Reiniciar
+                if (state.isFinished) { startPauseBtn.textContent = 'Reiniciar'; }
+                else if (isRunningAuto) { startPauseBtn.textContent = 'Pausar'; }
+                else { startPauseBtn.textContent = (state.phase === 'idle') ? 'Iniciar' : 'Continuar'; }
+
+                // Asegurar que Iniciar/Paso estén deshabilitados si no hay objetivo
+                if (!hasValidTarget) {
+                    startPauseBtn.disabled = true;
+                    stepBtn.disabled = true;
+                }
+            }
+
+            // --- Punto de Entrada ---
+            // Configura la inicialización para que se ejecute cuando el contenido del DOM esté cargado.
+            document.addEventListener('DOMContentLoaded', init);
+
+        })();
+    </script>
+
+</body>
+
+</html>
