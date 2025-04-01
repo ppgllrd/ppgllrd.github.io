@@ -1,0 +1,1102 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Changed Title -->
+    <title>Visualización Barajado Fisher-Yates</title>
+    <style>
+        /* --- ESTILOS GENERALES --- */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f4f4;
+        }
+
+        h1,
+        h2 {
+            color: #333;
+            text-align: center;
+        }
+
+
+        /* Contenedor principal de la visualización */
+        #visualization-container {
+            position: relative;
+            /* Margen inferior aumentado para dejar espacio a índices y punteros */
+            margin-bottom: 90px;
+            height: 280px;
+            width: 90%;
+            max-width: 800px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            padding: 10px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+        }
+
+        /* Contenedor de las barras del array */
+        #array-container {
+            display: flex;
+            justify-content: center;
+            align-items: flex-end;
+            height: 95%;
+            width: 100%;
+            position: relative;
+            gap: 2px;
+            bottom: 5px;
+        }
+
+        /* Estilo base para cada barra representando un elemento del array */
+        .bar {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            background-color: steelblue;
+            /* Color por defecto: no procesado */
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            text-align: center;
+            color: white;
+            font-size: 12px;
+            position: relative;
+            /* Necesario para posicionar el índice absoluto */
+            transition: background-color 0.4s ease, height 0.3s ease, transform 0.3s ease-in-out; /* Added transform transition */
+            box-sizing: border-box;
+            border: 1px solid #eee;
+            outline: 2px solid transparent;
+            outline-offset: -2px;
+            padding-bottom: 5px;
+            margin-bottom: 5px;
+            bottom: 10px;
+            /* Espacio debajo para el índice */
+        }
+
+        /* Estilo para el valor numérico mostrado DENTRO de la barra */
+        .bar-value {
+            color: white;
+            font-weight: bold;
+            font-size: 10px;
+            z-index: 1;
+            text-shadow: 1px 1px 2px black;
+            position: absolute;
+            /* Posición relativa a la barra padre */
+            bottom: 5px;
+            /* Colocar encima del espacio para el índice */
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        /* --- CONTENEDOR Y ESTILOS PARA ÍNDICES NUMÉRICOS BAJO LAS BARRAS --- */
+        #index-container {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            position: absolute;
+            bottom: 5px;
+            /* Posicionado justo debajo de las barras */
+            left: 10px;
+            right: 10px;
+            height: 20px;
+            gap: 2px;
+            /* Mismo espacio que las barras */
+            pointer-events: none;
+            /* No interfiere con clics */
+            z-index: 5;
+        }
+
+        .index-label {
+            flex-grow: 1;
+            flex-basis: 0;
+            max-width: 50px;
+            /* Coincide con max-width de barras */
+            text-align: center;
+            font-size: 10px;
+            color: #666;
+            font-weight: bold;
+        }
+
+        /* --- ESTADOS DE LAS BARRAS DURANTE EL BARAJADO --- */
+        /* Barra en la posición 'i' (elemento actual a intercambiar) */
+        .bar.bar-i {
+            background-color: mediumpurple !important;
+            z-index: 10;
+        }
+
+        /* Borde naranja para indicar la barra 'p' candidata elegida al azar */
+        .bar.bar-p-candidate {
+            outline-width: 3px;
+            z-index: 10;
+            outline-color: orange !important;
+        }
+
+        /* Borde rojo para indicar elementos a punto de intercambiarse (durante el flash) */
+        .bar.bar-red-border {
+            outline-width: 3px;
+            z-index: 10;
+            /* Asegura que el borde sea visible */
+            outline-color: red !important;
+        }
+
+        /* Barra ya fijada en su posición final barajada (a la izquierda de 'i') */
+        .bar.bar-fixed {
+            background-color: slategray !important; /* Changed from mediumseagreen */
+            outline-color: transparent !important; /* Sin borde especial */
+        }
+
+        /* Usado para el efecto de parpadeo (flash) de los bordes */
+        .bar.bar-flash-off {
+            outline-color: transparent !important;
+        }
+
+
+        /* --- CONTENEDOR Y ESTILOS DE PUNTEROS (i, p) --- */
+        #pointers-container {
+            position: absolute;
+            bottom: -85px;
+            /* Posicionado debajo de los índices */
+            left: 0;
+            width: 100%;
+            height: 70px; /* Altura suficiente para los 2 punteros */
+            pointer-events: none;
+            /* No interfiere con clics */
+        }
+
+        .pointer {
+            position: absolute;
+            transform: translateX(-50%);
+            /* Centrado horizontalmente */
+            background-color: rgba(50, 50, 50, 0.8);
+            /* Base oscura */
+            color: white;
+            padding: 1px 3px;
+            border-radius: 3px;
+            font-size: 10px;
+            font-weight: bold;
+            white-space: nowrap;
+            /* Evita que el texto se parta */
+            transition: left 0.4s ease-in-out;
+            /* Animación de movimiento */
+            visibility: hidden;
+            /* Oculto por defecto */
+            z-index: 20;
+            /* Por encima de las barras e índices */
+            min-width: 15px;
+            text-align: center;
+        }
+
+        /* Flecha indicadora del puntero */
+        .pointer::before {
+            content: '';
+            position: absolute;
+            left: 50%;
+            top: -7px;
+            /* Posiciona la flecha sobre el cuadro */
+            transform: translateX(-50%);
+            width: 0;
+            height: 0;
+            border-left: 4px solid transparent;
+            border-right: 4px solid transparent;
+            /* El color del borde inferior se define por puntero */
+        }
+
+        #pointer-i {
+            background-color: mediumpurple;
+            bottom: 25px; /* Posición ajustada */
+        }
+
+        #pointer-i::before {
+            border-bottom: 7px solid mediumpurple;
+        }
+
+        /* Pointer 'p' (replaces 'j') */
+        #pointer-p {
+            background-color: rgba(255, 165, 0, 0.8); /* Orange for 'p' */
+            bottom: 0; /* Posición más baja */
+        }
+
+        #pointer-p::before {
+            border-bottom: 7px solid rgba(255, 165, 0, 0.8);
+        }
+        /* Removed #pointer-posMin */
+
+
+        /* --- CONTROLES (Botones, Sliders) --- */
+        /* Styles are largely the same as before */
+        #controls-container {
+            margin: 20px 0;
+            padding: 15px;
+            background-color: #eee;
+            border-radius: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: center;
+            gap: 15px;
+            width: 90%;
+            max-width: 800px;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        #controls-container button {
+            padding: 8px 15px;
+            cursor: pointer;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            background-color: #f8f8f8;
+            color: #333;
+            font-size: 14px;
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+
+        #controls-container button:hover:not(:disabled) {
+            background-color: #e0e0e0;
+            border-color: #aaa;
+        }
+
+        #controls-container button:disabled {
+            background-color: #cccccc;
+            color: #888;
+            cursor: not-allowed;
+            border-color: #bbb;
+        }
+
+        #start-pause-btn {
+            background-color: #60a5fa; color: white; border-color: #3b82f6;
+        }
+        #step-btn {
+             background-color: #fbbf24; color: white; border-color: #f59e0b;
+        }
+        #reset-btn {
+            background-color: #f87171; color: white; border-color: #ef4444;
+        }
+        .size-control label { margin-right: 5px; }
+        .size-control span {
+            min-width: 25px; text-align: center; padding: 5px 8px; background-color: white;
+            border: 1px solid #ccc; border-radius: 3px; display: inline-block;
+        }
+        .size-control button { font-weight: bold; padding: 4px 8px; min-width: 25px; }
+        .speed-control label { margin-right: 5px; }
+        .speed-control input[type="range"] { cursor: pointer; width: 100px; }
+
+        /* --- CONTENEDOR DE CÓDIGO --- */
+        #code-container {
+            width: 90%;
+            max-width: 800px;
+            margin-top: 20px;
+            background-color: #2d2d2d; /* Fondo oscuro */
+            color: #ccc; /* Texto claro */
+            padding: 15px;
+            border-radius: 5px;
+            font-family: monospace;
+            font-size: 14px;
+            box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2);
+            line-height: 1;
+            overflow-x: auto; /* Scroll horizontal si el código es largo */
+            visibility: hidden;
+        }
+
+        #code-container h2 {
+            color: #eee; margin: 0 0 10px 0; font-size: 16px;
+            border-bottom: 1px solid #555; padding-bottom: 5px;
+        }
+
+        #code-listing span[data-line] {
+            padding: 2px 0; display: inline-block; width: 100%; border-radius: 3px;
+            transition: background-color 0.3s ease; line-height: normal; white-space: pre;
+        }
+
+        #code-listing span[data-line].highlight-line {
+            background-color: rgba(255, 255, 100, 0.25); /* Amarillo translúcido */
+        }
+
+        /* --- COLOREADO DE SINTAXIS (Ejemplo básico) --- */
+        #code-listing .syntax-keyword { color: #569cd6; }
+        #code-listing .syntax-type { color: #4ec9b0; }
+        #code-listing .syntax-function { color: #dcdcaa; }
+        #code-listing .syntax-operator { color: #b5cea8; }
+        #code-listing .syntax-comment { color: #6a9955; font-style: italic; }
+        #code-listing .syntax-variable { color: #9cdcfe; }
+        #code-listing .syntax-generic { color: #4ec9b0; }
+        #code-listing .syntax-package { color: #ce9178; }
+        #code-listing .syntax-number { color: #b5cea8; }
+        #code-listing .syntax-class { color: #4ec9b0; } /* Added for Random */
+        #code-listing .syntax-method { color: #dcdcaa; } /* Added for int method */
+    </style>
+</head>
+
+<body>
+    <!-- Changed Title -->
+    <h1>Visualización Barajado Fisher-Yates</h1>
+    <div id="visualization-container">
+        <div id="array-container"></div>
+        <div id="index-container"></div>
+        <div id="pointers-container">
+            <div class="pointer" id="pointer-i">i</div>
+            <!-- Renamed pointer-j to pointer-p -->
+            <div class="pointer" id="pointer-p">p</div>
+            <!-- Removed pointer-posMin -->
+        </div>
+    </div>
+    <div id="controls-container">
+        <div class="control-group">
+            <button id="start-pause-btn">Iniciar</button>
+            <button id="step-btn">Paso Siguiente</button>
+            <button id="reset-btn">Resetear</button>
+        </div>
+        <div class="control-group speed-control">
+            <label for="speed-slider">Velocidad:</label>
+            <input type="range" id="speed-slider" min="0" max="100" value="50">
+        </div>
+        <div class="control-group size-control">
+            <label>Tamaño:</label>
+            <button id="decrease-size-btn">-</button>
+            <span id="size-display">10</span>
+            <button id="increase-size-btn">+</button>
+        </div>
+        <div class="control-group">
+            <button id="random-array-btn">Generar Ordenado</button> <!-- Changed Button Text -->
+            <button id="manual-input-btn">Introducir Datos</button>
+        </div>
+    </div>
+    <div id="code-container">
+        <!-- Changed Algorithm Title -->
+        <h2>Algoritmo Fisher-Yates (Scala):</h2>
+        <!-- Updated Code Block -->
+        <pre><code id="code-listing">
+<span data-line="0"><span class="syntax-keyword">import</span> <span class="syntax-package">scala.util.Random</span></span>
+<span data-line="1"></span>
+<span data-line="2"><span class="syntax-keyword">def</span> <span class="syntax-function">baraja</span>[<span class="syntax-generic">A</span>](<span class="syntax-variable">xs</span>: <span class="syntax-type">Array</span>[<span class="syntax-generic">A</span>], <span class="syntax-variable">semilla</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span></span>
+<span data-line="3">  <span class="syntax-keyword">val</span> <span class="syntax-variable">azar</span> <span class="syntax-operator">=</span> <span class="syntax-keyword">new</span> <span class="syntax-class">Random</span>(<span class="syntax-variable">semilla</span>) <span class="syntax-comment">// 1. Crear generador</span></span>
+<span data-line="4"></span>
+<span data-line="5">  <span class="syntax-comment">// Función auxiliar para intercambiar (igual que antes)</span></span>
+<span data-line="6">  <span class="syntax-keyword">def</span> <span class="syntax-function">swap</span>(<span class="syntax-variable">arr</span>: <span class="syntax-type">Array</span>[<span class="syntax-generic">A</span>], <span class="syntax-variable">p1</span>: <span class="syntax-type">Int</span>, <span class="syntax-variable">p2</span>: <span class="syntax-type">Int</span>): <span class="syntax-type">Unit</span> <span class="syntax-operator">=</span> ...</span>
+<span data-line="7"></span>
+<span data-line="8">  <span class="syntax-keyword">for</span> <span class="syntax-variable">i</span> <span class="syntax-operator">&lt;-</span> 0 <span class="syntax-keyword">until</span> <span class="syntax-variable">xs</span><span class="syntax-operator">.</span><span class="syntax-variable">length</span> <span class="syntax-operator">-</span> 1 <span class="syntax-keyword">do</span> <span class="syntax-comment">// 2. Iterar i desde 0 hasta n-2</span></span>
+<span data-line="9">    <span class="syntax-comment">// 3. Elegir p al azar entre i (inclusive) y n (exclusive)</span></span>
+<span data-line="10">    <span class="syntax-keyword">val</span> <span class="syntax-variable">p</span> <span class="syntax-operator">=</span> <span class="syntax-variable">azar</span><span class="syntax-operator">.</span><span class="syntax-method">nextInt</span>(<span class="syntax-variable">xs</span><span class="syntax-operator">.</span><span class="syntax-variable">length</span> <span class="syntax-operator">-</span> <span class="syntax-variable">i</span>) <span class="syntax-operator">+</span> <span class="syntax-variable">i</span></span>
+<span data-line="11">    <span class="syntax-comment">// Corrección: nextInt(N) da 0..N-1. Queremos i..n-1.</span></span>
+<span data-line="12">    <span class="syntax-comment">// Rango tiene tamaño (n-1) - i + 1 = n - i.</span></span>
+<span data-line="13">    <span class="syntax-comment">// azar.nextInt(n - i) da 0..(n - i - 1). Sumando i -> i..(n - 1).</span></span>
+<span data-line="14"></span>
+<span data-line="15">    <span class="syntax-function">swap</span>(<span class="syntax-variable">xs</span>, <span class="syntax-variable">i</span>, <span class="syntax-variable">p</span>)      <span class="syntax-comment">// 4. Intercambiar elemento en i con elemento en p</span></span>
+<span data-line="16"></span>
+<span data-line="17"><span class="syntax-comment">// 5. El array xs está ahora barajado</span></span>
+        </code></pre>
+    </div>
+
+    <script>
+        (function () { // IIFE
+
+            // --- Referencias a Elementos del DOM ---
+            const arrayContainer = document.getElementById('array-container');
+            const indexContainer = document.getElementById('index-container');
+            const pointersContainer = document.getElementById('pointers-container');
+            const pointerI = document.getElementById('pointer-i');
+            // Renamed pointerJ to pointerP
+            const pointerP = document.getElementById('pointer-p');
+            // Removed pointerPosMin reference
+            const codeListing = document.getElementById('code-listing');
+            const codeLines = codeListing.querySelectorAll('span[data-line]');
+            const startPauseBtn = document.getElementById('start-pause-btn');
+            const stepBtn = document.getElementById('step-btn');
+            const resetBtn = document.getElementById('reset-btn');
+            const speedSlider = document.getElementById('speed-slider');
+            const decreaseSizeBtn = document.getElementById('decrease-size-btn');
+            const increaseSizeBtn = document.getElementById('increase-size-btn');
+            const sizeDisplay = document.getElementById('size-display');
+            const randomArrayBtn = document.getElementById('random-array-btn');
+            const manualInputBtn = document.getElementById('manual-input-btn');
+
+            // --- Variables de Estado ---
+            let array = [];
+            let originalArray = [];
+            let bars = [];
+            let timeouts = [];
+            let animationSpeed = 500;
+            let arraySize = 10;
+            const minSize = 3;
+            const maxSize = 30;
+            let state = getDefaultState(); // Use new default state
+            let lastHighlightInfo = null;
+            const POINTER_ANIMATION_DURATION = 400;
+            // Simple pseudo-random number generator for deterministic behavior if needed
+            // let pseudoRandomSeed = Date.now(); // Can be fixed for reproducibility
+            // function pseudoRandomInt(min, max) { // min inclusive, max exclusive
+            //     pseudoRandomSeed = (pseudoRandomSeed * 9301 + 49297) % 233280;
+            //     const rnd = pseudoRandomSeed / 233280;
+            //     return min + Math.floor(rnd * (max - min));
+            // }
+            // Using Math.random() for simplicity now
+
+            /**
+             * Devuelve el objeto de estado inicial por defecto para el algoritmo Fisher-Yates.
+             * @returns {object} Estado inicial.
+             */
+            function getDefaultState() {
+                return {
+                    i: -1,          // Índice del bucle externo
+                    p: -1,          // Índice aleatorio elegido
+                    // Removed j, posMin, prevJ
+                    fixedUntil: -1, // Índice hasta el cual el array está "fijo" (shuffled part) - replaces sortedUntil
+                    phase: 'idle',  // Fase actual ('idle', 'outer_loop', 'generate_p', 'swapping', 'finished')
+                    currentLine: -1,
+                    isRunning: false,
+                    isPaused: false,
+                    isFinished: false,
+                    isSwapping: false
+                };
+            }
+
+            function init() {
+                updateSizeDisplay();
+                setupEventListeners();
+                handleSpeedChange();
+                setTimeout(generateAndReset, 50);
+            }
+
+            function setupEventListeners() {
+                startPauseBtn.onclick = handleStartPause;
+                stepBtn.onclick = () => requestStep(true);
+                resetBtn.onclick = resetAlgorithm;
+                speedSlider.oninput = handleSpeedChange;
+                randomArrayBtn.onclick = generateAndReset; // Button now generates ordered array
+                manualInputBtn.onclick = promptForArrayData;
+                increaseSizeBtn.onclick = incrementSize;
+                decreaseSizeBtn.onclick = decrementSize;
+            }
+
+            function calculateSpeed(sliderValue) {
+                const min = 50;
+                const max = 1500;
+                const norm = parseInt(sliderValue, 10) / 100;
+                return Math.round(max - norm * (max - min));
+            }
+
+            function updateSizeDisplay() {
+                sizeDisplay.textContent = arraySize;
+                increaseSizeBtn.disabled = arraySize >= maxSize;
+                decreaseSizeBtn.disabled = arraySize <= minSize;
+            }
+
+            function incrementSize() {
+                if (arraySize < maxSize) {
+                    arraySize++;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+
+            function decrementSize() {
+                if (arraySize > minSize) {
+                    arraySize--;
+                    updateSizeDisplay();
+                    generateAndReset();
+                }
+            }
+
+            /** Genera un nuevo array ORDENADO y resetea la visualización. */
+            function generateAndReset() {
+                const newA = [];
+                // Generate consecutive numbers starting from a random small number
+                const startValue = Math.floor(Math.random() * 21) + 10; // e.g., 10-30
+                for (let k = 0; k < arraySize; k++) {
+                    newA.push(startValue + k);
+                }
+                originalArray = newA.slice();
+                console.log("Array generado (ordenado):", originalArray);
+                resetAlgorithm();
+            }
+
+            function promptForArrayData() {
+                const currentData = originalArray.join(',');
+                const input = prompt(`Introduce los números separados por comas (${minSize}-${maxSize} elementos):`, currentData);
+                if (input === null) return;
+                const parsed = input.split(',')
+                    .map(s => parseInt(s.trim(), 10))
+                    .filter(n => !isNaN(n) && n >= 0); // Allow 0+
+
+                if (parsed.length < minSize || parsed.length > maxSize) {
+                    alert(`Número de elementos inválido. Debe estar entre ${minSize} y ${maxSize}.`);
+                    return;
+                }
+                originalArray = parsed;
+                arraySize = parsed.length;
+                updateSizeDisplay();
+                console.log("Array manual:", originalArray);
+                resetAlgorithm();
+            }
+
+            function resetAlgorithm() {
+                console.log("Reseteando algoritmo: Fisher-Yates Shuffle");
+                state.isFinished = true;
+                clearTimeouts();
+                setTimeout(resetVisuals, 50);
+            }
+
+            function resetVisuals() {
+                console.log("Reseteando visuales");
+                state = getDefaultState(); // Use new default state
+                lastHighlightInfo = null;
+                clearTimeouts();
+                array = originalArray.slice();
+                updateSizeDisplay();
+                if (bars && bars.length > 0) {
+                    bars.forEach(b => {
+                        b.className = 'bar';
+                        b.style = '';
+                        // Ensure transform is cleared on reset
+                        b.style.transform = '';
+                    });
+                }
+                renderArray();
+                highlightCodeLine(-1);
+                updateControls();
+            }
+
+            function renderArray() {
+                arrayContainer.innerHTML = '';
+                if (indexContainer) indexContainer.innerHTML = '';
+                bars = [];
+
+                if (array.length === 0) {
+                    updateAllPointers();
+                    return;
+                }
+
+                const maxValue = Math.max(...array, 1); // Use 1 if array is empty or all zeros
+
+                for (let idx = 0; idx < array.length; idx++) {
+                    const value = array[idx];
+                    const bar = document.createElement('div');
+                    bar.className = 'bar';
+                    const height = Math.max(5, (value / maxValue) * 95);
+                    bar.style.height = height + '%';
+                    bar.setAttribute('data-index', idx);
+                    bar.setAttribute('data-value', value);
+
+                    const barValueSpan = document.createElement('span');
+                    barValueSpan.className = 'bar-value';
+                    barValueSpan.textContent = value;
+                    bar.appendChild(barValueSpan);
+
+                    arrayContainer.appendChild(bar);
+                    bars.push(bar);
+
+                    if (indexContainer) {
+                        const indexLabel = document.createElement('span');
+                        indexLabel.className = 'index-label';
+                        indexLabel.textContent = idx;
+                        indexContainer.appendChild(indexLabel);
+                    }
+                }
+                // Apply highlighting based on the current state AFTER creating all bars
+                bars.forEach((bar, idx) => {
+                    applyHighlighting(bar, idx, lastHighlightInfo);
+                });
+
+                updateAllPointers();
+            }
+
+            /** Update pointer position (common function) */
+             function updatePointer(pointerElement, index) {
+                if (index < 0 || index >= bars.length || !bars[index] || !pointerElement) {
+                    if (pointerElement) pointerElement.style.visibility = 'hidden';
+                    return;
+                }
+                const bar = bars[index];
+                 if (!bar) { // Comprobación extra
+                     pointerElement.style.visibility = 'hidden';
+                     return;
+                 }
+                const center = bar.offsetLeft + bar.offsetWidth / 2;
+                pointerElement.style.left = center + 'px';
+                pointerElement.style.visibility = 'visible';
+            }
+
+            /** Update positions of i and p pointers */
+            function updateAllPointers() {
+                updatePointer(pointerI, state.i);
+                updatePointer(pointerP, state.p);
+                // Removed posMin update
+            }
+
+            /**
+             * Applies highlighting based on Fisher-Yates state.
+             * @param {HTMLElement} bar - The bar element.
+             * @param {number} k - The index of the bar.
+             * @param {object|null} highlightInfo - Additional info (type, indices).
+             */
+            function applyHighlighting(bar, k, highlightInfo) {
+                // Reset classes first
+                bar.classList.remove(
+                    'bar-fixed', 'bar-i', 'bar-p-candidate',
+                    'bar-red-border', 'bar-flash-off'
+                );
+                // Reset explicit outline color
+                if (!bar.classList.contains('bar-red-border')) { // Don't reset if it should be red
+                    bar.style.outlineColor = '';
+                }
+
+
+                const infoType = highlightInfo ? highlightInfo.type : null;
+                const current_i = state.i;
+                const current_p = state.p;
+                const current_fixedUntil = state.fixedUntil; // Use fixedUntil
+                const isFinished = state.isFinished;
+
+                // 1. Bars that are "fixed" in their shuffled position (or final state)
+                if (isFinished || k <= current_fixedUntil) {
+                    bar.classList.add('bar-fixed'); // Use 'bar-fixed' style
+                     // During pre-swap flash, the bar at 'i' might be in the fixed zone visually
+                    if (infoType === 'before_swap_visual' && k === highlightInfo.idx1) {
+                        bar.classList.add('bar-red-border');
+                    } else if (infoType === 'before_swap_visual' && k === highlightInfo.idx2) {
+                         // Also highlight p if it's being swapped (even if visually fixed)
+                        bar.classList.add('bar-red-border');
+                    }
+                    return; // No more styles if fixed
+                }
+
+                // 2. Special highlighting during pre-swap flash
+                if (infoType === 'before_swap_visual' && (k === highlightInfo.idx1 || k === highlightInfo.idx2)) {
+                    bar.classList.add('bar-red-border');
+                } else {
+                     // 3. Normal highlighting during shuffling
+                    if (k === current_i) {
+                        bar.classList.add('bar-i'); // Current element 'i'
+                    }
+                    // Highlight 'p' candidate with orange border AFTER 'i' is processed
+                    // and ONLY when p has been chosen (e.g., in 'generate_p' or 'swapping' phase before flash)
+                    if (k === current_p && (state.phase === 'generate_p' || state.phase === 'delay_after_p' || state.phase === 'swapping')) {
+                         if (infoType !== 'before_swap_visual') { // Don't apply if flashing red
+                            bar.classList.add('bar-p-candidate');
+                        }
+                    }
+                 }
+
+                // 4. Clean up flash state if not flashing
+                if (infoType !== 'before_swap_visual') {
+                    bar.classList.remove('bar-flash-off');
+                 }
+            }
+
+
+            function highlightState(highlightInfo) {
+                lastHighlightInfo = highlightInfo;
+                 // Force redraw of all bars with new state
+                bars.forEach((bar, idx) => applyHighlighting(bar, idx, lastHighlightInfo));
+                updateAllPointers(); // Also update pointers
+            }
+
+            function highlightCodeLine(lineNumber) {
+                if (lineNumber === state.currentLine) return;
+
+                codeLines.forEach(line => line.classList.remove('highlight-line'));
+
+                if (lineNumber >= 0) {
+                    const lineElement = codeListing.querySelector(`span[data-line="${lineNumber}"]`);
+                    if (lineElement) {
+                        lineElement.classList.add('highlight-line');
+                    }
+                }
+                state.currentLine = lineNumber;
+            }
+
+             /** Flash borders (reusable function) */
+            function flashBorders(index1, index2, repetitions, duration, callback) {
+                let count = 0;
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+                const totalToggles = repetitions * 2;
+
+                function toggle() {
+                    if (!state.isSwapping || count >= totalToggles) {
+                        if (bar1) bar1.classList.remove('bar-flash-off', 'bar-red-border');
+                        if (bar2) bar2.classList.remove('bar-flash-off', 'bar-red-border');
+                        // Reapply normal highlighting after flash
+                        if (bar1) applyHighlighting(bar1, index1, lastHighlightInfo);
+                        if (bar2) applyHighlighting(bar2, index2, lastHighlightInfo);
+                        if (callback) callback();
+                        return;
+                    }
+
+                    if (bar1) {
+                        bar1.classList.toggle('bar-flash-off');
+                        if (!bar1.classList.contains('bar-red-border')) bar1.classList.add('bar-red-border');
+                    }
+                    if (bar2) {
+                        bar2.classList.toggle('bar-flash-off');
+                        if (!bar2.classList.contains('bar-red-border')) bar2.classList.add('bar-red-border');
+                    }
+
+                    count++;
+                    timeouts.push(setTimeout(toggle, duration));
+                }
+
+                 // Start flashing, ensure red border is initially visible
+                if (bar1) bar1.classList.add('bar-red-border');
+                if (bar2) bar2.classList.add('bar-red-border');
+                timeouts.push(setTimeout(toggle, 5)); // Small initial delay
+            }
+
+            /**
+             * Executes a single step of the Fisher-Yates shuffle.
+             * @returns {boolean} True if auto-execution should continue.
+             */
+            function fisherYatesStep() {
+                if (state.isFinished || state.isSwapping) return false;
+
+                let continueAuto = true;
+
+                switch (state.phase) {
+                    case 'idle':
+                        highlightCodeLine(3); // val azar = ...
+                        state.i = -1;
+                        state.fixedUntil = -1; // Reset fixed marker
+                        state.phase = 'outer_loop';
+                        break;
+
+                    case 'outer_loop':
+                        state.i++; // Advance 'i'
+                         // Loop goes until n-2 (i.e., < n-1)
+                        if (state.i >= array.length - 1) {
+                            state.phase = 'finished';
+                        } else {
+                            highlightCodeLine(8); // for i <- ...
+                            state.p = -1; // Reset p for this iteration
+                            // Update visuals to show new 'i' and remove old 'p' highlight
+                            highlightState({ type: 'start_outer', i: state.i });
+                             state.phase = 'generate_p';
+                        }
+                        break;
+
+                    case 'generate_p':
+                        highlightCodeLine(10); // val p = ...
+                        // Calculate random p: i <= p < n
+                        const rangeSize = array.length - state.i;
+                        const randomOffset = Math.floor(Math.random() * rangeSize);
+                        state.p = state.i + randomOffset;
+                        console.log(`i=${state.i}, n=${array.length}, Chose p=${state.p}`);
+
+                        // Highlight the chosen 'p' bar
+                        highlightState({ type: 'p_selected', i: state.i, p: state.p });
+
+                        // Add a small delay to show 'p' before swapping
+                        state.phase = 'delay_after_p';
+                        continueAuto = false; // Pause auto execution briefly
+                        timeouts.push(setTimeout(() => {
+                            if (!state.isPaused && state.phase === 'delay_after_p') {
+                                requestStep(false); // Request next step automatically
+                            }
+                        }, POINTER_ANIMATION_DURATION * 0.7)); // Shorter delay than pointer move
+                        break;
+
+                    case 'delay_after_p':
+                         // Transition to swapping phase after the delay
+                        state.phase = 'swapping';
+                        continueAuto = fisherYatesStep(); // Execute swap phase immediately
+                        return continueAuto; // Return result of swap phase execution
+
+                    case 'swapping':
+                        highlightCodeLine(15); // swap(xs, i, p)
+                        const index1 = state.i;
+                        const index2 = state.p;
+
+                        // Only swap if p is different from i
+                        if (index1 !== index2 && index2 >= 0 && index2 < array.length) {
+                            state.isSwapping = true;
+                            updateControls();
+                            // Highlight bars for flashing
+                            highlightState({ type: 'before_swap_visual', idx1: index1, idx2: index2 });
+
+                            const flashDuration = animationSpeed * 0.15;
+                            const flashRepetitions = 2;
+
+                            flashBorders(index1, index2, flashRepetitions, flashDuration, () => {
+                                if (!state.isSwapping) return; // Check if cancelled
+
+                                const pauseAfterFlash = Math.max(50, animationSpeed * 0.1);
+                                timeouts.push(setTimeout(() => {
+                                    if (!state.isSwapping) return; // Check again
+
+                                    // Perform the animated swap
+                                    animateSwap_Fixed(index1, index2, () => {
+                                         // Swap finished
+                                        state.fixedUntil = state.i; // Mark element 'i' as fixed
+                                        state.isSwapping = false;
+
+                                        // Check if algorithm finished after this swap
+                                        if (state.i >= array.length - 2) { // Check if i reached the end
+                                            state.phase = 'finished';
+                                        } else {
+                                            state.phase = 'outer_loop'; // Go to next 'i'
+                                        }
+
+                                        // Update visuals post-swap
+                                        highlightState({ type: 'after_swap_completed', fixed: state.fixedUntil });
+                                        updateControls();
+
+                                         // If finished, execute finished step
+                                         if (state.phase === 'finished') {
+                                            fisherYatesStep();
+                                        } else if (state.isRunning && !state.isPaused) {
+                                            // If running auto, request next step
+                                            requestStep(false);
+                                        }
+                                    });
+                                }, pauseAfterFlash));
+                            });
+                            continueAuto = false; // Pause auto-run during swap
+                        } else {
+                            // No swap needed (i === p)
+                            console.log("Intercambio no necesario: i === p en índice", index1);
+                            state.fixedUntil = state.i; // Mark 'i' as fixed anyway
+                            highlightState({ type: 'after_swap_no_change', fixed: state.fixedUntil });
+
+                            // Check if algorithm finished
+                            if (state.i >= array.length - 2) {
+                                state.phase = 'finished';
+                            } else {
+                                state.phase = 'outer_loop'; // Go to next 'i'
+                            }
+                        }
+                        break;
+
+                    case 'finished':
+                        highlightCodeLine(17); // Final comment line
+                        state.fixedUntil = array.length - 1; // Mark all as fixed/shuffled
+                        state.isFinished = true;
+                        state.isRunning = false;
+                        state.p = -1; // Hide p pointer at the end
+                        highlightState({ type: 'final', fixed: state.fixedUntil });
+                        console.log("Barajado completado.");
+                        updateControls();
+                        continueAuto = false;
+                        break;
+                }
+
+                // Update controls unless swapping (handled in callbacks)
+                 if (!state.isSwapping) {
+                    updateControls();
+                }
+                // Update pointers regardless of phase (unless hidden)
+                updateAllPointers();
+
+                return continueAuto;
+            }
+
+
+            /**
+             * Animate swap (reusable function - slight modification for clarity).
+             * Note: The actual swap in the `array` happens *during* the animation.
+             */
+            function animateSwap_Fixed(index1, index2, callback) {
+                console.log("Animando intercambio:", index1, "y", index2);
+                const bar1 = bars[index1];
+                const bar2 = bars[index2];
+
+                if (!bar1 || !bar2) {
+                    console.error("Error: Barras no encontradas para intercambio:", index1, index2);
+                    state.isSwapping = false; // Ensure state is reset
+                    if (callback) callback();
+                    return;
+                }
+
+                const bar1ValueSpan = bar1.querySelector('.bar-value');
+                const bar2ValueSpan = bar2.querySelector('.bar-value');
+
+                const moveDuration = Math.max(animationSpeed * 0.7, 180); // Slightly faster move
+                const transitionTransform = `transform ${moveDuration / 1000}s ease-in-out`;
+
+                // Temporarily apply transition ONLY for transform
+                bar1.style.transition = transitionTransform;
+                bar2.style.transition = transitionTransform;
+
+                const distance = bar2.offsetLeft - bar1.offsetLeft;
+
+                // Apply transform to move bars visually
+                bar1.style.transform = `translateX(${distance}px)`;
+                bar2.style.transform = `translateX(${-distance}px)`;
+
+                // --- Perform logical swap in the array HERE ---
+                const tempValue = array[index1];
+                array[index1] = array[index2];
+                array[index2] = tempValue;
+                // --- Logical swap done ---
+
+                // Update data attributes immediately (optional but good practice)
+                bar1.setAttribute('data-value', array[index1]);
+                bar2.setAttribute('data-value', array[index2]);
+
+
+                // After the move animation finishes:
+                timeouts.push(setTimeout(() => {
+                    // Get the NEW values and calculate NEW heights for the bars
+                    // based on their NEW logical positions after the swap
+                    const v1_new_logical = array[index1]; // Value now at index1
+                    const v2_new_logical = array[index2]; // Value now at index2
+                    const maxValue = Math.max(...(array.length > 0 ? array : [1])) || 1;
+                    const h1_new = Math.max(5, (v1_new_logical / maxValue) * 95) + '%';
+                    const h2_new = Math.max(5, (v2_new_logical / maxValue) * 95) + '%';
+
+                    // Remove the specific transform transition and reset transform
+                    // This visually "snaps" the bars to their new physical locations
+                    // while allowing height/text changes to happen (potentially with default CSS transition)
+                    bar1.style.transition = 'none'; // Disable transform transition temporarily
+                    bar2.style.transition = 'none';
+
+                    // Update height and text content
+                    bar1.style.height = h1_new;
+                    if (bar1ValueSpan) bar1ValueSpan.textContent = v1_new_logical;
+                    bar1.style.transform = ''; // Reset transform
+
+                    bar2.style.height = h2_new;
+                    if (bar2ValueSpan) bar2ValueSpan.textContent = v2_new_logical;
+                    bar2.style.transform = ''; // Reset transform
+
+                     // Force reflow/repaint might be needed in some browsers
+                     void bar1.offsetHeight;
+                     void bar2.offsetHeight;
+
+                    // Restore default transitions from CSS after a tiny delay
+                    setTimeout(() => {
+                         bar1.style.transition = '';
+                         bar2.style.transition = '';
+                    }, 10);
+
+
+                    // Execute the callback provided
+                    if (callback) {
+                        callback();
+                    } else {
+                         // Fallback: ensure swapping state is reset if no callback
+                         state.isSwapping = false;
+                         updateControls();
+                    }
+
+                }, moveDuration)); // Wait for the transform animation to complete
+            }
+
+
+            // --- Control Logic (mostly reusable) ---
+
+            function handleStartPause() {
+                if (state.isFinished && state.phase === 'finished') {
+                    resetAlgorithm();
+                    setTimeout(() => {
+                        state.isRunning = true;
+                        state.isPaused = false;
+                        state.isFinished = false;
+                        state.phase = 'idle';
+                        requestStep(false); // Start the shuffle
+                        updateControls();
+                    }, 100);
+                    return;
+                }
+
+                if (state.isRunning) {
+                    state.isPaused = true;
+                    state.isRunning = false;
+                    clearTimeouts();
+                } else {
+                    state.isPaused = false;
+                    state.isRunning = true;
+                    if (state.phase === 'idle' || state.phase === 'finished') {
+                         state.phase = 'idle';
+                         state.isFinished = false;
+                     }
+                    requestStep(false);
+                }
+                updateControls();
+            }
+
+            function requestStep(force) {
+                clearTimeouts();
+
+                if (state.isSwapping && !force) {
+                    console.log("Petición de paso ignorada: esperando fin de intercambio.");
+                    return;
+                }
+
+                if (force) {
+                    if (state.isRunning) {
+                        state.isPaused = true;
+                        state.isRunning = false;
+                        updateControls();
+                    }
+                    if (!state.isSwapping) {
+                        fisherYatesStep(); // Call the correct step function
+                    }
+                } else if (state.isRunning && !state.isPaused) {
+                    const continueAuto = fisherYatesStep(); // Call the correct step function
+
+                    if (continueAuto && state.isRunning && !state.isPaused && !state.isFinished && !state.isSwapping) {
+                        timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                    } else if (state.isFinished || state.isPaused || state.isSwapping) {
+                         updateControls(); // Update controls if state changed to pause/finish/swap
+                    }
+                }
+            }
+
+
+            function clearTimeouts() {
+                timeouts.forEach(clearTimeout);
+                timeouts = [];
+            }
+
+            function handleSpeedChange() {
+                animationSpeed = calculateSpeed(speedSlider.value);
+                if (state.isRunning && !state.isPaused && !state.isSwapping) {
+                    clearTimeouts();
+                    timeouts.push(setTimeout(() => requestStep(false), animationSpeed));
+                }
+            }
+
+            function updateControls() {
+                const isRunningAuto = state.isRunning && !state.isPaused;
+                const isBusy = isRunningAuto || state.isSwapping;
+
+                stepBtn.disabled = state.isFinished || isBusy;
+                startPauseBtn.disabled = (state.isFinished && state.phase === 'finished') || state.isSwapping;
+                resetBtn.disabled = (state.phase === 'idle' && !state.isRunning && !state.isPaused && !state.isSwapping && !state.isFinished) || state.isSwapping;
+                // Allow generation/size change only when completely idle or finished
+                const canModifyArray = (state.phase === 'idle' && !isBusy) || state.isFinished;
+                randomArrayBtn.disabled = !canModifyArray;
+                manualInputBtn.disabled = !canModifyArray;
+                increaseSizeBtn.disabled = arraySize >= maxSize || !canModifyArray;
+                decreaseSizeBtn.disabled = arraySize <= minSize || !canModifyArray;
+                speedSlider.disabled = isBusy; // Disable speed change while running/swapping
+
+
+                if (state.isFinished && state.phase === 'finished') {
+                    startPauseBtn.textContent = 'Reiniciar';
+                } else if (isRunningAuto) {
+                    startPauseBtn.textContent = 'Pausar';
+                } else {
+                     startPauseBtn.textContent = (state.phase === 'idle' && !state.isPaused) ? 'Iniciar' : 'Continuar';
+                }
+            }
+
+            // --- Start ---
+            document.addEventListener('DOMContentLoaded', init);
+
+        })(); // End IIFE
+    </script>
+
+</body>
+
+</html>
