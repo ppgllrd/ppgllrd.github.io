@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Estimación de Pi con Monte Carlo y Evolución (Altura Controlada)</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation@^1.4.0/dist/chartjs-plugin-annotation.min.js"></script>
+    <style>
+        /* Estilos exactos de la versión anterior, CON la corrección de altura */
+        body { font-family: sans-serif; line-height: 1.6; margin: 20px; background-color: #f4f4f4; }
+        .container {
+            max-width: 1300px; margin: auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            display: flex; gap: 25px; flex-wrap: wrap;
+        }
+        .columna {
+            flex: 1 1 30%; min-width: 300px; display: flex; flex-direction: column;
+        }
+        .visualizacion-container, .evolucion-container {
+             border: 1px solid #ccc; padding: 15px; border-radius: 5px; background-color: #fff;
+             box-shadow: 0 1px 3px rgba(0,0,0,0.05); text-align: center;
+             display: flex; /* Necesario para controlar canvas interno */
+             flex-direction: column; /* Necesario para controlar canvas interno */
+        }
+        /* --- MODIFICACIÓN ÚNICA: Control de Altura --- */
+        .evolucion-container {
+            max-height: 500px; /* Altura máxima para el contenedor del gráfico */
+            min-height: 300px; /* Altura mínima */
+        }
+        /* --- FIN DE LA MODIFICACIÓN ÚNICA --- */
+
+         .visualizacion-container h2, .evolucion-container h2 {
+             margin-top: 0; margin-bottom: 15px; color: #333; flex-shrink: 0; /* Evita que el título se encoja */
+         }
+
+        #controles { margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f0f0f0; border-radius: 5px; }
+        #controles label { font-weight: bold; display: block; margin-bottom: 5px;}
+        #controles input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 4px; width: calc(100% - 18px); margin-bottom: 15px; }
+        #controles button { display: block; width: 100%; padding: 10px 15px; background-color: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.1em; }
+        #controles button:hover { background-color: #0056b3; }
+        #resultadosInfo { padding: 15px; border: 1px solid #e3e3e3; background-color: #f9f9f9; border-radius: 5px; flex-grow: 1; }
+        #resultadosInfo h2 { margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
+        #resultadosInfo p { margin: 8px 0; line-height: 1.4; }
+        #resultadosInfo code { background-color: #e9e9e9; padding: 2px 5px; border-radius: 3px; font-family: monospace; font-size: 0.95em; }
+
+        #monteCarloCanvas { border: 1px solid #aaa; background-color: #fff; max-width: 100%; height: auto; aspect-ratio: 1 / 1; flex-shrink: 0; }
+
+        /* --- MODIFICACIÓN ÚNICA: Control de Altura (Canvas) --- */
+        #evolucionPiCanvas {
+            max-width: 100%;
+            flex-grow: 1; /* Ocupa espacio vertical disponible */
+            min-height: 0; /* Necesario con flexbox */
+            position: relative; /* Ayuda a Chart.js */
+        }
+        /* --- FIN DE LA MODIFICACIÓN ÚNICA --- */
+
+        .estado { font-style: italic; color: #555; min-height: 1.2em; margin-top: 10px; }
+        .error { color: #d9534f; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <div class="columna"> <!-- Columna 1: Controles y Resultados -->
+        <h1>Estimación de π con Monte Carlo</h1>
+        <p>Se simula el lanzamiento de dardos aleatorios en un cuadrado [-1,1]x[-1,1] con un círculo unitario inscrito. Se estima π ≈ 4 · (dardos dentro círculo / total). Se muestra la evolución de la estimación.</p>
+        <div id="controles">
+            <label for="numPuntosInput">Número de "dardos" (N):</label>
+            <input type="number" id="numPuntosInput" value="10000" min="10" max="5000000">
+            <button id="btnSimular">Lanzar Dardos</button>
+            <p id="estado" class="estado">Introduce el número de puntos y haz clic.</p>
+        </div>
+         <div id="resultadosInfo">
+            <h2>Resultados Finales</h2>
+            <p><strong>Número de dardos (N):</strong> <span id="numSimulacionesRealizadas">---</span></p>
+            <p><strong>Dardos dentro del círculo:</strong> <span id="puntosDentro">---</span></p>
+            <p><strong>Estimación Final de π:</strong> <span id="piEstimado">---</span></p>
+            <p><strong>Valor real de π (<code>Math.PI</code>):</strong> <code><span id="piReal"></span></code></p>
+            <p><strong>Diferencia Final (|Est - Real|):</strong> <span id="diferenciaPi">---</span></p>
+        </div>
+    </div>
+
+    <div class="columna visualizacion-container"> <!-- Columna 2: Scatter Plot -->
+        <h2>Visualización Monte Carlo</h2>
+        <canvas id="monteCarloCanvas" width="400" height="400"></canvas>
+        <p style="font-size: 0.9em; color: #555;">Dibujo de puntos optimizado para N grandes.</p>
+    </div>
+
+    <div class="columna evolucion-container"> <!-- Columna 3: Gráfico Evolución -->
+        <h2>Evolución de la Estimación de π</h2>
+        <canvas id="evolucionPiCanvas"></canvas> <!-- SIN width/height aquí -->
+         <p style="font-size: 0.9em; color: #555;">Muestra la estimación según aumenta el número de dardos.</p>
+    </div>
+
+</div>
+
+<script>
+    // --- TODO EL JAVASCRIPT DE LA VERSIÓN ANTERIOR CON EVOLUCIÓN ---
+    // --- SIN CAMBIOS EN EL JAVASCRIPT ---
+
+    // --- Elementos del DOM ---
+    const NInput = document.getElementById('numPuntosInput');
+    const btnSimular = document.getElementById('btnSimular');
+    const estadoEl = document.getElementById('estado');
+    const numSimulacionesEl = document.getElementById('numSimulacionesRealizadas');
+    const puntosDentroEl = document.getElementById('puntosDentro');
+    const piEstimadoEl = document.getElementById('piEstimado');
+    const piRealEl = document.getElementById('piReal');
+    const diferenciaEl = document.getElementById('diferenciaPi');
+    const canvasMC = document.getElementById('monteCarloCanvas');
+    const ctxMC = canvasMC?.getContext('2d');
+    const canvasEvolucion = document.getElementById('evolucionPiCanvas');
+    const ctxEvolucion = canvasEvolucion?.getContext('2d');
+
+    // --- Constantes y Configuración ---
+    const CANVAS_WIDTH = canvasMC?.width || 400;
+    const CANVAS_HEIGHT = canvasMC?.height || 400;
+    POINT_RADIUS = 1.0;
+    const COLOR_INSIDE = 'rgba(255, 99, 132, 0.6)';
+    const COLOR_OUTSIDE = 'rgba(54, 162, 235, 0.6)';
+    const COLOR_AXES = '#ccc';
+    const COLOR_CIRCLE_BORDER = '#555';
+    const EVOLUTION_LINE_COLOR = 'rgb(255, 140, 0)';
+    const PI_LINE_COLOR = 'rgb(75, 192, 75)';
+    const CANVAS_CENTER_X = CANVAS_WIDTH / 2;
+    const CANVAS_CENTER_Y = CANVAS_HEIGHT / 2;
+    const SCALE = CANVAS_WIDTH / 2;
+
+    // --- Variables Globales ---
+    let graficoEvolucion = null;
+    let piEvolutionData = [];
+
+    // --- Registrar Plugin ---
+    try {
+        if (window.ChartAnnotation) { Chart.register(window.ChartAnnotation); console.log("Plugin Annotations OK."); }
+        else { console.warn("Plugin Annotations NO encontrado."); }
+    } catch (pluginError) { console.error("Error registrando plugin:", pluginError); }
+
+    // --- Mostrar PI Real ---
+    piRealEl.textContent = Math.PI.toFixed(8);
+
+    // --- Funciones Auxiliares ---
+    function mapToPlot(logicalX, logicalY) { /* ... (sin cambios) ... */ return { x: CANVAS_CENTER_X + logicalX * SCALE, y: CANVAS_CENTER_Y - logicalY * SCALE }; }
+    function drawPointMC(canvasX, canvasY, isInside) { /* ... (sin cambios) ... */ if (!ctxMC) return; ctxMC.fillStyle = isInside ? COLOR_INSIDE : COLOR_OUTSIDE; ctxMC.beginPath(); ctxMC.arc(canvasX, canvasY, POINT_RADIUS, 0, 2 * Math.PI); ctxMC.fill(); }
+    function drawBaseMC() { /* ... (sin cambios) ... */ if (!ctxMC) { console.error("No ctxMC"); return; } ctxMC.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); ctxMC.strokeStyle = COLOR_AXES; ctxMC.lineWidth = 0.5; ctxMC.beginPath(); ctxMC.moveTo(0, CANVAS_CENTER_Y); ctxMC.lineTo(CANVAS_WIDTH, CANVAS_CENTER_Y); ctxMC.moveTo(CANVAS_CENTER_X, 0); ctxMC.lineTo(CANVAS_CENTER_X, CANVAS_HEIGHT); ctxMC.stroke(); ctxMC.strokeStyle = COLOR_CIRCLE_BORDER; ctxMC.lineWidth = 1; ctxMC.beginPath(); ctxMC.arc(CANVAS_CENTER_X, CANVAS_CENTER_Y, SCALE, 0, 2 * Math.PI); ctxMC.stroke(); }
+
+    /** Dibuja el gráfico de evolución de Pi usando Chart.js */
+    function dibujarGraficoEvolucion(data) {
+        // ... (código de dibujarGraficoEvolucion SIN CAMBIOS) ...
+         if (!ctxEvolucion) { console.error("No ctxEvolucion"); return; }
+        if (graficoEvolucion) {
+            graficoEvolucion.destroy();
+            graficoEvolucion = null;
+        }
+        if (!data || data.length === 0) { return; }
+        try {
+            graficoEvolucion = new Chart(ctxEvolucion, {
+                type: 'line',
+                data: { datasets: [{ label: 'Estimación de π', data: data, borderColor: EVOLUTION_LINE_COLOR, borderWidth: 1.5, pointRadius: 0, tension: 0.1, fill: false }] },
+                options: {
+                    responsive: true, maintainAspectRatio: false, parsing: false, // maintainAspectRatio: false ES CLAVE
+                    scales: {
+                        x: { type: 'linear', title: { display: true, text: 'Número de Dardos' }, ticks: { callback: function(v) { if (v >= 1e6) return (v / 1e6) + 'M'; if (v >= 1e3) return (v / 1e3) + 'k'; return v; } } },
+                        y: { title: { display: true, text: 'Estimación de π' } }
+                    },
+                    plugins: {
+                        tooltip: { callbacks: { label: (ctx) => `Est: ${ctx.parsed.y.toFixed(6)} en ${ctx.parsed.x.toLocaleString()} pts` } },
+                        annotation: { annotations: { linePi: { type: 'line', yMin: Math.PI, yMax: Math.PI, borderColor: PI_LINE_COLOR, borderWidth: 2, borderDash: [6, 6], label: { content: `π ≈ ${Math.PI.toFixed(4)}`, enabled: true, position: 'end', backgroundColor: 'rgba(75, 192, 75, 0.7)', font: { size: 10 } } } } }
+                    },
+                    animation: false, hover: { animationDuration: 0 }, responsiveAnimationDuration: 0
+                }
+            });
+        } catch (chartError) { console.error("Error dibujando gráfico:", chartError); }
+    }
+
+    // --- Función Principal de Simulación ---
+    function iniciarSimulacion() {
+        // ... (código de iniciarSimulacion SIN CAMBIOS) ...
+        console.log("[iniciarSimulacion] Iniciando...");
+        const N = parseInt(NInput.value, 10);
+
+        estadoEl.className = 'estado'; estadoEl.textContent = 'Validando...';
+        numSimulacionesEl.textContent = '---'; puntosDentroEl.textContent = '---';
+        piEstimadoEl.textContent = '---'; diferenciaEl.textContent = '---';
+        piEvolutionData = [];
+
+        if (graficoEvolucion) { try { graficoEvolucion.destroy(); graficoEvolucion = null; } catch(e){} }
+        else { if(ctxEvolucion) ctxEvolucion.clearRect(0, 0, canvasEvolucion.width, canvasEvolucion.height); }
+
+        if (isNaN(N) || N < 10 || N > 10000000) { estadoEl.textContent = 'Error: Nº puntos (N) debe ser entero >= 10 (máx 10M).'; estadoEl.className = 'estado error'; return; }
+
+        estadoEl.textContent = `Lanzando ${N.toLocaleString()} "dardos"...`;
+        if (ctxMC) { drawBaseMC(); }
+
+        let puntos_dentro = 0;
+        const startTime = performance.now();
+        const evolutionPointsTarget = 500;
+        const recordInterval = (N <= evolutionPointsTarget) ? 1 : Math.max(1, Math.floor(N / evolutionPointsTarget));
+
+        POINT_RADIUS = (N <= 1000) ? 2.0 : (N <= 10000) ? 1.0 : (N <= 100000) ? 0.5 : 0.25;
+        setTimeout(() => {
+            console.log("[setTimeout] Ejecutando simulación...");
+            try {
+
+                const MAX_POINTS_TO_DRAW_DIRECTLY = 50000;
+                const drawAllPoints = N <= MAX_POINTS_TO_DRAW_DIRECTLY;
+                let drawIntervalMC = drawAllPoints ? 1 : Math.max(1, Math.floor(N / MAX_POINTS_TO_DRAW_DIRECTLY));
+
+                for (let i = 0; i < N; i++) {
+                    const x = Math.random() * 2 - 1;
+                    const y = Math.random() * 2 - 1;
+                    const isInside = (x * x + y * y <= 1);
+                    if (isInside) { puntos_dentro++; }
+
+                    if (ctxMC && (drawAllPoints || (i % drawIntervalMC === 0))) {
+                        const plotCoords = mapToPlot(x, y);
+                        drawPointMC(plotCoords.x, plotCoords.y, isInside);
+                    }
+
+                    const currentPoints = i + 1;
+                    if (currentPoints === 1 || currentPoints === N || currentPoints % recordInterval === 0) {
+                        const currentPiEstimate = (puntos_dentro === 0) ? 0 : 4 * puntos_dentro / currentPoints;
+                        piEvolutionData.push({ x: currentPoints, y: currentPiEstimate });
+                    }
+                }
+
+                const endTime = performance.now();
+                console.log(`[setTimeout] Simulación ${N} pts en ${(endTime - startTime).toFixed(2)} ms.`);
+
+                const piEstimado = (N === 0) ? 0 : 4 * puntos_dentro / N;
+                const diferencia = Math.abs(piEstimado - Math.PI);
+                numSimulacionesEl.textContent = N.toLocaleString();
+                puntosDentroEl.textContent = puntos_dentro.toLocaleString();
+                piEstimadoEl.textContent = piEstimado.toFixed(8);
+                diferenciaEl.textContent = diferencia.toFixed(8);
+
+                console.log("[setTimeout] Llamando a dibujarGraficoEvolucion...");
+                dibujarGraficoEvolucion(piEvolutionData);
+
+                estadoEl.textContent = 'Simulación completada.';
+                estadoEl.className = 'estado';
+                console.log("[setTimeout] Proceso completado.");
+
+            } catch (error) {
+                console.error("[setTimeout] Error:", error);
+                estadoEl.textContent = `Error: ${error.message}. Revisa F12.`;
+                estadoEl.className = 'estado error';
+            }
+        }, 50);
+    }
+
+    // --- Event Listener ---
+    if (btnSimular) { btnSimular.addEventListener('click', iniciarSimulacion); }
+    else { console.error("Botón no encontrado."); }
+
+    // --- Dibujar Base Inicial ---
+    if (ctxMC) { drawBaseMC(); console.log("Base MC inicial dibujada."); }
+    else { console.error("No se pudo dibujar base MC inicial."); }
+
+    console.log("Script principal cargado.");
+
+</script>
+
+</body>
+</html>

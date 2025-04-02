@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulación Distribución Binomial con Comparación Detallada</title>
+    <!-- Incluimos la librería Chart.js para los gráficos -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 20px;
+            background-color: #f4f4f4; /* Fondo ligeramente gris */
+        }
+        .container {
+            max-width: 1200px; /* Más ancho para 3 gráficos */
+            margin: auto;
+            background-color: #fff; /* Contenedor principal blanco */
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        #controles {
+            margin-bottom: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            display: grid;
+            grid-template-columns: auto 1fr;
+            gap: 10px 15px;
+            align-items: center;
+        }
+        #controles label {
+            font-weight: bold;
+            text-align: right;
+        }
+        #controles input[type="number"] {
+            padding: 8px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            max-width: 150px;
+            justify-self: start;
+        }
+        #controles button {
+            grid-column: 1 / -1; padding: 10px 15px; background-color: #007bff; /* Azul */ color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.1em; margin-top: 10px;
+        }
+        #controles button:hover { background-color: #0056b3; }
+        #resultadosInfo {
+             margin-bottom: 25px;
+             padding: 15px;
+             border: 1px solid #e3e3e3;
+             background-color: #f9f9f9;
+             border-radius: 5px;
+        }
+         #resultadosInfo h2 {
+             margin-top: 0;
+             margin-bottom: 15px;
+             border-bottom: 1px solid #ddd;
+             padding-bottom: 5px;
+         }
+         #resultadosInfo p {
+            margin: 8px 0;
+            line-height: 1.4;
+         }
+         #resultadosInfo code {
+             background-color: #e9e9e9;
+             padding: 2px 5px;
+             border-radius: 3px;
+             font-family: monospace;
+             font-size: 0.95em;
+         }
+        .graficos-container {
+            display: flex;
+            flex-wrap: wrap; /* Permite que los gráficos se ajusten */
+            gap: 25px; /* Espacio entre gráficos */
+            margin-top: 20px;
+            justify-content: space-between; /* Distribuye el espacio */
+        }
+        .grafico-wrapper {
+            flex: 1 1 30%; /* Crece, encoge, base del 30% -> intenta 3 columnas */
+            min-width: 300px; /* Ancho mínimo antes de envolver */
+            border: 1px solid #ccc;
+            padding: 15px;
+            border-radius: 5px;
+            background-color: #fff;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+        }
+        .grafico-wrapper h3 {
+            text-align: center;
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+        }
+         canvas {
+             max-width: 100%;
+         }
+        .estado {
+            font-style: italic;
+            color: #555;
+            min-height: 1.2em;
+            margin-top: 10px;
+            text-align: center;
+            grid-column: 1 / -1; /* Ocupa todo el ancho en el grid */
+        }
+        .error {
+            color: #d9534f;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Simulación de la Distribución Binomial B(n, p)</h1>
+    <p> Un ensayo de Bernoulli es un experimento aleatorio que tiene solo dos resultados posibles: éxito o fracaso. La probabilidad de éxito es <strong>p</strong> y la de fracaso es <strong>1 - p</strong>.</p>
+        Un experimento binomial consiste en realizar <strong>n</strong> ensayos independientes de Bernoulli, cada uno con una probabilidad de éxito <strong>p</strong>. Se cuenta el número total de éxitos.</p>
+    <p>Este simulador repite el experimento binomial completo <strong>N</strong> veces y compara la distribución de frecuencias relativas experimental con la distribución teórica.</p>
+
+    <p>Introduce los parámetros <strong>p</strong> (probabilidad de éxito), <strong>n</strong> (número de ensayos por experimento) y <strong>N</strong> (número total de experimentos a simular). Se comparará la distribución experimental con la teórica, incluyendo medias, varianzas y un gráfico de diferencias.</p>
+
+    <div id="controles">
+        <label for="probabilidadInput">Probabilidad (p):</label>
+        <input type="number" id="probabilidadInput" value="0.5" min="0" max="1" step="0.01">
+
+        <label for="ensayosInput">Ensayos (n):</label>
+        <input type="number" id="ensayosInput" value="20" min="1" max="1000">
+
+        <label for="experimentosInput">Experimentos (N):</label>
+        <input type="number" id="experimentosInput" value="10000" min="1" max="5000000">
+
+        <button id="btnSimular">Ejecutar Simulación</button>
+        <p id="estado" class="estado">Introduce los parámetros y haz clic en el botón.</p>
+    </div>
+
+     <div id="resultadosInfo">
+        <h2>Resultados de la Simulación</h2>
+        <p><strong>Parámetros usados:</strong> <span id="paramsUsados">---</span></p>
+        <p><strong>Media Experimental (Éxitos promedio):</strong> <span id="mediaExperimental">---</span></p>
+        <p><strong>Media Teórica (<code>E[X] = n · p</code>):</strong> <span id="mediaTeorica">---</span></p>
+        <p><strong>Varianza Experimental (s²):</strong> <span id="varianzaExperimental">---</span></p>
+        <p><strong>Varianza Teórica (<code>Var(X) = n · p · (1 - p)</code>):</strong> <span id="varianzaTeorica">---</span></p>
+    </div>
+
+
+    <div class="graficos-container">
+        <div class="grafico-wrapper">
+            <h3>Distribución Experimental (Frec. Relativa)</h3>
+            <canvas id="graficoExperimental"></canvas>
+        </div>
+        <div class="grafico-wrapper">
+            <h3>Distribución Teórica (Probabilidad)</h3>
+            <canvas id="graficoTeorico"></canvas>
+        </div>
+         <div class="grafico-wrapper">
+            <h3>Diferencias (Teórica - Experimental)</h3>
+            <canvas id="graficoDiferencias"></canvas>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    // --- Elementos del DOM ---
+    const pInput = document.getElementById('probabilidadInput');
+    const nInput = document.getElementById('ensayosInput');
+    const NInput = document.getElementById('experimentosInput');
+    const btnSimular = document.getElementById('btnSimular');
+    const estadoEl = document.getElementById('estado');
+    const paramsUsadosEl = document.getElementById('paramsUsados');
+    const mediaExperimentalEl = document.getElementById('mediaExperimental');
+    const mediaTeoricaEl = document.getElementById('mediaTeorica');
+    const varianzaExperimentalEl = document.getElementById('varianzaExperimental');
+    const varianzaTeoricaEl = document.getElementById('varianzaTeorica');
+    const canvasExp = document.getElementById('graficoExperimental');
+    const canvasTeo = document.getElementById('graficoTeorico');
+    const canvasDif = document.getElementById('graficoDiferencias');
+    const ctxExp = canvasExp.getContext('2d');
+    const ctxTeo = canvasTeo.getContext('2d');
+    const ctxDif = canvasDif.getContext('2d');
+
+    // --- Variables Globales para los Gráficos ---
+    let graficoExperimental = null;
+    let graficoTeorico = null;
+    let graficoDiferencias = null;
+
+    // --- Funciones Auxiliares (Bernoulli, Binomial, Combinaciones, Probabilidad Binomial - sin cambios) ---
+    function ensayoBernoulli(p) { return Math.random() < p ? 1 : 0; }
+    function experimentoBinomial(n, p) {
+        let exitos = 0;
+        for (let i = 0; i < n; i++) { exitos += ensayoBernoulli(p); }
+        return exitos;
+    }
+     function combinaciones(n, k) {
+        if (k < 0 || k > n) { return 0; }
+        if (k === 0 || k === n) { return 1; }
+        if (k > n / 2) { k = n - k; }
+        let res = 1;
+        for (let i = 1; i <= k; i++) {
+            res = res * (n - i + 1) / i;
+            if (!Number.isFinite(res)) return Infinity;
+        }
+        return Math.round(res); // Redondeo para mitigar errores flotantes
+    }
+    function probabilidadBinomial(k, n, p) {
+        const Cnk = combinaciones(n, k);
+        if (p === 0) return k === 0 ? 1 : 0;
+        if (p === 1) return k === n ? 1 : 0;
+        if (!Number.isFinite(Cnk) || Cnk === 0) return 0;
+
+        const p_k = k === 0 ? 1 : Math.pow(p, k);
+        const one_minus_p_nk = (n - k) === 0 ? 1 : Math.pow(1 - p, n - k);
+        let prob = Cnk * p_k * one_minus_p_nk;
+        return Math.max(0, prob); // Asegurar no negatividad
+    }
+
+    // --- Función para Dibujar Gráficos (completada) ---
+    function dibujarGrafico(ctx, chartInstanceRef, labels, data, label, backgroundColor, borderColor, yAxisLabel) {
+        // Destruir gráfico anterior si existe
+        if (chartInstanceRef.current) {
+            chartInstanceRef.current.destroy();
+            chartInstanceRef.current = null; // Importante resetear la referencia
+        }
+
+        // Crear nuevo gráfico
+        chartInstanceRef.current = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: label, // Este label aparece en el tooltip
+                    data: data,
+                    backgroundColor: backgroundColor,
+                    borderColor: borderColor,
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                 indexAxis: 'x',
+                 responsive: true,
+                 maintainAspectRatio: true,
+                 plugins: {
+                    title: { display: false }, // El título ya está en H3
+                    legend: { display: false }, // No necesaria con un solo dataset
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                let lbl = context.dataset.label || '';
+                                if (lbl) lbl += ': ';
+                                if (context.parsed.y !== null) {
+                                     // Usar notación científica para números muy pequeños en diferencias
+                                    if (Math.abs(context.parsed.y) < 0.0001 && context.parsed.y !== 0) {
+                                       lbl += context.parsed.y.toExponential(3);
+                                    } else {
+                                       lbl += context.parsed.y.toFixed(5);
+                                    }
+                                }
+                                return lbl;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    y: {
+                        // beginAtZero: true, // No siempre deseable para el gráfico de diferencias
+                        title: {
+                            display: true,
+                            text: yAxisLabel // 'Frecuencia Relativa', 'Probabilidad Teórica', 'Diferencia'
+                        },
+                         ticks: {
+                             callback: function(value) {
+                                 // Formato condicional para el eje Y (ej. notación científica)
+                                 if (Math.abs(value) < 0.001 && value !== 0) {
+                                     return value.toExponential(1);
+                                 }
+                                 // Mostrar menos decimales en el eje que en el tooltip
+                                 // Ajusta el número de decimales según necesites
+                                 const factor = Math.pow(10, 3); // 3 decimales
+                                 return Math.round(value * factor) / factor;
+                             }
+                         }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Número de Éxitos (k)'
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    // --- Función Principal de Simulación ---
+    function iniciarSimulacion() {
+        // --- Validación de Entradas ---
+        const p = parseFloat(pInput.value);
+        const n = parseInt(nInput.value, 10);
+        const N = parseInt(NInput.value, 10);
+
+        // Resetear estado y resultados visuales
+        estadoEl.className = 'estado';
+        estadoEl.textContent = 'Validando parámetros...';
+        paramsUsadosEl.textContent = '---';
+        mediaExperimentalEl.textContent = '---';
+        mediaTeoricaEl.textContent = '---';
+        varianzaExperimentalEl.textContent = '---';
+        varianzaTeoricaEl.textContent = '---';
+
+        // Limpiar gráficos anteriores (usando referencias)
+        const chartExpRef = { current: graficoExperimental };
+        const chartTeoRef = { current: graficoTeorico };
+        const chartDifRef = { current: graficoDiferencias };
+        if (chartExpRef.current) { chartExpRef.current.destroy(); graficoExperimental = null;}
+        if (chartTeoRef.current) { chartTeoRef.current.destroy(); graficoTeorico = null; }
+        if (chartDifRef.current) { chartDifRef.current.destroy(); graficoDiferencias = null; }
+
+
+        if (isNaN(p) || p < 0 || p > 1) {
+            estadoEl.textContent = 'Error: La probabilidad (p) debe estar entre 0 y 1.';
+            estadoEl.className = 'estado error'; return;
+        }
+        if (isNaN(n) || n <= 0 || n > 1000) {
+            estadoEl.textContent = 'Error: Nº ensayos (n) debe ser entero positivo (máx 1000).';
+             estadoEl.className = 'estado error'; return;
+        }
+         if (isNaN(N) || N <= 0 || N > 5000000) {
+            estadoEl.textContent = 'Error: Nº experimentos (N) debe ser entero positivo (máx 5,000,000).';
+             estadoEl.className = 'estado error'; return;
+        }
+        // Comprobación extra para N=1 (varianza experimental)
+        if (N === 1) {
+             estadoEl.textContent = 'Aviso: Se necesita N > 1 para calcular la varianza experimental.';
+             // Podríamos continuar pero la varianza experimental será 0 o NaN.
+             // Por simplicidad, pedimos N > 1 para mostrarla.
+             // Si quieres permitir N=1, ajusta el cálculo de varianza más abajo.
+             // return; // Descomentar si quieres forzar N > 1
+        }
+
+
+        console.log(`Iniciando simulación: p=${p}, n=${n}, N=${N}`);
+        estadoEl.textContent = `Simulando ${N.toLocaleString()} experimentos binomiales B(${n}, ${p})...`;
+        paramsUsadosEl.textContent = `p=${p}, n=${n}, N=${N.toLocaleString()}`;
+        mediaExperimentalEl.textContent = 'Calculando...';
+        mediaTeoricaEl.textContent = 'Calculando...';
+        varianzaExperimentalEl.textContent = 'Calculando...';
+        varianzaTeoricaEl.textContent = 'Calculando...';
+
+
+        // Usar setTimeout para permitir la actualización de la UI
+        setTimeout(() => {
+            try {
+                // --- Simulación Experimental ---
+                const resultadosExperimentales = []; // Guarda el nº de éxitos de cada experimento
+                let sumaExitos = 0;
+                let sumaCuadradosExitos = 0; // Para calcular la varianza experimental
+                console.time("SimulacionExperimental"); // Medir tiempo
+                for (let i = 0; i < N; i++) {
+                    const exitos = experimentoBinomial(n, p);
+                    resultadosExperimentales.push(exitos);
+                    sumaExitos += exitos;
+                    sumaCuadradosExitos += exitos * exitos;
+                }
+                 console.timeEnd("SimulacionExperimental");
+                console.log("Simulación experimental completada.");
+
+                // --- Cálculo de Frecuencias Experimentales ---
+                const frecuenciasAbsolutas = new Array(n + 1).fill(0);
+                resultadosExperimentales.forEach(exitos => {
+                    if (exitos >= 0 && exitos <= n) {
+                        frecuenciasAbsolutas[exitos]++;
+                    }
+                });
+                const frecuenciasRelativas = frecuenciasAbsolutas.map(count => count / N);
+                const labelsGrafico = Array.from({ length: n + 1 }, (_, i) => i); // [0, 1, ..., n]
+
+                // --- Cálculo de Probabilidades Teóricas ---
+                console.log("Calculando probabilidades teóricas...");
+                 console.time("CalculoTeorico");
+                const probabilidadesTeoricas = [];
+                for (let k = 0; k <= n; k++) {
+                    probabilidadesTeoricas.push(probabilidadBinomial(k, n, p));
+                }
+                 console.timeEnd("CalculoTeorico");
+                 console.log("Suma teórica:", probabilidadesTeoricas.reduce((a,b)=>a+b,0).toFixed(6)); // Debería ser cercano a 1
+
+                // --- Cálculo de Diferencias ---
+                const diferencias = [];
+                for(let k = 0; k <= n; k++) {
+                    diferencias.push(probabilidadesTeoricas[k] - frecuenciasRelativas[k]);
+                }
+
+                // --- Actualizar Estadísticas ---
+                const mediaExp = sumaExitos / N;
+                const mediaTeo = n * p;
+
+                // Varianza experimental (muestral, corregida con N-1)
+                // Var(X) = E[X^2] - (E[X])^2
+                // Estimador muestral: s^2 = [ Σ(x_i^2) - (Σx_i)^2 / N ] / (N - 1)
+                // O la fórmula más común: s^2 = Σ(x_i - μ_exp)^2 / (N - 1)
+                let varianzaExp = 0;
+                if (N > 1) {
+                   // Usamos la fórmula directa Σ(x_i - μ_exp)^2 / (N - 1)
+                   varianzaExp = resultadosExperimentales.reduce((acc, exitos) => acc + Math.pow(exitos - mediaExp, 2), 0) / (N - 1);
+                   // Alternativa: (sumaCuadradosExitos / N - mediaExp * mediaExp) * (N / (N-1)); // Usando suma de cuadrados
+                } else {
+                   varianzaExp = NaN; // Indefinida para N=1
+                }
+
+                const varianzaTeo = n * p * (1 - p);
+
+                mediaExperimentalEl.textContent = mediaExp.toFixed(5);
+                mediaTeoricaEl.textContent = mediaTeo.toFixed(5);
+                varianzaExperimentalEl.textContent = isNaN(varianzaExp) ? 'N/A (N=1)' : varianzaExp.toFixed(5);
+                varianzaTeoricaEl.textContent = varianzaTeo.toFixed(5);
+
+                // --- Dibujar Gráficos ---
+                console.log("Dibujando gráficos...");
+                 console.time("DibujarGraficos");
+                // Referencias para actualizar variables globales
+                const refExp = { current: graficoExperimental };
+                const refTeo = { current: graficoTeorico };
+                const refDif = { current: graficoDiferencias };
+
+                dibujarGrafico(ctxExp, refExp, labelsGrafico, frecuenciasRelativas, 'Frec. Relativa', 'rgba(54, 162, 235, 0.7)', 'rgba(54, 162, 235, 1)', 'Frecuencia Relativa');
+                graficoExperimental = refExp.current; // Actualizar global
+
+                dibujarGrafico(ctxTeo, refTeo, labelsGrafico, probabilidadesTeoricas, 'Prob. Teórica', 'rgba(255, 99, 132, 0.7)', 'rgba(255, 99, 132, 1)', 'Probabilidad Teórica');
+                graficoTeorico = refTeo.current; // Actualizar global
+
+                dibujarGrafico(ctxDif, refDif, labelsGrafico, diferencias, 'Diferencia', 'rgba(75, 192, 192, 0.7)', 'rgba(75, 192, 192, 1)', 'Diferencia (Teórica - Exp.)');
+                graficoDiferencias = refDif.current; // Actualizar global
+                 console.timeEnd("DibujarGraficos");
+
+                estadoEl.textContent = 'Simulación completada.';
+                estadoEl.className = 'estado';
+                console.log("Proceso completo.");
+
+            } catch (error) {
+                console.error("Error durante la simulación o el cálculo:", error);
+                estadoEl.textContent = `Error: ${error.message}. Revisa la consola (F12).`;
+                estadoEl.className = 'estado error';
+                 // Limpiar resultados en caso de error
+                paramsUsadosEl.textContent = 'Error';
+                mediaExperimentalEl.textContent = '---';
+                mediaTeoricaEl.textContent = '---';
+                varianzaExperimentalEl.textContent = '---';
+                varianzaTeoricaEl.textContent = '---';
+                 // Asegurarse de limpiar los gráficos también
+                if (graficoExperimental) graficoExperimental.destroy();
+                if (graficoTeorico) graficoTeorico.destroy();
+                if (graficoDiferencias) graficoDiferencias.destroy();
+                graficoExperimental = graficoTeorico = graficoDiferencias = null;
+            }
+        }, 50); // Retraso para UI update
+    }
+
+    // --- Event Listener para el Botón ---
+    btnSimular.addEventListener('click', iniciarSimulacion);
+
+    // Mensaje inicial
+    console.log("Interfaz lista para la simulación binomial detallada.");
+
+</script>
+
+</body>
+</html>
