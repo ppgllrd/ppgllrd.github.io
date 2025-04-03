@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Método de Bipartición (Zoom)</title>
+    <style>
+        /* Estilos CSS (igual que la versión anterior) */
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; padding: 15px; background-color: #f4f4f4; line-height: 1.4; }
+        canvas { border: 1px solid #000; background-color: white; margin-top: 15px; }
+        .controls-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 15px; margin-bottom: 15px; width: 95%; max-width: 850px; }
+        .control-group { padding: 10px; background-color: #e0e0e0; border-radius: 5px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; min-width: 180px; }
+        .control-group label, .control-group button, .control-group span { display: block; width: 100%; box-sizing: border-box; }
+        .control-group input[type="number"], .control-group select { padding: 4px; width: 100%; box-sizing: border-box; }
+        .control-group button { padding: 6px; cursor: pointer; background-color: #007bff; color: white; border: none; border-radius: 3px; }
+        .control-group button:hover { background-color: #0056b3; }
+        .control-group button#startBtn { background-color: #28a745; }
+        .control-group button#startBtn:hover { background-color: #218838; }
+        .control-group button#pauseBtn.paused { background-color: #ffc107; color: black; }
+        .control-group button#pauseBtn.paused:hover { background-color: #e0a800; }
+        .control-group button#resetBtn { background-color: #dc3545; }
+        .control-group button#resetBtn:hover { background-color: #c82333; }
+        #infoPanel { margin-top: 10px; padding: 10px; background-color: #f0f0f0; border: 1px solid #ccc; border-radius: 5px; min-width: 300px; max-width: 600px; font-size: 0.9em; }
+        #infoPanel span { display: inline-block; margin-right: 15px; margin-bottom: 5px; }
+        #status { font-weight: bold; }
+        h1 { margin-bottom: 10px; }
+        code { background-color: #eee; padding: 2px 4px; border-radius: 3px; font-family: monospace; }
+    </style>
+</head>
+<body>
+
+    <h1>Visualización del Método de Bipartición (con Zoom)</h1>
+
+     <!-- Controles (HTML igual que antes) -->
+     <div class="controls-container">
+        <div class="control-group">
+            <label for="functionSelect">Función:</label>
+            <select id="functionSelect">
+                 <option value="f1">x³ - x - 2</option>
+                 <option value="f2">cos(x) - x</option>
+                 <option value="f3">exp(-x) - sin(x)</option>
+                 <option value="f4">x*log10(x) - 1.2</option>
+                 <option value="f5">2*sin(x) - x/2 - 1</option>
+            </select>
+             <label for="epsilonInput">Tolerancia (eps):</label>
+            <input type="number" id="epsilonInput" value="0.001" step="0.0001" min="1e-10">
+        </div>
+        <div class="control-group">
+            <span>Controles Ejecución:</span>
+            <button id="startBtn">Iniciar Auto</button>
+            <button id="pauseBtn">Pausar</button>
+             <button id="stepBtn">Un Paso</button>
+            <button id="resetBtn">Resetear</button>
+        </div>
+    </div>
+    <div id="infoPanel">
+        <div><span id="status">Estado: Listo</span> <span id="iteration">Iteración: 0</span></div>
+        <div><span>Intervalo: <code>[<span id="aVal">a</span>, <span id="bVal">b</span>]</code></span> <span id="zoomIndicator" style="color: orange; font-weight: bold; margin-left: 10px;"></span></div>
+        <div><span>Ancho: <span id="widthVal">-</span></span> <span>Punto Medio: <code>c = <span id="cVal">-</span></code></span></div>
+        <div><span>Valores: <code>f(a)=<span id="faVal">-</span></code>, <code>f(b)=<span id="fbVal">-</span></code>, <code>f(c)=<span id="fcVal">-</span></code></span></div>
+    </div>
+    <canvas id="bisectionCanvas" width="700" height="450"></canvas>
+
+    <script>
+        // --- Elementos DOM (añadir zoomIndicator) ---
+        const canvas = document.getElementById('bisectionCanvas');
+        // ... (otros elementos DOM iguales)
+        const zoomIndicator = document.getElementById('zoomIndicator'); // Para mostrar estado de zoom
+        // ... (resto de elementos DOM iguales)
+        const ctx = canvas.getContext('2d');
+        const functionSelect = document.getElementById('functionSelect');
+        const epsilonInput = document.getElementById('epsilonInput');
+        const startBtn = document.getElementById('startBtn');
+        const pauseBtn = document.getElementById('pauseBtn');
+        const stepBtn = document.getElementById('stepBtn'); // Botón paso a paso
+        const resetBtn = document.getElementById('resetBtn');
+        // Info Panel Spans (sin cambios)
+        const statusSpan = document.getElementById('status');
+        const iterationSpan = document.getElementById('iteration');
+        const aValSpan = document.getElementById('aVal');
+        const bValSpan = document.getElementById('bVal');
+        const widthValSpan = document.getElementById('widthVal');
+        const cValSpan = document.getElementById('cVal');
+        const faValSpan = document.getElementById('faVal');
+        const fbValSpan = document.getElementById('fbVal');
+        const fcValSpan = document.getElementById('fcVal');
+
+
+        // --- Configuración y Estado ---
+        const padding = 50;
+        let animationTimeoutId = null;
+        let isPaused = false;
+        let isRunningAuto = false;
+        let algorithmFinished = false;
+        let needsInitialization = true;
+        let highlightSubinterval = null;
+        const highlightDuration = 500;
+        let targetEps = parseFloat(epsilonInput.value);
+
+        // Constantes para el Zoom
+        const ZOOM_THRESHOLD_RATIO = 0.2; // Zoom si el ancho es < 20% del inicial
+        const ZOOM_MARGIN_PERCENT = 0.15; // Margen del 15% al hacer zoom
+        let isZoomed = false; // Estado de zoom actual
+
+        // --- Funciones de Ejemplo e Intervalos Iniciales (sin cambios) ---
+        const functionsData = { /* ... igual que antes ... */
+            'f1': { func: x => x*x*x - x - 2, a: 1, b: 2, name: 'x³ - x - 2' },
+            'f2': { func: x => Math.cos(x) - x, a: 0, b: 1, name: 'cos(x) - x' },
+            'f3': { func: x => Math.exp(-x) - Math.sin(x), a: 0.5, b: 1, name: 'exp(-x) - sin(x)' },
+            'f4': { func: x => x * Math.log10(x) - 1.2, a: 2, b: 3, name: 'x*log10(x) - 1.2' },
+             'f5': { func: x => 2*Math.sin(x) - x/2 - 1, a: 1.5, b: 2.5, name: '2*sin(x) - x/2 - 1'}
+         };
+        let currentFunctionData = functionsData[functionSelect.value];
+        let currentFunction = currentFunctionData.func;
+
+        // Estado del algoritmo (sin cambios)
+        let currentA, currentB, initialA, initialB;
+        let currentC = null; let fa, fb, fc; let iteration = 0;
+
+        // Límites del gráfico (ahora dinámicos con zoom)
+        let xMin, xMax, yMin, yMax;
+
+        // --- Mapeo de Coordenadas (AHORA INCLUYE LÓGICA DE ZOOM) ---
+        function calculateBounds() {
+            const currentWidth = Math.abs(currentB - currentA); // Ancho actual
+            const initialWidth = Math.abs(initialB - initialA); // Ancho inicial
+
+            // Determinar si activar/mantener el zoom
+            isZoomed = !algorithmFinished && initialWidth > 0 && (currentWidth / initialWidth) < ZOOM_THRESHOLD_RATIO;
+            zoomIndicator.textContent = isZoomed ? '(Zoom Activado)' : ''; // Actualizar indicador visual
+
+            // Calcular límites X
+            if (isZoomed) {
+                const marginX = currentWidth * ZOOM_MARGIN_PERCENT;
+                xMin = currentA - marginX;
+                xMax = currentB + marginX;
+                 // Evitar que el rango sea cero si a y b son iguales (caso raro)
+                 if (xMin === xMax) {
+                      xMin -= 0.1; xMax += 0.1;
+                 }
+            } else {
+                // Vista inicial o reseteada
+                const marginX = (initialB - initialA) * 0.1; // Margen inicial
+                 xMin = initialA - marginX;
+                 xMax = initialB + marginX;
+                  if (xMin === xMax) {
+                      xMin -= 0.1; xMax += 0.1;
+                 }
+            }
+
+            // Calcular límites Y basados en el rango X actual (xMin, xMax)
+            yMin = 0; yMax = 0;
+            const numSamples = 200;
+            let firstY = true;
+            const step = (xMax - xMin) / numSamples; // Paso para muestreo Y
+
+             if (step <= 0 || isNaN(step) || !isFinite(step)) { // Salvaguarda si xMin/xMax son problemáticos
+                 yMin = -1; yMax = 1; // Límites Y por defecto
+                 return;
+             }
+
+            for (let x = xMin; x <= xMax; x += step) {
+                try {
+                    const y = currentFunction(x);
+                    if (!isNaN(y) && isFinite(y)) {
+                        if (firstY) {
+                            yMin = y; yMax = y; firstY = false;
+                        } else {
+                            if (y < yMin) yMin = y;
+                            if (y > yMax) yMax = y;
+                        }
+                    }
+                } catch (e) { /* Ignorar puntos problemáticos */ }
+            }
+             // Si no se encontraron puntos válidos (función indefinida en todo el rango?)
+             if (firstY) { yMin = -1; yMax = 1; }
+
+             // Añadir margen Y y asegurar visibilidad de y=0
+             const yRange = yMax - yMin;
+             const yMargin = (yRange === 0 ? 1 : yRange) * 0.15;
+             yMin -= yMargin;
+             yMax += yMargin;
+              // Siempre incluir y=0 en el rango visible
+             if (yMin > 0) yMin = -yMargin / 2;
+             if (yMax < 0) yMax = yMargin / 2;
+             yMin = Math.min(yMin, -yMargin/3); // Asegurar un mínimo espacio bajo cero
+             yMax = Math.max(yMax, yMargin/3); // Asegurar un mínimo espacio sobre cero
+        }
+
+        // toCanvasX, toCanvasY (sin cambios, usan los xMin/xMax/yMin/yMax globales)
+        function toCanvasX(mathX) { const graphWidth=canvas.width-2*padding; const xRange=xMax-xMin; if(xRange===0) return padding+graphWidth/2; return padding+graphWidth*(mathX-xMin)/xRange; }
+        function toCanvasY(mathY) { const graphHeight=canvas.height-2*padding; const yRange=yMax-yMin; if(yRange===0)return padding+graphHeight/2; return padding+graphHeight*(1-(mathY-yMin)/yRange); }
+
+
+        // --- Funciones de Dibujo (sin cambios funcionales, usan los bounds actuales) ---
+        function clearCanvas() { ctx.clearRect(0, 0, canvas.width, canvas.height); }
+        function drawAxes() { /* ... igual que antes, usa los bounds globales ... */
+             ctx.strokeStyle='#aaa'; ctx.lineWidth=1; ctx.beginPath(); const yAxisX=(xMin<=0&&xMax>=0)?toCanvasX(0):(xMin>0?padding:canvas.width-padding); ctx.moveTo(yAxisX,padding); ctx.lineTo(yAxisX,canvas.height-padding); const xAxisY=toCanvasY(0); ctx.moveTo(padding,xAxisY); ctx.lineTo(canvas.width-padding,xAxisY); ctx.stroke();
+             ctx.fillStyle='#555'; ctx.font='11px sans-serif'; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.fillText(xMin.toFixed(isZoomed?4:2),padding,xAxisY+5); ctx.fillText(xMax.toFixed(isZoomed?4:2),canvas.width-padding,xAxisY+5); ctx.textAlign='left'; ctx.fillText("x",canvas.width-padding+5,xAxisY-4); ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.fillText(yMin.toFixed(isZoomed?3:2),yAxisX-8,canvas.height-padding); ctx.fillText(yMax.toFixed(isZoomed?3:2),yAxisX-8,padding); ctx.textBaseline='bottom'; ctx.fillText("y",yAxisX+2,padding-5);
+        }
+        function drawFunctionCurve() { /* ... igual que antes, usa los bounds globales ... */
+             ctx.strokeStyle='blue'; ctx.lineWidth=2; ctx.beginPath(); let firstPoint=true; const numPoints = Math.max(200, canvas.width - 2 * padding); const step=(xMax-xMin)/numPoints; if (step <= 0) return; for(let mathX=xMin;mathX<=xMax;mathX+=step){ try{ const mathY=currentFunction(mathX); if(!isNaN(mathY)&&isFinite(mathY)){ const canvasX=toCanvasX(mathX); const canvasY=toCanvasY(mathY); if(firstPoint){ ctx.moveTo(canvasX,canvasY); firstPoint=false; }else { ctx.lineTo(canvasX,canvasY); } }else{ firstPoint=true; } }catch(e){ firstPoint=true; } } if (!firstPoint) ctx.stroke(); // Ensure last segment is drawn if valid
+        }
+        function drawCurrentState(showHighlight = false) { /* ... igual que antes, usa los bounds globales ... */
+            const canvasA=toCanvasX(currentA); const canvasB=toCanvasX(currentB); const canvasY0=toCanvasY(0);
+            ctx.fillStyle='rgba(0, 255, 0, 0.08)'; ctx.fillRect(canvasA,padding,canvasB-canvasA,canvas.height-2*padding);
+            if(showHighlight&&highlightSubinterval){ const hStart=toCanvasX(highlightSubinterval.start); const hEnd=toCanvasX(highlightSubinterval.end); ctx.fillStyle='rgba(255, 165, 0, 0.25)'; ctx.fillRect(hStart,padding,hEnd-hStart,canvas.height-2*padding); }
+            ctx.strokeStyle='rgba(0, 128, 0, 0.7)'; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(canvasA,padding); ctx.lineTo(canvasA,canvas.height-padding); ctx.moveTo(canvasB,padding); ctx.lineTo(canvasB,canvas.height-padding); ctx.stroke();
+            if(currentC!==null){ const canvasC=toCanvasX(currentC); ctx.strokeStyle='red'; ctx.lineWidth=1.5; ctx.beginPath(); ctx.moveTo(canvasC,canvasY0-6); ctx.lineTo(canvasC,canvasY0+6); ctx.stroke(); if(fc!==undefined){ const canvasFc=toCanvasY(fc); ctx.fillStyle='red'; ctx.beginPath(); ctx.arc(canvasC,canvasFc,3.5,0,2*Math.PI); ctx.fill(); } }
+        }
+
+        // updateInfoPanel (sin cambios)
+        function updateInfoPanel() { /* ... igual que antes ... */
+            iterationSpan.textContent = iteration; aValSpan.textContent = currentA.toFixed(7); bValSpan.textContent = currentB.toFixed(7); widthValSpan.textContent = (currentB - currentA).toExponential(3); cValSpan.textContent = (currentC !== null) ? currentC.toFixed(7) : '-'; faValSpan.textContent = (fa !== undefined) ? fa.toExponential(3) : '-'; fbValSpan.textContent = (fb !== undefined) ? fb.toExponential(3) : '-'; fcValSpan.textContent = (fc !== undefined) ? fc.toExponential(3) : '-';
+         }
+
+        // --- Lógica del Algoritmo y Control ---
+
+        // Prepara y dibuja el estado actual ANTES de ejecutar el paso
+        function prepareAndDrawCurrent() {
+            calculateBounds(); // <<-- CALCULAR LÍMITES (ZOOM) ANTES DE DIBUJAR
+            clearCanvas();
+            drawAxes();
+            drawFunctionCurve();
+            drawCurrentState();
+            updateInfoPanel();
+        }
+
+        // executeBisectionStep (sin cambios funcionales internos)
+        function executeBisectionStep() { /* ... igual que antes ... */
+            if (algorithmFinished) return false;
+            if (needsInitialization) { try { fa=currentFunction(currentA); fb=currentFunction(currentB); if(fa*fb>=0){ statusSpan.textContent="Error: f(a)*f(b) deben tener signos opuestos."; algorithmFinished=true; return false; } needsInitialization=false; prepareAndDrawCurrent(); updateInfoPanel(); return true; } catch(e){ statusSpan.textContent="Error evaluando f(a) o f(b) inicial."; algorithmFinished=true; return false; } }
+            currentC=(currentA+currentB)/2; try{ fc=currentFunction(currentC); } catch(e){ statusSpan.textContent=`Error evaluando f(c) en c=${currentC.toFixed(7)}`; algorithmFinished=true; return false; } iteration++;
+            prepareAndDrawCurrent(); // Redibujar con 'c' antes de la decisión
+            updateInfoPanel(); // Actualizar panel con 'c' y f(c)
+            const intervalWidth=Math.abs(currentB-currentA); if(fc===0.0||intervalWidth/2<targetEps){ statusSpan.textContent=`Raíz encontrada (aprox.): ${currentC.toFixed(7)} en ${iteration} iteraciones.`; algorithmFinished=true; return false; }
+            if(fa*fc<0){ highlightSubinterval={start:currentA,end:currentC}; }else{ highlightSubinterval={start:currentC,end:currentB}; }
+            clearCanvas(); calculateBounds(); drawAxes(); drawFunctionCurve(); drawCurrentState(true); // Mostrar resaltado
+            return true;
+         }
+
+         // finalizeStepAndUpdateInterval (sin cambios funcionales internos)
+         function finalizeStepAndUpdateInterval() { /* ... igual que antes ... */
+             if (!highlightSubinterval) return; if (fa * fc < 0) { currentB = currentC; fb = fc; } else { currentA = currentC; fa = fc; } currentC = null; fc = undefined; highlightSubinterval = null; updateInfoPanel();
+          }
+
+        // autoAnimationLoop (sin cambios funcionales internos)
+         function autoAnimationLoop() { /* ... igual que antes ... */
+             if(!isRunningAuto||isPaused||algorithmFinished){ animationTimeoutId=null; return; }
+             const stepCompleted=executeBisectionStep();
+             if(stepCompleted&&!algorithmFinished){ animationTimeoutId=setTimeout(()=>{ if(!isRunningAuto||isPaused)return; finalizeStepAndUpdateInterval(); prepareAndDrawCurrent(); animationTimeoutId=setTimeout(()=>{ requestAnimationFrame(autoAnimationLoop); },300); },highlightDuration); }else{ isRunningAuto=false; updatePauseButtonState(); }
+          }
+
+        // --- Inicialización y Reset ---
+        function resetState() {
+            if (animationTimeoutId) { clearTimeout(animationTimeoutId); animationTimeoutId = null; }
+            isRunningAuto = false; isPaused = false; algorithmFinished = false;
+            needsInitialization = true; highlightSubinterval = null; isZoomed = false; // Resetear estado de zoom
+
+            currentFunctionData = functionsData[functionSelect.value];
+            currentFunction = currentFunctionData.func;
+            initialA = currentFunctionData.a; // Guardar los iniciales originales
+            initialB = currentFunctionData.b;
+            currentA = initialA; // Usarlos para el estado actual
+            currentB = initialB;
+            currentC = null; fa = undefined; fb = undefined; fc = undefined; iteration = 0;
+            targetEps = parseFloat(epsilonInput.value); if (isNaN(targetEps)||targetEps<=0){ targetEps=0.001; epsilonInput.value=targetEps; }
+
+            prepareAndDrawCurrent(); // <<-- Llama a calculateBounds que resetea el zoom
+            statusSpan.textContent = 'Estado: Listo';
+            updatePauseButtonState();
+        }
+
+        // updatePauseButtonState (sin cambios)
+        function updatePauseButtonState() { /* ... igual que antes ... */
+             if(isPaused){ pauseBtn.textContent='Reanudar'; pauseBtn.classList.add('paused'); }else{ pauseBtn.textContent='Pausar'; pauseBtn.classList.remove('paused'); }
+             pauseBtn.disabled=!isRunningAuto; startBtn.disabled=isRunningAuto||algorithmFinished; stepBtn.disabled=algorithmFinished;
+         }
+
+        // --- Event Listeners (sin cambios funcionales internos) ---
+        startBtn.addEventListener('click', () => { /* ... igual que antes ... */
+            if(!isRunningAuto&&!algorithmFinished){ resetState(); if(needsInitialization){ try{ if(currentFunction(currentA)*currentFunction(currentB)>=0){ alert("Error: f(a)*f(b) deben tener signos opuestos."); resetState(); return; } }catch(e){ alert("Error evaluando f(a) o f(b) inicial."); resetState(); return; } } isRunningAuto=true; isPaused=false; statusSpan.textContent='Estado: Ejecutando Auto...'; updatePauseButtonState(); autoAnimationLoop(); }
+         });
+        pauseBtn.addEventListener('click', () => { /* ... igual que antes ... */
+             if(isRunningAuto){ isPaused=!isPaused; statusSpan.textContent=isPaused?'Estado: Pausado':'Estado: Ejecutando Auto...'; updatePauseButtonState(); if(!isPaused&&!animationTimeoutId){ autoAnimationLoop(); }else if(isPaused&&animationTimeoutId){ clearTimeout(animationTimeoutId); animationTimeoutId=null; } }
+         });
+        stepBtn.addEventListener('click', () => { /* ... igual que antes ... */
+             if(isRunningAuto||algorithmFinished)return; if(isPaused){ isPaused=false; updatePauseButtonState(); } statusSpan.textContent='Estado: Ejecutando Paso...'; const stepCompleted=executeBisectionStep(); if(stepCompleted&&!algorithmFinished){ setTimeout(()=>{ finalizeStepAndUpdateInterval(); prepareAndDrawCurrent(); statusSpan.textContent='Estado: Listo para Siguiente Paso'; updatePauseButtonState(); },highlightDuration); }else if(algorithmFinished){ statusSpan.textContent=`Raíz encontrada (aprox.): ${currentC.toFixed(7)} en ${iteration} iteraciones.`; updatePauseButtonState(); } else { /* Caso de error manejado en executeBisectionStep */ updatePauseButtonState(); }
+         });
+        resetBtn.addEventListener('click', resetState);
+        functionSelect.addEventListener('change', resetState);
+        epsilonInput.addEventListener('change', () => { /* ... igual que antes ... */
+             const newEps=parseFloat(epsilonInput.value); if(!isNaN(newEps)&&newEps>0){ targetEps=newEps; resetState(); }else{ epsilonInput.value=targetEps; }
+         });
+
+        // --- Dibujo Inicial ---
+        resetState(); // Configurar y dibujar estado inicial al cargar
+
+    </script>
+
+</body>
+</html>

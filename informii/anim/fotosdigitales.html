@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Procesador de Imágenes (Corregido)</title>
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box; /* Mejor cálculo de tamaño */
+        }
+
+        body {
+            font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+            background-color: #f4f7f9; /* Fondo general suave */
+            color: #333;
+            line-height: 1.6;
+            margin: 0;
+        }
+
+        h1 {
+            color: #1a2533;
+            margin-bottom: 25px;
+        }
+
+        .control-panel, .canvases {
+            margin-bottom: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            align-items: flex-start; /* Alinea los grupos al inicio */
+            gap: 20px; /* Espacio entre grupos de control / canvases */
+            background-color: #ffffff; /* Paneles blancos */
+            border: 1px solid #dee2e6;
+            padding: 25px;
+            border-radius: 8px; /* Esquinas redondeadas */
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); /* Sombra sutil */
+            width: 95%;
+            max-width: 1100px;
+        }
+
+        .control-panel > div { /* Grupo dentro del panel de control */
+            margin-bottom: 5px; /* Ligero espacio inferior */
+            display: flex;
+            flex-direction: column; /* Apila label e input */
+        }
+
+        .canvas-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            margin-bottom: 15px;
+            padding: 15px;
+            background-color: #fff; /* Fondo blanco */
+            border-radius: 6px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.08); /* Sombra más suave */
+            border: 1px solid #e9ecef;
+            min-width: 220px; /* Asegura algo de espacio */
+        }
+
+        canvas {
+            border: 1px solid #ced4da; /* Borde sutil */
+            max-width: 100%;
+            height: auto;
+            background-color: #f8f9fa; /* Fondo del canvas */
+            border-radius: 4px; /* Ligeramente redondeado */
+        }
+
+        #processedCanvasContainer {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px; /* Espacio entre canvas procesados */
+            width: 100%; /* Ocupa todo el espacio disponible en .canvases */
+            padding-top: 10px;
+            border-top: 1px solid #eee; /* Separador visual */
+            margin-top: 10px;
+        }
+
+        #status {
+            margin-top: 5px; /* Reducido espacio arriba */
+            margin-bottom: 20px; /* Espacio antes de los canvas */
+            font-weight: 500;
+            min-height: 1.5em;
+            color: #0056b3; /* Color azul para el estado */
+            background-color: #e7f3ff; /* Fondo azul muy claro */
+            width: 95%;
+            max-width: 1100px;
+            text-align: center;
+            padding: 10px 15px;
+            border-radius: 6px;
+            border: 1px solid #bde0ff;
+        }
+
+        label {
+            margin-bottom: 5px; /* Espacio entre label e input */
+            font-size: 0.875rem; /* Un poco más pequeño */
+            color: #495057; /* Gris oscuro */
+            font-weight: 500;
+        }
+
+        input[type=number],
+        input[type=file],
+        select,
+        button {
+            padding: 10px 12px;
+            margin-bottom: 5px;
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-family: inherit; /* Hereda fuente del body */
+            transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+            width: 100%; /* Ocupa el ancho del div contenedor */
+            min-height: 40px; /* Altura mínima consistente */
+            box-sizing: border-box;
+        }
+
+         /* Ajuste para campos que no deben ser 100% */
+         .control-panel > div input[type=number] {
+              width: 85px; /* Ancho específico para números */
+         }
+          .control-panel > div input[type=color] {
+              width: 60px; /* Ancho específico para color */
+              height: 40px;
+              padding: 4px;
+              vertical-align: middle;
+          }
+           .control-panel > div button {
+                width: auto; /* El botón ajusta su tamaño */
+                padding: 10px 20px;
+            }
+
+
+        input[type=file] {
+            padding: 8px; /* Menos padding vertical para file input */
+            cursor: pointer;
+        }
+         /* Ocultar texto predeterminado feo */
+         input[type="file"]::file-selector-button {
+              display: none;
+         }
+         /* Alternativamente, puedes estilizar el botón interno si quieres: */
+         /* input[type="file"]::file-selector-button { */
+         /*     padding: 8px 12px; margin-right: 10px; */
+         /*     border: none; border-radius: 4px; */
+         /*     background-color: #6c757d; color: white; cursor: pointer; } */
+         /* input[type="file"]::file-selector-button:hover { background-color: #5a6268; } */
+
+        input:focus, select:focus {
+            border-color: #86b7fe;
+            outline: 0;
+            box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25); /* Sombra de foco azul */
+        }
+
+        select {
+            appearance: none; /* Quitar estilo por defecto */
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3e%3cpath fill='none' stroke='%23343a40' stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M2 5l6 6 6-6'/%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 16px 12px;
+            cursor: pointer;
+        }
+
+        .param-group {
+            display: none; /* Sigue oculto por defecto */
+            align-items: flex-end; /* Alinea en la base */
+            gap: 10px; /* Espacio entre parámetros */
+            flex-wrap: wrap;
+            padding: 10px;
+            background-color: #f8f9fa; /* Fondo sutil para agrupar */
+            border-radius: 4px;
+            margin-top: 5px; /* Espacio arriba */
+        }
+         .param-group > div { /* Cada label+input dentro del grupo */
+             display: flex;
+             flex-direction: column;
+             margin-bottom: 0; /* Quitar margen extra */
+         }
+         .param-group label {
+             margin-bottom: 3px;
+             font-size: 0.8em; /* Más pequeño */
+         }
+        /* Ajuste para que input[type=color] y su label se vean bien */
+        .color-input-group {
+             align-items: flex-end; /* Alinear en la base */
+        }
+
+        button {
+            cursor: pointer;
+            background-color: #0d6efd; /* Azul primario */
+            color: white;
+            border: none;
+            font-weight: 500;
+            transition: background-color 0.15s ease-in-out;
+        }
+        button:hover:not(:disabled) {
+            background-color: #0b5ed7; /* Azul más oscuro en hover */
+        }
+        button:disabled {
+            cursor: not-allowed;
+            background-color: #adb5bd; /* Gris para deshabilitado */
+            opacity: 0.7;
+        }
+
+        h2, h3, h4 { /* Estilos de encabezados */
+            width: 100%;
+            text-align: center;
+            margin-bottom: 15px;
+             margin-top: 5px;
+            color: #495057; /* Gris más suave */
+            font-weight: 500;
+        }
+         h4 { /* Título de canvas procesado */
+             font-size: 1rem;
+             border-bottom: 1px solid #eee;
+             padding-bottom: 5px;
+         }
+    </style>
+</head>
+<body>
+
+    <h1>Procesador de Imágenes</h1>
+
+    <div class="control-panel">
+        <div>
+            <label for="imageLoader">1. Cargar Imagen (Opcional):</label>
+            <input type="file" id="imageLoader" name="imageLoader" accept="image/png, image/jpeg, image/gif, image/webp">
+        </div>
+
+        <div>
+            <label for="exerciseSelect">2. Seleccionar Procesamiento:</label>
+            <select id="exerciseSelect" disabled>
+                <option value="select">-- Seleccionar --</option>
+                <option value="randomPixels">Ejemplo 1: Píxeles Aleatorios</option>
+                <option value="grayscale">Ejemplo 2: Escala de Grises</option>
+                <option value="thresholdGray">Ejemplo 3: Blanco y Negro</option>
+                <option value="ex12">Ejercicio 12: Componentes (RGB)</option>
+                <option value="ex13">Ejercicio 13: Reflejar Horizontal/Vertical</option>
+                <option value="ex14">Ejercicio 14: Redimensionar Imagen</option>
+                <option value="ex15">Ejercicio 15: Mosaico</option>
+                <option value="ex19">Ejercicio 19: Rotar Imagen</option>
+                <option value="ex20">Ejercicio 20: Efecto Cristal</option>
+            </select>
+        </div>
+
+         <div id="paramsRandomPixels" class="param-group">
+             <div><label for="rpWidth">Ancho:</label> <input type="number" id="rpWidth" value="400"></div>
+             <div><label for="rpHeight">Alto:</label> <input type="number" id="rpHeight" value="250"></div>
+         </div>
+        <div id="paramsThresholdGray" class="param-group color-input-group">
+             <div><label for="refColor">Color Ref (RGB):</label><input type="color" id="refColor" value="#ff0000"></div>
+             <div><label for="threshold">Umbral:</label> <input type="number" id="threshold" value="50" min="0"></div>
+        </div>
+         <div id="paramsEx14" class="param-group">
+             <div><label for="targetWidth">Ancho:</label> <input type="number" id="targetWidth" value="200"></div>
+             <div><label for="targetHeight">Alto:</label> <input type="number" id="targetHeight" value="200"></div>
+         </div>
+         <div id="paramsEx15" class="param-group">
+              <div><label for="mosaicRows">Filas:</label> <input type="number" id="mosaicRows" value="2" min="1"></div>
+              <div><label for="mosaicCols">Cols:</label> <input type="number" id="mosaicCols" value="3" min="1"></div>
+          </div>
+          <div id="paramsEx19" class="param-group">
+               <div><label for="rotateAngle">Ángulo (°):</label> <input type="number" id="rotateAngle" value="30"></div>
+          </div>
+           <div id="paramsEx20" class="param-group">
+               <div><label for="crystalRadius">Radio:</label> <input type="number" id="crystalRadius" value="5" min="0"></div>
+           </div>
+
+        <div>
+            <button id="runButton" disabled>3. Ejecutar Proceso</button>
+        </div>
+    </div>
+
+    <div id="status">Cargando imagen inicial...</div>
+
+    <div class="canvases">
+        <div class="canvas-container" id="originalCanvasContainer" style="display: none;">
+            <h3>Imagen Original</h3>
+            <canvas id="originalCanvas"></canvas>
+        </div>
+        <div id="processedCanvasContainer"></div>
+    </div>
+
+    <script>
+        // --- Elementos DOM ---
+        // ... (sin cambios) ...
+        const imageLoader = document.getElementById('imageLoader');
+        const exerciseSelect = document.getElementById('exerciseSelect');
+        const runButton = document.getElementById('runButton');
+        const statusDiv = document.getElementById('status');
+        const originalCanvas = document.getElementById('originalCanvas');
+        const originalCtx = originalCanvas.getContext('2d', { willReadFrequently: true });
+        const originalCanvasContainer = document.getElementById('originalCanvasContainer');
+        const processedCanvasContainer = document.getElementById('processedCanvasContainer');
+        const paramGroups = { randomPixels: document.getElementById('paramsRandomPixels'), thresholdGray: document.getElementById('paramsThresholdGray'), ex14: document.getElementById('paramsEx14'), ex15: document.getElementById('paramsEx15'), ex19: document.getElementById('paramsEx19'), ex20: document.getElementById('paramsEx20'), };
+        const rpWidthInput = document.getElementById('rpWidth'); const rpHeightInput = document.getElementById('rpHeight'); const refColorInput = document.getElementById('refColor'); const thresholdInput = document.getElementById('threshold'); const targetWidthInput = document.getElementById('targetWidth'); const targetHeightInput = document.getElementById('targetHeight'); const mosaicRowsInput = document.getElementById('mosaicRows'); const mosaicColsInput = document.getElementById('mosaicCols'); const rotateAngleInput = document.getElementById('rotateAngle'); const crystalRadiusInput = document.getElementById('crystalRadius');
+
+        // --- Estado ---
+        let originalImageData = null;
+        let processing = false;
+        let originalImage = new Image();
+        originalImage.crossOrigin = "Anonymous"; // Para carga inicial
+
+        // --- Funciones Utilitarias ---
+        // ... (setStatus, getPixel, setPixel, createOutputCanvas, calculateGrayscale, hexToRgb sin cambios)...
+        function setStatus(message) { statusDiv.innerHTML = message; }
+        function getPixel(imageData, x, y) { if (x < 0 || x >= imageData.width || y < 0 || y >= imageData.height) return { r: 0, g: 0, b: 0, a: 0 }; const i = (Math.floor(y) * imageData.width + Math.floor(x)) * 4; return { r: imageData.data[i], g: imageData.data[i+1], b: imageData.data[i+2], a: imageData.data[i+3] }; }
+        function setPixel(imageData, x, y, color) { if (x < 0 || x >= imageData.width || y < 0 || y >= imageData.height) return; const i = (Math.floor(y) * imageData.width + Math.floor(x)) * 4; imageData.data[i] = color.r; imageData.data[i + 1] = color.g; imageData.data[i + 2] = color.b; imageData.data[i + 3] = color.a; }
+        function createOutputCanvas(idSuffix, title) { processedCanvasContainer.insertAdjacentHTML('beforeend', `<div class="canvas-container" id="container-${idSuffix}"><h4>${title}</h4><canvas id="canvas-${idSuffix}"></canvas></div>`); const canvas = document.getElementById(`canvas-${idSuffix}`); const ctx = canvas.getContext('2d'); return { canvas, ctx }; }
+        function calculateGrayscale(r, g, b) { return Math.round(0.299 * r + 0.587 * g + 0.114 * b); }
+        function hexToRgb(hex) { const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex); return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : null; }
+
+
+        function updateParamVisibilityAndButton() {
+        const selectedValue = exerciseSelect.value; // Obtiene el valor actual
+        processedCanvasContainer.innerHTML = ''; // Borra los resultados anteriores
+        if (selectedValue === 'select')  
+            setStatus("Por favor, seleccione un ejercicio/ejemplo.");
+        else
+            setStatus("Pulse Ejecutar para procesar la imagen.");
+        // Oculta todos los grupos de parámetros primero
+        Object.values(paramGroups).forEach(el => {
+            if(el) el.style.display = 'none'; // Añadir verificación por si acaso
+        });
+
+        if (selectedValue == 'randomPixels') {
+            originalCanvasContainer.style.display = 'none'; // Oculta el canvas original
+        } else{
+            originalCanvasContainer.style.display = 'flex'; // Muestra el canvas original
+        }
+
+        // Muestra el grupo relevante si existe
+        if (paramGroups[selectedValue] && paramGroups[selectedValue] instanceof HTMLElement) {
+            paramGroups[selectedValue].style.display = 'flex';
+        }
+
+        // Actualiza el estado del botón Ejecutar
+        // (Importante: `originalImageData` debe estar definido y accesible aquí)
+        runButton.disabled = (selectedValue === 'select' || !originalImageData);
+
+        const exercise = exerciseSelect.value;
+        if (exercise === 'randomPixels') {
+            originalCanvasContainer.style.visibility = 'hidden';
+        } else 
+            originalCanvasContainer.style.visibility = 'visible';   
+        }
+
+        // --- Manejadores de Eventos ---
+        // ... (handleImageLoad, imageLoader listener, exerciseSelect listener - sin cambios funcionales) ...
+        function handleImageLoad() {
+            originalCanvasContainer.style.visibility = 'visible';
+
+            originalCanvas.width = originalImage.naturalWidth;
+            originalCanvas.height = originalImage.naturalHeight;
+            originalCtx.drawImage(originalImage, 0, 0);
+            originalCanvasContainer.style.display = 'flex';
+
+            try {
+                originalImageData = originalCtx.getImageData(0, 0, originalCanvas.width, originalCanvas.height);
+                exerciseSelect.disabled = false;
+                // runButton.disabled = exerciseSelect.value === 'select'; // Re-check selection
+                updateParamVisibilityAndButton();
+                processedCanvasContainer.innerHTML = ''; // Clear previous
+                let statusMsg = "Imagen cargada. Seleccione un procesamiento y pulse Ejecutar.";
+                 if (originalImage.src.startsWith('http')) {
+                      statusMsg += "<br><strong>Nota:</strong> Procesar esta imagen de URL externa puede fallar por CORS. Si ocurre, cargue un archivo local.";
+                 }
+                 setStatus(statusMsg);
+            } catch (err) {
+                 console.error("Error al obtener datos de la imagen (CORS Tainted Canvas?):", err);
+                 setStatus(`Error al leer datos de la imagen (${originalImage.src.startsWith('http') ? 'posible restricción CORS' : 'error interno'}). Por favor, intente cargar un archivo local.`);
+                 originalImageData = null; exerciseSelect.disabled = true; runButton.disabled = true; originalCanvasContainer.style.display = 'none';
+                 updateParamVisibilityAndButton();
+            }
+        }
+         originalImage.onload = handleImageLoad;
+         originalImage.onerror = () => { setStatus("Error: No se pudo cargar la imagen inicial desde la URL. Por favor, cargue un archivo local."); originalImageData = null; exerciseSelect.disabled = true; runButton.disabled = true; originalCanvasContainer.style.display = 'none'; };
+         imageLoader.addEventListener('change', (event) => { /* ... (igual que antes) ... */ const file = event.target.files[0]; if (!file) return; if (!file.type.startsWith('image/')) return; const reader = new FileReader(); reader.onload = (e) => { setStatus("Cargando imagen local..."); originalImage.onload = handleImageLoad; originalImage.onerror = () => { setStatus("Error cargando el archivo de imagen local."); }; originalImage.src = e.target.result; }; reader.onerror = () => { setStatus("Error leyendo el archivo."); }; reader.readAsDataURL(file); });
+         exerciseSelect.addEventListener('change', () => {
+        updateParamVisibilityAndButton(); // <<< Solo llama a la función
+    });
+
+
+        runButton.addEventListener('click', async () => { // Controlador Principal - Revisado
+             if (!originalImageData || processing) return;
+             const exercise = exerciseSelect.value;
+             if (exercise === 'select') { setStatus("Por favor, seleccione un ejercicio."); return; }
+
+             processing = true;
+             setStatus(`Procesando: ${exerciseSelect.options[exerciseSelect.selectedIndex].text}...`);
+             runButton.disabled = true; exerciseSelect.disabled = true;
+             processedCanvasContainer.innerHTML = '';
+
+             try {
+                 // Llamadas a las funciones correctas (síncronas y asíncronas)
+                 switch (exercise) {
+                     case 'grayscale': processGrayscale(); break;
+                     case 'randomPixels': processRandomPixels(); break;
+                     case 'thresholdGray': processThresholdGray(); break;
+                     case 'ex12': processEx12(); break;
+                     case 'ex13': processEx13(); break;
+                     case 'ex14': processEx14(); break;
+                     case 'ex15': processEx15(); break;
+                     case 'ex19': await processEx19(); break; // Correcto
+                     case 'ex20': await processEx20(); break; // Correcto
+                     default: throw new Error("Ejercicio seleccionado no implementado.");
+                 }
+                 // El estado final se actualiza DENTRO de las funciones async o al final para las síncronas
+                 if (!['ex19', 'ex20'].includes(exercise)) {
+                    setStatus("Proceso Completado!");
+                 }
+
+             } catch (error) {
+                 console.error("Error durante el procesamiento:", error);
+                 setStatus(`Error: ${error.message}`);
+                 // A menudo, el error es por CORS al leer originalImageData, asegurarse de que el mensaje lo sugiere
+                  if (error.name === 'SecurityError' && originalImage.src.startsWith('http')) {
+                     setStatus(`Error de seguridad (probablemente CORS): No se pueden procesar píxeles de la imagen cargada desde ${originalImage.hostname}. Pruebe a cargar un archivo local.`);
+                 }
+
+             } finally {
+                 processing = false;
+                  runButton.disabled = (exerciseSelect.value === 'select' || !originalImageData);
+                 exerciseSelect.disabled = !originalImageData;
+             }
+         });
+
+        // --- Funciones de Procesamiento (Nuevas - OK) ---
+        function processGrayscale() { /* ... (Implementación previa OK) ... */
+            const { canvas: grayCanvas, ctx: grayCtx } = createOutputCanvas('gray', 'Escala de Grises (Luminosidad)'); const w = originalImageData.width; const h = originalImageData.height; grayCanvas.width = w; grayCanvas.height = h; const grayData = grayCtx.createImageData(w, h); const srcData = originalImageData.data;
+            for (let i = 0; i < srcData.length; i += 4) { const gray = calculateGrayscale(srcData[i], srcData[i + 1], srcData[i + 2]); grayData.data[i] = gray; grayData.data[i+1] = gray; grayData.data[i+2] = gray; grayData.data[i+3] = srcData[i+3]; } grayCtx.putImageData(grayData, 0, 0); }
+        function processRandomPixels() { /* ... (Implementación previa OK) ... */
+             const targetW = parseInt(rpWidthInput.value, 10); const targetH = parseInt(rpHeightInput.value, 10); if (isNaN(targetW) || targetW <= 0 || isNaN(targetH) || targetH <= 0) throw new Error("Ancho o alto inválido para píxeles aleatorios.");
+             const { canvas: randCanvas, ctx: randCtx } = createOutputCanvas('random', `Píxeles Aleatorios (${targetW}x${targetH})`); randCanvas.width = targetW; randCanvas.height = targetH; const randData = randCtx.createImageData(targetW, targetH);
+             for (let i = 0; i < randData.data.length; i += 4) { randData.data[i] = Math.floor(Math.random() * 256); randData.data[i+1] = Math.floor(Math.random() * 256); randData.data[i+2] = Math.floor(Math.random() * 256); randData.data[i+3] = 255; } randCtx.putImageData(randData, 0, 0); }
+         function processThresholdGray() { /* ... (Implementación previa OK) ... */
+             const threshold = parseFloat(thresholdInput.value); const refColorHex = refColorInput.value; const refColorRgb = hexToRgb(refColorHex); if (isNaN(threshold) || threshold < 0) throw new Error("Umbral inválido."); if (!refColorRgb) throw new Error("Color de referencia inválido."); const { r: rRef, g: gRef, b: bRef } = refColorRgb;
+             const { canvas: thrCanvas, ctx: thrCtx } = createOutputCanvas('threshold', `Umbral (${threshold}) a Gris (Ref: ${refColorHex})`); const w = originalImageData.width; const h = originalImageData.height; thrCanvas.width = w; thrCanvas.height = h; const thrData = thrCtx.createImageData(w, h); const srcData = originalImageData.data;
+             for (let i = 0; i < srcData.length; i += 4) { const rOrig = srcData[i]; const gOrig = srcData[i+1]; const bOrig = srcData[i+2]; const aOrig = srcData[i+3]; const distSq = (rOrig - rRef)**2 + (gOrig - gRef)**2 + (bOrig - bRef)**2; const distance = Math.sqrt(distSq);
+             if (distance > threshold) { const gray = calculateGrayscale(rOrig, gOrig, bOrig); thrData.data[i] = gray; thrData.data[i+1] = gray; thrData.data[i+2] = gray; } else { thrData.data[i] = rOrig; thrData.data[i+1] = gOrig; thrData.data[i+2] = bOrig; } thrData.data[i+3] = aOrig; } thrCtx.putImageData(thrData, 0, 0); }
+
+        // --- Funciones de Procesamiento ORIGINALES (Restauradas/Verificadas) ---
+
+         // Ex 12: Componentes de Color (RGB) - OK
+         function processEx12() {
+             if (!originalImageData) throw new Error("No hay datos de imagen original.");
+             const { canvas: rCanvas, ctx: rCtx } = createOutputCanvas('red', 'Componente Rojo');
+             const { canvas: gCanvas, ctx: gCtx } = createOutputCanvas('green', 'Componente Verde');
+             const { canvas: bCanvas, ctx: bCtx } = createOutputCanvas('blue', 'Componente Azul');
+             const w = originalImageData.width, h = originalImageData.height;
+             [rCanvas, gCanvas, bCanvas].forEach(c => { c.width = w; c.height = h; });
+             const rData = rCtx.createImageData(w, h), gData = gCtx.createImageData(w, h), bData = bCtx.createImageData(w, h);
+             const srcData = originalImageData.data;
+             for (let i = 0; i < srcData.length; i += 4) {
+                  rData.data[i]=srcData[i]; rData.data[i+1]=0; rData.data[i+2]=0; rData.data[i+3]=srcData[i+3];
+                  gData.data[i]=0; gData.data[i+1]=srcData[i+1]; gData.data[i+2]=0; gData.data[i+3]=srcData[i+3];
+                  bData.data[i]=0; bData.data[i+1]=0; bData.data[i+2]=srcData[i+2]; bData.data[i+3]=srcData[i+3];
+             }
+             rCtx.putImageData(rData, 0, 0); gCtx.putImageData(gData, 0, 0); bCtx.putImageData(bData, 0, 0);
+         }
+
+         // Ex 13: Reflejar Horizontal/Vertical - OK
+          function processEx13() {
+             if (!originalImageData) throw new Error("No hay datos de imagen original.");
+             const { canvas: hCanvas, ctx: hCtx } = createOutputCanvas('reflectH', 'Reflejo Horizontal');
+             const { canvas: vCanvas, ctx: vCtx } = createOutputCanvas('reflectV', 'Reflejo Vertical');
+             const w = originalImageData.width, h = originalImageData.height;
+             [hCanvas, vCanvas].forEach(c => { c.width = w; c.height = h; });
+             const hData = hCtx.createImageData(w, h), vData = vCtx.createImageData(w, h);
+              for (let y = 0; y < h; y++) { for (let x = 0; x < w; x++) {
+                 const srcPixelH = getPixel(originalImageData, w - 1 - x, y); setPixel(hData, x, y, srcPixelH);
+                 const srcPixelV = getPixel(originalImageData, x, h - 1 - y); setPixel(vData, x, y, srcPixelV);
+              }}
+             hCtx.putImageData(hData, 0, 0); vCtx.putImageData(vData, 0, 0);
+         }
+
+        // Ex 14: Redimensionar Imagen - OK
+        function processEx14() {
+            if (!originalImageData) throw new Error("No hay datos de imagen original.");
+            const targetW = parseInt(targetWidthInput.value, 10); const targetH = parseInt(targetHeightInput.value, 10);
+            if (isNaN(targetW) || targetW <= 0 || isNaN(targetH) || targetH <= 0) throw new Error("Dimensiones inválidas para redimensionar.");
+            const { canvas: resCanvas, ctx: resCtx } = createOutputCanvas('resize', `Redimensionada (${targetW}x${targetH})`);
+            resCanvas.width = targetW; resCanvas.height = targetH;
+            const origW = originalImageData.width, origH = originalImageData.height;
+            const resData = resCtx.createImageData(targetW, targetH);
+            for (let yd = 0; yd < targetH; yd++) { for (let xd = 0; xd < targetW; xd++) {
+                const xs = Math.floor(xd * origW / targetW); const ys = Math.floor(yd * origH / targetH);
+                const srcPixel = getPixel(originalImageData, xs, ys); setPixel(resData, xd, yd, srcPixel);
+            }} resCtx.putImageData(resData, 0, 0);
+        }
+
+       // Ex 15: Mosaico - OK (usa drawImage)
+        function processEx15() {
+             if (!originalImage || !originalImage.complete || originalImage.naturalWidth === 0) throw new Error("Imagen original no disponible para mosaico.");
+             const rows = parseInt(mosaicRowsInput.value, 10); const cols = parseInt(mosaicColsInput.value, 10);
+             if (isNaN(rows) || rows <= 0 || isNaN(cols) || cols <= 0) throw new Error("Filas o columnas inválidas para mosaico.");
+              const { canvas: mosCanvas, ctx: mosCtx } = createOutputCanvas('mosaic', `Mosaico (${rows}x${cols})`);
+             const tileWidth = Math.floor(originalCanvas.width / cols); const tileHeight = Math.floor(originalCanvas.height / rows);
+             mosCanvas.width = tileWidth * cols; mosCanvas.height = tileHeight * rows;
+              for (let r = 0; r < rows; r++) { for (let c = 0; c < cols; c++) {
+                 mosCtx.drawImage(originalImage, 0, 0, originalImage.naturalWidth, originalImage.naturalHeight, c * tileWidth, r * tileHeight, tileWidth, tileHeight);
+             }}
+        }
+
+         // Ex 19: Rotar Imagen - OK (async)
+          async function processEx19() {
+             if (!originalImageData) throw new Error("No hay datos de imagen original.");
+             const angleDegrees = parseFloat(rotateAngleInput.value); if (isNaN(angleDegrees)) throw new Error("Ángulo inválido.");
+             const angleRad = angleDegrees * Math.PI / 180.0; const w = originalImageData.width, h = originalImageData.height;
+             const { canvas: rotCanvas, ctx: rotCtx } = createOutputCanvas('rotate', `Rotada (${angleDegrees}°)`);
+             rotCanvas.width = w; rotCanvas.height = h;
+             const rotData = rotCtx.createImageData(w, h); const cosA = Math.cos(-angleRad), sinA = Math.sin(-angleRad); const cx = w / 2, cy = h / 2;
+              await new Promise(resolve => { // Proceso en bloques
+                 let processedPixels = 0; const totalPixels = w * h;
+                 function processChunk() {
+                      const chunkSize = 5000; const endPixel = Math.min(processedPixels + chunkSize, totalPixels);
+                      for(let idx = processedPixels; idx < endPixel; ++idx) {
+                          const xd = idx % w, yd = Math.floor(idx / w); const xt = xd - cx, yt = yd - cy;
+                          const xs = (xt * cosA - yt * sinA) + cx; const ys = (xt * sinA + yt * cosA) + cy;
+                          const srcPixel = getPixel(originalImageData, xs, ys); setPixel(rotData, xd, yd, srcPixel);
+                      }
+                     processedPixels = endPixel;
+                      setStatus(`Procesando Rotación... ${Math.round(100*processedPixels/totalPixels)}%`);
+                      if (processedPixels < totalPixels) { setTimeout(processChunk, 0); }
+                      else { rotCtx.putImageData(rotData, 0, 0); resolve(); } // Dibuja al final y resuelve
+                  } processChunk(); // Iniciar
+              });
+              setStatus("Proceso Completado!"); // Estado final después de resolver la promesa
+          }
+
+         // Ex 20: Efecto Cristal - OK (async)
+         async function processEx20() {
+            if (!originalImageData) throw new Error("No hay datos de imagen original.");
+            const radius = parseInt(crystalRadiusInput.value, 10); if (isNaN(radius) || radius < 0) throw new Error("Radio inválido.");
+            const w = originalImageData.width, h = originalImageData.height;
+            const { canvas: cryCanvas, ctx: cryCtx } = createOutputCanvas('crystal', `Cristal (r=${radius})`);
+            cryCanvas.width = w; cryCanvas.height = h; const cryData = cryCtx.createImageData(w, h);
+             await new Promise(resolve => { // Proceso en bloques
+                 let processedPixels = 0; const totalPixels = w * h;
+                  function processChunk() {
+                     const chunkSize = 5000; const endPixel = Math.min(processedPixels + chunkSize, totalPixels);
+                      for(let idx = processedPixels; idx < endPixel; ++idx) {
+                          const xd = idx % w, yd = Math.floor(idx / w);
+                           const dx = Math.floor(Math.random()*(2*radius+1)) - radius; const dy = Math.floor(Math.random()*(2*radius+1)) - radius;
+                           let xs = Math.max(0, Math.min(w - 1, xd + dx)); let ys = Math.max(0, Math.min(h - 1, yd + dy));
+                           const srcPixel = getPixel(originalImageData, xs, ys); setPixel(cryData, xd, yd, srcPixel);
+                       }
+                      processedPixels = endPixel;
+                       setStatus(`Procesando Efecto Cristal... ${Math.round(100*processedPixels/totalPixels)}%`);
+                      if (processedPixels < totalPixels) { setTimeout(processChunk, 0); }
+                      else { cryCtx.putImageData(cryData, 0, 0); resolve(); } // Dibuja al final y resuelve
+                  } processChunk(); // Iniciar
+              });
+             setStatus("Proceso Completado!"); // Estado final después de resolver la promesa
+         }
+
+        // --- Carga Inicial ---
+         window.onload = () => {
+              setStatus("Intentando cargar imagen inicial desde URL...");
+             const defaultImageUrl = 'https://upload.wikimedia.org/wikipedia/commons/c/c1/Wikipedia-sipi-image-db-mandrill-4.2.03.png';
+              originalImage.src = defaultImageUrl;
+         };
+
+    </script>
+
+</body>
+</html>

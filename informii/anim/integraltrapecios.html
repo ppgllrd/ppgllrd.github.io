@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización Regla del Trapecio (Ejercicio 15)</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            background-color: #f4f4f4;
+        }
+        canvas {
+            border: 1px solid #000;
+            background-color: white;
+            margin-top: 15px;
+        }
+        .controls, .function-selector {
+            margin-top: 10px;
+            padding: 12px;
+            background-color: #e0e0e0;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            gap: 10px; /* Espacio entre elementos */
+            min-width: 500px; /* Ancho mínimo para controles */
+            justify-content: center;
+            flex-wrap: wrap; /* Permitir que los controles se ajusten si no caben */
+        }
+        label {
+            font-weight: bold;
+            margin-right: 5px;
+        }
+        input[type="range"] {
+            width: 180px;
+            cursor: pointer;
+        }
+        button {
+            font-weight: bold;
+            font-size: 1.1em;
+            padding: 2px 8px;
+            min-width: 30px;
+            cursor: pointer;
+        }
+        select {
+            padding: 5px;
+            cursor: pointer;
+        }
+        #result {
+            margin-top: 15px;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #333;
+            min-height: 1.5em; /* Prevenir saltos de layout */
+            text-align: center;
+        }
+        #nValue {
+             min-width: 2.5em; /* Espacio para números de 3 dígitos */
+             text-align: right;
+             font-weight: bold;
+             color: #0056b3;
+             background-color: #f8f8f8;
+             padding: 2px 5px;
+             border: 1px solid #ccc;
+             border-radius: 3px;
+        }
+        h1 {
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Visualización de la Regla del Trapecio</h1>
+
+     <div class="function-selector">
+        <label for="functionSelect">Función a integrar:</label>
+        <select id="functionSelect">
+            <option value="f1">x²/20 + sin(x) + 2</option>
+            <option value="f2">sin(x) + cos(x/2) + 3</option>
+            <option value="f3">5 * exp(-x²/8)</option>
+            <option value="f4">-(x-5)²/10 + 5</option>
+            <option value="f5">3*sin(x) - cos(2*x) + 4</option>
+        </select>
+    </div>
+
+    <div class="controls">
+        <label for="nSlider">Trapecios (n):</label>
+        <button id="decrementBtn">-</button>
+        <input type="range" id="nSlider" min="1" max="150" value="5">
+         <button id="incrementBtn">+</button>
+        <span id="nValue">10</span>
+    </div>
+
+    <div id="result">Área Aproximada: ...</div>
+
+    <canvas id="integrationCanvas" width="650" height="450"></canvas>
+
+    <script>
+        const canvas = document.getElementById('integrationCanvas');
+        const ctx = canvas.getContext('2d');
+        const slider = document.getElementById('nSlider');
+        const nValueSpan = document.getElementById('nValue');
+        const resultDiv = document.getElementById('result');
+        const decrementBtn = document.getElementById('decrementBtn');
+        const incrementBtn = document.getElementById('incrementBtn');
+        const functionSelect = document.getElementById('functionSelect');
+
+
+        // --- Configuración ---
+        const a = 0;          // Inicio del intervalo
+        const b = 10;         // Fin del intervalo
+        const padding = 45;   // Padding alrededor del gráfico
+        let animationFrameId = null; // Para controlar el bucle de animación
+
+        // --- Funciones de Ejemplo ---
+        const functions = {
+            'f1': x => (x * x / 20) + Math.sin(x) + 2,
+            'f2': x => Math.sin(x) + Math.cos(x / 2) + 3,
+            'f3': x => 5 * Math.exp(-x * x / 8), // Tipo Gaussiana
+            'f4': x => -Math.pow(x - 5, 2) / 10 + 5, // Parábola invertida
+            'f5': x => 3 * Math.sin(x) - Math.cos(2*x) + 4
+        };
+        let currentFunctionKey = functionSelect.value; // Clave de la función actual
+        let currentFunction = functions[currentFunctionKey]; // Función actual
+
+        // --- Mapeo de Coordenadas ---
+        let xMin = a;
+        let xMax = b;
+        let yMin, yMax; // Se calcularán dinámicamente
+
+        // Calcula los límites Y para la función actual
+        function calculateYBounds() {
+            yMin = currentFunction(a);
+            yMax = yMin;
+            const numSamples = 200; // Más muestras para mejor precisión
+            for (let x = a; x <= b; x += (b - a) / numSamples) {
+                const y = currentFunction(x);
+                if (y < yMin) yMin = y;
+                if (y > yMax) yMax = y;
+            }
+            // Añadir algo de margen y asegurar que 0 esté visible si es relevante
+            const yRange = yMax - yMin;
+            const yMargin = (yRange === 0 ? 1 : yRange) * 0.15; // Margen mínimo si la función es constante
+            yMin -= yMargin;
+            yMax += yMargin;
+            // Forzar inclusión del eje X si la función cruza o está cerca de 0
+            if (yMin > -yMargin/2 && currentFunction(a) >= 0 && currentFunction(b) >= 0) { // Ajuste heurístico
+               let hasNegative = false;
+               for (let x = a; x <= b; x += (b - a) / numSamples) {
+                    if (currentFunction(x) < 0) { hasNegative = true; break;}
+               }
+               if (!hasNegative) yMin = Math.min(0, yMin); // Incluir 0 si la función es >= 0
+            }
+             if (yMax < yMargin/2 && currentFunction(a) <= 0 && currentFunction(b) <= 0) {
+               let hasPositive = false;
+               for (let x = a; x <= b; x += (b - a) / numSamples) {
+                    if (currentFunction(x) > 0) { hasPositive = true; break;}
+               }
+               if (!hasPositive) yMax = Math.max(0, yMax); // Incluir 0 si la función es <= 0
+            }
+
+        }
+
+        // Convertir x matemático a x del canvas
+        function toCanvasX(mathX) {
+            const graphWidth = canvas.width - 2 * padding;
+            return padding + graphWidth * (mathX - xMin) / (xMax - xMin);
+        }
+
+        // Convertir y matemático a y del canvas
+        function toCanvasY(mathY) {
+            const graphHeight = canvas.height - 2 * padding;
+            // Y está invertido en el canvas (0 es arriba)
+            // Manejar caso donde yMax === yMin (función constante)
+            const yRange = yMax - yMin;
+            if (yRange === 0) return padding + graphHeight / 2; // Centrar verticalmente
+            return padding + graphHeight * (1 - (mathY - yMin) / yRange);
+        }
+
+        // --- Funciones de Dibujo ---
+
+        // Dibujar ejes coordenados
+        function drawAxes() {
+            ctx.strokeStyle = '#888';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            // Eje Y (en x=0 o borde izquierdo si 0 está fuera de rango)
+            const yAxisX = (xMin <= 0 && xMax >= 0) ? toCanvasX(0) : padding;
+            ctx.moveTo(yAxisX, padding);
+            ctx.lineTo(yAxisX, canvas.height - padding);
+            // Eje X (en y=0 o borde inferior si 0 está fuera de rango)
+            const xAxisY = (yMin <= 0 && yMax >= 0) ? toCanvasY(0) : canvas.height - padding;
+            ctx.moveTo(padding, xAxisY);
+            ctx.lineTo(canvas.width - padding, xAxisY);
+            ctx.stroke();
+
+            // Añadir etiquetas/marcas (ejemplo básico)
+            ctx.fillStyle = '#555';
+            ctx.font = '11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'top';
+            ctx.fillText(a.toFixed(1), toCanvasX(a), xAxisY + 5);
+            ctx.fillText(b.toFixed(1), toCanvasX(b), xAxisY + 5);
+             ctx.textAlign = 'left';
+            ctx.fillText("x", canvas.width - padding + 5, xAxisY - 4 );
+
+
+            ctx.textAlign = 'right';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(yMin.toFixed(1), yAxisX - 8, toCanvasY(yMin));
+            ctx.fillText(yMax.toFixed(1), yAxisX - 8, toCanvasY(yMax));
+            ctx.textBaseline = 'bottom';
+             ctx.fillText("y", yAxisX + 2, padding - 5);
+        }
+
+        // Dibujar la curva de la función
+        function drawFunctionCurve() {
+            ctx.strokeStyle = 'blue';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            let firstPoint = true;
+            const step = (xMax - xMin) / (canvas.width - 2 * padding); // Paso por pixel aprox
+            for (let mathX = xMin; mathX <= xMax; mathX += step) {
+                 if (mathX >= a && mathX <= b) { // Solo dibujar dentro de [a, b]
+                    const mathY = currentFunction(mathX);
+                    const canvasX = toCanvasX(mathX);
+                    const canvasY = toCanvasY(mathY);
+                    if (firstPoint && canvasX >= padding) {
+                        ctx.moveTo(canvasX, canvasY);
+                        firstPoint = false;
+                    } else if (!firstPoint && canvasX <= canvas.width - padding) {
+                        ctx.lineTo(canvasX, canvasY);
+                    }
+                 }
+            }
+             // Asegurar que el último punto se dibuje si está exactamente en b
+             if(!firstPoint && toCanvasX(b) <= canvas.width - padding){
+                 ctx.lineTo(toCanvasX(b), toCanvasY(currentFunction(b)));
+             }
+            ctx.stroke();
+        }
+
+        // Dibujar un único trapecio
+        function drawTrapezoid(x0, x1) {
+            const y0 = currentFunction(x0);
+            const y1 = currentFunction(x1);
+
+            const canvasX0 = toCanvasX(x0);
+            const canvasX1 = toCanvasX(x1);
+            const canvasY0 = toCanvasY(y0);
+            const canvasY1 = toCanvasY(y1);
+            // El eje X del canvas puede no ser y=0 matemático
+            const canvasBaseY = (yMin <= 0 && yMax >= 0) ? toCanvasY(0) : canvas.height - padding;
+
+
+            ctx.fillStyle = 'rgba(255, 165, 0, 0.4)'; // Naranja semitransparente
+            ctx.strokeStyle = 'rgba(255, 140, 0, 0.8)'; // Borde naranja más oscuro
+            ctx.lineWidth = 0.5;
+
+            ctx.beginPath();
+            ctx.moveTo(canvasX0, canvasBaseY); // Abajo izquierda
+            ctx.lineTo(canvasX0, canvasY0);    // Arriba izquierda
+            ctx.lineTo(canvasX1, canvasY1);    // Arriba derecha
+            ctx.lineTo(canvasX1, canvasBaseY); // Abajo derecha
+            ctx.closePath();
+            ctx.fill();
+            ctx.stroke();
+        }
+
+
+        // --- Bucle Principal de Dibujo y Animación ---
+        let currentN = parseInt(slider.value);
+        let currentTrapIndex = 0;
+        let totalArea = 0;
+
+        function animateIntegration() {
+             // Calcular tamaño del paso para la N actual
+            const dx = (b - a) / currentN;
+
+            // Dibujar elementos estáticos (ejes, curva) solo una vez por cambio de N o función
+            if (currentTrapIndex === 0) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                drawAxes(); // Usa los yMin/yMax calculados para la función actual
+                drawFunctionCurve(); // Usa la currentFunction
+                totalArea = 0; // Reiniciar área para esta N
+                 resultDiv.textContent = 'Calculando...';
+            }
+
+            // Dibujar el siguiente trapecio si quedan por dibujar
+            if (currentTrapIndex < currentN) {
+                const x0 = a + currentTrapIndex * dx;
+                const x1 = x0 + dx;
+
+                drawTrapezoid(x0, x1); // Usa currentFunction
+
+                // Calcular área de este trapecio y añadir al total
+                const trapArea = (currentFunction(x0) + currentFunction(x1)) / 2 * dx;
+                totalArea += trapArea;
+
+                // Actualizar área mostrada incrementalmente
+                resultDiv.textContent = `Área Aprox.: ${totalArea.toFixed(5)} (Trapecio ${currentTrapIndex + 1}/${currentN})`;
+
+                currentTrapIndex++;
+                // Solicitar el siguiente frame
+                animationFrameId = requestAnimationFrame(animateIntegration);
+            } else {
+                 // Animación terminada para esta N
+                 resultDiv.textContent = `Área Aproximada: ${totalArea.toFixed(5)} (n=${currentN})`;
+                 animationFrameId = null; // Dejar de solicitar frames
+            }
+        }
+
+        // --- Función para Actualizar Visualización (llamada por eventos) ---
+        function updateVisualization(newN) {
+             // Asegurar que newN esté dentro de los límites
+             const minN = parseInt(slider.min);
+             const maxN = parseInt(slider.max);
+             newN = Math.max(minN, Math.min(maxN, newN)); // Clamp value
+
+             // Actualizar UI
+             nValueSpan.textContent = newN;
+             slider.value = newN; // Sincronizar slider
+
+             // Si la animación está en curso, cancelarla
+            if (animationFrameId !== null) {
+                cancelAnimationFrame(animationFrameId);
+                animationFrameId = null;
+            }
+
+            // Iniciar nueva animación/dibujo
+            currentN = newN;
+            currentTrapIndex = 0; // Reiniciar contador de trapecios
+            animateIntegration(); // Iniciar el bucle de dibujo
+        }
+
+         // --- Función para reiniciar todo al cambiar de función ---
+         function resetAndDrawForNewFunction() {
+            currentFunctionKey = functionSelect.value;
+            currentFunction = functions[currentFunctionKey];
+            calculateYBounds(); // Recalcular límites Y para la nueva función
+            updateVisualization(currentN); // Redibujar todo con la N actual
+         }
+
+
+        // --- Event Listeners ---
+        slider.addEventListener('input', () => {
+            updateVisualization(parseInt(slider.value));
+        });
+
+        decrementBtn.addEventListener('click', () => {
+            updateVisualization(currentN - 1);
+        });
+
+        incrementBtn.addEventListener('click', () => {
+             // Permitir incremento mayor para valores altos
+             const increment = (currentN >= 50) ? 5 : (currentN >= 20 ? 2 : 1);
+             updateVisualization(currentN + increment);
+        });
+
+        functionSelect.addEventListener('change', () => {
+            resetAndDrawForNewFunction();
+        });
+
+
+        // --- Dibujo Inicial ---
+        calculateYBounds(); // Calcular límites iniciales
+        updateVisualization(currentN); // Dibujar inicialmente
+
+    </script>
+
+</body>
+</html>
