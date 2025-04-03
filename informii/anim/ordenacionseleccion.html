@@ -26,8 +26,6 @@
         /* Contenedor principal de la visualización */
         #visualization-container {
             position: relative;
-            /* Margen inferior aumentado para dejar espacio a índices y punteros */
-            margin-bottom: 90px;
             height: 280px;
             width: 90%;
             max-width: 800px;
@@ -38,6 +36,7 @@
             display: flex;
             justify-content: center;
             align-items: flex-end;
+            padding-bottom: 100px;
         }
 
         /* Contenedor de las barras del array */
@@ -67,7 +66,7 @@
             font-size: 12px;
             position: relative;
             /* Necesario para posicionar el índice absoluto */
-            transition: background-color 0.4s ease, height 0.3s ease;
+            transition: background-color 0.4s ease, height 0.3s ease, transform 0.5s ease-in-out; /* Added transform */
             box-sizing: border-box;
             border: 1px solid #eee;
             outline: 2px solid transparent;
@@ -100,7 +99,7 @@
             justify-content: center;
             align-items: center;
             position: absolute;
-            bottom: 5px;
+            bottom: 95px;
             /* Posicionado justo debajo de las barras */
             left: 10px;
             right: 10px;
@@ -170,7 +169,7 @@
         /* --- CONTENEDOR Y ESTILOS DE PUNTEROS (i, j, posMin) --- */
         #pointers-container {
             position: absolute;
-            bottom: -85px;
+            bottom: 20px;
             /* Posicionado debajo de los índices */
             left: 0;
             width: 100%;
@@ -274,22 +273,19 @@
             gap: 8px;
         }
 
+        /* Estilo general para TODOS los botones dentro del contenedor */
         #controls-container button {
             padding: 8px 15px;
             cursor: pointer;
-            border: 1px solid #ccc;
+            border: 1px solid #ccc; /* Borde por defecto */
             border-radius: 4px;
-            background-color: #f8f8f8;
-            color: #333;
+            background-color: #f8f8f8; /* Fondo por defecto (gris claro) */
+            color: #333; /* Color de texto por defecto */
             font-size: 14px;
-            transition: background-color 0.2s ease, border-color 0.2s ease;
+            transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease; /* Añadida transición de color */
         }
 
-        #controls-container button:hover:not(:disabled) {
-            background-color: #e0e0e0;
-            border-color: #aaa;
-        }
-
+        /* Estilo para botones desactivados */
         #controls-container button:disabled {
             background-color: #cccccc;
             color: #888;
@@ -297,24 +293,46 @@
             border-color: #bbb;
         }
 
-        /* Estilos específicos de botones */
+        /* --- Colores específicos para los botones principales --- */
         #start-pause-btn {
-            background-color: #60a5fa;
+            background-color: #60a5fa; /* Azul */
             color: white;
             border-color: #3b82f6;
         }
-
         #step-btn {
-            background-color: #fbbf24;
+            background-color: #fbbf24; /* Amarillo/Naranja */
             color: white;
             border-color: #f59e0b;
         }
-
         #reset-btn {
-            background-color: #f87171;
+            background-color: #f87171; /* Rojo */
             color: white;
             border-color: #ef4444;
         }
+
+        /* --- Efectos HOVER específicos para los botones principales --- */
+        #start-pause-btn:hover:not(:disabled) {
+            background-color: #3b82f6; /* Azul más oscuro */
+            border-color: #2563eb;
+        }
+        #step-btn:hover:not(:disabled) {
+            background-color: #f59e0b; /* Amarillo/Naranja más oscuro */
+            border-color: #d97706;
+        }
+        #reset-btn:hover:not(:disabled) {
+            background-color: #ef4444; /* Rojo más oscuro */
+            border-color: #dc2626;
+        }
+
+        /* --- Hover genérico para el resto de botones --- */
+         #controls-container .size-control button:hover:not(:disabled),
+         #controls-container #random-array-btn:hover:not(:disabled),
+         #controls-container #manual-input-btn:hover:not(:disabled) {
+            background-color: #e0e0e0; /* Hover gris claro para otros botones */
+            border-color: #aaa;
+         }
+        /* --- FIN ESTILOS BOTONES --- */
+
 
         .size-control label {
             margin-right: 5px;
@@ -333,7 +351,7 @@
         .size-control button {
             font-weight: bold;
             padding: 4px 8px;
-            font-weight: bold;
+            /* font-weight: bold; <= Eliminado repetido */
             min-width: 25px;
         }
 
@@ -488,6 +506,7 @@
 <span data-line="9">        <span class="syntax-variable">posMin</span> <span class="syntax-operator">=</span> <span class="syntax-variable">j</span>               <span class="syntax-comment">// Actualizamos la posición del mínimo</span></span>
 <span data-line="10"></span>
 <span data-line="11">    <span class="syntax-function">intercambiar</span>(<span class="syntax-variable">i</span>, <span class="syntax-variable">posMin</span>) <span class="syntax-comment">// Intercambiamos el mínimo encontrado con el elemento en i</span></span>
+<span data-line="13"><span class="syntax-comment">// Fin del algoritmo</span></span>
         </code></pre>
     </div>
 
@@ -1123,6 +1142,10 @@
                 const moveDuration = Math.max(animationSpeed * 0.8, 180); // 80% de la velocidad, mínimo 180ms
                 const transitionTransform = `transform ${moveDuration / 1000}s ease-in-out`;
 
+                 // Guardar transiciones originales si existen
+                 const originalTransition1 = bar1.style.transition;
+                 const originalTransition2 = bar2.style.transition;
+
                 // Aplica la transición solo para la propiedad 'transform'
                 bar1.style.transition = transitionTransform;
                 bar2.style.transition = transitionTransform;
@@ -1146,6 +1169,15 @@
 
                 // Programa la finalización de la animación
                 timeouts.push(setTimeout(() => {
+                     // Comprobar si el estado cambió (ej. reset) durante la animación
+                     if (!state.isSwapping && !state.isFinished) {
+                         console.warn("Animación de swap abortada.");
+                         // Intentar restaurar estilos
+                         if(bar1) { bar1.style.transform = ''; bar1.style.transition = originalTransition1 || ''; }
+                         if(bar2) { bar2.style.transform = ''; bar2.style.transition = originalTransition2 || ''; }
+                         return; // No ejecutar callback si se abortó
+                     }
+
                     // Al terminar el movimiento:
                     const v1_new = array[index1]; // Nuevo valor de la barra que AHORA está en index1
                     const v2_new = array[index2]; // Nuevo valor de la barra que AHORA está en index2
@@ -1169,20 +1201,23 @@
                     void bar1.offsetHeight;
                     void bar2.offsetHeight;
 
-                    // Restaura las transiciones CSS por defecto definidas en la hoja de estilos
-                    bar1.style.transition = '';
-                    bar2.style.transition = '';
+                     // Restaurar transiciones originales después de un pequeño delay
+                    setTimeout(() => {
+                        if (!state.isFinished && bar1.style) bar1.style.transition = originalTransition1 || '';
+                        if (!state.isFinished && bar2.style) bar2.style.transition = originalTransition2 || '';
 
-                    // Llama al callback para indicar que la animación terminó
-                    if (callback) {
-                        callback();
-                    } else {
-                        // Si no hay callback, al menos actualiza el estado de swapping
-                        state.isSwapping = false;
-                        updateControls();
-                    }
+                        // Llama al callback para indicar que la animación terminó
+                         if (callback) {
+                             callback();
+                         } else {
+                             // Si no hay callback, al menos actualiza el estado de swapping
+                             state.isSwapping = false;
+                             updateControls();
+                         }
+                    }, 10); // Delay corto
                 }, moveDuration)); // Espera a que termine la animación de movimiento
             }
+
 
             // --- Lógica de Control de la Animación ---
 
@@ -1292,7 +1327,7 @@
              * Actualiza el estado (habilitado/deshabilitado, texto) de los botones
              * y controles según el estado actual del algoritmo.
              */
-            function updateControls() {
+             function updateControls() {
                 const isRunningAuto = state.isRunning && !state.isPaused;
                 // El sistema está "ocupado" si está corriendo automáticamente o animando un swap
                 const isBusy = isRunningAuto || state.isSwapping;
@@ -1300,9 +1335,10 @@
                 stepBtn.disabled = state.isFinished || isBusy; // Deshabilitado si terminó o está ocupado
                 // Botón Start/Pause deshabilitado solo si terminó O si está en swap (no durante pausa)
                 startPauseBtn.disabled = (state.isFinished && state.phase === 'finished') || state.isSwapping;
-                // Reset deshabilitado si está en estado inicial absoluto O si está en swap
-                resetBtn.disabled = (state.phase === 'idle' && !state.isRunning && !state.isSwapping && !state.isPaused) || state.isSwapping;
-                // Controles de generación/tamaño deshabilitados si está ocupado
+                 // Reset deshabilitado si está en swap O si está en el estado inicial puro
+                 resetBtn.disabled = state.isSwapping || (state.phase === 'idle' && !state.isRunning && !state.isPaused);
+
+                 // Controles de generación/tamaño deshabilitados si está ocupado
                 randomArrayBtn.disabled = isBusy;
                 manualInputBtn.disabled = isBusy;
                 increaseSizeBtn.disabled = arraySize >= maxSize || isBusy;
@@ -1319,6 +1355,7 @@
                     startPauseBtn.textContent = (state.phase === 'idle' && !state.isPaused) ? 'Iniciar' : 'Continuar';
                 }
             }
+
 
             // --- Inicio de la Ejecución ---
             // Espera a que el DOM esté completamente cargado antes de inicializar
