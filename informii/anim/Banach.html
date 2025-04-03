@@ -3,393 +3,336 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Simulación: Problema Cajas de Cerillas de Banach</title>
-    <!-- Incluimos la librería Chart.js para los gráficos -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <title>Problema de las Cerillas de Banach</title>
     <style>
-        /* Estilos similares al ejemplo anterior (Binomial), puedes copiarlos */
+        /* --- ESTILOS GENERALES (Paleta: Verde) --- */
         body {
-            font-family: sans-serif; line-height: 1.6; margin: 20px; background-color: #f4f4f4;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6; margin: 20px; background-color: #f0fff0; /* Honeydew */
+            color: #333; display: flex; flex-direction: column; align-items: center;
         }
+        h1, h2, h3, h4 { color: #006400; /* DarkGreen */ text-align: center; }
+        h4 { margin-bottom: 5px; color: #228B22; /* ForestGreen */ }
         .container {
-            max-width: 1200px; margin: auto; background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            background-color: #ffffff; padding: 25px; border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+            width: 95%; max-width: 900px;
         }
-        #controles {
-            margin-bottom: 20px; padding: 15px; border: 1px solid #ddd; background-color: #f0f0f0; border-radius: 5px; display: grid; grid-template-columns: auto 1fr; gap: 10px 15px; align-items: center;
+
+        /* --- CONTROLES --- */
+        .controles {
+            display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center;
+            margin-bottom: 20px; padding: 15px; background-color: #e9ffe3; /* LightGreen Pale */ border-radius: 8px;
         }
-        #controles label { font-weight: bold; text-align: right; }
-        #controles input[type="number"] {
-            padding: 8px; border: 1px solid #ccc; border-radius: 4px; max-width: 150px; justify-self: start;
+        .control-item { margin: 10px; text-align: center; }
+        .control-item label { display: block; margin-bottom: 5px; font-weight: bold; color: #004d00; /* Darker Green */ }
+        .control-item input[type="number"] {
+            padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 80px; text-align: center; vertical-align: middle;
         }
-        #controles button {
-            grid-column: 1 / -1; padding: 10px 15px; background-color: #007bff; /* Azul */ color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 1.1em; margin-top: 10px;
+        .param-display { display: inline-block; min-width: 40px; text-align: right; font-weight: bold; color: #228B22; }
+
+        button {
+            background-color: #5cb85c; /* MediumSeaGreen */ color: white; border: none;
+            padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.1s ease, box-shadow 0.1s ease; margin: 5px;
         }
-        #controles button:hover { background-color: #0056b3; }
-        #resultadosInfo {
-             margin-bottom: 25px; padding: 15px; border: 1px solid #e3e3e3; background-color: #f9f9f9; border-radius: 5px;
+        button:hover { background-color: #4cae4c; /* Darker MediumSeaGreen */ }
+        button:active { transform: scale(0.98); box-shadow: inset 0 1px 3px rgba(0,0,0,0.2); }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+
+
+        /* --- VISUALIZACIÓN --- */
+        .visualizacion { margin-top: 20px; text-align: center; }
+
+        /* Cajas de Cerillas (Sec 1 y 2) */
+        .matchbox-container { display: flex; justify-content: space-around; margin-bottom: 15px; }
+        .matchbox {
+            border: 3px solid #8fbc8f; /* DarkSeaGreen */ border-radius: 5px; padding: 10px; min-width: 100px;
+            background-color: #f5fff5; /* MintCream */ text-align: center;
+            transition: border-color 0.2s ease, transform 0.2s ease, box-shadow 0.2s ease; /* Transición para highlight */
         }
-         #resultadosInfo h2 { margin-top: 0; margin-bottom: 15px; border-bottom: 1px solid #ddd; padding-bottom: 5px; }
-         #resultadosInfo p { margin: 8px 0; line-height: 1.4; }
-         #resultadosInfo code { background-color: #e9e9e9; padding: 2px 5px; border-radius: 3px; font-family: monospace; font-size: 0.95em; }
-        .graficos-container { display: flex; flex-wrap: wrap; gap: 25px; margin-top: 20px; justify-content: space-between; }
-        .grafico-wrapper { flex: 1 1 30%; min-width: 300px; border: 1px solid #ccc; padding: 15px; border-radius: 5px; background-color: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
-        .grafico-wrapper h3 { text-align: center; margin-top: 0; margin-bottom: 15px; color: #333; }
-         canvas { max-width: 100%; }
-        .estado { font-style: italic; color: #555; min-height: 1.2em; margin-top: 10px; text-align: center; grid-column: 1 / -1; }
-        .error { color: #d9534f; font-weight: bold; }
+        .matchbox.highlighted { /* Estilo para resaltar caja elegida */
+            border-color: #ffcc00; /* Amarillo */
+            transform: scale(1.03);
+            box-shadow: 0 0 10px rgba(255, 204, 0, 0.7);
+        }
+        .matchbox-label { font-weight: bold; display: block; margin-bottom: 5px; color: #006400; }
+        .match-count { font-size: 1.5em; font-weight: bold; color: #2e8b57; /* SeaGreen */ }
+        .match-visual { font-size: 1.1em; color: #90ee90; /* LightGreen */ letter-spacing: -1px; display: block; height: 1.5em; overflow: hidden; word-break: break-all; }
+
+        /* Secuencia de elección (Sec 2) */
+        #banach-sequence-visual {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            margin-top: 15px; min-height: 30px; padding: 5px;
+            background-color: #f5fff5; border-radius: 5px; border: 1px dashed #90ee90;
+        }
+        .choice-item {
+            padding: 3px 6px; margin: 2px; border-radius: 3px; font-weight: bold; font-size: 0.9em;
+            opacity: 0; animation: fadeIn 0.3s forwards;
+        }
+        .choice-I { background-color: #d0f0c0; color: #004d00; } /* TeaGreen */
+        .choice-D { background-color: #e0f7df; color: #004d00; } /* Lighter TeaGreen */
+        .choice-empty { border: 2px solid red; font-weight: bolder; background-color: #ffcdd2 !important; color: red !important;}
+
+        #resultExperimentBanach { font-weight: bold; font-size: 1.1em; margin-top: 15px; color: #006400; }
+
+        /* Gráficos */
+        #charts-area-banach { margin-top: 25px; position: relative; }
+        #chart-container-banach { display: flex; justify-content: space-around; align-items: flex-start; gap: 20px; background-color: #f5f5f5; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; }
+        .chart-wrapper { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        canvas { display: block; max-width: 100%; background-color: #ffffff; border: 1px solid #ccc; border-radius: 4px; }
+        #tooltip-banach { position: absolute; display: none; background-color: rgba(0, 0, 0, 0.75); color: white; padding: 8px 12px; border-radius: 5px; font-size: 0.9em; pointer-events: none; z-index: 10; white-space: nowrap; transition: opacity 0.1s ease-out; }
+        .legend { margin-top: 10px; font-size: 0.9em; }
+        .legend-sim { color: #66bb6a; font-weight: bold; } /* Green Lighten-1 barras */
+        .legend-theo { color: #1b5e20; font-weight: bold; } /* Green Darken-4 puntos */
+
+        /* Estadísticas */
+        #stats-display-banach {
+             margin-top: 25px; padding: 15px; background-color: #f0fff0; /* Honeydew */
+             border: 1px solid #98fb98; /* PaleGreen */ border-radius: 8px; text-align: left;
+             display: grid; grid-template-columns: auto 1fr; gap: 5px 15px; align-items: center;
+        }
+        #stats-display-banach h4 { grid-column: 1 / -1; margin-bottom: 10px; text-align: center; color: #004d00; }
+        #stats-display-banach .stat-label { font-weight: bold; color: #006400; }
+        #stats-display-banach .stat-value { font-family: monospace; font-size: 1.1em; }
+        #stats-display-banach .stat-formula { grid-column: 1 / -1; text-align:center; font-size:0.9em; color:#777; margin-bottom: 8px;}
+
+
+        /* --- EXPLICACIONES --- */
+        .explicacion { margin-top: 15px; padding: 15px; background-color: #e7f4e2; /* Verde más pálido */ border-left: 5px solid #90ee90; /* LightGreen */ border-radius: 5px; }
+        .explicacion p { margin: 5px 0; }
+        .formula { font-family: 'Courier New', Courier, monospace; background-color: #dff0d8; padding: 2px 5px; border-radius: 3px; color: #3c763d; }
+        .param { font-weight: bold; color: #228B22; } /* ForestGreen */
+
+        @keyframes fadeIn { to { opacity: 1; } }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h1>Simulación: Problema de las Cajas de Cerillas de Banach</h1>
-    <p>Se simula el 
-        <a href="https://en.wikipedia.org/wiki/Banach%27s_matchbox_problem#">problema clásico</a>: dos cajas con <strong>n</strong> cerillas iniciales cada una. Se elige una caja al azar y se consume la cerilla. Se repite este proceso hasta que se elige una caja vacía. Se registra el número de cerillas <strong>k</strong> restantes en la otra caja.</p>
-    <p>Se repite el experimento completo <strong>N</strong> veces.</p>
+    <h1><span style="font-size:1.5em">🚬</span> Problema de las Cerillas de Banach <span style="font-size:1.5em">🚬</span></h1>
 
-    <div id="controles">
-        <label for="cerillasInput">Nº inicial de cerillas (n):</label>
-        <input type="number" id="cerillasInput" value="20" min="1" max="500"> <!-- Limitar n por cálculo combinaciones -->
-
-        <label for="experimentosInput">Nº de experimentos (N):</label>
-        <input type="number" id="experimentosInput" value="10000" min="1" max="5000000">
-
-        <button id="btnSimular">Ejecutar Simulación</button>
-        <p id="estado" class="estado">Introduce los parámetros y haz clic en el botón.</p>
+    <!-- Sección 1: El Escenario -->
+    <div class="container">
+        <h2>1. El Escenario: Dos Cajas de Cerillas</h2>
+        <div class="explicacion">
+             <p>Se simula el 
+                <a href="https://en.wikipedia.org/wiki/Banach%27s_matchbox_problem#">problema clásico</a>: 
+                dos cajas, <span class="param">N</span> cerillas iniciales en cada una. Se elige bolsillo Izquierdo (I) o Derecho (D) al azar (p=0.5). 
+                Se toma una cerilla si hay y se usa para encender un cigarro. El proceso se detiene cuando se elige una caja <span style="color:red; font-weight:bold;">vacía</span>.</p>
+        </div>
+        <div class="controles">
+             <div class="control-item">
+                <label for="num-cerillas-N">Nº Inicial Cerillas (N):</label>
+                <input type="number" id="num-cerillas-N" min="1" max="100" value="10" step="1">
+                <span class="param-display" id="val-N">10</span>
+            </div>
+        </div>
+         <div class="visualizacion">
+             <h4>Estado Actual de las Cajas</h4>
+             <div class="matchbox-container">
+                 <div class="matchbox" id="box-I">
+                     <span class="matchbox-label">Bolsillo Izquierdo (I)</span>
+                     <span class="match-count" id="count-I">10</span>
+                     <span class="match-visual" id="visual-I">||||||||||</span>
+                 </div>
+                 <div class="matchbox" id="box-D">
+                     <span class="matchbox-label">Bolsillo Derecho (D)</span>
+                     <span class="match-count" id="count-D">10</span>
+                     <span class="match-visual" id="visual-D">||||||||||</span>
+                 </div>
+             </div>
+              <button id="resetButton" onclick="resetExperimentState()">Reiniciar Estado</button>
+         </div>
     </div>
 
-     <div id="resultadosInfo">
-        <h2>Resultados de la Simulación</h2>
-        <p><strong>Parámetros usados:</strong> <span id="paramsUsados">---</span></p>
-        <p><strong>Media Experimental (k promedio):</strong> <span id="mediaExperimental">---</span></p>
-        <p><strong>Media Teórica (E[k]):</strong> <span id="mediaTeorica">---</span></p>
-        <!-- La varianza es menos estándar de mostrar aquí, pero se podría calcular si se desea -->
+    <!-- Sección 2: Un Experimento Completo -->
+    <div class="container">
+        <h2>2. Un Experimento: Hasta Encontrar una Caja Vacía</h2>
+         <div class="explicacion">
+            <p>Simularemos el proceso paso a paso, mostrando la elección, actualizando las cajas y resaltando la elección. Al final, veremos cuántas cerillas (<span class="formula">k</span>) quedan en la otra caja.</p>
+        </div>
+        <div class="controles">
+             <button id="runExperimentButton" onclick="runSingleBanachExperiment(true)">¡Realizar un Experimento Completo!</button>
+        </div>
+         <div class="visualizacion">
+            <h4>Secuencia de Elecciones y Resultado Final</h4>
+            <div id="banach-sequence-visual">(Pulsa el botón para empezar)</div>
+            <p id="resultExperimentBanach">Esperando experimento...</p>
+         </div>
     </div>
 
-    <div class="graficos-container">
-        <div class="grafico-wrapper">
-            <h3>Distribución Experimental (Frec. Relativa)</h3>
-            <canvas id="graficoExperimental"></canvas>
+     <!-- Sección 3: La Distribución de k Cerillas Restantes -->
+    <div class="container">
+        <h2>3. La Distribución de Cerillas Restantes (k)</h2>
+         <div class="explicacion">
+            <p>Repitiendo el experimento (sin animación) muchas veces, obtenemos la distribución de <span class="formula">k</span>. Comparamos la frecuencia simulada con la probabilidad teórica:</p>
+            <p><span class="formula">P(k | N) = C(2N-k, N) · (0.5)<sup>2N-k</sup></span> &nbsp; (k = 0, ..., N)</p>
         </div>
-        <div class="grafico-wrapper">
-            <h3>Distribución Teórica (Probabilidad)</h3>
-            <canvas id="graficoTeorico"></canvas>
+
+        <!-- Controles Simulación -->
+        <div class="controles">
+             <div class="control-item">
+                <label for="num-simulaciones-banach">Nº de Simulaciones:</label>
+                <input type="number" id="num-simulaciones-banach" min="100" max="1000000" value="100000" step="100">
+            </div>
+             <button id="simulateDistButton" onclick="simulateBanachDistribution()">¡Simular Distribución de k!</button>
         </div>
-         <div class="grafico-wrapper">
-            <h3>Diferencias (Teórica - Experimental)</h3>
-            <canvas id="graficoDiferencias"></canvas>
+
+         <!-- Display Estadísticas (Experimental) -->
+        <div id="stats-display-banach">
+            <h4>Estadísticas de 'k' (Cerillas Restantes)</h4>
+            <span class="stat-formula">(Fórmulas teóricas complejas, mostramos las experimentales)</span>
+            <span class="stat-label">Media Experimental:</span><span class="stat-value" id="exp-mean-val-banach">N/A</span>
+            <span class="stat-label">Varianza Experimental:</span><span class="stat-value" id="exp-var-val-banach">N/A</span>
         </div>
+
+        <!-- Gráficos -->
+         <div class="visualizacion">
+            <h3 id="simulacion-titulo-banach">Comparación Gráfica: Frecuencia vs. Probabilidad</h3>
+            <p id="simulacion-info-banach">Configura N, nº simulaciones y pulsa.</p>
+            <div id="charts-area-banach">
+                 <div id="chart-container-banach">
+                     <div class="chart-wrapper">
+                         <h4>Frecuencia Simulada (k)</h4>
+                         <canvas id="simulatedChartBanach"></canvas>
+                     </div>
+                     <div class="chart-wrapper">
+                          <h4>Probabilidad Teórica (k)</h4>
+                         <canvas id="theoreticalChartBanach"></canvas>
+                     </div>
+                 </div>
+                 <div id="tooltip-banach"></div>
+             </div>
+              <div class="legend">
+                <span class="legend-sim">■ Frec. Simulada</span> &nbsp;&nbsp; <span class="legend-theo">■ Prob. Teórica</span>
+            </div>
+         </div>
     </div>
-</div>
 
-<script>
-    // --- Elementos del DOM ---
-    const nInput = document.getElementById('cerillasInput');
-    const NInput = document.getElementById('experimentosInput');
-    const btnSimular = document.getElementById('btnSimular');
-    const estadoEl = document.getElementById('estado');
-    const paramsUsadosEl = document.getElementById('paramsUsados');
-    const mediaExperimentalEl = document.getElementById('mediaExperimental');
-    const mediaTeoricaEl = document.getElementById('mediaTeorica');
-    const canvasExp = document.getElementById('graficoExperimental');
-    const canvasTeo = document.getElementById('graficoTeorico');
-    const canvasDif = document.getElementById('graficoDiferencias');
-    const ctxExp = canvasExp.getContext('2d');
-    const ctxTeo = canvasTeo.getContext('2d');
-    const ctxDif = canvasDif.getContext('2d');
+    <script>
+        // --- Variables Globales y Elementos del DOM ---
+        const numCerillasNInput = document.getElementById('num-cerillas-N');
+        const valNSpan = document.getElementById('val-N');
+        const countISpan = document.getElementById('count-I'); // Cambiado L a I
+        const visualISpan = document.getElementById('visual-I'); // Cambiado L a I
+        const countDSpan = document.getElementById('count-D'); // Cambiado R a D
+        const visualDSpan = document.getElementById('visual-D'); // Cambiado R a D
+        const boxI = document.getElementById('box-I'); // Para highlight
+        const boxD = document.getElementById('box-D'); // Para highlight
+        const banachSequenceVisualDiv = document.getElementById('banach-sequence-visual');
+        const resultExperimentBanachP = document.getElementById('resultExperimentBanach');
+        const numSimulacionesBanachInput = document.getElementById('num-simulaciones-banach');
+        const simulacionTituloBanachH3 = document.getElementById('simulacion-titulo-banach');
+        const simulacionInfoBanachP = document.getElementById('simulacion-info-banach');
+        const chartsAreaBanach = document.getElementById('charts-area-banach');
+        const canvasSimBanach = document.getElementById('simulatedChartBanach');
+        const ctxSimBanach = canvasSimBanach.getContext('2d');
+        const canvasTheoBanach = document.getElementById('theoreticalChartBanach');
+        const ctxTheoBanach = canvasTheoBanach.getContext('2d');
+        const tooltipBanach = document.getElementById('tooltip-banach');
+        const expMeanSpanBanach = document.getElementById('exp-mean-val-banach');
+        const expVarSpanBanach = document.getElementById('exp-var-val-banach');
+        const resetButton = document.getElementById('resetButton');
+        const runExperimentButton = document.getElementById('runExperimentButton');
+        const simulateDistButton = document.getElementById('simulateDistButton');
 
-    // --- Variables Globales para los Gráficos ---
-    let graficoExperimental = null;
-    let graficoTeorico = null;
-    let graficoDiferencias = null;
+        // Datos y estado
+        let N_matches = 10; let currentI = N_matches; let currentD = N_matches;
+        let currentChartDataBanach = { labels: [], simulated: [], theoretical: [] };
+        let barDimensionsBanach = { sim: [], theo: [] };
+        let simulatedKValuesBanach = []; let isAnimating = false;
 
-    // --- Funciones Auxiliares ---
+        // --- Helper: Sleep ---
+        function sleep(ms) { return new Promise(resolve => setTimeout(resolve, ms)); }
 
-    /**
-     * Calcula el coeficiente binomial C(n, k) = n! / (k! * (n-k)!).
-     * Reutilizada de ejemplos anteriores.
-     */
-     function combinaciones(n, k) {
-        if (k < 0 || k > n) { return 0; }
-        if (k === 0 || k === n) { return 1; }
-        if (k > n / 2) { k = n - k; }
-        let res = 1;
-        for (let i = 1; i <= k; i++) {
-            // Usar división antes de multiplicar cuando sea posible para mantener números más pequeños
-            res = res * (n - i + 1) / i;
-             if (!Number.isFinite(res)) {
-                 console.warn(`Combinaciones(${n}, ${k}) resultó en infinito/NaN.`);
-                 return Infinity; // O manejar como error
-             }
-        }
-        // Redondeo crucial por posibles errores de punto flotante
-         return Math.round(res);
-    }
+        // --- Inicialización y Event Listeners ---
+        numCerillasNInput.addEventListener('input', () => { if (isAnimating) return; const nVal=parseInt(numCerillasNInput.value); if (!isNaN(nVal)&&nVal>=1) { N_matches=nVal; valNSpan.textContent=N_matches; resetExperimentState(); clearChartsBanach(); clearStatsDisplayBanach(); simulacionInfoBanachP.textContent="Parámetro 'N' cambiado."; } });
+        numSimulacionesBanachInput.addEventListener('change', () => { if (isAnimating) return; clearChartsBanach(); clearStatsDisplayBanach(); simulacionInfoBanachP.textContent="Nº Simulaciones cambiado."; });
 
-    /**
-     * Simula un experimento completo del problema de Banach.
-     * @param {number} n Número inicial de cerillas en cada caja.
-     * @returns {number} El número de cerillas restantes en la otra caja (k).
-     */
-    function simularUnExperimentoBanach(n) {
-        let cajaIzquierda = n;
-        let cajaDerecha = n;
-        let cerillasRestantes = -1; // Valor inicial inválido
+        // --- Funciones Auxiliares ---
+        function combinaciones(n, k) { if(k<0||k>n)return 0; if(k===0||k===n)return 1; if(k>n/2)k=n-k; let r=1; for(let i=1;i<=k;i++)r=r*(n-i+1)/i; return Math.round(r*1e12)/1e12; }
+        function probBanach(k, N) { if(k<0||k>N||N<0)return 0; const C=combinaciones(2*N-k,N); if(C===0&&k<N)return 0; try{const pTerm=Math.pow(0.5,2*N-k); if(pTerm===0&&k<N*2)return 0; let prob=C*pTerm; return Math.max(0,Math.min(1,prob));} catch(e){console.error("Error prob Banach:",k,N,e); return 0;}}
+        function calculateMean(arr) { if(!arr||arr.length===0)return NaN; const sum=arr.reduce((a,v)=>a+v,0); return sum/arr.length; }
+        function calculateVariance(arr, mean) { if(!arr||arr.length<2)return 0; let sumSqDiff=0; for(const v of arr){sumSqDiff+=Math.pow(v-mean,2);} return sumSqDiff/(arr.length-1);}
 
-        while (cerillasRestantes === -1) {
-            const eligeIzquierda = Math.random() < 0.5;
+        // --- Funciones Principales ---
+        function resetExperimentState() { currentI = N_matches; currentD = N_matches; updateMatchboxVisuals(); banachSequenceVisualDiv.innerHTML = "(Secuencia reiniciada)"; resultExperimentBanachP.textContent = "Estado reiniciado."; boxI.classList.remove('highlighted'); boxD.classList.remove('highlighted'); enableButtons(); isAnimating = false; }
+        function updateMatchboxVisuals(highlightBox=null) { countISpan.textContent=currentI; countDSpan.textContent=currentD; const maxV=30; visualISpan.textContent="|".repeat(Math.min(currentI,maxV))+(currentI>maxV?'...':''); visualDSpan.textContent="|".repeat(Math.min(currentD,maxV))+(currentD>maxV?'...':''); boxI.classList.toggle('highlighted',highlightBox==='I'); boxD.classList.toggle('highlighted',highlightBox==='D'); }
+        function disableButtons() { resetButton.disabled=true; runExperimentButton.disabled=true; simulateDistButton.disabled=true; numCerillasNInput.disabled=true; }
+        function enableButtons() { resetButton.disabled=false; runExperimentButton.disabled=false; simulateDistButton.disabled=false; numCerillasNInput.disabled=false; }
 
-            if (eligeIzquierda) {
-                if (cajaIzquierda > 0) {
-                    cajaIzquierda--;
-                } else {
-                    // ¡Caja izquierda vacía! El experimento termina.
-                    cerillasRestantes = cajaDerecha;
-                    // break; // Salir del bucle (implícito por la condición while)
-                }
-            } else { // Elige Derecha
-                if (cajaDerecha > 0) {
-                    cajaDerecha--;
-                } else {
-                    // ¡Caja derecha vacía! El experimento termina.
-                    cerillasRestantes = cajaIzquierda;
-                    // break; // Salir del bucle
-                }
+        async function runSingleBanachExperiment(visualize = false) {
+            if (isAnimating && visualize) return -1;
+            let matchesI = N_matches; let matchesD = N_matches;
+            let sequenceData = []; let k_result = -1; let totalTrials = 0;
+            const MAX_RUN_TRIALS = N_matches * 5 + 100; const animationDelay = 200;
+
+            if (visualize) { isAnimating = true; disableButtons(); resetExperimentState(); banachSequenceVisualDiv.innerHTML = ''; resultExperimentBanachP.textContent = "Iniciando..."; await sleep(300); }
+
+            while(totalTrials < MAX_RUN_TRIALS) {
+                totalTrials++; const choice = Math.random() < 0.5 ? 'I' : 'D'; let currentChoiceIsEmpty = false;
+                if (visualize) { updateMatchboxVisuals(choice); await sleep(animationDelay / 2); }
+                if (choice === 'I') { if (matchesI === 0) { currentChoiceIsEmpty = true; k_result = matchesD; } else { matchesI--; } }
+                else { if (matchesD === 0) { currentChoiceIsEmpty = true; k_result = matchesI; } else { matchesD--; } }
+                sequenceData.push({ choice: choice, empty: currentChoiceIsEmpty });
+                if (visualize) { currentI = matchesI; currentD = matchesD; updateMatchboxVisuals(choice); const span = document.createElement('span'); span.className = `choice-item choice-${choice}`; span.textContent = choice; if (currentChoiceIsEmpty) span.classList.add('choice-empty'); span.style.animationDelay = `0s`; banachSequenceVisualDiv.appendChild(span); span.style.opacity = 1; await sleep(animationDelay / 2); if (!currentChoiceIsEmpty) updateMatchboxVisuals(null); else { boxI.classList.remove('highlighted'); boxD.classList.remove('highlighted'); } }
+                if (currentChoiceIsEmpty) break;
             }
-             // Seguridad: Evitar bucles infinitos si algo va mal (ej. n=0 inicial)
-            if (cajaIzquierda < 0 || cajaDerecha < 0) {
-                 console.error("Error en simulación: cerillas negativas encontradas.");
-                 return -1; // Indicar error
-             }
-        }
-        return cerillasRestantes;
-    }
-
-    /**
-     * Calcula la probabilidad teórica P(k) para el problema de Banach.
-     * P(k | n) = C(2n - k, n) * (1/2)^(2n - k)
-     * donde k es el número de cerillas restantes (0 <= k <= n).
-     * @param {number} k Número de cerillas restantes.
-     * @param {number} n Número inicial de cerillas.
-     * @returns {number} La probabilidad teórica P(k).
-     */
-    function probabilidadBanach(k, n) {
-        if (k < 0 || k > n) return 0;
-
-        const m = 2 * n - k; // Número total de selecciones menos las k restantes
-        const Cnk = combinaciones(m, n); // C(2n-k, n)
-
-        if (!Number.isFinite(Cnk) || Cnk === 0) {
-             // console.warn(`C(${m}, ${n}) no es finito o es cero para k=${k}, n=${n}`);
-             return 0;
+             if (visualize) { if (k_result === -1) { resultExperimentBanachP.textContent = `Error: Superó ${MAX_RUN_TRIALS} intentos.`; } else { resultExperimentBanachP.textContent = `¡Caja '${sequenceData[sequenceData.length-1].choice}' vacía! Quedan k=${k_result}. (Total ${totalTrials} elecciones).`; } isAnimating = false; enableButtons(); }
+            return k_result;
         }
 
-        // Calcular (1/2)^m. Usar Math.pow es generalmente seguro aquí.
-        // Podríamos usar base 2 logaritmos para precisión extrema, pero suele ser overkill.
-        const probFactor = Math.pow(0.5, m);
+        // !! CORREGIDO: Usar async/await !!
+        async function simulateBanachDistribution() {
+             if (isAnimating) return; const N = N_matches; const numSimulations = parseInt(numSimulacionesBanachInput.value);
+             if (isNaN(N)||N<1||isNaN(numSimulations)||numSimulations<=0) { simulacionInfoBanachP.textContent="Params N/Simul inválidos."; clearChartsBanach(); clearStatsDisplayBanach(); return; }
+             if (N > 50) { simulacionInfoBanachP.textContent="Advertencia: N>50, cálculo teórico lento/impreciso."; }
+              simulacionTituloBanachH3.textContent=`Distribución de k (N=${N}, Simul=${numSimulations})`; simulacionInfoBanachP.textContent=`Simulando ${numSimulations} experimentos...`; tooltipBanach.style.display='none'; barDimensionsBanach={sim:[],theo:[]}; simulatedKValuesBanach=[]; disableButtons();
 
-        let prob = Cnk * probFactor;
-
-        // Asegurar que la probabilidad no sea negativa debido a errores numéricos
-        return Math.max(0, prob);
-    }
-
-    // --- Función para Dibujar Gráficos (reutilizada y adaptada) ---
-    function dibujarGrafico(ctx, chartInstanceRef, labels, data, label, backgroundColor, borderColor, yAxisLabel) {
-        if (chartInstanceRef.current) {
-            chartInstanceRef.current.destroy();
-            chartInstanceRef.current = null;
+             // Usar timeout corto para callback async
+             setTimeout(async () => {
+                 const frecuenciaK = new Array(N + 1).fill(0); let validSimulations = 0;
+                 for (let i = 0; i < numSimulations; i++) {
+                     const k_result = await runSingleBanachExperiment(false); // <<-- USAR AWAIT
+                     if (k_result >= 0 && k_result <= N) { simulatedKValuesBanach.push(k_result); frecuenciaK[k_result]++; validSimulations++; }
+                     // Opcional: pausa breve para no congelar la UI en simulaciones muy largas
+                     // if (i > 0 && i % 1000 === 0) { await sleep(1); }
+                 }
+                 const expMean = calculateMean(simulatedKValuesBanach); const expVariance = calculateVariance(simulatedKValuesBanach, expMean); updateStatsDisplayBanach(expMean, expVariance);
+                 const etiquetasK = []; const propSim = []; const probTeo = []; let sumProbTheo = 0;
+                 for (let k = 0; k <= N; k++) { etiquetasK.push(k.toString()); const denom = validSimulations > 0 ? validSimulations : 1; propSim.push(frecuenciaK[k] / denom); const theoP=probBanach(k,N); probTeo.push(theoP); sumProbTheo += theoP; }
+                 console.log("Suma Prob Teóricas Banach:", sumProbTheo);
+                 currentChartDataBanach = { labels: etiquetasK, simulated: propSim, theoretical: probTeo, N: N };
+                 actualizarGraficosBanach(etiquetasK, propSim, probTeo);
+                 simulacionInfoBanachP.textContent = `Simulación completada (${validSimulations} válidas). Pasa el ratón sobre los gráficos.`;
+                 enableButtons();
+             }, 10);
         }
 
-        chartInstanceRef.current = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: labels, // k = 0, 1, ..., n
-                datasets: [{
-                    label: label, // Para tooltip
-                    data: data,
-                    backgroundColor: backgroundColor,
-                    borderColor: borderColor,
-                    borderWidth: 1
-                }]
-            },
-            options: {
-                 indexAxis: 'x', responsive: true, maintainAspectRatio: true,
-                 plugins: {
-                    title: { display: false },
-                    legend: { display: false },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                let lbl = context.dataset.label || '';
-                                if (lbl) lbl += ': ';
-                                if (context.parsed.y !== null) {
-                                    if (Math.abs(context.parsed.y) < 0.0001 && context.parsed.y !== 0) {
-                                       lbl += context.parsed.y.toExponential(3);
-                                    } else {
-                                       lbl += context.parsed.y.toFixed(5);
-                                    }
-                                }
-                                return lbl;
-                            }
-                        }
-                    }
-                },
-                scales: {
-                    y: {
-                        title: { display: true, text: yAxisLabel },
-                         ticks: {
-                             callback: function(value) {
-                                 if (Math.abs(value) < 0.001 && value !== 0) return value.toExponential(1);
-                                 const factor = Math.pow(10, 3); // 3 decimales en eje
-                                 return Math.round(value * factor) / factor;
-                             }
-                         }
-                    },
-                    x: {
-                        title: { display: true, text: 'Cerillas Restantes en la Otra Caja (k)' } // Label Eje X específico
-                    }
-                }
-            }
-        });
-    }
+        function updateStatsDisplayBanach(expMean, expVar) { expMeanSpanBanach.textContent=!isNaN(expMean)?expMean.toFixed(4):"N/A"; expVarSpanBanach.textContent=!isNaN(expVar)?expVar.toFixed(4):"N/A"; }
+        function clearStatsDisplayBanach() { expMeanSpanBanach.textContent="N/A"; expVarSpanBanach.textContent="N/A"; }
 
-    // --- Función Principal de Simulación ---
-    function iniciarSimulacion() {
-        // --- Validación de Entradas ---
-        const n = parseInt(nInput.value, 10);
-        const N = parseInt(NInput.value, 10);
+        // --- Funciones de Dibujo de Gráficos ---
+        function clearChartsBanach() { setCanvasSize(canvasSimBanach); setCanvasSize(canvasTheoBanach); ctxSimBanach.clearRect(0,0,canvasSimBanach.width,canvasSimBanach.height); ctxTheoBanach.clearRect(0,0,canvasTheoBanach.width,canvasTheoBanach.height); dibujarEjes(ctxSimBanach,0.1,[],'Frec. Simulada','#228B22'); dibujarEjes(ctxTheoBanach,0.1,[],'Prob. Teórica','#228B22'); currentChartDataBanach={labels:[],simulated:[],theoretical:[]}; barDimensionsBanach={sim:[],theo:[]}; }
+        function setCanvasSize(canvas) { const pw=canvas.parentElement; if(!pw)return; const st=getComputedStyle(pw); const pW=pw.clientWidth-parseFloat(st.paddingLeft)-parseFloat(st.paddingRight); const ar=1.8; let pH=pW/ar; pH=Math.max(150,Math.min(pH,400)); const w=Math.max(100,Math.round(pW)); const h=Math.max(100,Math.round(pH)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+        function dibujarEjes(ctx, maxValue, labels, yAxisTitle, titleColor='#0056b3') { const c=ctx.canvas; const p={top:20,right:25,bottom:50,left:65}; const cw=c.width-p.left-p.right; const ch=c.height-p.top-p.bottom; const ac='#adb5bd'; const tc='#495057'; const nyt=5; ctx.clearRect(0,0,c.width,c.height); if(cw<=0||ch<=0)return; ctx.strokeStyle=ac; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.left,p.top); ctx.lineTo(p.left,c.height-p.bottom); ctx.lineTo(c.width-p.right,c.height-p.bottom); ctx.stroke(); ctx.fillStyle=tc; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font='10px Segoe UI'; for(let i=0;i<=nyt;i++){const v=(maxValue*i/nyt); const vt=(Math.abs(v)<1e-9&&v!==0)?v.toExponential(1):v.toFixed(4); const yp=c.height-p.bottom-Math.max(0,(ch*(v/maxValue))); if(yp<p.top-5||yp>c.height-p.bottom+5)continue; ctx.fillText(vt,p.left-8,yp); ctx.beginPath(); ctx.moveTo(p.left-5,yp); ctx.lineTo(p.left,yp); ctx.stroke();} ctx.save(); ctx.translate(p.left*0.4,c.height/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText(yAxisTitle,0,-11); ctx.restore(); ctx.fillStyle=tc; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.font='11px Segoe UI'; const nl=labels.length; let sew=0; if(nl>0)sew=cw/nl; if(nl>0){const lmw=Math.max(20,sew*0.8); const mvl=Math.floor(cw/(lmw*1.2)); const st=nl<=mvl?1:Math.ceil(nl/mvl); for(let i=0;i<nl;i++){let sl=false; if(i%st===0)sl=true; if(i===0)sl=true; if(i===nl-1&&(nl-1)%st!==0)sl=true; if(sl){const l=labels[i]; const xp=p.left+sew*(i+0.5); ctx.fillText(l,xp,c.height-p.bottom+8);}}} ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText("Cerillas Restantes (k)",c.width/2,c.height-p.bottom/2.5);}
+        function actualizarGraficosBanach(labels, simulatedData, theoreticalData) { setCanvasSize(canvasSimBanach); setCanvasSize(canvasTheoBanach); const mV=Math.max(...simulatedData,...theoreticalData,0.01)*1.1; dibujarEjes(ctxSimBanach,mV,labels,'Frec. Simulada','#228B22'); dibujarEjes(ctxTheoBanach,mV,labels,'Prob. Teórica','#228B22'); const p={top:20,right:25,bottom:50,left:65}; const chS=canvasSimBanach.height-p.top-p.bottom; const cwS=canvasSimBanach.width-p.left-p.right; const chT=canvasTheoBanach.height-p.top-p.bottom; const cwT=canvasTheoBanach.width-p.left-p.right; const nb=labels.length; if(nb===0)return; const sewS=cwS/nb; const bwS=sewS*0.7; const bgS=(sewS-bwS)/2; const sewT=cwT/nb; const bwT=sewT*0.7; const bgT=(sewT-bwT)/2; barDimensionsBanach={sim:[],theo:[]}; ctxSimBanach.fillStyle='#66bb6a'; ctxSimBanach.strokeStyle='#388e3c'; ctxSimBanach.lineWidth=0.5; for(let i=0;i<nb;i++){const sh=Math.max(0,chS*(simulatedData[i]/mV)); const xp=p.left+i*sewS+bgS; const yp=canvasSimBanach.height-p.bottom-sh; ctxSimBanach.fillRect(xp,yp,bwS,sh); ctxSimBanach.strokeRect(xp,yp,bwS,sh); barDimensionsBanach.sim.push({x:xp,y:yp,width:bwS,height:sh,index:i});} ctxTheoBanach.fillStyle='#1b5e20'; ctxTheoBanach.strokeStyle='#003300'; ctxTheoBanach.lineWidth=0.5; for(let i=0;i<nb;i++){const th=Math.max(0,chT*(theoreticalData[i]/mV)); const xp=p.left+i*sewT+bgT; const yp=canvasTheoBanach.height-p.bottom-th; ctxTheoBanach.fillRect(xp,yp,bwT,th); ctxTheoBanach.strokeRect(xp,yp,bwT,th); barDimensionsBanach.theo.push({x:xp,y:yp,width:bwT,height:th,index:i});} }
 
-        estadoEl.className = 'estado';
-        estadoEl.textContent = 'Validando parámetros...';
-        // Limpiar resultados previos
-        paramsUsadosEl.textContent = '---';
-        mediaExperimentalEl.textContent = '---';
-        mediaTeoricaEl.textContent = '---';
+        // --- Lógica del Tooltip ---
+        function handleMouseMoveBanach(event) { if(!currentChartDataBanach.labels.length)return; const c=event.target; const rect=c.getBoundingClientRect(); const mx=event.clientX-rect.left; const my=event.clientY-rect.top; const dims=c.id==='simulatedChartBanach'?barDimensionsBanach.sim:barDimensionsBanach.theo; let fi=-1; const p={top:20,right:25,bottom:50,left:65}; for(const bar of dims){if(mx>=bar.x&&mx<=bar.x+bar.width&&my>=bar.y&&my<=c.height-p.bottom+5){fi=bar.index;break;}} if(fi!==-1){const k=currentChartDataBanach.labels[fi]; const sim=currentChartDataBanach.simulated[fi]; const theo=currentChartDataBanach.theoretical[fi]; tooltipBanach.style.display='block'; tooltipBanach.offsetHeight; tooltipBanach.style.opacity=1; const cr=chartsAreaBanach.getBoundingClientRect(); tooltipBanach.style.left=`${event.clientX-cr.left+15}px`; tooltipBanach.style.top=`${event.clientY-cr.top-35}px`; tooltipBanach.innerHTML=`<b>k = ${k}</b><br>Simulado: ${sim.toFixed(5)}<br>Teórico: ${theo.toFixed(5)}`;} else {tooltipBanach.style.opacity=0; setTimeout(()=>{if(tooltipBanach.style.opacity==='0')tooltipBanach.style.display='none';},100);}}
+        function handleMouseOutBanach(event) { tooltipBanach.style.opacity=0; setTimeout(()=>{if(tooltipBanach.style.opacity==='0')tooltipBanach.style.display='none';},100); }
 
-        // Limpiar gráficos
-        const chartExpRef = { current: graficoExperimental };
-        const chartTeoRef = { current: graficoTeorico };
-        const chartDifRef = { current: graficoDiferencias };
-        [chartExpRef, chartTeoRef, chartDifRef].forEach(ref => {
-            if (ref.current) { ref.current.destroy(); }
-        });
-        graficoExperimental = graficoTeorico = graficoDiferencias = null;
+        // Listeners
+        canvasSimBanach.addEventListener('mousemove', handleMouseMoveBanach); canvasSimBanach.addEventListener('mouseout', handleMouseOutBanach);
+        canvasTheoBanach.addEventListener('mousemove', handleMouseMoveBanach); canvasTheoBanach.addEventListener('mouseout', handleMouseOutBanach);
 
+        // Init
+        window.addEventListener('load', () => { N_matches = parseInt(numCerillasNInput.value); valNSpan.textContent = N_matches; resetExperimentState(); clearChartsBanach(); clearStatsDisplayBanach(); });
 
-        if (isNaN(n) || n <= 0 || n > 500) { // Limite n por combinaciones
-            estadoEl.textContent = 'Error: Nº inicial de cerillas (n) debe ser entero positivo (máx 500).';
-             estadoEl.className = 'estado error'; return;
-        }
-         if (isNaN(N) || N <= 0 || N > 5000000) {
-            estadoEl.textContent = 'Error: Nº experimentos (N) debe ser entero positivo (máx 5,000,000).';
-             estadoEl.className = 'estado error'; return;
-        }
+        // Resize
+        let resizeTimeoutBanach; window.addEventListener('resize', () => { clearTimeout(resizeTimeoutBanach); resizeTimeoutBanach=setTimeout(() => { if(currentChartDataBanach.labels.length > 0) { actualizarGraficosBanach(currentChartDataBanach.labels, currentChartDataBanach.simulated, currentChartDataBanach.theoretical); updateStatsDisplayBanach(calculateMean(simulatedKValuesBanach), calculateVariance(simulatedKValuesBanach,calculateMean(simulatedKValuesBanach))); } else { resetExperimentState(); clearChartsBanach(); clearStatsDisplayBanach(); } }, 250); });
 
-        console.log(`Iniciando simulación Banach: n=${n}, N=${N}`);
-        estadoEl.textContent = `Simulando ${N.toLocaleString()} experimentos de Banach (n=${n})...`;
-        paramsUsadosEl.textContent = `n=${n}, N=${N.toLocaleString()}`;
-        mediaExperimentalEl.textContent = 'Calculando...';
-        mediaTeoricaEl.textContent = 'Calculando...';
-
-
-        // Usar setTimeout para permitir la actualización de la UI
-        setTimeout(() => {
-            try {
-                // --- Simulación Experimental ---
-                const resultadosK = []; // Almacena los k de cada experimento
-                let sumaK = 0;
-                console.time("SimulacionBanach");
-                for (let i = 0; i < N; i++) {
-                    const k_resultante = simularUnExperimentoBanach(n);
-                     if (k_resultante === -1) throw new Error("Error detectado en la simulación de un experimento.");
-                    resultadosK.push(k_resultante);
-                    sumaK += k_resultante;
-                }
-                 console.timeEnd("SimulacionBanach");
-                console.log("Simulación experimental completada.");
-
-                // --- Cálculo de Frecuencias Experimentales ---
-                // k puede ir de 0 a n
-                const frecuenciasAbsolutas = new Array(n + 1).fill(0);
-                resultadosK.forEach(k => {
-                    if (k >= 0 && k <= n) {
-                        frecuenciasAbsolutas[k]++;
-                    } else {
-                         console.warn(`Resultado k inválido (${k}) encontrado en simulación.`);
-                    }
-                });
-                const frecuenciasRelativas = frecuenciasAbsolutas.map(count => count / N);
-                const labelsGrafico = Array.from({ length: n + 1 }, (_, i) => i); // [0, 1, ..., n]
-
-                // --- Cálculo de Probabilidades Teóricas ---
-                console.log("Calculando probabilidades teóricas...");
-                console.time("CalculoTeoricoBanach");
-                const probabilidadesTeoricas = [];
-                let sumaProbTeorica = 0;
-                let mediaTeoCalculada = 0;
-                for (let k = 0; k <= n; k++) {
-                    const prob_k = probabilidadBanach(k, n);
-                    probabilidadesTeoricas.push(prob_k);
-                    sumaProbTeorica += prob_k;
-                    mediaTeoCalculada += k * prob_k; // Suma para E[k] = Σ k*P(k)
-                }
-                console.timeEnd("CalculoTeoricoBanach");
-                console.log("Suma teórica P(k):", sumaProbTeorica.toFixed(6)); // Debe ser cercano a 1
-
-                // --- Cálculo de Diferencias ---
-                const diferencias = probabilidadesTeoricas.map((pTeo, k) => pTeo - frecuenciasRelativas[k]);
-
-                // --- Actualizar Estadísticas ---
-                const mediaExp = sumaK / N;
-
-                mediaExperimentalEl.textContent = mediaExp.toFixed(5);
-                mediaTeoricaEl.textContent = mediaTeoCalculada.toFixed(5);
-
-                // --- Dibujar Gráficos ---
-                console.log("Dibujando gráficos...");
-                console.time("DibujarGraficosBanach");
-                const refExp = { current: graficoExperimental };
-                const refTeo = { current: graficoTeorico };
-                const refDif = { current: graficoDiferencias };
-
-                dibujarGrafico(ctxExp, refExp, labelsGrafico, frecuenciasRelativas, 'Frec. Relativa', 'rgba(54, 162, 235, 0.7)', 'rgba(54, 162, 235, 1)', 'Frecuencia Relativa');
-                graficoExperimental = refExp.current;
-
-                dibujarGrafico(ctxTeo, refTeo, labelsGrafico, probabilidadesTeoricas, 'Prob. Teórica', 'rgba(255, 99, 132, 0.7)', 'rgba(255, 99, 132, 1)', 'Probabilidad Teórica');
-                graficoTeorico = refTeo.current;
-
-                dibujarGrafico(ctxDif, refDif, labelsGrafico, diferencias, 'Diferencia', 'rgba(75, 192, 192, 0.7)', 'rgba(75, 192, 192, 1)', 'Diferencia (Teórica - Exp.)');
-                graficoDiferencias = refDif.current;
-                console.timeEnd("DibujarGraficosBanach");
-
-                estadoEl.textContent = 'Simulación completada.';
-                estadoEl.className = 'estado';
-                console.log("Proceso completo.");
-
-            } catch (error) {
-                console.error("Error durante la simulación o el cálculo:", error);
-                estadoEl.textContent = `Error: ${error.message}. Revisa la consola (F12).`;
-                estadoEl.className = 'estado error';
-                paramsUsadosEl.textContent = 'Error';
-                mediaExperimentalEl.textContent = '---';
-                mediaTeoricaEl.textContent = '---';
-                 // Asegurarse de limpiar los gráficos también en caso de error
-                if (graficoExperimental) graficoExperimental.destroy();
-                if (graficoTeorico) graficoTeorico.destroy();
-                if (graficoDiferencias) graficoDiferencias.destroy();
-                graficoExperimental = graficoTeorico = graficoDiferencias = null;
-            }
-        }, 50); // Retraso
-    }
-
-    // --- Event Listener para el Botón ---
-    btnSimular.addEventListener('click', iniciarSimulacion);
-
-    // Mensaje inicial
-    console.log("Interfaz lista para la simulación del problema de Banach.");
-
-</script>
+    </script>
 
 </body>
 </html>
