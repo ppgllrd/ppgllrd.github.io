@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorando la Distribución Binomial Negativa (Pascal)</title>
+    <style>
+        /* --- ESTILOS GENERALES (Paleta: Rojo/Rosa/Marrón) --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6; margin: 20px; background-color: #fff0f5; /* LavenderBlush */
+            color: #333; display: flex; flex-direction: column; align-items: center;
+        }
+        h1, h2, h3, h4 { color: #800000; /* Maroon */ text-align: center; }
+        h4 { margin-bottom: 5px; color: #a52a2a; /* Brown */ }
+        .container {
+            background-color: #ffffff; padding: 25px; border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+            width: 95%; max-width: 900px;
+        }
+
+        /* --- CONTROLES --- */
+        .controles {
+            display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center;
+            margin-bottom: 20px; padding: 15px; background-color: #ffe4e1; /* MistyRose */ border-radius: 8px;
+        }
+        .control-item { margin: 10px; text-align: center; }
+        .control-item label { display: block; margin-bottom: 5px; font-weight: bold; color: #8b0000; /* DarkRed */ }
+        .control-item input[type="number"], .control-item input[type="range"] {
+            padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 80px; text-align: center; vertical-align: middle;
+        }
+        .control-item input[type="range"] { width: 120px; }
+        .param-display { display: inline-block; min-width: 40px; text-align: right; font-weight: bold; color: #a52a2a; }
+
+        button {
+            background-color: #dc143c; /* Crimson */ color: white; border: none;
+            padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.1s ease; margin: 5px;
+        }
+        button:hover { background-color: #a52a2a; /* Brown */ }
+        button:active { transform: scale(0.98); }
+
+        /* --- VISUALIZACIÓN --- */
+        .visualizacion { margin-top: 20px; text-align: center; }
+
+        /* Experimento único */
+        #negBinomialExperimentVisual {
+            display: flex; flex-wrap: wrap; justify-content: center; align-items: center;
+            margin-top: 15px; min-height: 30px; padding: 5px;
+            background-color: #fffafa; /* Snow */ border-radius: 5px; border: 1px dashed #ffb6c1; /* LightPink */
+        }
+        .resultado-ensayo-negbin {
+            width: 22px; height: 22px; border-radius: 4px; margin: 3px; display: flex;
+            justify-content: center; align-items: center; font-size: 1em; font-weight: bold; color: white;
+            opacity: 0; animation: fadeIn 0.3s forwards;
+        }
+        /* Reutilizar clases exito/fracaso */
+        .exito { background-color: #32cd32; /* LimeGreen */ border: 1px solid #228b22; }
+        .fracaso { background-color: #ff6347; /* Tomato */ border: 1px solid #e5533d; }
+
+        #resultExperimentNegBin { font-weight: bold; font-size: 1.1em; margin-top: 15px; color: #800000; }
+
+        /* Gráficos */
+        #charts-area-negbin { margin-top: 25px; position: relative; }
+        #chart-container-negbin { display: flex; justify-content: space-around; align-items: flex-start; gap: 20px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; }
+        .chart-wrapper { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        canvas { display: block; max-width: 100%; background-color: #ffffff; border: 1px solid #ccc; border-radius: 4px; }
+        #tooltip-negbin { position: absolute; display: none; background-color: rgba(0, 0, 0, 0.75); color: white; padding: 8px 12px; border-radius: 5px; font-size: 0.9em; pointer-events: none; z-index: 10; white-space: nowrap; transition: opacity 0.1s ease-out; }
+        .legend { margin-top: 10px; font-size: 0.9em; }
+        .legend-sim { color: #ff69b4; font-weight: bold; } /* HotPink barras */
+        .legend-theo { color: #8b008b; font-weight: bold; } /* DarkMagenta barras */
+
+        /* --- ESTADÍSTICAS --- */
+        #stats-display-negbin {
+             margin-top: 25px; padding: 15px; background-color: #fff5ee; /* Seashell */
+             border: 1px solid #ffdab9; /* PeachPuff */ border-radius: 8px; text-align: left;
+             display: grid; grid-template-columns: auto 1fr; gap: 5px 15px; align-items: center;
+        }
+        #stats-display-negbin h4 { grid-column: 1 / -1; margin-bottom: 10px; text-align: center; color: #8b0000;}
+        #stats-display-negbin .stat-label { font-weight: bold; color: #a52a2a; }
+        #stats-display-negbin .stat-value { font-family: monospace; font-size: 1.1em; }
+        #stats-display-negbin .stat-formula { font-size: 1.0em; color: #555; }
+
+
+        /* --- EXPLICACIONES --- */
+        .explicacion { margin-top: 15px; padding: 15px; background-color: #fff0f5; border-left: 5px solid #db7093; /* PaleVioletRed */ border-radius: 5px; }
+        .explicacion p { margin: 5px 0; }
+        /* Usaremos el estilo .formula para parámetros en texto y fórmula real */
+        .formula, .param { font-weight: bold; color: #a52a2a; } /* Brown */
+        .important { font-weight: bold; color: #c00; }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <h1>🎲 Explorando la Distribución Binomial Negativa (Pascal) 🎲</h1>
+
+    <!-- Sección 1: Concepto y Parámetros -->
+    <div class="container">
+        <h2>1. Buscando un Número Fijo de Éxitos</h2>
+        <div class="explicacion">
+             <p>La <strong>Distribución Binomial Negativa</strong> (o de Pascal) cuenta el número total de ensayos de Bernoulli (<span class="formula">k</span>) que necesitamos realizar hasta conseguir un número <span class="important">fijo</span> de éxitos (<span class="param">r</span>).</p>
+             <p>Es como la Geométrica (que busca el 1<sup>er</sup> éxito, r=1), ¡pero ahora buscamos el <span class="param">r</span>-ésimo éxito!</p>
+             <p>Parámetros clave:</p>
+             <ul>
+                 <li><span class="param">r</span>: El número de éxitos que queremos alcanzar (entero ≥ 1).</li>
+                 <li><span class="param">p</span>: La probabilidad de éxito en cada ensayo Bernoulli (0 < p ≤ 1).</li>
+             </ul>
+             <p>La variable aleatoria <span class="formula">X</span> es el número total de ensayos realizados <span class="formula">k</span>. El valor mínimo de <span class="formula">k</span> es <span class="param">r</span>.</p>
+        </div>
+        <div class="controles">
+             <div class="control-item">
+                <label for="num-exitos-r">Nº Éxitos (r):</label>
+                <input type="number" id="num-exitos-r" min="1" max="50" value="3" step="1">
+                <span class="param-display" id="val-r">3</span>
+            </div>
+             <div class="control-item">
+                <label for="prob-exito-p">Prob. Éxito (p):</label>
+                 <input type="range" id="prob-exito-p-range" min="0.01" max="1" step="0.01" value="0.5">
+                 <input type="number" id="prob-exito-p-num" min="0.01" max="1" step="0.01" value="0.5">
+                <span class="param-display" id="val-p">0.50</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sección 2: Un Experimento de Pascal -->
+    <div class="container">
+        <h2>2. Un Experimento: Alcanzando 'r' Éxitos</h2>
+         <div class="explicacion">
+            <p>Simularemos una secuencia de ensayos de Bernoulli hasta que hayamos conseguido <span class="param">r=<span id="disp-r">3</span></span> éxitos.</p>
+            <p>Contaremos cuántos ensayos (<span class="formula">k</span>) fueron necesarios en total.</p>
+        </div>
+        <div class="controles">
+             <button onclick="realizarExperimentoNegBin()">¡Buscar r Éxitos!</button>
+        </div>
+         <div class="visualizacion">
+            <h4>Secuencia de Ensayos (hasta r=<span id="disp-r2">3</span> éxitos con p=<span id="disp-p">0.50</span>):</h4>
+            <div id="negBinomialExperimentVisual">(Pulsa el botón para empezar)</div>
+            <p id="resultExperimentNegBin">Esperando experimento...</p>
+        </div>
+    </div>
+
+     <!-- Sección 3: La Distribución de Pascal -->
+    <div class="container">
+        <h2>3. La Distribución Binomial Negativa: Probabilidades y Estadísticas</h2>
+         <div class="explicacion">
+            <p>Si repetimos el experimento (buscar <span class="param">r</span> éxitos) muchas veces, ¿cuál es la probabilidad de que 
+                necesitemos exactamente <span class="formula">k=r</span> intentos, <span class="formula">k=r+1</span>, <span class="formula">k=r+2</span>, etc.?</p>
+            <p>La <strong>PMF Binomial Negativa</strong> calcula esta probabilidad teórica:</p>
+            <p><span class="formula">P(X=k | r, p) = C(k-1, r-1) · p<sup>r</sup> · (1-p)<sup>k-r</sup></span> &nbsp; (para k = r, r+1, ...)</p>
+            <p>Comparamos las probabilidades teóricas con las frecuencias simuladas y las estadísticas clave.</p>
+         </div>
+
+        <!-- Controles Simulación -->
+        <div class="controles">
+             <div class="control-item">
+                <label for="num-simulaciones-negbin">Nº de Simulaciones:</label>
+                <input type="number" id="num-simulaciones-negbin" min="100" max="1000000" value="100000" step="1000">
+            </div>
+             <div class="control-item">
+                <label for="max-k-chart-negbin">Máximo k en gráfico:</label>
+                <input type="number" id="max-k-chart-negbin" min="5" max="150" value="25" step="1">
+                 <span style="font-size: 0.8em; display: block;">(Valores > k<sub>max</sub> se agruparán)</span>
+            </div>
+             <button onclick="simularDistribucionNegBin()">¡Simular Distribución!</button>
+        </div>
+
+        <!-- Display Estadísticas -->
+        <div id="stats-display-negbin">
+            <h4>Estadísticas de la Distribución (k = nº ensayos)</h4>
+            <!-- Media -->
+            <span class="stat-label">Media (E[X]):</span><span class="stat-formula">r / p</span>
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-mean-val-negbin">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-mean-val-negbin">N/A</span>
+            <!-- Varianza -->
+            <span class="stat-label">Varianza (Var[X]):</span><span class="stat-formula">r · (1-p) / p²</span>
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-var-val-negbin">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-var-val-negbin">N/A</span>
+        </div>
+
+
+        <!-- Gráficos -->
+         <div class="visualizacion">
+            <h3 id="simulacion-titulo-negbin">Comparación Gráfica: Frecuencia vs. Probabilidad</h3>
+            <p id="simulacion-info-negbin">Configura r, p, nº simulaciones, k máximo y pulsa.</p>
+            <div id="charts-area-negbin">
+                 <div id="chart-container-negbin">
+                     <div class="chart-wrapper">
+                         <h4>Frecuencia Simulada</h4>
+                         <canvas id="simulatedChartNegBin"></canvas>
+                     </div>
+                     <div class="chart-wrapper">
+                          <h4>Probabilidad Teórica</h4>
+                         <canvas id="theoreticalChartNegBin"></canvas>
+                     </div>
+                 </div>
+                 <div id="tooltip-negbin"></div>
+             </div>
+              <div class="legend">
+                <span class="legend-sim">■ Frec. Simulada</span> &nbsp;&nbsp; <span class="legend-theo">■ Prob. Teórica</span>
+            </div>
+         </div>
+    </div>
+
+    <script>
+        // --- Variables Globales y Elementos del DOM ---
+        const numExitosRInput = document.getElementById('num-exitos-r');
+        const valRSpan = document.getElementById('val-r');
+        const probExitoPRange = document.getElementById('prob-exito-p-range');
+        const probExitoPNum = document.getElementById('prob-exito-p-num');
+        const valPSpan = document.getElementById('val-p');
+        const dispRSpan = document.getElementById('disp-r');
+        const dispR2Span = document.getElementById('disp-r2');
+        const dispPSpan = document.getElementById('disp-p');
+        // Sección 2
+        const negBinExperimentVisualDiv = document.getElementById('negBinomialExperimentVisual');
+        const resultExperimentNegBinP = document.getElementById('resultExperimentNegBin');
+        // Sección 3
+        const numSimulacionesNegBinInput = document.getElementById('num-simulaciones-negbin');
+        const maxKChartNegBinInput = document.getElementById('max-k-chart-negbin');
+        const simulacionTituloNegBinH3 = document.getElementById('simulacion-titulo-negbin');
+        const simulacionInfoNegBinP = document.getElementById('simulacion-info-negbin');
+        const chartsAreaNegBin = document.getElementById('charts-area-negbin');
+        const canvasSimNegBin = document.getElementById('simulatedChartNegBin');
+        const ctxSimNegBin = canvasSimNegBin.getContext('2d');
+        const canvasTheoNegBin = document.getElementById('theoreticalChartNegBin');
+        const ctxTheoNegBin = canvasTheoNegBin.getContext('2d');
+        const tooltipNegBin = document.getElementById('tooltip-negbin');
+        // Stats Display
+        const theoMeanSpan = document.getElementById('theo-mean-val-negbin');
+        const expMeanSpan = document.getElementById('exp-mean-val-negbin');
+        const theoVarSpan = document.getElementById('theo-var-val-negbin');
+        const expVarSpan = document.getElementById('exp-var-val-negbin');
+
+        // Datos y dimensiones
+        let currentChartDataNegBin = { labels: [], simulated: [], theoretical: [] };
+        let barDimensionsNegBin = { sim: [], theo: [] };
+        let simulatedKValues = [];
+        const MAX_TRIALS_SAFETY = 10000;
+
+        // --- Inicialización y Event Listeners ---
+        function syncProbInputs(source, target, span) { const v=parseFloat(source.value); target.value=v; span.textContent=v.toFixed(2); dispPSpan.textContent=v.toFixed(2); clearChartsNegBin(); clearStatsDisplay(); simulacionInfoNegBinP.textContent="Parámetro 'p' cambiado."; }
+        probExitoPRange.addEventListener('input', () => syncProbInputs(probExitoPRange, probExitoPNum, valPSpan));
+        probExitoPNum.addEventListener('input', () => syncProbInputs(probExitoPNum, probExitoPRange, valPSpan));
+        numExitosRInput.addEventListener('input', () => { const r=parseInt(numExitosRInput.value); valRSpan.textContent=r; dispRSpan.textContent=r; dispR2Span.textContent=r; const mk=maxKChartNegBinInput; if(parseInt(mk.value)<r) mk.value=r; mk.min=r; clearChartsNegBin(); clearStatsDisplay(); simulacionInfoNegBinP.textContent="Parámetro 'r' cambiado."; });
+        numSimulacionesNegBinInput.addEventListener('change', () => { clearChartsNegBin(); clearStatsDisplay(); });
+        maxKChartNegBinInput.addEventListener('change', clearChartsNegBin);
+
+        // --- Funciones Auxiliares ---
+        function getBernoulliResultado(p) { return Math.random() < p; }
+        function combinaciones(n, k) { if (k < 0 || k > n) return 0; if (k === 0 || k === n) return 1; if (k > n / 2) k = n - k; let res = 1; for (let i = 1; i <= k; i++) { res = res * (n - i + 1) / i; } return Math.round(res * 1e12) / 1e12; }
+        function probabilidadNegativaBinomial(k, r, p) { if (k<r||r<1||p<=0||p>1)return 0; if(p===1)return k===r?1:0; const C=combinaciones(k-1,r-1); if(C===0&&k>r)return 0; try{const pr=Math.pow(p,r); const qkr=Math.pow(1-p,k-r); if(pr===0&&r>0)return 0; if(qkr===0&&k>r)return 0; let prob=C*pr*qkr; return Math.max(0,Math.min(1,prob));} catch(e){console.error("Error prob NegBin:",k,r,p,e);return 0;}}
+        function probNegBinAcumuladaTail(k_max, r, p) { if (k_max < r) return 1; let sumP = 0; const limitK = Math.min(k_max, r + 500); for (let k = r; k <= limitK; k++) { sumP += probabilidadNegativaBinomial(k, r, p); if (sumP >= 1.0-1e-9) break; } if (k_max > limitK && sumP < 1.0-1e-9) console.warn(`Cola NegBin P(X > ${k_max}) calc hasta k=${limitK}`); return Math.max(0, 1 - sumP); }
+        function calculateMean(arr) { if (!arr || arr.length === 0) return NaN; const sum = arr.reduce((acc, val) => acc + val, 0); return sum / arr.length; }
+        function calculateVariance(arr, mean) { if (!arr || arr.length < 2) return 0; let sumSqDiff = 0; for (const val of arr) { sumSqDiff += Math.pow(val - mean, 2); } return sumSqDiff / (arr.length - 1); }
+
+        // --- Funciones Principales ---
+        // 1. Realizar un Experimento de Pascal
+        function realizarExperimentoNegBin() { const r=parseInt(numExitosRInput.value); const p=parseFloat(probExitoPNum.value); if(isNaN(r)||r<1||isNaN(p)||p<=0||p>1){resultExperimentNegBinP.textContent="Params inválidos."; negBinExperimentVisualDiv.innerHTML=""; return;} negBinExperimentVisualDiv.innerHTML=''; resultExperimentNegBinP.textContent='Realizando ensayos...'; let sc=0; let tc=0; let delay=0; const MAX_VISUAL=75; function next() { if(sc>=r) return; tc++; const ok=getBernoulliResultado(p); if(ok) sc++; if(tc<=MAX_VISUAL){const d=document.createElement('div'); d.className=`resultado-ensayo-negbin ${ok?'exito':'fracaso'}`; d.textContent=ok?'✓':'✗'; d.style.animationDelay=`${delay}s`; negBinExperimentVisualDiv.appendChild(d); delay+=0.05;} else if(tc===MAX_VISUAL+1) negBinExperimentVisualDiv.innerHTML+=`<span style='margin-left:10px;align-self:center;font-size:0.9em;'>...</span>`; if(sc>=r) resultExperimentNegBinP.textContent=`¡Se alcanzaron ${r} éxitos! Total ensayos k = ${tc}.`; else if(tc>=MAX_TRIALS_SAFETY) resultExperimentNegBinP.textContent=`Límite ${MAX_TRIALS_SAFETY} alcanzado sin ${r} éxitos (p=${p}).`; else setTimeout(next,tc<=MAX_VISUAL?100:0); } next(); }
+
+        // 2. Simular Distribución y Calcular Estadísticas
+        function simularDistribucionNegBin() {
+             const r = parseInt(numExitosRInput.value); const p = parseFloat(probExitoPNum.value); const numSimulations = parseInt(numSimulacionesNegBinInput.value); const maxKChart = parseInt(maxKChartNegBinInput.value);
+             if (isNaN(r)||r<1||isNaN(p)||p<=0||p>1) { simulacionInfoNegBinP.textContent="Params r, p inválidos."; clearChartsNegBin(); clearStatsDisplay(); return; }
+             if (isNaN(numSimulations)||numSimulations<=0) { simulacionInfoNegBinP.textContent="Nº Simul inválido."; clearChartsNegBin(); clearStatsDisplay(); return; }
+             if (isNaN(maxKChart)||maxKChart<r) { simulacionInfoNegBinP.textContent=`Max k debe ser >= r (${r}).`; clearChartsNegBin(); clearStatsDisplay(); return; }
+              simulacionTituloNegBinH3.textContent=`Comparando ${numSimulations} simulaciones vs. Teoría (r=${r}, p=${p.toFixed(2)})`; simulacionInfoNegBinP.textContent=`Simulando...`; tooltipNegBin.style.display='none'; barDimensionsNegBin={sim:[],theo:[]}; simulatedKValues=[];
+             setTimeout(() => {
+                 const frecuenciaK = new Array(maxKChart + 1).fill(0); let countMayorQueMaxK = 0; let validSimulations = 0;
+                 for (let i = 0; i < numSimulations; i++) {
+                     let k_sim = 0; let success_sim = 0;
+                     do { k_sim++; if(getBernoulliResultado(p)) success_sim++; } while (success_sim < r && k_sim < MAX_TRIALS_SAFETY);
+                     if (success_sim >= r) { simulatedKValues.push(k_sim); validSimulations++; if (k_sim <= maxKChart) frecuenciaK[k_sim]++; else countMayorQueMaxK++; }
+                     else { console.warn(`Sim ${i+1}: Límite ${MAX_TRIALS_SAFETY} antes de ${r} éxitos.`); }
+                 }
+                 const expMean = calculateMean(simulatedKValues); const expVariance = calculateVariance(simulatedKValues, expMean);
+                 const theoMean = (p > 0) ? r / p : Infinity; const theoVar = (p > 0 && p < 1) ? (r * (1 - p)) / (p * p) : (p===1 ? 0 : Infinity);
+                 updateStatsDisplay(theoMean, expMean, theoVar, expVariance);
+                 const etiquetasK = []; const propSim = []; const probTeo = [];
+                 for (let k = r; k <= maxKChart; k++) { etiquetasK.push(k.toString()); propSim.push(frecuenciaK[k] / validSimulations); probTeo.push(probabilidadNegativaBinomial(k, r, p)); }
+                 const propSimCola = countMayorQueMaxK / validSimulations; const probTeoCola = probNegBinAcumuladaTail(maxKChart, r, p);
+                 if (propSimCola > 1e-6 || probTeoCola > 1e-6) { etiquetasK.push(`>${maxKChart}`); propSim.push(propSimCola); probTeo.push(probTeoCola); }
+                 currentChartDataNegBin = { labels: etiquetasK, simulated: propSim, theoretical: probTeo, r: r, p: p, maxK: maxKChart };
+                 actualizarGraficosNegBin(etiquetasK, propSim, probTeo);
+                 simulacionInfoNegBinP.textContent = `Simulación completada (${validSimulations} válidas). Pasa el ratón sobre los gráficos.`;
+             }, 50);
+        }
+
+        // 3. Actualizar Display de Estadísticas
+        function updateStatsDisplay(theoMean, expMean, theoVar, expVar) { theoMeanSpan.textContent=isFinite(theoMean)?theoMean.toFixed(4):"∞"; expMeanSpan.textContent=!isNaN(expMean)?expMean.toFixed(4):"N/A"; theoVarSpan.textContent=isFinite(theoVar)?theoVar.toFixed(4):"∞"; expVarSpan.textContent=!isNaN(expVar)?expVar.toFixed(4):"N/A"; }
+        function clearStatsDisplay() { theoMeanSpan.textContent="N/A"; expMeanSpan.textContent="N/A"; theoVarSpan.textContent="N/A"; expVarSpan.textContent="N/A"; }
+
+        // --- Funciones de Dibujo de Gráficos ---
+        function clearChartsNegBin() { setCanvasSize(canvasSimNegBin); setCanvasSize(canvasTheoNegBin); ctxSimNegBin.clearRect(0,0,canvasSimNegBin.width,canvasSimNegBin.height); ctxTheoNegBin.clearRect(0,0,canvasTheoNegBin.width,canvasTheoNegBin.height); dibujarEjes(ctxSimNegBin,0.1,[],'Frec. Simulada','#800000'); dibujarEjes(ctxTheoNegBin,0.1,[],'Prob. Teórica','#800000'); currentChartDataNegBin={labels:[],simulated:[],theoretical:[]}; barDimensionsNegBin={sim:[],theo:[]}; }
+        function setCanvasSize(canvas) { const pw=canvas.parentElement; if(!pw)return; const st=getComputedStyle(pw); const pW=pw.clientWidth-parseFloat(st.paddingLeft)-parseFloat(st.paddingRight); const ar=1.8; let pH=pW/ar; pH=Math.max(150,Math.min(pH,400)); const w=Math.max(100,Math.round(pW)); const h=Math.max(100,Math.round(pH)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+        function dibujarEjes(ctx, maxValue, labels, yAxisTitle, titleColor='#0056b3') { const c=ctx.canvas; const p={top:20,right:25,bottom:50,left:65}; const cw=c.width-p.left-p.right; const ch=c.height-p.top-p.bottom; const ac='#adb5bd'; const tc='#495057'; const nyt=5; ctx.clearRect(0,0,c.width,c.height); if(cw<=0||ch<=0)return; ctx.strokeStyle=ac; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.left,p.top); ctx.lineTo(p.left,c.height-p.bottom); ctx.lineTo(c.width-p.right,c.height-p.bottom); ctx.stroke(); ctx.fillStyle=tc; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font='10px Segoe UI'; for(let i=0;i<=nyt;i++){const v=(maxValue*i/nyt); const vt=(Math.abs(v)<1e-9&&v!==0)?v.toExponential(1):v.toFixed(3); const yp=c.height-p.bottom-Math.max(0,(ch*(v/maxValue))); if(yp<p.top-5||yp>c.height-p.bottom+5)continue; ctx.fillText(vt,p.left-8,yp); ctx.beginPath(); ctx.moveTo(p.left-5,yp); ctx.lineTo(p.left,yp); ctx.stroke();} ctx.save(); ctx.translate(p.left*0.4,c.height/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText(yAxisTitle,0, -10); ctx.restore(); ctx.fillStyle=tc; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.font='11px Segoe UI'; const nl=labels.length; let sew=0; if(nl>0)sew=cw/nl; if(nl>0){const lmw=Math.max(20,sew*0.8); const mvl=Math.floor(cw/(lmw*1.2)); const st=nl<=mvl?1:Math.ceil(nl/mvl); for(let i=0;i<nl;i++){let sl=false; if(i%st===0)sl=true; if(i===0)sl=true; if(i===nl-1&&(nl-1)%st!==0)sl=true; if(sl){const l=labels[i]; const xp=p.left+sew*(i+0.5); ctx.fillText(l,xp,c.height-p.bottom+8);}}} ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText("Número Total de Ensayos (k)",c.width/2,c.height-p.bottom/2.5);}
+        function actualizarGraficosNegBin(labels, simulatedData, theoreticalData) { setCanvasSize(canvasSimNegBin); setCanvasSize(canvasTheoNegBin); const mV=Math.max(...simulatedData,...theoreticalData,0.01)*1.1; dibujarEjes(ctxSimNegBin,mV,labels,'Frec. Simulada','#800000'); dibujarEjes(ctxTheoNegBin,mV,labels,'Prob. Teórica','#800000'); const p={top:20,right:25,bottom:50,left:65}; const chS=canvasSimNegBin.height-p.top-p.bottom; const cwS=canvasSimNegBin.width-p.left-p.right; const chT=canvasTheoNegBin.height-p.top-p.bottom; const cwT=canvasTheoNegBin.width-p.left-p.right; const nb=labels.length; if(nb===0)return; const sewS=cwS/nb; const bwS=sewS*0.7; const bgS=(sewS-bwS)/2; const sewT=cwT/nb; const bwT=sewT*0.7; const bgT=(sewT-bwT)/2; barDimensionsNegBin={sim:[],theo:[]}; ctxSimNegBin.fillStyle='#ff69b4'; for(let i=0;i<nb;i++){const sh=Math.max(0,chS*(simulatedData[i]/mV)); const xp=p.left+i*sewS+bgS; const yp=canvasSimNegBin.height-p.bottom-sh; ctxSimNegBin.fillRect(xp,yp,bwS,sh); barDimensionsNegBin.sim.push({x:xp,y:yp,width:bwS,height:sh,index:i});} ctxTheoNegBin.fillStyle='#8b008b'; for(let i=0;i<nb;i++){const th=Math.max(0,chT*(theoreticalData[i]/mV)); const xp=p.left+i*sewT+bgT; const yp=canvasTheoNegBin.height-p.bottom-th; ctxTheoNegBin.fillRect(xp,yp,bwT,th); barDimensionsNegBin.theo.push({x:xp,y:yp,width:bwT,height:th,index:i});} }
+
+        // --- Lógica del Tooltip ---
+        function handleMouseMoveNegBin(event) { if (!currentChartDataNegBin.labels.length) return; const c=event.target; const rect=c.getBoundingClientRect(); const mx=event.clientX-rect.left; const my=event.clientY-rect.top; const dims=c.id==='simulatedChartNegBin'?barDimensionsNegBin.sim:barDimensionsNegBin.theo; let fi=-1; const p={top:20,right:25,bottom:50,left:65}; for(const bar of dims){if(mx>=bar.x&&mx<=bar.x+bar.width&&my>=bar.y&&my<=c.height-p.bottom+5){fi=bar.index;break;}} if(fi!==-1){const k=currentChartDataNegBin.labels[fi]; const sim=currentChartDataNegBin.simulated[fi]; const theo=currentChartDataNegBin.theoretical[fi]; tooltipNegBin.style.display='block'; tooltipNegBin.offsetHeight; tooltipNegBin.style.opacity=1; const cr=chartsAreaNegBin.getBoundingClientRect(); tooltipNegBin.style.left=`${event.clientX-cr.left+15}px`; tooltipNegBin.style.top=`${event.clientY-cr.top-35}px`; tooltipNegBin.innerHTML=`<b>k = ${k}</b><br>Simulado: ${sim.toFixed(5)}<br>Teórico: ${theo.toFixed(5)}`;} else {tooltipNegBin.style.opacity=0; setTimeout(()=>{if(tooltipNegBin.style.opacity==='0')tooltipNegBin.style.display='none';},100);}}
+        function handleMouseOutNegBin(event) { tooltipNegBin.style.opacity=0; setTimeout(()=>{if(tooltipNegBin.style.opacity==='0')tooltipNegBin.style.display='none';},100); }
+
+        // Listeners
+        canvasSimNegBin.addEventListener('mousemove', handleMouseMoveNegBin); canvasSimNegBin.addEventListener('mouseout', handleMouseOutNegBin);
+        canvasTheoNegBin.addEventListener('mousemove', handleMouseMoveNegBin); canvasTheoNegBin.addEventListener('mouseout', handleMouseOutNegBin);
+
+        // Init
+        window.addEventListener('load', () => { syncProbInputs(probExitoPRange, probExitoPNum, valPSpan); const r=parseInt(numExitosRInput.value); valRSpan.textContent=r; dispRSpan.textContent=r; dispR2Span.textContent=r; maxKChartNegBinInput.min=r; clearChartsNegBin(); clearStatsDisplay(); });
+
+        // Resize
+        let resizeTimeoutNegBin; window.addEventListener('resize', () => { clearTimeout(resizeTimeoutNegBin); resizeTimeoutNegBin=setTimeout(() => { if(currentChartDataNegBin.labels.length > 0) { actualizarGraficosNegBin(currentChartDataNegBin.labels, currentChartDataNegBin.simulated, currentChartDataNegBin.theoretical); updateStatsDisplay(currentChartDataNegBin.r/currentChartDataNegBin.p, calculateMean(simulatedKValues), (currentChartDataNegBin.r*(1-currentChartDataNegBin.p))/(currentChartDataNegBin.p**2), calculateVariance(simulatedKValues, calculateMean(simulatedKValues))); } else { clearChartsNegBin(); clearStatsDisplay(); } }, 250); });
+
+    </script>
+
+</body>
+</html>

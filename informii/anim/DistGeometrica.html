@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorando la Distribución Geométrica</title>
+    <style>
+        /* --- ESTILOS GENERALES (Paleta Verde) --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6; margin: 20px; background-color: #f6f9f4; /* Ligeramente verdoso */
+            color: #333; display: flex; flex-direction: column; align-items: center;
+        }
+        h1, h2, h3, h4 { color: #006400; /* Verde oscuro */ text-align: center; }
+        h4 { margin-bottom: 5px; color: #004d00; /* Verde más oscuro */ }
+        .container {
+            background-color: #ffffff; padding: 25px; border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+            width: 95%; max-width: 900px;
+        }
+
+        /* --- CONTROLES --- */
+        .controles {
+            display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center;
+            margin-bottom: 20px; padding: 15px; background-color: #e9ffe3; /* Verde muy claro */ border-radius: 8px;
+        }
+        .control-item { margin: 10px; text-align: center; }
+        .control-item label { display: block; margin-bottom: 5px; font-weight: bold; color: #004d00; /* Verde oscuro */ }
+        .control-item input[type="number"], .control-item input[type="range"] {
+            padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 80px; text-align: center; vertical-align: middle;
+        }
+        .control-item input[type="range"] { width: 120px; }
+        .param-display { display: inline-block; min-width: 40px; text-align: right; font-weight: bold; color: #006400; }
+
+        button {
+            background-color: #28a745; /* Verde primario */ color: white; border: none;
+            padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.1s ease; margin: 5px;
+        }
+        button:hover { background-color: #218838; /* Verde más oscuro al pasar */ }
+        button:active { transform: scale(0.98); }
+
+        /* --- VISUALIZACIÓN --- */
+        .visualizacion { margin-top: 20px; text-align: center; }
+
+        /* Ensayo Bernoulli Base */
+        #ensayo-bernoulli-visual { width: 80px; height: 80px; border-radius: 50%; margin: 15px auto; display: flex; justify-content: center; align-items: center; font-size: 1.5em; font-weight: bold; color: white; border: 3px solid #ccc; transition: background-color 0.5s ease, border-color 0.5s ease; }
+        .exito { background-color: #28a745; border-color: #1e7e34; }
+        .fracaso { background-color: #dc3545; border-color: #b02a37; }
+
+        /* Experimento Geométrico */
+        #experimento-geometrico-visual { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; margin-top: 15px; min-height: 30px; padding: 5px; background-color: #f8f9fa; border-radius: 5px; border: 1px dashed #ccc; }
+        .resultado-ensayo-geom { width: 25px; height: 25px; border-radius: 5px; margin: 4px; display: flex; justify-content: center; align-items: center; font-size: 1.1em; font-weight: bold; color: white; opacity: 0; animation: fadeIn 0.3s forwards; }
+        #resultado-experimento-geometrico { font-weight: bold; font-size: 1.1em; margin-top: 15px; color: #006400; }
+
+        /* Gráficos */
+        #charts-area-geom { margin-top: 25px; position: relative; }
+        #chart-container-geom { display: flex; justify-content: space-around; align-items: flex-start; gap: 20px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; }
+        .chart-wrapper { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        canvas { display: block; max-width: 100%; background-color: #ffffff; border: 1px solid #ccc; border-radius: 4px; }
+        #tooltip-geom { position: absolute; display: none; background-color: rgba(0, 0, 0, 0.75); color: white; padding: 8px 12px; border-radius: 5px; font-size: 0.9em; pointer-events: none; z-index: 10; white-space: nowrap; transition: opacity 0.1s ease-out; }
+
+         /* --- ESTADÍSTICAS (Nuevo) --- */
+        #stats-display-geom {
+             margin-top: 25px; padding: 15px; background-color: #f0fff0; /* Honeydew */
+             border: 1px solid #98fb98; /* PaleGreen */ border-radius: 8px; text-align: left;
+             display: grid; grid-template-columns: auto 1fr; gap: 5px 15px; align-items: center;
+        }
+        #stats-display-geom h4 { grid-column: 1 / -1; margin-bottom: 10px; text-align: center; color: #004d00; }
+        #stats-display-geom .stat-label { font-weight: bold; color: #006400; }
+        #stats-display-geom .stat-value { font-family: monospace; font-size: 1.1em; }
+        #stats-display-geom .stat-formula { font-size: 1.0em; color: #555; }
+
+        /* --- EXPLICACIONES --- */
+        .explicacion { margin-top: 15px; padding: 15px; background-color: #e7f4e2; /* Verde más pálido */ border-left: 5px solid #5cb85c; /* Borde verde */ border-radius: 5px; }
+        .explicacion p { margin: 5px 0; }
+        .formula { font-weight: bold; color: #0000d4;  }
+        .param { font-weight: bold; color: #006400; }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <h1>📐 Explorando la Distribución Geométrica 📐</h1>
+
+    <!-- Sección 1: Experimento de Bernoulli (Base Común) -->
+    <div class="container">
+        <h2>1. El Ensayo de Bernoulli (La Base)</h2>
+        <div class="explicacion">
+            <p>Un <strong>Ensayo de Bernoulli</strong> tiene solo <strong>dos</strong> resultados posibles: 
+                "Éxito" (prob. <span class="param">p</span>) o "Fracaso" (prob. <span class="formula">1 - p</span>).</p>
+        </div>
+        <div class="controles">
+            <div class="control-item">
+                <label for="probabilidad-p">Probabilidad de Éxito (p):</label>
+                <input type="range" id="probabilidad-p" min="0.01" max="1" step="0.01" value="0.3"> <!-- Evitar p=0 -->
+                <span class="param-display" id="valor-p">0.30</span>
+            </div>
+            <button onclick="realizarEnsayoBernoulli()">¡Realizar un Ensayo Base!</button>
+        </div>
+        <div class="visualizacion">
+            <h3>Resultado del Ensayo Base:</h3>
+            <div id="ensayo-bernoulli-visual">?</div>
+            <p id="resultado-bernoulli">Ajusta 'p' y pulsa el botón.</p>
+        </div>
+    </div>
+
+    <!-- Sección 2: El Experimento Geométrico -->
+    <div class="container">
+        <h2>2. El Experimento Geométrico: Buscando el Primer Éxito</h2>
+         <div class="explicacion">
+            <p>En un experimento realizamos ensayos de Bernoulli hasta obtener el <span style="font-weight:bold; color:#006400;">primer Éxito</span>. Contamos cuántos ensayos (<span class="formula">k</span>) fueron necesarios.</p>
+        </div>
+        <div class="controles">
+             <button onclick="realizarExperimentoGeometrico()">¡Buscar el Primer Éxito!</button>
+        </div>
+         <div class="visualizacion">
+            <h3>Resultado del Experimento (p=<span id="display-p-geom">0.30</span>):</h3>
+            <div id="experimento-geometrico-visual">(Pulsa el botón para empezar)</div>
+            <p id="resultado-experimento-geometrico">Esperando experimento...</p>
+        </div>
+    </div>
+
+     <!-- Sección 3: La Distribución Geométrica -->
+    <div class="container">
+        <h2>3. La Distribución Geométrica: Probabilidades y Estadísticas</h2>
+         <div class="explicacion">
+            <p>La <strong>Distribución Geométrica</strong> da la probabilidad de que se realizen
+                <span class="formula">k</span> ensayos al realizar un experimento. 
+
+                <p>PMF: <span class="formula">P(X=k) = (1-p)<sup>k-1</sup> · p</span> &nbsp; (k=1, 2,...).</p>
+            <p>Comparamos las probabilidades teóricas con las frecuencias simuladas y las estadísticas clave.</p>
+        </div>
+
+        <!-- Controles Simulación -->
+        <div class="controles">
+             <div class="control-item">
+                <label for="num-simulaciones-geom">Nº de Simulaciones:</label>
+                <input type="number" id="num-simulaciones-geom" min="100" max="1000000" value="100000" step="1000">
+            </div>
+             <div class="control-item">
+                <label for="max-k-chart">Máximo k en gráfico:</label>
+                <input type="number" id="max-k-chart" min="5" max="100" value="20" step="1">
+                <span style="font-size:0.8em; display:block;">(Valores > k<sub>max</sub> se agruparán)</span>
+            </div>
+             <button onclick="simularDistribucionGeometrica()">¡Simular Distribución Geométrica!</button>
+        </div>
+
+        <!-- Display Estadísticas (Nuevo) -->
+        <div id="stats-display-geom">
+            <h4>Estadísticas de la Distribución (k = nº ensayos)</h4>
+            <!-- Media -->
+            <span class="stat-label">Media (E[X]):</span><span class="stat-formula">1 / p</span>
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-mean-val-geom">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-mean-val-geom">N/A</span>
+            <!-- Varianza -->
+            <span class="stat-label">Varianza (Var[X]):</span><span class="stat-formula">(1-p) / p²</span>
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-var-val-geom">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-var-val-geom">N/A</span>
+        </div>
+
+        <!-- Gráficos -->
+         <div class="visualizacion">
+            <h3 id="simulacion-titulo-geom">Comparación Gráfica: Frecuencia vs. Probabilidad</h3>
+            <p id="simulacion-info-geom">Configura p, nº simulaciones, k máximo y pulsa.</p>
+            <div id="charts-area-geom">
+                 <div id="chart-container-geom">
+                     <div class="chart-wrapper">
+                         <h4>Frecuencia Simulada</h4>
+                         <canvas id="simulatedChartGeom"></canvas>
+                     </div>
+                     <div class="chart-wrapper">
+                          <h4>Probabilidad Teórica</h4>
+                         <canvas id="theoreticalChartGeom"></canvas>
+                     </div>
+                 </div>
+                 <div id="tooltip-geom"></div>
+             </div>
+               <div class="legend">
+                <span style="color:#28a745; font-weight:bold;">■ Frec. Simulada</span> &nbsp;&nbsp; <span style="color:#dc3545; font-weight:bold;">■ Prob. Teórica</span>
+            </div>
+         </div>
+    </div>
+
+    <script>
+        // --- Variables Globales y Elementos del DOM ---
+        const probabilidadSlider = document.getElementById('probabilidad-p');
+        const valorPSpan = document.getElementById('valor-p');
+        const displayPGeomSpan = document.getElementById('display-p-geom');
+        // Bernoulli
+        const bernoulliVisual = document.getElementById('ensayo-bernoulli-visual');
+        const resultadoBernoulliP = document.getElementById('resultado-bernoulli');
+        // Experimento Geométrico
+        const experimentoGeomVisualDiv = document.getElementById('experimento-geometrico-visual');
+        const resultadoExperimentoGeomP = document.getElementById('resultado-experimento-geometrico');
+        // Distribución Geométrica
+        const numSimulacionesGeomInput = document.getElementById('num-simulaciones-geom');
+        const maxKChartInput = document.getElementById('max-k-chart');
+        const simulacionTituloGeomH3 = document.getElementById('simulacion-titulo-geom');
+        const simulacionInfoGeomP = document.getElementById('simulacion-info-geom');
+        const chartsAreaGeom = document.getElementById('charts-area-geom');
+        const canvasSimGeom = document.getElementById('simulatedChartGeom');
+        const ctxSimGeom = canvasSimGeom.getContext('2d');
+        const canvasTheoGeom = document.getElementById('theoreticalChartGeom');
+        const ctxTheoGeom = canvasTheoGeom.getContext('2d');
+        const tooltipGeom = document.getElementById('tooltip-geom');
+        // Stats Display (Nuevo)
+        const theoMeanSpanGeom = document.getElementById('theo-mean-val-geom');
+        const expMeanSpanGeom = document.getElementById('exp-mean-val-geom');
+        const theoVarSpanGeom = document.getElementById('theo-var-val-geom');
+        const expVarSpanGeom = document.getElementById('exp-var-val-geom');
+
+        // Datos y dimensiones
+        let currentChartDataGeom = { labels: [], simulated: [], theoretical: [] };
+        let barDimensionsGeom = { sim: [], theo: [] };
+        let simulatedKValuesGeom = []; // <<-- Almacenar k simulados
+        const MAX_TRIALS_PER_EXPERIMENT = 5000;
+
+        // --- Inicialización y Event Listeners ---
+        probabilidadSlider.oninput = function() { const p=parseFloat(this.value); valorPSpan.textContent=p.toFixed(2); displayPGeomSpan.textContent=p.toFixed(2); }
+        probabilidadSlider.onchange = () => { clearChartsGeom(); clearStatsDisplayGeom(); simulacionInfoGeomP.textContent="Parámetro 'p' cambiado."; }; // Limpiar al cambiar p
+        numSimulacionesGeomInput.onchange = () => { clearChartsGeom(); clearStatsDisplayGeom(); }; // Limpiar si cambia nro simulaciones
+        maxKChartInput.onchange = clearChartsGeom; // Solo limpia gráfico
+
+        // --- Funciones Auxiliares ---
+        function getBernoulliResultado(p) { return Math.random() < p; }
+        function probabilidadGeometrica(k, p) { if(k<1||p<=0||p>1)return 0; if(p===1)return k===1?1:0; try{const prob=Math.pow(1-p,k-1)*p; return Math.max(0,Math.min(1,prob));} catch(e){console.error("Error prob geom:",k,p,e);return 0;}}
+        function probGeometricaAcumuladaTail(k_max, p) { if(p<=0||p>1)return p<=0?1:0; if(k_max<0)return 1; try{const prob=Math.pow(1-p,k_max); return Math.max(0,Math.min(1,prob));} catch(e){console.error("Error cola geom:",k_max,p,e);return 0;}}
+        // Stats Helpers (Nuevos/Reutilizados)
+        function calculateMean(arr) { if(!arr||arr.length===0)return NaN; const sum=arr.reduce((a,v)=>a+v,0); return sum/arr.length; }
+        function calculateVariance(arr, mean) { if(!arr||arr.length<2)return 0; let sumSqDiff=0; for(const v of arr){sumSqDiff+=Math.pow(v-mean,2);} return sumSqDiff/(arr.length-1);}
+
+
+        // --- Funciones Principales ---
+
+        // 1. Ensayo Bernoulli (Sin cambios)
+        function realizarEnsayoBernoulli() { const p=parseFloat(probabilidadSlider.value); const ok=getBernoulliResultado(p); bernoulliVisual.className='ensayo-bernoulli-visual '+(ok?'exito':'fracaso'); bernoulliVisual.textContent=ok?'✓':'✗'; resultadoBernoulliP.textContent=`Resultado: ${ok?'Éxito':'Fracaso'} (p=${p.toFixed(2)})`; }
+
+        // 2. Experimento Geométrico (Sin cambios lógicos internos)
+        function realizarExperimentoGeometrico() { const p=parseFloat(probabilidadSlider.value); if(p<=0){experimentoGeomVisualDiv.innerHTML=`<span style="color:red;">p debe ser > 0.</span>`; resultadoExperimentoGeomP.textContent="Experimento no válido."; return;} experimentoGeomVisualDiv.innerHTML=''; resultadoExperimentoGeomP.textContent='Realizando ensayos...'; let k=0; let ok=false; let delay=0; function next() { k++; ok=getBernoulliResultado(p); const MAX_VISUAL=50; if(k<=MAX_VISUAL){const d=document.createElement('div'); d.className=`resultado-ensayo-geom ${ok?'exito':'fracaso'}`; d.textContent=ok?'✓':'✗'; d.style.animationDelay=`${delay}s`; experimentoGeomVisualDiv.appendChild(d); delay+=0.1;} else if(k===MAX_VISUAL+1){experimentoGeomVisualDiv.innerHTML+=`<span style='margin-left:10px;align-self:center;'>...</span>`;} if(ok){resultadoExperimentoGeomP.textContent=`¡Éxito! Se necesitaron k = ${k} intentos.`;} else if(k>=MAX_TRIALS_PER_EXPERIMENT){resultadoExperimentoGeomP.textContent=`No éxito en ${MAX_TRIALS_PER_EXPERIMENT} intentos (p=${p.toFixed(2)}).`;} else {setTimeout(next,k<=MAX_VISUAL?150:0);}} next(); }
+
+        // 3. Simular Distribución Geométrica (MODIFICADO)
+        function simularDistribucionGeometrica() {
+             const p = parseFloat(probabilidadSlider.value);
+             const numSimulaciones = parseInt(numSimulacionesGeomInput.value);
+             const maxKChart = parseInt(maxKChartInput.value);
+
+             if (p<=0||p>1) { simulacionInfoGeomP.textContent="Error: p debe estar en (0, 1]."; clearChartsGeom(); clearStatsDisplayGeom(); return; }
+             if (isNaN(numSimulaciones)||numSimulaciones<=0||isNaN(maxKChart)||maxKChart<=0) { simulacionInfoGeomP.textContent="Valores inválidos para Sim/Max K."; clearChartsGeom(); clearStatsDisplayGeom(); return; }
+
+              simulacionTituloGeomH3.textContent=`Comparando ${numSimulaciones} simulaciones vs. Teoría (p=${p.toFixed(2)}, k max=${maxKChart})`;
+              simulacionInfoGeomP.textContent=`Simulando...`; tooltipGeom.style.display='none'; barDimensionsGeom={sim:[],theo:[]}; simulatedKValuesGeom=[]; // <<-- Limpiar k previos
+
+             setTimeout(() => {
+                const frecuenciaExitosK = new Array(maxKChart + 1).fill(0); let countMayorQueMaxK = 0; let validSimulations = 0;
+
+                for (let i = 0; i < numSimulaciones; i++) {
+                    let k_sim = 0; let exito = false;
+                    do { k_sim++; exito = getBernoulliResultado(p); } while (!exito && k_sim < MAX_TRIALS_PER_EXPERIMENT);
+
+                    if (exito) { // Solo contar si hubo éxito
+                         simulatedKValuesGeom.push(k_sim); // <<-- GUARDAR K
+                         validSimulations++;
+                         if (k_sim <= maxKChart) frecuenciaExitosK[k_sim]++;
+                         else countMayorQueMaxK++;
+                    } else { console.warn(`Sim ${i+1}: Límite ${MAX_TRIALS_PER_EXPERIMENT} alcanzado.`); }
+                }
+
+                 // Calcular estadísticas (NUEVO)
+                 const expMean = calculateMean(simulatedKValuesGeom);
+                 const expVariance = calculateVariance(simulatedKValuesGeom, expMean);
+                 const theoMean = (p > 0) ? 1 / p : Infinity;
+                 const theoVar = (p > 0 && p < 1) ? (1 - p) / (p * p) : (p===1 ? 0 : Infinity); // Var=0 si p=1
+
+                 // Actualizar display de estadísticas (NUEVO)
+                 updateStatsDisplayGeom(theoMean, expMean, theoVar, expVariance);
+
+                // Preparar datos para gráficos
+                const etiquetasK = []; const proporcionesSimuladas = []; const probabilidadesTeoricas = [];
+                for (let k = 1; k <= maxKChart; k++) { // k empieza en 1
+                    etiquetasK.push(k.toString()); proporcionesSimuladas.push(frecuenciaExitosK[k] / validSimulations); probabilidadesTeoricas.push(probabilidadGeometrica(k, p)); }
+                const probTeoricaCola = probGeometricaAcumuladaTail(maxKChart, p); const propSimuladaCola = countMayorQueMaxK / validSimulations;
+                if (propSimuladaCola > 1e-6 || probTeoricaCola > 1e-6) { etiquetasK.push(`>${maxKChart}`); proporcionesSimuladas.push(propSimuladaCola); probabilidadesTeoricas.push(probTeoricaCola); }
+
+                currentChartDataGeom = { labels: etiquetasK, simulated: proporcionesSimuladas, theoretical: probabilidadesTeoricas, p: p, maxK: maxKChart };
+                actualizarGraficosGeom(etiquetasK, proporcionesSimuladas, probabilidadesTeoricas);
+                simulacionInfoGeomP.textContent = `Simulación completada (${validSimulations} válidas). Pasa el ratón sobre los gráficos.`;
+             }, 50);
+        }
+
+        // 4. Actualizar Display Estadísticas (NUEVO)
+        function updateStatsDisplayGeom(theoMean, expMean, theoVar, expVar) {
+            theoMeanSpanGeom.textContent = isFinite(theoMean) ? theoMean.toFixed(4) : "∞";
+            expMeanSpanGeom.textContent = !isNaN(expMean) ? expMean.toFixed(4) : "N/A";
+            theoVarSpanGeom.textContent = isFinite(theoVar) ? theoVar.toFixed(4) : "∞";
+            expVarSpanGeom.textContent = !isNaN(expVar) ? expVar.toFixed(4) : "N/A";
+        }
+        function clearStatsDisplayGeom() { // (NUEVO)
+            theoMeanSpanGeom.textContent = "N/A"; expMeanSpanGeom.textContent = "N/A";
+            theoVarSpanGeom.textContent = "N/A"; expVarSpanGeom.textContent = "N/A";
+        }
+
+        // --- Funciones de Dibujo de Gráficos (Sin cambios lógicos internos) ---
+        function clearChartsGeom() { setCanvasSize(canvasSimGeom); setCanvasSize(canvasTheoGeom); ctxSimGeom.clearRect(0,0,canvasSimGeom.width,canvasSimGeom.height); ctxTheoGeom.clearRect(0,0,canvasTheoGeom.width,canvasTheoGeom.height); dibujarEjes(ctxSimGeom,0.1,[],'Frec. Simulada','#004d00'); dibujarEjes(ctxTheoGeom,0.1,[],'Prob. Teórica','#004d00'); currentChartDataGeom={labels:[],simulated:[],theoretical:[]}; barDimensionsGeom={sim:[],theo:[]}; }
+        function setCanvasSize(canvas) { const pw=canvas.parentElement; if(!pw)return; const st=getComputedStyle(pw); const pW=pw.clientWidth-parseFloat(st.paddingLeft)-parseFloat(st.paddingRight); const ar=1.8; let pH=pW/ar; pH=Math.max(150,Math.min(pH,400)); const w=Math.max(100,Math.round(pW)); const h=Math.max(100,Math.round(pH)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+        function dibujarEjes(ctx, maxValue, labels, yAxisTitle, titleColor='#0056b3') { const c=ctx.canvas; const p={top:20,right:25,bottom:50,left:65}; const cw=c.width-p.left-p.right; const ch=c.height-p.top-p.bottom; const ac='#adb5bd'; const tc='#495057'; const nyt=5; ctx.clearRect(0,0,c.width,c.height); if(cw<=0||ch<=0)return; ctx.strokeStyle=ac; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.left,p.top); ctx.lineTo(p.left,c.height-p.bottom); ctx.lineTo(c.width-p.right,c.height-p.bottom); ctx.stroke(); ctx.fillStyle=tc; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font='10px Segoe UI'; for(let i=0;i<=nyt;i++){const v=(maxValue*i/nyt); const vt=(Math.abs(v)<1e-9&&v!==0)?v.toExponential(1):v.toFixed(3); const yp=c.height-p.bottom-Math.max(0,(ch*(v/maxValue))); if(yp<p.top-5||yp>c.height-p.bottom+5)continue; ctx.fillText(vt,p.left-8,yp); ctx.beginPath(); ctx.moveTo(p.left-5,yp); ctx.lineTo(p.left,yp); ctx.stroke();} ctx.save(); ctx.translate(p.left*0.4,c.height/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText(yAxisTitle,0,-10); ctx.restore(); ctx.fillStyle=tc; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.font='11px Segoe UI'; const nl=labels.length; let sew=0; if(nl>0)sew=cw/nl; if(nl>0){const lmw=Math.max(20,sew*0.8); const mvl=Math.floor(cw/(lmw*1.2)); const st=nl<=mvl?1:Math.ceil(nl/mvl); for(let i=0;i<nl;i++){let sl=false; if(i%st===0)sl=true; if(i===0)sl=true; if(i===nl-1&&(nl-1)%st!==0)sl=true; if(sl){const l=labels[i]; const xp=p.left+sew*(i+0.5); ctx.fillText(l,xp,c.height-p.bottom+8);}}} ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText("Intentos hasta el 1er Éxito (k)",c.width/2,c.height-p.bottom/2.5);}
+        function actualizarGraficosGeom(labels, simulatedData, theoreticalData) { setCanvasSize(canvasSimGeom); setCanvasSize(canvasTheoGeom); const mV=Math.max(...simulatedData,...theoreticalData,0.01)*1.1; dibujarEjes(ctxSimGeom,mV,labels,'Frec. Simulada','#004d00'); dibujarEjes(ctxTheoGeom,mV,labels,'Prob. Teórica','#004d00'); const p={top:20,right:25,bottom:50,left:65}; const chS=canvasSimGeom.height-p.top-p.bottom; const cwS=canvasSimGeom.width-p.left-p.right; const chT=canvasTheoGeom.height-p.top-p.bottom; const cwT=canvasTheoGeom.width-p.left-p.right; const nb=labels.length; if(nb===0)return; const sewS=cwS/nb; const bwS=sewS*0.7; const bgS=(sewS-bwS)/2; const sewT=cwT/nb; const bwT=sewT*0.7; const bgT=(sewT-bwT)/2; barDimensionsGeom={sim:[],theo:[]}; ctxSimGeom.fillStyle='#28a745'; for(let i=0;i<nb;i++){const sh=Math.max(0,chS*(simulatedData[i]/mV)); const xp=p.left+i*sewS+bgS; const yp=canvasSimGeom.height-p.bottom-sh; ctxSimGeom.fillRect(xp,yp,bwS,sh); barDimensionsGeom.sim.push({x:xp,y:yp,width:bwS,height:sh,index:i});} ctxTheoGeom.fillStyle='#dc3545'; for(let i=0;i<nb;i++){const th=Math.max(0,chT*(theoreticalData[i]/mV)); const xp=p.left+i*sewT+bgT; const yp=canvasTheoGeom.height-p.bottom-th; ctxTheoGeom.fillRect(xp,yp,bwT,th); barDimensionsGeom.theo.push({x:xp,y:yp,width:bwT,height:th,index:i});} }
+
+        // --- Lógica del Tooltip ---
+        function handleMouseMoveGeom(event) { if(!currentChartDataGeom.labels.length)return; const c=event.target; const rect=c.getBoundingClientRect(); const mx=event.clientX-rect.left; const my=event.clientY-rect.top; const dims=c.id==='simulatedChartGeom'?barDimensionsGeom.sim:barDimensionsGeom.theo; let fi=-1; for(const bar of dims){if(mx>=bar.x&&mx<=bar.x+bar.width&&my>=bar.y&&my<=bar.y+bar.height){fi=bar.index;break;}} if(fi!==-1){const k=currentChartDataGeom.labels[fi]; const sim=currentChartDataGeom.simulated[fi]; const theo=currentChartDataGeom.theoretical[fi]; tooltipGeom.style.display='block'; tooltipGeom.offsetHeight; tooltipGeom.style.opacity=1; const cr=chartsAreaGeom.getBoundingClientRect(); tooltipGeom.style.left=`${event.clientX-cr.left+15}px`; tooltipGeom.style.top=`${event.clientY-cr.top-35}px`; tooltipGeom.innerHTML=`<b>k = ${k}</b><br>Simulado: ${sim.toFixed(5)}<br>Teórico: ${theo.toFixed(5)}`;} else {tooltipGeom.style.opacity=0; setTimeout(()=>{if(tooltipGeom.style.opacity==='0')tooltipGeom.style.display='none';},100);}}
+        function handleMouseOutGeom(event) { tooltipGeom.style.opacity=0; setTimeout(()=>{if(tooltipGeom.style.opacity==='0')tooltipGeom.style.display='none';},100); }
+
+        // Listeners
+        canvasSimGeom.addEventListener('mousemove', handleMouseMoveGeom); canvasSimGeom.addEventListener('mouseout', handleMouseOutGeom);
+        canvasTheoGeom.addEventListener('mousemove', handleMouseMoveGeom); canvasTheoGeom.addEventListener('mouseout', handleMouseOutGeom);
+
+        // Init
+        window.addEventListener('load', () => { probabilidadSlider.dispatchEvent(new Event('input')); clearChartsGeom(); clearStatsDisplayGeom(); }); // Trigger initial p sync
+
+        // Resize
+        let resizeTimeoutGeom; window.addEventListener('resize', () => { clearTimeout(resizeTimeoutGeom); resizeTimeoutGeom=setTimeout(() => { if(currentChartDataGeom.labels.length > 0) { actualizarGraficosGeom(currentChartDataGeom.labels, currentChartDataGeom.simulated, currentChartDataGeom.theoretical); updateStatsDisplayGeom(1/currentChartDataGeom.p, calculateMean(simulatedKValuesGeom), (1-currentChartDataGeom.p)/(currentChartDataGeom.p**2), calculateVariance(simulatedKValuesGeom, calculateMean(simulatedKValuesGeom))); } else { clearChartsGeom(); clearStatsDisplayGeom(); } }, 250); });
+
+    </script>
+
+</body>
+</html>

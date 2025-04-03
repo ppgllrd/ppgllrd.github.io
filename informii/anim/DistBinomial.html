@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorando la Distribución Binomial</title>
+    <style>
+        /* --- ESTILOS GENERALES (Paleta Azul Original) --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6; margin: 20px; background-color: #f4f7f6;
+            color: #333; display: flex; flex-direction: column; align-items: center;
+        }
+        h1, h2, h3, h4 { color: #0056b3; text-align: center; }
+        h4 { margin-bottom: 5px; color: #003d80; }
+        .container {
+            background-color: #ffffff; padding: 25px; border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+            width: 95%; max-width: 900px;
+        }
+
+        /* --- CONTROLES --- */
+        .controles {
+            display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center;
+            margin-bottom: 20px; padding: 15px; background-color: #e9f5ff; border-radius: 8px;
+        }
+        .control-item { margin: 10px; text-align: center; }
+        .control-item label { display: block; margin-bottom: 5px; font-weight: bold; color: #003d80; }
+        .control-item input[type="number"], .control-item input[type="range"] {
+            padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 80px; text-align: center; vertical-align: middle;
+        }
+        .control-item input[type="range"] { width: 120px; }
+        .param-display { display: inline-block; min-width: 40px; text-align: right; font-weight: bold; color: #0056b3; }
+
+        button {
+            background-color: #007bff; color: white; border: none;
+            padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.1s ease; margin: 5px;
+        }
+        button:hover { background-color: #0056b3; }
+        button:active { transform: scale(0.98); }
+
+        /* --- VISUALIZACIÓN --- */
+        .visualizacion { margin-top: 20px; text-align: center; }
+
+        /* Ensayo Bernoulli */
+        #ensayo-bernoulli-visual { width: 80px; height: 80px; border-radius: 50%; margin: 15px auto; display: flex; justify-content: center; align-items: center; font-size: 1.5em; font-weight: bold; color: white; border: 3px solid #ccc; transition: background-color 0.5s ease, border-color 0.5s ease; }
+        .exito { background-color: #28a745; border-color: #1e7e34; }
+        .fracaso { background-color: #dc3545; border-color: #b02a37; }
+
+        /* Experimento Completo (n ensayos) */
+        #experimento-visual { display: flex; flex-wrap: wrap; justify-content: center; margin-top: 15px; min-height: 30px; }
+        .resultado-ensayo { width: 20px; height: 20px; border-radius: 50%; margin: 3px; display: inline-block; opacity: 0; animation: fadeIn 0.5s forwards; }
+        #resultado-experimento { font-weight: bold; font-size: 1.1em; margin-top: 15px; }
+
+        /* Gráficos */
+        #charts-area { margin-top: 25px; position: relative; }
+        #chart-container { display: flex; justify-content: space-around; align-items: flex-start; gap: 20px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; }
+        .chart-wrapper { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        canvas { display: block; max-width: 100%; background-color: #ffffff; border: 1px solid #ccc; border-radius: 4px; }
+        #tooltip { position: absolute; display: none; background-color: rgba(0, 0, 0, 0.75); color: white; padding: 8px 12px; border-radius: 5px; font-size: 0.9em; pointer-events: none; z-index: 10; white-space: nowrap; transition: opacity 0.1s ease-out; }
+
+        /* --- ESTADÍSTICAS --- */
+        #stats-display-binomial {
+             margin-top: 25px; padding: 15px; background-color: #e9f5ff; /* Azul muy claro */
+             border: 1px solid #b8daff; /* Azul claro */ border-radius: 8px; text-align: left;
+             display: grid; grid-template-columns: auto 1fr; gap: 5px 15px; align-items: center;
+        }
+        #stats-display-binomial h4 { grid-column: 1 / -1; margin-bottom: 10px; text-align: center; color: #003d80; }
+        #stats-display-binomial .stat-label { font-weight: bold; color: #0056b3; }
+        #stats-display-binomial .stat-value { font-family: monospace; font-size: 1.1em; }
+        #stats-display-binomial .stat-formula { font-size: 1.0em; color: #555; }
+
+        /* --- EXPLICACIONES --- */
+        .explicacion { margin-top: 15px; padding: 15px; background-color: #fffbe6; border-left: 5px solid #ffcc00; border-radius: 5px; }
+        .explicacion p { margin: 5px 0; }
+        .formula { font-weight: bold; color: #932683; }
+        .param { font-weight: bold; color: #0056b3; }
+
+        @keyframes fadeIn { to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <h1>🎲 Explorando la Distribución Binomial 🎲</h1>
+
+    <!-- Sección 1: Experimento de Bernoulli -->
+    <div class="container">
+        <h2>1. El Ensayo de Bernoulli</h2>
+        <div class="explicacion">
+             <p>Un <strong>Ensayo de Bernoulli</strong> tiene solo <strong>dos</strong> resultados posibles: 
+                "Éxito" (prob. <span class="param">p</span>) o "Fracaso" (prob. <span class="formula">1 - p</span>).</p>
+        </div>
+        <div class="controles">
+            <div class="control-item">
+                <label for="probabilidad-p">Probabilidad de Éxito (p):</label>
+                <input type="range" id="probabilidad-p" min="0" max="1" step="0.01" value="0.5">
+                <span class="param-display" id="valor-p">0.50</span>
+            </div>
+            <button onclick="realizarEnsayoBernoulli()">¡Realizar un Ensayo!</button>
+        </div>
+        <div class="visualizacion">
+            <h3>Resultado del Ensayo:</h3>
+            <div id="ensayo-bernoulli-visual">?</div>
+            <p id="resultado-bernoulli">Pulsa el botón para ver el resultado.</p>
+        </div>
+    </div>
+
+    <!-- Sección 2: Repetir Ensayos -->
+    <div class="container">
+        <h2>2. Experimento de Bernoulli. Repitiendo Ensayos</h2>
+         <div class="explicacion">
+            <p>En  un experimento repetimos el ensayo <span class="param">n</span> veces independientemente. Contamos los éxitos (<span class="formula">k</span>).</p>
+        </div>
+        <div class="controles">
+             <div class="control-item">
+                <label for="numero-n">Número de Ensayos (n):</label>
+                <input type="number" id="numero-n" min="1" max="100" value="10">
+            </div>
+             <button onclick="realizarExperimentoCompleto()">Realizar Experimento (n ensayos)</button>
+        </div>
+         <div class="visualizacion">
+            <h3>Secuencia de Resultados (n=<span id="display-n">10</span>):</h3>
+            <div id="experimento-visual"></div>
+            <p id="resultado-experimento">Realiza el experimento para ver los resultados.</p>
+        </div>
+    </div>
+
+     <!-- Sección 3: La Distribución Binomial -->
+    <div class="container">
+        <h2>3. La Distribución Binomial: Probabilidades y Estadísticas</h2>
+         <div class="explicacion">
+            <p>La <strong>Distribución Binomial</strong> da la probabilidad de obtener <span class="formula">k</span> éxitos al 
+                realizar un experimento (<span class="param">n</span> ensayos). 
+                <p>PMF: <span class="formula">P(X=k) = C(n, k) · p<sup>k</sup> · (1-p)<sup>n-k</sup></span>.</p>
+            <p>Comparamos las probabilidades teóricas con las frecuencias simuladas y las estadísticas clave.</p>
+        </div>
+
+        <!-- Controles Simulación -->
+        <div class="controles">
+             <div class="control-item">
+                <label for="num-simulaciones">Nº de Simulaciones:</label>
+                <input type="number" id="num-simulaciones" min="100" max="1000000" value="100000" step="1000">
+            </div>
+             <button onclick="simularDistribucion()">¡Simular Distribución!</button>
+        </div>
+
+        <!-- Display Estadísticas -->
+        <div id="stats-display-binomial">
+            <h4>Estadísticas de la Distribución (k = nº éxitos)</h4>
+            <!-- Media -->
+            <span class="stat-label">Media (E[X]):</span><span class="stat-formula">n · p</span>
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-mean-val-bin">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-mean-val-bin">N/A</span>
+            <!-- Varianza -->
+            <span class="stat-label">Varianza (Var[X]):</span><span class="stat-formula">n · p · (1-p)</span>
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-var-val-bin">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-var-val-bin">N/A</span>
+        </div>
+
+        <!-- Gráficos -->
+         <div class="visualizacion">
+            <h3 id="simulacion-titulo">Comparación Gráfica: Frecuencia vs. Probabilidad</h3>
+            <p id="simulacion-info">Configura n, p y nº simulaciones y pulsa.</p>
+            <div id="charts-area">
+                 <div id="chart-container">
+                     <div class="chart-wrapper">
+                         <h4>Frecuencia Simulada</h4>
+                         <canvas id="simulatedChart"></canvas>
+                     </div>
+                     <div class="chart-wrapper">
+                          <h4>Probabilidad Teórica</h4>
+                         <canvas id="theoreticalChart"></canvas>
+                     </div>
+                 </div>
+                 <div id="tooltip"></div>
+            </div>
+            <p> <span style="color: #007bff;">■ Frec. Simulada</span> &nbsp;&nbsp;&nbsp; <span style="color: #dc3545;">■ Prob. Teórica</span> </p>
+         </div>
+    </div>
+
+    <script>
+        // --- Variables Globales y Elementos del DOM ---
+        const probabilidadSlider = document.getElementById('probabilidad-p');
+        const valorPSpan = document.getElementById('valor-p');
+        const numeroNInput = document.getElementById('numero-n');
+        const displayNSpan = document.getElementById('display-n');
+        const numSimulacionesInput = document.getElementById('num-simulaciones');
+        // Sección 1
+        const bernoulliVisual = document.getElementById('ensayo-bernoulli-visual');
+        const resultadoBernoulliP = document.getElementById('resultado-bernoulli');
+        // Sección 2
+        const experimentoVisualDiv = document.getElementById('experimento-visual');
+        const resultadoExperimentoP = document.getElementById('resultado-experimento');
+        // Sección 3
+        const simulacionTituloH3 = document.getElementById('simulacion-titulo');
+        const simulacionInfoP = document.getElementById('simulacion-info');
+        const chartContainer = document.getElementById('chart-container'); // Contenedor flex
+        const canvasSim = document.getElementById('simulatedChart');
+        const ctxSim = canvasSim.getContext('2d');
+        const canvasTheo = document.getElementById('theoreticalChart');
+        const ctxTheo = canvasTheo.getContext('2d');
+        const tooltip = document.getElementById('tooltip');
+        // Stats Display
+        const theoMeanSpanBin = document.getElementById('theo-mean-val-bin');
+        const expMeanSpanBin = document.getElementById('exp-mean-val-bin');
+        const theoVarSpanBin = document.getElementById('theo-var-val-bin');
+        const expVarSpanBin = document.getElementById('exp-var-val-bin');
+
+        // Datos y dimensiones
+        let currentChartData = { labels: [], simulated: [], theoretical: [] };
+        let barDimensions = { sim: [], theo: [] };
+        let simulatedKValuesBin = [];
+
+        // --- Inicialización y Event Listeners ---
+        probabilidadSlider.oninput = function() { valorPSpan.textContent = parseFloat(this.value).toFixed(2); }
+        numeroNInput.onchange = function() { const n = parseInt(this.value) || 10; displayNSpan.textContent = n; clearCharts(); clearStatsDisplayBinomial(); simulacionInfoP.textContent = "Parámetro 'n' cambiado."; }
+        probabilidadSlider.onchange = () => { clearCharts(); clearStatsDisplayBinomial(); simulacionInfoP.textContent = "Parámetro 'p' cambiado."; };
+        numSimulacionesInput.onchange = () => { clearCharts(); clearStatsDisplayBinomial(); simulacionInfoP.textContent = "Nº Simulaciones cambiado."; };
+        displayNSpan.textContent = numeroNInput.value;
+
+        // --- Funciones Auxiliares ---
+        function getBernoulliResultado(p) { return Math.random() < p; }
+        function combinaciones(n, k) { if(k<0||k>n)return 0; if(k===0||k===n)return 1; if(k>n/2)k=n-k; let r=1; for(let i=1;i<=k;i++)r=r*(n-i+1)/i; return Math.round(r*1e12)/1e12; }
+        function probabilidadBinomial(n, k, p) { if(p<0||p>1||n<=0||k<0||k>n)return 0; if(p===0)return k===0?1:0; if(p===1)return k===n?1:0; const Cnk=combinaciones(n,k); try{const pk=Math.pow(p,k); const qnk=Math.pow(1-p,n-k); if(pk===0&&k>0)return 0; if(qnk===0&&n-k>0)return 0; let prob=Cnk*pk*qnk; return Math.max(0,Math.min(1,prob));}catch(e){console.error("Error prob binomial:",n,k,p,e);return 0;}}
+        function calculateMean(arr) { if (!arr || arr.length === 0) return NaN; const sum = arr.reduce((acc, val) => acc + val, 0); return sum / arr.length; }
+        function calculateVariance(arr, mean) { if (!arr || arr.length < 2) return 0; let sumSqDiff = 0; for (const val of arr) { sumSqDiff += Math.pow(val - mean, 2); } return sumSqDiff / (arr.length - 1); }
+
+        // --- Funciones Principales de la Simulación ---
+
+        // 1. Realizar un único Ensayo de Bernoulli
+        function realizarEnsayoBernoulli() { const p=parseFloat(probabilidadSlider.value); const ok=getBernoulliResultado(p); bernoulliVisual.className='ensayo-bernoulli-visual '+(ok?'exito':'fracaso'); bernoulliVisual.textContent=ok?'✓':'✗'; resultadoBernoulliP.textContent=`Resultado: ${ok?'Éxito':'Fracaso'} (p=${p.toFixed(2)})`; }
+
+        // 2. Realizar un experimento completo (n ensayos) - CORREGIDO
+        function realizarExperimentoCompleto() {
+            const p = parseFloat(probabilidadSlider.value);
+            const n = parseInt(numeroNInput.value);
+
+            if (isNaN(n) || n <= 0) {
+                 resultadoExperimentoP.textContent = "Introduce un número válido de ensayos (n > 0).";
+                 experimentoVisualDiv.innerHTML = '';
+                return; // No hacemos nada más
+            }
+
+            experimentoVisualDiv.innerHTML = ''; // Limpiar resultados anteriores
+            let exitosCount = 0; // <<< INICIALIZAR AQUÍ, ANTES DEL BUCLE
+            let delay = 0;
+            const delayIncrement = n > 50 ? 0.02 : 0.05; // Animación más rápida si hay muchos
+
+            // --- BUCLE ÚNICO para VISUALIZACIÓN y CONTEO ---
+            for (let i = 0; i < n; i++) {
+                const esExito = getBernoulliResultado(p); // << UN SOLO SORTEO POR ENSAYO i
+                if (esExito) {
+                    exitosCount++; // << INCREMENTAR ESTE CONTADOR
+                }
+
+                // Crear elemento visual para este ensayo (si n no es demasiado grande)
+                 if (n <= 150) { // Mantener límite visual
+                    const ensayoDiv = document.createElement('div');
+                    ensayoDiv.classList.add('resultado-ensayo');
+                    ensayoDiv.classList.add(esExito ? 'exito' : 'fracaso');
+                    ensayoDiv.style.animationDelay = `${delay}s`;
+                    experimentoVisualDiv.appendChild(ensayoDiv);
+                    delay += delayIncrement;
+                 } else if (i === 0) { // Mostrar mensaje solo una vez si n es muy grande
+                     experimentoVisualDiv.innerHTML = '(Visualización de secuencia omitida para n > 150)';
+                 }
+            }
+
+            // Usar el exitosCount calculado en el PRIMER bucle
+            resultadoExperimentoP.textContent = `Experimento (n=${n}, p=${p.toFixed(2)}): Se obtuvieron ${exitosCount} éxitos.`;
+        }
+
+
+        // 3. Simular la Distribución Binomial completa
+        function simularDistribucion() {
+             const p = parseFloat(probabilidadSlider.value); const n = parseInt(numeroNInput.value); const numSimulaciones = parseInt(numSimulacionesInput.value);
+             if (isNaN(n)||n<=0||isNaN(numSimulaciones)||numSimulaciones<=0) { simulacionInfoP.textContent="Introduce n>0 y nº simul>0."; clearCharts(); clearStatsDisplayBinomial(); return; }
+             if (n>170) { simulacionInfoP.textContent="n>170 puede causar imprecisión."; /* Continuar */ }
+              simulacionTituloH3.textContent=`Comparando ${numSimulaciones} simulaciones vs. Teoría (n=${n}, p=${p.toFixed(2)})`; simulacionInfoP.textContent=`Simulando...`; tooltip.style.display='none'; barDimensions={sim:[],theo:[]}; simulatedKValuesBin=[];
+
+             setTimeout(() => {
+                const frecuenciaExitos = new Array(n + 1).fill(0); let validSimulations = 0;
+                for (let i = 0; i < numSimulaciones; i++) {
+                    let exitosEnUnExperimento = 0; for (let j = 0; j < n; j++) { if (getBernoulliResultado(p)) exitosEnUnExperimento++; }
+                    if (exitosEnUnExperimento >= 0 && exitosEnUnExperimento <= n) { frecuenciaExitos[exitosEnUnExperimento]++; simulatedKValuesBin.push(exitosEnUnExperimento); validSimulations++; }
+                }
+                const expMean = calculateMean(simulatedKValuesBin); const expVariance = calculateVariance(simulatedKValuesBin, expMean);
+                const theoMean = n * p; const theoVar = n * p * (1 - p);
+                updateStatsDisplayBinomial(theoMean, expMean, theoVar, expVariance);
+                const etiquetasK = []; const propSim = []; const probTeo = [];
+                for (let k = 0; k <= n; k++) { etiquetasK.push(k.toString()); propSim.push(frecuenciaExitos[k] / validSimulations); probTeo.push(probabilidadBinomial(n, k, p)); }
+                currentChartData = { labels: etiquetasK, simulated: propSim, theoretical: probTeo, n: n, p: p };
+                actualizarGraficos(etiquetasK, propSim, probTeo);
+                simulacionInfoP.textContent = `Simulación completada (${validSimulations} válidas). Pasa el ratón sobre los gráficos.`;
+             }, 50);
+        }
+
+        // 4. Actualizar Display de Estadísticas
+        function updateStatsDisplayBinomial(theoMean, expMean, theoVar, expVar) { theoMeanSpanBin.textContent=isFinite(theoMean)?theoMean.toFixed(4):"N/A"; expMeanSpanBin.textContent=!isNaN(expMean)?expMean.toFixed(4):"N/A"; theoVarSpanBin.textContent=isFinite(theoVar)?theoVar.toFixed(4):"N/A"; expVarSpanBin.textContent=!isNaN(expVar)?expVar.toFixed(4):"N/A"; }
+        function clearStatsDisplayBinomial() { theoMeanSpanBin.textContent="N/A"; expMeanSpanBin.textContent="N/A"; theoVarSpanBin.textContent="N/A"; expVarSpanBin.textContent="N/A"; }
+
+        // --- Funciones de Dibujo de Gráficos ---
+        function clearCharts() { setCanvasSize(canvasSim); setCanvasSize(canvasTheo); ctxSim.clearRect(0,0,canvasSim.width,canvasSim.height); ctxTheo.clearRect(0,0,canvasTheo.width,canvasTheo.height); dibujarEjes(ctxSim,0.1,[],'Frec. Simulada','#003d80'); dibujarEjes(ctxTheo,0.1,[],'Prob. Teórica','#003d80'); currentChartData={labels:[],simulated:[],theoretical:[]}; barDimensions={sim:[],theo:[]}; }
+        function setCanvasSize(canvas) { const pw=canvas.parentElement; if(!pw)return; const st=getComputedStyle(pw); const pW=pw.clientWidth-parseFloat(st.paddingLeft)-parseFloat(st.paddingRight); const ar=1.8; let pH=pW/ar; pH=Math.max(150,Math.min(pH,400)); const w=Math.max(100,Math.round(pW)); const h=Math.max(100,Math.round(pH)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+        function dibujarEjes(ctx, maxValue, labels, yAxisTitle, titleColor='#0056b3') { 
+            const c=ctx.canvas; 
+            const p={top:20,right:25,bottom:50,left:65}; 
+            const cw=c.width-p.left-p.right; 
+            const ch=c.height-p.top-p.bottom; 
+            const ac='#adb5bd'; const tc='#495057'; const nyt=5; ctx.clearRect(0,0,c.width,c.height); 
+            if(cw<=0||ch<=0)return; ctx.strokeStyle=ac; ctx.lineWidth=1; ctx.beginPath(); 
+            ctx.moveTo(p.left,p.top); ctx.lineTo(p.left,c.height-p.bottom); 
+            ctx.lineTo(c.width-p.right,c.height-p.bottom); ctx.stroke(); ctx.fillStyle=tc; 
+            ctx.textAlign='right'; ctx.textBaseline='middle'; 
+            ctx.font='10px Segoe UI'; 
+            for(let i=0;i<=nyt;i++){const v=(maxValue*i/nyt); const vt=(Math.abs(v)<1e-9&&v!==0)?v.toExponential(1):v.toFixed(3); const yp=c.height-p.bottom-Math.max(0,(ch*(v/maxValue))); if(yp<p.top-5||yp>c.height-p.bottom+5)continue; ctx.fillText(vt,p.left-8,yp); ctx.beginPath(); ctx.moveTo(p.left-5,yp); ctx.lineTo(p.left,yp); ctx.stroke();} ctx.save(); ctx.translate(p.left*0.4,c.height/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; 
+            ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText(yAxisTitle,0,-10); ctx.restore(); 
+            ctx.fillStyle=tc; ctx.textAlign='center'; ctx.textBaseline='top'; 
+            ctx.font='11px Segoe UI'; const nl=labels.length; let sew=0; if(nl>0)sew=cw/nl; if(nl>0){const lmw=Math.max(20,sew*0.8); const mvl=Math.floor(cw/(lmw*1.2)); const st=nl<=mvl?1:Math.ceil(nl/mvl); for(let i=0;i<nl;i++){let sl=false; if(i%st===0)sl=true; if(i===0)sl=true; if(i===nl-1&&(nl-1)%st!==0)sl=true; if(sl){const l=labels[i]; const xp=p.left+sew*(i+0.5); ctx.fillText(l,xp,c.height-p.bottom+8);}}} ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText("Número de Éxitos (k)",c.width/2,c.height-p.bottom/2.5);}
+        function actualizarGraficos(labels, simulatedData, theoreticalData) { setCanvasSize(canvasSim); setCanvasSize(canvasTheo); const mV=Math.max(...simulatedData,...theoreticalData,0.01)*1.1; dibujarEjes(ctxSim,mV,labels,'Frec. Simulada','#003d80'); dibujarEjes(ctxTheo,mV,labels,'Prob. Teórica','#003d80'); const p={top:20,right:25,bottom:50,left:65}; const chS=canvasSim.height-p.top-p.bottom; const cwS=canvasSim.width-p.left-p.right; const chT=canvasTheo.height-p.top-p.bottom; const cwT=canvasTheo.width-p.left-p.right; const nb=labels.length; if(nb===0)return; const sewS=cwS/nb; const bwS=sewS*0.7; const bgS=(sewS-bwS)/2; const sewT=cwT/nb; const bwT=sewT*0.7; const bgT=(sewT-bwT)/2; barDimensions={sim:[],theo:[]}; ctxSim.fillStyle='#007bff'; for(let i=0;i<nb;i++){const sh=Math.max(0,chS*(simulatedData[i]/mV)); const xp=p.left+i*sewS+bgS; const yp=canvasSim.height-p.bottom-sh; ctxSim.fillRect(xp,yp,bwS,sh); barDimensions.sim.push({x:xp,y:yp,width:bwS,height:sh,index:i});} ctxTheo.fillStyle='#dc3545'; for(let i=0;i<nb;i++){const th=Math.max(0,chT*(theoreticalData[i]/mV)); const xp=p.left+i*sewT+bgT; const yp=canvasTheo.height-p.bottom-th; ctxTheo.fillRect(xp,yp,bwT,th); barDimensions.theo.push({x:xp,y:yp,width:bwT,height:th,index:i});} }
+
+        // --- Lógica del Tooltip ---
+        function handleMouseMove(event) { const c=event.target; if(!c||typeof c.getContext!=='function'||!currentChartData.labels.length){tooltip.style.opacity=0; tooltip.style.display='none'; return;} const rect=c.getBoundingClientRect(); const mx=event.clientX-rect.left; const my=event.clientY-rect.top; const dims=c.id==='simulatedChart'?barDimensions.sim:barDimensions.theo; let fi=-1; const p={top:20,right:25,bottom:50,left:65}; for(const bar of dims){if(mx>=bar.x&&mx<=bar.x+bar.width&&my>=bar.y&&my<=c.height-p.bottom+5){fi=bar.index;break;}} if(fi!==-1){const k=currentChartData.labels[fi]; const sim=currentChartData.simulated[fi]; const theo=currentChartData.theoretical[fi]; tooltip.style.display='block'; tooltip.offsetHeight; tooltip.style.opacity=1; const cRect=document.getElementById('charts-area').getBoundingClientRect(); tooltip.style.left=`${event.clientX-cRect.left+15}px`; tooltip.style.top=`${event.clientY-cRect.top-30}px`; tooltip.innerHTML=`<b>k = ${k}</b><br>Simulado: ${sim.toFixed(5)}<br>Teórico: ${theo.toFixed(5)}`;}else{tooltip.style.opacity=0; setTimeout(()=>{if(tooltip.style.opacity==='0')tooltip.style.display='none';},100);}}
+        function handleMouseOut(event) { tooltip.style.opacity=0; setTimeout(()=>{if(tooltip.style.opacity==='0')tooltip.style.display='none';},100); }
+
+        // Añadir listeners
+        canvasSim.addEventListener('mousemove', handleMouseMove); canvasSim.addEventListener('mouseout', handleMouseOut);
+        canvasTheo.addEventListener('mousemove', handleMouseMove); canvasTheo.addEventListener('mouseout', handleMouseOut);
+
+        // Inicializar al cargar
+        window.addEventListener('load', () => { clearCharts(); clearStatsDisplayBinomial(); });
+
+        // Redibujar en resize
+         let resizeTimeout; window.addEventListener('resize', () => { clearTimeout(resizeTimeout); resizeTimeout=setTimeout(() => { if(currentChartData.labels.length > 0) { actualizarGraficos(currentChartData.labels, currentChartData.simulated, currentChartData.theoretical); updateStatsDisplayBinomial(currentChartData.n*currentChartData.p, calculateMean(simulatedKValuesBin), currentChartData.n*currentChartData.p*(1-currentChartData.p), calculateVariance(simulatedKValuesBin,calculateMean(simulatedKValuesBin))); } else { clearCharts(); clearStatsDisplayBinomial(); } }, 250); });
+
+    </script>
+
+</body>
+</html>

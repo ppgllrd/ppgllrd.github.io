@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Explorando la Distribución Hipergeométrica</title>
+    <style>
+        /* --- ESTILOS GENERALES (Paleta: Púrpura/Índigo) --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            line-height: 1.6; margin: 20px; background-color: #f5f3f9; /* Fondo lila muy pálido */
+            color: #333; display: flex; flex-direction: column; align-items: center;
+        }
+        h1, h2, h3, h4 { color: #4b0082; /* Índigo oscuro */ text-align: center; }
+        h4 { margin-bottom: 5px; color: #3a0068; /* Índigo más oscuro */ }
+        .container {
+            background-color: #ffffff; padding: 25px; border-radius: 10px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); margin-bottom: 20px;
+            width: 95%; max-width: 900px;
+        }
+
+        /* --- CONTROLES --- */
+        .controles {
+            display: flex; flex-wrap: wrap; justify-content: space-around; align-items: center;
+            margin-bottom: 20px; padding: 15px; background-color: #e8e1f2; /* Lila pálido */ border-radius: 8px;
+        }
+        .control-item { margin: 10px; text-align: center; min-width: 120px; }
+        .control-item label { display: block; margin-bottom: 5px; font-weight: bold; color: #3a0068; }
+        .control-item input[type="number"] { padding: 8px; border: 1px solid #ccc; border-radius: 5px; width: 70px; text-align: center; }
+        button {
+            background-color: #6a0dad; /* Púrpura brillante */ color: white; border: none;
+            padding: 10px 18px; border-radius: 5px; cursor: pointer; font-size: 1em;
+            transition: background-color 0.3s ease, transform 0.1s ease; margin: 5px;
+        }
+        button:hover { background-color: #4b0082; }
+        button:active { transform: scale(0.98); }
+
+        /* --- VISUALIZACIÓN --- */
+        .visualizacion { margin-top: 20px; text-align: center; }
+        #poblacion-visual { min-height: 60px; padding: 10px; margin: 15px auto; border: 2px dashed #bfaccf; border-radius: 8px; background-color: #f8f9fa; display: flex; flex-wrap: wrap; justify-content: center; align-items: center; max-width: 80%; transition: background-color 0.3s ease; }
+        .item-poblacion { width: 15px; height: 15px; border-radius: 50%; margin: 2px; display: inline-block; opacity: 0; animation: fadeIn 0.5s forwards; border: 1px solid rgba(0,0,0,0.2); }
+        .item-exito { background-color: #8a2be2; } /* Azul-Violeta éxito */
+        .item-fracaso { background-color: #f0e6ff; } /* Lila muy claro fracaso */
+        #muestra-visual { min-height: 40px; padding: 10px; margin-top: 10px; border: 1px solid #ccc; border-radius: 5px; background-color: #fff; }
+        .item-muestra { width: 20px; height: 20px; border-radius: 50%; margin: 3px; display: inline-block; opacity: 0; animation: fadeIn 0.5s forwards; border: 1px solid rgba(0,0,0,0.3); }
+        #resultado-experimento-hiper { font-weight: bold; font-size: 1.1em; margin-top: 15px; color: #6a0dad; }
+
+        /* --- GRÁFICOS --- */
+        #charts-area-hyper { margin-top: 25px; position: relative; }
+        #chart-container-hyper { display: flex; justify-content: space-around; align-items: flex-start; gap: 20px; background-color: #f8f9fa; border: 1px solid #dee2e6; border-radius: 5px; padding: 15px; }
+        .chart-wrapper { flex: 1; text-align: center; display: flex; flex-direction: column; align-items: center; min-width: 0; }
+        canvas { display: block; max-width: 100%; background-color: #ffffff; border: 1px solid #ccc; border-radius: 4px; }
+        #tooltip-hyper { position: absolute; display: none; background-color: rgba(0, 0, 0, 0.75); color: white; padding: 8px 12px; border-radius: 5px; font-size: 0.9em; pointer-events: none; z-index: 10; white-space: nowrap; transition: opacity 0.1s ease-out; }
+        .legend { margin-top: 10px; font-size: 0.9em; }
+        .legend-sim { color: #8a2be2; font-weight: bold; } /* Color barras sim */
+        .legend-theo { color: #ff6347; font-weight: bold; } /* Color barras teo */
+
+        /* --- ESTADÍSTICAS (Nuevo) --- */
+        #stats-display-hyper {
+             margin-top: 25px; padding: 15px; background-color: #e8e1f2; /* Lila pálido */
+             border: 1px solid #bfaccf; /* Lila */ border-radius: 8px; text-align: left;
+             display: grid; grid-template-columns: auto 1fr; gap: 5px 15px; align-items: center;
+        }
+        #stats-display-hyper h4 { grid-column: 1 / -1; margin-bottom: 10px; text-align: center; color: #3a0068;}
+        #stats-display-hyper .stat-label { font-weight: bold; color: #4b0082; }
+        #stats-display-hyper .stat-value { font-family: monospace; font-size: 1.1em; }
+        #stats-display-hyper .stat-formula { font-size: 1.0em; color: #555; white-space: nowrap; overflow-x: auto; padding-bottom: 2px;} /* Para fórmulas largas */
+
+        /* --- EXPLICACIONES --- */
+        .explicacion { margin-top: 15px; padding: 15px; background-color: #f0e6ff; border-left: 5px solid #9370db; border-radius: 5px; }
+        .explicacion p { margin: 5px 0; }
+        .formula, .param { font-weight: bold; color: #6a0dad; } /* Púrpura */
+
+        @keyframes fadeIn { to { opacity: 1; } }
+    </style>
+</head>
+<body>
+
+    <h1>📊 Explorando la Distribución Hipergeométrica 📊</h1>
+
+    <!-- Sección 1: El Escenario Hipergeométrico -->
+    <div class="container">
+        <h2>1. El Escenario: Muestreo Sin Reemplazo</h2>
+        <div class="explicacion">
+             <p>Población finita de tamaño (<span class="param">N</span>) con <span class="param">K</span> éxitos. Se extrae una muestra (de tamaño <span class="param">n</span>) <span style="text-decoration: underline; font-weight: bold;">sin reemplazo</span>.</p>
+             <p>Variable: <span class="formula">k</span> = nº éxitos en la muestra.</p>
+        </div>
+        <div class="controles">
+             <div class="control-item"> <label for="pop-N">Tamaño Población (N):</label> <input type="number" id="pop-N" min="2" max="200" value="50"> <span id="val-N">50</span> </div>
+             <div class="control-item"> <label for="pop-K">Éxitos en Pob. (K):</label> <input type="number" id="pop-K" min="0" max="50" value="15"> <span id="val-K">15</span> </div>
+             <div class="control-item"> <label for="sample-n">Tamaño Muestra (n):</label> <input type="number" id="sample-n" min="1" max="50" value="10"> <span id="val-n">10</span> </div>
+        </div>
+         <div class="visualizacion">
+             <h4>Visualización Población (N=<span id="disp-N">50</span>, K=<span id="disp-K">15</span>):</h4>
+              <p style="font-size: 0.9em; color: #666;">(Mostrando hasta 100 items)</p>
+             <div id="poblacion-visual">(Configura N, K arriba)</div>
+         </div>
+    </div>
+
+    <!-- Sección 2: Un Experimento Hipergeométrico -->
+    <div class="container">
+        <h2>2. Un Experimento: Extraer una Muestra</h2>
+         <div class="explicacion"> <p>Simular la extracción de <span class="param">n=<span id="disp-n">10</span></span> elementos sin reemplazo y contar los éxitos <span class="formula">k</span>.</p> </div>
+        <div class="controles"> <button onclick="realizarExperimentoHipergeometrico()">¡Extraer una Muestra!</button> </div>
+         <div class="visualizacion">
+            <h4>Muestra Extraída (n=<span id="disp-n2">10</span>):</h4>
+            <div id="muestra-visual">(Pulsa el botón para extraer)</div>
+            <p id="resultado-experimento-hiper">Esperando experimento...</p>
+        </div>
+    </div>
+
+     <!-- Sección 3: La Distribución Hipergeométrica -->
+    <div class="container">
+        <h2>3. La Distribución Hipergeométrica: Probabilidades y Estadísticas</h2>
+         <div class="explicacion">
+            <p>PMF: <span class="formula">P(X=k) = [C(K,k)·C(N-K,n-k)] / C(N,n)</span>.</p>
+            <p>Compara las probabilidades y estadísticas.</p>
+        </div>
+        <!-- Controles Simulación -->
+        <div class="controles">
+             <div class="control-item"> <label for="num-simulaciones-hyper">Nº de Simulaciones:</label> <input type="number" id="num-simulaciones-hyper" min="100" max="1000000" value="100000" step="1000"> </div>
+             <button onclick="simularDistribucionHipergeometrica()">¡Simular Distribución!</button>
+        </div>
+
+        <!-- Display Estadísticas (Nuevo) -->
+        <div id="stats-display-hyper">
+            <h4>Estadísticas de la Distribución (k = nº éxitos en muestra)</h4>
+            <!-- Media -->
+            <span class="stat-label">Media (E[X]):</span><span class="stat-formula">n · (K / N)</span>
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-mean-val-hyper">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-mean-val-hyper">N/A</span>
+            <!-- Varianza -->
+            <span class="stat-label">Varianza (Var[X]):</span><span class="stat-formula" title="n·(K/N)·(1-K/N)·((N-n)/(N-1))">n·(K/N)·(N-K)/N·(N-n)/(N-1)</span> <!-- Simplificado en tooltip -->
+            <span class="stat-label">Valor Teórico:</span><span class="stat-value" id="theo-var-val-hyper">N/A</span>
+            <span class="stat-label">Valor Experimental:</span><span class="stat-value" id="exp-var-val-hyper">N/A</span>
+        </div>
+
+        <!-- Gráficos -->
+         <div class="visualizacion">
+            <h3 id="simulacion-titulo-hyper">Comparación Gráfica: Frecuencia vs. Probabilidad</h3>
+            <p id="simulacion-info-hyper">Configura N, K, n, nº simulaciones y pulsa.</p>
+            <div id="charts-area-hyper">
+                 <div id="chart-container-hyper">
+                     <div class="chart-wrapper"> <h4>Frecuencia Simulada</h4> <canvas id="simulatedChartHyper"></canvas> </div>
+                     <div class="chart-wrapper"> <h4>Probabilidad Teórica</h4> <canvas id="theoreticalChartHyper"></canvas> </div>
+                 </div>
+                 <div id="tooltip-hyper"></div>
+            </div>
+             <div class="legend"><span class="legend-sim">■ Frec. Simulada</span> &nbsp;&nbsp; <span class="legend-theo">■ Prob. Teórica</span> </div>
+         </div>
+    </div>
+
+    <script>
+        // --- Variables Globales y Elementos del DOM ---
+        const popNInput = document.getElementById('pop-N'); const popKInput = document.getElementById('pop-K'); const sampleNInput = document.getElementById('sample-n');
+        const valNSpan = document.getElementById('val-N'); const valKSpan = document.getElementById('val-K'); const valNSampleSpan = document.getElementById('val-n');
+        const dispNSpan = document.getElementById('disp-N'); const dispKSpan = document.getElementById('disp-K'); const dispNSampleSpan = document.getElementById('disp-n'); const dispNSampleSpan2 = document.getElementById('disp-n2');
+        const poblacionVisualDiv = document.getElementById('poblacion-visual'); const muestraVisualDiv = document.getElementById('muestra-visual'); const resultadoExperimentoHyperP = document.getElementById('resultado-experimento-hiper');
+        const numSimulacionesHyperInput = document.getElementById('num-simulaciones-hyper'); const simulacionTituloHyperH3 = document.getElementById('simulacion-titulo-hyper'); const simulacionInfoHyperP = document.getElementById('simulacion-info-hyper');
+        const chartsAreaHyper = document.getElementById('charts-area-hyper'); const canvasSimHyper = document.getElementById('simulatedChartHyper'); const ctxSimHyper = canvasSimHyper.getContext('2d'); const canvasTheoHyper = document.getElementById('theoreticalChartHyper'); const ctxTheoHyper = canvasTheoHyper.getContext('2d'); const tooltipHyper = document.getElementById('tooltip-hyper');
+        // Stats Display (Nuevo)
+        const theoMeanSpanHyper = document.getElementById('theo-mean-val-hyper'); const expMeanSpanHyper = document.getElementById('exp-mean-val-hyper'); const theoVarSpanHyper = document.getElementById('theo-var-val-hyper'); const expVarSpanHyper = document.getElementById('exp-var-val-hyper');
+
+        // Datos
+        let currentChartDataHyper = { labels: [], simulated: [], theoretical: [] };
+        let barDimensionsHyper = { sim: [], theo: [] };
+        let populationArray = [];
+        let simulatedKValuesHyper = []; // <<-- Para guardar k simulados
+
+        // --- Inicialización y Event Listeners ---
+        function updateDisplays() {
+             const N=parseInt(popNInput.value); const K=parseInt(popKInput.value); const n=parseInt(sampleNInput.value);
+             let correctedK=K; let correctedN=n; if(K>N&&N>0){correctedK=N;popKInput.value=N;} if(n>N&&N>0){correctedN=N;sampleNInput.value=N;}
+             valNSpan.textContent=N; valKSpan.textContent=correctedK; valNSampleSpan.textContent=correctedN;
+             dispNSpan.textContent=N; dispKSpan.textContent=correctedK; dispNSampleSpan.textContent=correctedN; dispNSampleSpan2.textContent=correctedN;
+             popKInput.max=N>0?N:1; sampleNInput.max=N>0?N:1;
+             crearYVisualizarPoblacion(N,correctedK);
+             clearChartsHyper(); clearStatsDisplayHyper(); // <<-- Limpiar stats
+             simulacionInfoHyperP.textContent="Parámetros cambiados. Vuelve a simular si lo deseas.";
+        }
+        popNInput.addEventListener('input', updateDisplays); popKInput.addEventListener('input', updateDisplays);
+        sampleNInput.addEventListener('input', () => { const N=parseInt(popNInput.value); const n=parseInt(sampleNInput.value); let correctedN=n; if(n>N&&N>0){correctedN=N;sampleNInput.value=N;} valNSampleSpan.textContent=correctedN; dispNSampleSpan.textContent=correctedN; dispNSampleSpan2.textContent=correctedN; clearChartsHyper(); clearStatsDisplayHyper(); simulacionInfoHyperP.textContent="Parámetro 'n' cambiado."; });
+        numSimulacionesHyperInput.addEventListener('change', () => { clearChartsHyper(); clearStatsDisplayHyper(); simulacionInfoHyperP.textContent="Nº Simulaciones cambiado."; });
+
+        // --- Funciones Auxiliares ---
+        function combinaciones(n, k) { if(k<0||k>n)return 0; if(k===0||k===n)return 1; if(k>n/2)k=n-k; let r=1; for(let i=1;i<=k;i++)r=r*(n-i+1)/i; r=Math.round(r*1e12)/1e12; if(r<0)return 0; return r; }
+        function shuffleArray(array) { for(let i=array.length-1;i>0;i--){ const j=Math.floor(Math.random()*(i+1)); [array[i],array[j]]=[array[j],array[i]];} }
+        function probabilidadHipergeometrica(k, N, K, n) { const minK=Math.max(0,n-(N-K)); const maxK=Math.min(n,K); if(k<minK||k>maxK||N<=0||K<0||K>N||n<0||n>N)return 0; const C_K_k=combinaciones(K,k); const C_NK_nk=combinaciones(N-K,n-k); const C_N_n=combinaciones(N,n); if(C_N_n<=0)return 0; let prob=(C_K_k*C_NK_nk)/C_N_n; return Math.max(0,Math.min(1,prob)); }
+        function calculateMean(arr) { if (!arr||arr.length===0) return NaN; const sum=arr.reduce((a,v)=>a+v,0); return sum/arr.length; }
+        function calculateVariance(arr, mean) { if (!arr||arr.length<2) return 0; let sumSqDiff=0; for (const v of arr){sumSqDiff+=Math.pow(v-mean,2);} return sumSqDiff/(arr.length-1); }
+
+        // --- Funciones Principales ---
+        // 0. Crear y Visualizar Población
+        function crearYVisualizarPoblacion(N, K) { if(isNaN(N)||isNaN(K)||N<=0||K<0||K>N){poblacionVisualDiv.innerHTML=`<span style="color:red;">Params N=${N}, K=${K} inválidos.</span>`; populationArray=[]; return;} populationArray=[]; for(let i=0;i<K;i++)populationArray.push(1); for(let i=0;i<N-K;i++)populationArray.push(0); poblacionVisualDiv.innerHTML=''; const maxItems=100; const itemsToDraw=Math.min(N,maxItems); let delay=0; const frag=document.createDocumentFragment(); for(let i=0;i<itemsToDraw;i++){const d=document.createElement('div'); d.className=`item-poblacion ${populationArray[i]===1?'item-exito':'item-fracaso'}`; d.style.animationDelay=`${delay}s`; frag.appendChild(d); delay+=0.01;} poblacionVisualDiv.appendChild(frag); if(N>maxItems){const m=document.createElement('span'); m.style.cssText='margin-left:10px;font-size:0.9em;align-self:center;'; m.textContent=`... (${N} total)`; poblacionVisualDiv.appendChild(m);} }
+        // 1. Realizar un experimento hipergeométrico
+        function realizarExperimentoHipergeometrico() { const N=parseInt(popNInput.value); const K=parseInt(popKInput.value); const n=parseInt(sampleNInput.value); if(N<=0||K<0||K>N||n<=0||n>N){resultadoExperimentoHyperP.textContent="Error params."; muestraVisualDiv.innerHTML=''; return null;} if(populationArray.length!==N||populationArray.filter(x=>x===1).length!==K){crearYVisualizarPoblacion(N,K);if(populationArray.length===0)return null;} let shuffled=[...populationArray]; shuffleArray(shuffled); const muestra=shuffled.slice(0,n); const k_obs=muestra.reduce((s,v)=>s+v,0); muestraVisualDiv.innerHTML=''; let delay=0; const frag=document.createDocumentFragment(); muestra.forEach(item=>{const d=document.createElement('div'); d.className=`item-muestra ${item===1?'item-exito':'item-fracaso'}`; d.style.animationDelay=`${delay}s`; frag.appendChild(d); delay+=0.05;}); muestraVisualDiv.appendChild(frag); resultadoExperimentoHyperP.textContent=`Muestra: k = ${k_obs} éxitos.`; return k_obs; }
+        // 2. Simular la Distribución Hipergeométrica completa (MODIFICADO)
+        function simularDistribucionHipergeometrica() {
+             const N=parseInt(popNInput.value); const K=parseInt(popKInput.value); const n=parseInt(sampleNInput.value); const numSimulaciones=parseInt(numSimulacionesHyperInput.value);
+             let err=""; if(isNaN(N)||N<=0)err+="N>0. "; if(isNaN(K)||K<0)err+="K>=0. "; if(isNaN(n)||n<=0)err+="n>0. "; if(!isNaN(N)&&!isNaN(K)&&K>N)err+="K<=N. "; if(!isNaN(N)&&!isNaN(n)&&n>N)err+="n<=N. "; if(isNaN(numSimulaciones)||numSimulaciones<=0)err+="Simul>0.";
+             if(err){simulacionInfoHyperP.textContent=`Error: ${err}`; clearChartsHyper(); clearStatsDisplayHyper(); return;}
+             if(N>170&&n>2&&n<N-2)simulacionInfoHyperP.textContent="Adv: N grande, cálculo C(N,n) puede fallar.";
+              simulacionTituloHyperH3.textContent=`Comparando ${numSimulaciones} simulaciones vs. Teoría (N=${N}, K=${K}, n=${n})`; simulacionInfoHyperP.textContent=`Simulando...`; tooltipHyper.style.display='none'; barDimensionsHyper={sim:[],theo:[]}; simulatedKValuesHyper=[]; // <<-- Limpiar k previos
+             if(populationArray.length!==N||populationArray.filter(x=>x===1).length!==K){crearYVisualizarPoblacion(N,K);if(populationArray.length===0&&N>0){simulacionInfoHyperP.textContent="Error creando población.";return;}}
+
+             setTimeout(() => {
+                 const minK=Math.max(0,n-(N-K)); const maxK=Math.min(n,K); const frecuenciaExitosK=new Map(); let validSims = 0;
+                 const basePop=[...populationArray]; // Copiar una vez
+                 for(let i=0;i<numSimulaciones;i++){ shuffleArray(basePop); const muestra=basePop.slice(0,n); const k_obs=muestra.reduce((s,v)=>s+v,0); frecuenciaExitosK.set(k_obs,(frecuenciaExitosK.get(k_obs)||0)+1); simulatedKValuesHyper.push(k_obs); validSims++; } // <<-- GUARDAR K
+
+                // Calcular estadísticas (NUEVO)
+                const expMean = calculateMean(simulatedKValuesHyper);
+                const expVariance = calculateVariance(simulatedKValuesHyper, expMean);
+                const theoMean = (N > 0) ? n * (K / N) : NaN;
+                let theoVar = NaN;
+                if (N > 1 && N > 0) { // Evitar división por cero en N-1 y N
+                    const p = K / N;
+                    const fpc = (N - n) / (N - 1);
+                    theoVar = n * p * (1 - p) * fpc;
+                } else if (N === 1) { // Si N=1, varianza es 0
+                    theoVar = 0;
+                }
+                // Actualizar display stats (NUEVO)
+                updateStatsDisplayHyper(theoMean, expMean, theoVar, expVariance);
+
+                // Preparar datos gráficos
+                const etiquetasK=[]; const propSim=[]; const probTeo=[];
+                for(let k=minK;k<=maxK;k++){ etiquetasK.push(k.toString()); const freq=frecuenciaExitosK.get(k)||0; propSim.push(freq/validSims); probTeo.push(probabilidadHipergeometrica(k,N,K,n)); }
+                currentChartDataHyper={labels:etiquetasK,simulated:propSim,theoretical:probTeo,N:N,K:K,n:n};
+                actualizarGraficosHyper(etiquetasK,propSim,probTeo);
+                simulacionInfoHyperP.textContent=`Simulación completada (${validSims} válidas). Pasa el ratón sobre gráficos.`;
+             }, 50);
+        }
+
+        // 3. Actualizar Display Estadísticas (NUEVO)
+        function updateStatsDisplayHyper(theoMean, expMean, theoVar, expVar) {
+            theoMeanSpanHyper.textContent = !isNaN(theoMean) ? theoMean.toFixed(4) : "N/A";
+            expMeanSpanHyper.textContent = !isNaN(expMean) ? expMean.toFixed(4) : "N/A";
+            theoVarSpanHyper.textContent = !isNaN(theoVar) ? theoVar.toFixed(4) : "N/A";
+            expVarSpanHyper.textContent = !isNaN(expVar) ? expVar.toFixed(4) : "N/A";
+        }
+        function clearStatsDisplayHyper() { // (NUEVO)
+            theoMeanSpanHyper.textContent = "N/A"; expMeanSpanHyper.textContent = "N/A";
+            theoVarSpanHyper.textContent = "N/A"; expVarSpanHyper.textContent = "N/A";
+        }
+
+        // --- Funciones de Dibujo de Gráficos ---
+        function clearChartsHyper() { setCanvasSize(canvasSimHyper); setCanvasSize(canvasTheoHyper); ctxSimHyper.clearRect(0,0,canvasSimHyper.width,canvasSimHyper.height); ctxTheoHyper.clearRect(0,0,canvasTheoHyper.width,canvasTheoHyper.height); dibujarEjes(ctxSimHyper,0.1,[],'Frec. Simulada','#3a0068'); dibujarEjes(ctxTheoHyper,0.1,[],'Prob. Teórica','#3a0068'); currentChartDataHyper={labels:[],simulated:[],theoretical:[]}; barDimensionsHyper={sim:[],theo:[]}; }
+        function setCanvasSize(canvas) { const pw=canvas.parentElement; if(!pw)return; const st=getComputedStyle(pw); const pW=pw.clientWidth-parseFloat(st.paddingLeft)-parseFloat(st.paddingRight); const ar=1.8; let pH=pW/ar; pH=Math.max(150,Math.min(pH,400)); const w=Math.max(100,Math.round(pW)); const h=Math.max(100,Math.round(pH)); if(canvas.width!==w||canvas.height!==h){canvas.width=w;canvas.height=h;} }
+        function dibujarEjes(ctx, maxValue, labels, yAxisTitle, titleColor='#4b0082') { const c=ctx.canvas; const p={top:20,right:25,bottom:50,left:65}; const cw=c.width-p.left-p.right; const ch=c.height-p.top-p.bottom; const ac='#adb5bd'; const tc='#495057'; const nyt=5; ctx.clearRect(0,0,c.width,c.height); if(cw<=0||ch<=0)return; ctx.strokeStyle=ac; ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.left,p.top); ctx.lineTo(p.left,c.height-p.bottom); ctx.lineTo(c.width-p.right,c.height-p.bottom); ctx.stroke(); ctx.fillStyle=tc; ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font='10px Segoe UI'; for(let i=0;i<=nyt;i++){const v=(maxValue*i/nyt); const vt=(Math.abs(v)<1e-9&&v!==0)?v.toExponential(1):v.toFixed(3); const yp=c.height-p.bottom-Math.max(0,(ch*(v/maxValue))); if(yp<p.top-5||yp>c.height-p.bottom+5)continue; ctx.fillText(vt,p.left-8,yp); ctx.beginPath(); ctx.moveTo(p.left-5,yp); ctx.lineTo(p.left,yp); ctx.stroke();} ctx.save(); ctx.translate(p.left*0.4,c.height/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText(yAxisTitle,0,-10); ctx.restore(); ctx.fillStyle=tc; ctx.textAlign='center'; ctx.textBaseline='top'; ctx.font='11px Segoe UI'; const nl=labels.length; let sew=0; if(nl>0)sew=cw/nl; if(nl>0){const lmw=Math.max(20,sew*0.8); const mvl=Math.floor(cw/(lmw*1.2)); const st=nl<=mvl?1:Math.ceil(nl/mvl); for(let i=0;i<nl;i++){let sl=false; if(i%st===0)sl=true; if(i===0)sl=true; if(i===nl-1&&(nl-1)%st!==0)sl=true; if(sl){const l=labels[i]; const xp=p.left+sew*(i+0.5); ctx.fillText(l,xp,c.height-p.bottom+8);}}} ctx.textAlign='center'; ctx.font='12px Segoe UI'; ctx.fillStyle=titleColor; ctx.fillText("Número de Éxitos en Muestra (k)",c.width/2,c.height-p.bottom/2.5);}
+        function actualizarGraficosHyper(labels, simulatedData, theoreticalData) { setCanvasSize(canvasSimHyper); setCanvasSize(canvasTheoHyper); const mV=Math.max(...simulatedData,...theoreticalData,0.01)*1.1; dibujarEjes(ctxSimHyper,mV,labels,'Frec. Simulada','#3a0068'); dibujarEjes(ctxTheoHyper,mV,labels,'Prob. Teórica','#3a0068'); const p={top:20,right:25,bottom:50,left:65}; const chS=canvasSimHyper.height-p.top-p.bottom; const cwS=canvasSimHyper.width-p.left-p.right; const chT=canvasTheoHyper.height-p.top-p.bottom; const cwT=canvasTheoHyper.width-p.left-p.right; const nb=labels.length; if(nb===0)return; const sewS=cwS/nb; const bwS=sewS*0.7; const bgS=(sewS-bwS)/2; const sewT=cwT/nb; const bwT=sewT*0.7; const bgT=(sewT-bwT)/2; barDimensionsHyper={sim:[],theo:[]}; ctxSimHyper.fillStyle='#8a2be2'; for(let i=0;i<nb;i++){const sh=Math.max(0,chS*(simulatedData[i]/mV)); const xp=p.left+i*sewS+bgS; const yp=canvasSimHyper.height-p.bottom-sh; ctxSimHyper.fillRect(xp,yp,bwS,sh); barDimensionsHyper.sim.push({x:xp,y:yp,width:bwS,height:sh,index:i});} ctxTheoHyper.fillStyle='#ff6347'; for(let i=0;i<nb;i++){const th=Math.max(0,chT*(theoreticalData[i]/mV)); const xp=p.left+i*sewT+bgT; const yp=canvasTheoHyper.height-p.bottom-th; ctxTheoHyper.fillRect(xp,yp,bwT,th); barDimensionsHyper.theo.push({x:xp,y:yp,width:bwT,height:th,index:i});} }
+
+        // --- Lógica del Tooltip ---
+        function handleMouseMoveHyper(event) { const c=event.target; if(!c||typeof c.getContext!=='function'||!currentChartDataHyper.labels.length){tooltipHyper.style.opacity=0;tooltipHyper.style.display='none';return;} const rect=c.getBoundingClientRect(); const mx=event.clientX-rect.left; const my=event.clientY-rect.top; const dims=c.id==='simulatedChartHyper'?barDimensionsHyper.sim:barDimensionsHyper.theo; let fi=-1; const p={top:20,right:25,bottom:50,left:65}; for(const bar of dims){if(mx>=bar.x&&mx<=bar.x+bar.width&&my>=bar.y&&my<=c.height-p.bottom+5){fi=bar.index;break;}} if(fi!==-1){const k=currentChartDataHyper.labels[fi]; const sim=currentChartDataHyper.simulated[fi]; const theo=currentChartDataHyper.theoretical[fi]; tooltipHyper.style.display='block'; tooltipHyper.offsetHeight; tooltipHyper.style.opacity=1; const cRect=chartsAreaHyper.getBoundingClientRect(); tooltipHyper.style.left=`${event.clientX-cRect.left+15}px`; tooltipHyper.style.top=`${event.clientY-cRect.top-35}px`; tooltipHyper.innerHTML=`<b>k = ${k}</b><br>Simulado: ${sim.toFixed(5)}<br>Teórico: ${theo.toFixed(5)}`;}else{tooltipHyper.style.opacity=0;setTimeout(()=>{if(tooltipHyper.style.opacity==='0')tooltipHyper.style.display='none';},100);}}
+        function handleMouseOutHyper(event) { tooltipHyper.style.opacity=0;setTimeout(()=>{if(tooltipHyper.style.opacity==='0')tooltipHyper.style.display='none';},100); }
+
+        // Listeners
+        canvasSimHyper.addEventListener('mousemove', handleMouseMoveHyper); canvasSimHyper.addEventListener('mouseout', handleMouseOutHyper); canvasTheoHyper.addEventListener('mousemove', handleMouseMoveHyper); canvasTheoHyper.addEventListener('mouseout', handleMouseOutHyper);
+
+        // Init
+        window.addEventListener('load', () => { updateDisplays(); clearChartsHyper(); clearStatsDisplayHyper(); });
+
+        // Resize
+        let resizeTimeoutHyper; window.addEventListener('resize', () => { clearTimeout(resizeTimeoutHyper); resizeTimeoutHyper=setTimeout(() => { updateDisplays(); if(currentChartDataHyper.labels.length > 0) { actualizarGraficosHyper(currentChartDataHyper.labels, currentChartDataHyper.simulated, currentChartDataHyper.theoretical); updateStatsDisplayHyper(currentChartDataHyper.n*(currentChartDataHyper.K/currentChartDataHyper.N), calculateMean(simulatedKValuesHyper), currentChartDataHyper.n*(currentChartDataHyper.K/currentChartDataHyper.N)*(1-currentChartDataHyper.K/currentChartDataHyper.N)*((currentChartDataHyper.N-currentChartDataHyper.n)/(currentChartDataHyper.N-1)), calculateVariance(simulatedKValuesHyper, calculateMean(simulatedKValuesHyper))); } else { clearChartsHyper(); clearStatsDisplayHyper(); } }, 250); });
+
+    </script>
+
+</body>
+</html>
