@@ -1,0 +1,1715 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Breadth-First Search (BFS) Algorithm Visualizer</title>
+    <!-- Vis.js Network Library -->
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        /* CSS adapted from final DFS version */
+        :root {
+            /* --- SCALING STRATEGY --- */
+            --base-font-size: clamp(10px, calc(8px + 0.8vmin), 16px); /* min, preferred, max */
+
+            /* Theme & Layout */
+            --primary-color: #0056b3; --secondary-color: #cc0000;
+            --background-color: #f4f7f6; --panel-bg-color: #ffffff;
+            --text-color: #333; --border-color: #ced4da; --header-bg-color: #f8f9fa;
+            /* Element Colors */
+            --node-default-bg: #B0F9B0; --node-default-border: #B0F9B0;
+            --node-visited-bg: #FFFF33; --node-visited-border: #FFFF33;
+            --node-current-bg: #CC99FF; --node-current-border: #CC99FF;
+            --node-considering-border: #cc0000; --node-label-color: #cc0000;
+            --edge-default-color: #1668BD; --edge-tree-color: #FF0000; --edge-considered-color: #7F00FF; /* Purple */
+            /* Element Sizes & Styles */
+            --edge-default-width: 1.5; --edge-tree-width: 3;
+            /* --node-size defined in JS */
+            --label-red-bold-color: var(--node-label-color); --label-red-bold-weight: bold;
+            /* Queue/Sequence/Table specific */
+            --queue-item-bg: #f8f9fa; --queue-item-border: #ced4da;
+            --queue-front-bg: #d1ecf1; --queue-front-border: #bee5eb;
+            --queue-paren-color: #343a40; --sequence-label-color: var(--label-red-bold-color); --table-label-color: var(--label-red-bold-color);
+             /* Pseudocode Syntax Highlighting */
+            --pseudo-bg: #ffffff; --pseudo-keyword: #0000ff; --pseudo-variable: #a31515;
+            --pseudo-datastructure: #008000; --pseudo-comment: #aaaaaa; --pseudo-literal: #0000ff;
+            --pseudo-text: #212529; --pseudo-highlight-bg: #ffc107; /* Yellow */
+            --pseudo-highlight-text: #000000; --pseudo-border: var(--border-color);
+            /* Button Colors */
+            --button-start-bg: #28a745; --button-start-hover: #218838;
+            --button-step-bg: #007bff; --button-step-hover: #0056b3;
+            --button-run-bg: #ffc107; --button-run-hover: #e0a800;
+            --button-reset-bg: #dc143c; --button-reset-hover: #a52a2a;
+        }
+
+        html { font-size: var(--base-font-size); height: 100%; overflow: hidden; }
+        body { height: 100%; margin: 0; font-family: sans-serif, 'Arial', Tahoma, Geneva, Verdana; background-color: var(--background-color); color: var(--text-color); font-size: 1rem; line-height: 1.25; overflow: hidden; }
+        .app-container { display: flex; flex-direction: column; height: 100%; padding: 1rem; box-sizing: border-box; }
+        h1 { text-align: center; color: var(--primary-color); margin-top: 0; margin-bottom: 1rem; font-weight: 400; flex-shrink: 0; font-size: 1.8rem; }
+
+        .controls { display: flex; flex-wrap: wrap; gap: 0.6rem; padding: 1rem; background-color: var(--panel-bg-color); border-radius: 0.5rem; box-shadow: 0 1px 4px rgba(0,0,0,0.07); margin-bottom: 1rem; align-items: center; flex-shrink: 0; }
+        .controls label, .controls select, .controls button { padding: 0.5rem 0.75rem; border-radius: 0.3rem; border: 1px solid var(--border-color); font-size: 0.9rem; }
+        .controls select { min-width: 8rem; }
+        .controls button { color: white; cursor: pointer; transition: background-color 0.2s ease, transform 0.1s ease; border: none; }
+        .controls button:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
+        .controls button:disabled { background-color: #cccccc; cursor: not-allowed; opacity: 0.7; }
+        #start-button { background-color: var(--button-start-bg); } #start-button:hover:not(:disabled) { background-color: var(--button-start-hover); }
+        #step-button { background-color: var(--button-step-bg); } #step-button:hover:not(:disabled) { background-color: var(--button-step-hover); }
+        #run-button { background-color: var(--button-run-bg); color: #333; } #run-button:hover:not(:disabled) { background-color: var(--button-run-hover); }
+        #reset-button { background-color: var(--button-reset-bg); } #reset-button:hover:not(:disabled) { background-color: var(--button-reset-hover); }
+
+        /* Main Visualization Grid - Layout from DFS V5 */
+        .visualization-area {
+            display: grid;
+            grid-template-columns: 2fr 0.5fr 2.5fr 1.5fr;
+            grid-template-rows: 2.5fr 1.5fr 2fr; /* Keep original proportions */
+            gap: 1rem;
+            flex-grow: 1;
+            min-height: 0;
+        }
+        #pseudocode-panel { grid-column: 1 / 2; grid-row: 1 / 3; }
+        #graph-panel      { grid-column: 2 / 4; grid-row: 1 / 3; }
+        #tree-panel       { grid-column: 4 / 5; grid-row: 1 / 3; }
+        #queue-panel      { grid-column: 1 / 3; grid-row: 3 / 4; } /* Queue panel in tall slot */
+        #execution-info-panel { grid-column: 3 / 4; grid-row: 3 / 4; }
+        #parent-panel     { grid-column: 4 / 5; grid-row: 3 / 4; } /* Parent panel visible again */
+
+        .panel { background-color: var(--panel-bg-color); border-radius: 0.5rem; box-shadow: 0 2px 5px rgba(0,0,0,0.06); padding: 0 0.75rem 0 0.75rem; display: flex; flex-direction: column; overflow: hidden; }
+        .panel h2 { font-size: 1.1rem; margin: 0 0 0.6rem 0; padding-bottom: 0.3rem; border-bottom: 1px solid var(--border-color); text-align: center; color: var(--primary-color); font-weight: 500; }
+        .panel-content { flex-grow: 1; overflow: auto; min-height: 3rem; position: relative; }
+        #graph-vis, #tree-vis { height: 100%; width: 100%; }
+
+        /* Shared Red/Bold Label Style */
+        .label-red-bold { color: var(--label-red-bold-color); font-weight: var(--label-red-bold-weight); }
+
+        /* Pseudocode Panel - White Theme */
+        code { font-family: 'SF Mono', 'JetBrains Mono', 'Consolas', 'Courier New', monospace; font-size: 0.8em; }
+        #pseudocode-panel .panel-content { padding: 0; background-color: var(--pseudo-bg); border: 1px solid var(--pseudo-border); border-radius: 0.4rem; scroll-behavior: smooth; }
+        #pseudocode pre { background-color: transparent; padding: 0.6rem; margin: 0; white-space: pre-wrap; line-height: 1.25; color: var(--pseudo-text); }
+        .pseudo-keyword { color: var(--pseudo-keyword); font-weight: 800; } 
+        .pseudo-variable { color: var(--pseudo-variable); } 
+        .pseudo-datastructure { color: var(--pseudo-datastructure); font-style: italic; } 
+        .pseudo-comment { color: var(--pseudo-comment); font-style: italic; font-size: 0.5rem; } 
+        .pseudo-literal { color: var(--pseudo-literal); }
+        #pseudocode code.highlight { background-color: var(--pseudo-highlight-bg); color: var(--pseudo-highlight-text); }
+        #pseudocode code.highlight * { color: inherit !important; }
+
+        /* Queue Panel (Horizontal List) with Animation & Scroll */
+        #queue-panel .panel-content {
+             display: flex; flex-direction: row; align-items: center; padding: 0.6rem;
+             overflow-x: auto; /* Enable horizontal scroll */
+             overflow-y: hidden; white-space: nowrap; min-height: 2.5rem; /* Keep small min height */
+             scroll-behavior: smooth; /* Smooth scroll for JS */
+        }
+        #queue-vis .queue-item {
+            display: inline-block; background-color: var(--queue-item-bg);
+            border: 1px solid var(--queue-item-border); padding: 0.3rem 0.6rem;
+            border-radius: 0.4rem; margin-right: 0.5rem; font-size: 0.85em;
+            text-align: center; box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            color: var(--queue-paren-color);
+            flex-shrink: 0; /* Prevent items from shrinking */
+            /* Animation */
+            transition: transform 0.4s ease-out, opacity 0.3s ease-out;
+        }
+        #queue-vis .queue-item-enter {
+             opacity: 0;
+             transform: translateX(6rem); /* Start from right */
+        }
+        #queue-vis .queue-item.queue-front { font-weight: bold; background-color: var(--queue-front-bg); border-color: var(--queue-front-border); }
+        #queue-vis .queue-empty { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; color: #888; font-style: italic; position: absolute; top: 0; left: 0; }
+
+        /* Execution Info Panel (Split Sequence) */
+        #execution-info-panel .panel-content { display: flex; flex-direction: column; }
+        #vwu-display { padding: 0.5rem; border-bottom: 1px solid var(--border-color); flex-shrink: 0; font-size: 0.9em; line-height: 1.5; justify-content: center; display: flex;}
+        #vwu-display span { margin-left: 0.2rem; }
+        #vwu-display .label { font-weight: 600; color: var(--primary-color); }
+        #vwu-display .value { margin-left: 0px; display: inline-block; min-width: 1.5rem; }
+        #visited-sequence-container { padding-top: 0.5rem; flex-grow: 1; display: flex; flex-direction: column; overflow: hidden; }
+        #visited-sequence-container h3 { font-size: 0.95em; margin: 0 0 0.3rem 0.6rem; font-weight: 600; color: var(--primary-color); flex-shrink: 0; text-align: center; }
+        #visited-sequence { flex-grow: 1; overflow-y: auto; padding: 0 0.6rem 0.6rem 0.6rem; display: flex; flex-wrap: wrap; column-gap: 0.75rem; row-gap: 0.2rem; align-items: center; justify-content: flex-start; align-content: flex-start; }
+        .visited-node-text { display: inline-block; padding: 0.1rem 0rem; }
+        #visited-sequence .sequence-empty { color: #888; font-style: italic; width: 100%; text-align: center; margin-top: 0.6rem;}
+
+        /* Parent Table Panel (Text Only) */
+        #parent-table table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
+        #parent-table th, #parent-table td { border: 1px solid var(--border-color); padding: 0.25rem; text-align: center; vertical-align: middle; }
+        #parent-table th { background-color: var(--header-bg-color); font-weight: 600; }
+        #parent-table tbody tr:nth-child(odd) { background-color: #f8f9fa; }
+        #parent-table td { color: var(--label-red-bold-color); font-weight: var(--label-red-bold-weight); display: table-cell; width: auto; height: auto; border-radius: 0; background-color: transparent; margin: 0; line-height: inherit; text-align: center; }
+
+        /* Vis.js Network Styles */
+        .vis-network { border: 1px solid var(--border-color); border-radius: 0.4rem; height: 100%; width: 100%; box-sizing: border-box; background-color: #fff; }
+
+        #author { font-size: 0.75em; color: #777; text-align: center; margin: 0.75rem 0 0 0; line-height: 0; }
+
+        
+        /* Responsive adjustments */
+        @media (max-width: 992px) {
+             .visualization-area { grid-template-columns: 1fr 1fr 1fr; grid-template-rows: 1fr 1fr 1fr; }
+             #pseudocode-panel { grid-column: 1 / 2; grid-row: 1 / 2; }
+             #graph-panel      { grid-column: 2 / 4; grid-row: 1 / 3; }
+             #tree-panel       { grid-column: 1 / 2; grid-row: 2 / 3; }
+             #queue-panel      { grid-column: 2 / 3; grid-row: 3 / 4; } /* Queue */
+             #execution-info-panel { grid-column: 1 / 2; grid-row: 3 / 4; }
+             #parent-panel     { grid-column: 3 / 4; grid-row: 3 / 4; }
+             .panel h2 { font-size: 0.9em; }
+             h1 {font-size: 1.2em; }
+             #visited-sequence-container h3 {font-size: 0.8em;}
+             #vwu-display { padding: 0; border-bottom: 1px solid var(--border-color); flex-shrink: 0; font-size: 0.8em; line-height: 1.5; }
+             #vwu-display span { margin-left: 0; }
+        }
+
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <h1>Breadth-First Search (BFS) Algorithm Visualizer</h1> <!-- Translated -->
+
+        <div class="controls">
+             <label for="graph-select">Graph:</label>
+            <select id="graph-select">
+                <option value="graph1">Sample Graph</option>
+                <option value="weightedRandom">Random</option>
+                <option value="complete7">Complete</option>
+                <option value="cycle10">Cycle</option>
+                <option value="star12">Star</option>
+                <option value="grid5x5">Grid</option>
+                <option value="tree5">Binary Tree</option>
+                <option value="bridge8">Bridge Graph</option>
+            </select>
+
+            <label for="start-node-select">Source Node:</label>
+            <select id="start-node-select"></select>
+
+            <button id="start-button">Start</button>
+            <button id="step-button" disabled>Step</button>
+            <button id="run-button" disabled>Auto</button>
+            <button id="reset-button">Reset</button>
+            <label for="speed-slider">Speed:</label>
+            <input type="range" id="speed-slider" min="100" max="2000" value="800" step="50">
+        </div>
+
+        <div class="visualization-area">
+            <!-- Row 1 -->
+            <div class="panel" id="pseudocode-panel">
+                <h2>BFS Pseudocode</h2>
+                <div id="pseudocode" class="panel-content">
+                     <pre><code id="line-0"><span class="pseudo-keyword">Initialize</span> <span class="pseudo-datastructure">queue Q</span> <span class="pseudo-keyword">with</span><span class="pseudo-literal"> null</span> → <span class="pseudo-variable">source</span></code>
+<code id="line-2"><span class="pseudo-keyword">Initialize</span> <span class="pseudo-datastructure">dictionary Parents</span> <span class="pseudo-keyword">as</span> <span class="pseudo-literal">empty</span></code>
+<code id="line-4"><span class="pseudo-keyword">While</span> <span class="pseudo-datastructure">Q</span> is <span class="pseudo-keyword">NOT</span> empty:</code>
+<code id="line-5">  <span class="pseudo-keyword">Dequeue</span> <span class="pseudo-variable">v</span> → <span class="pseudo-variable">w</span> from <span class="pseudo-datastructure">Q</span></code>
+<code id="line-6">  <span class="pseudo-keyword">If</span> <span class="pseudo-variable">w</span> is <span class="pseudo-keyword">NOT</span> in visited:</code>
+<code id="line-7">    <span class="pseudo-keyword">Mark</span> <span class="pseudo-variable">w</span> <span class="pseudo-keyword">as</span> visited</code>
+<code id="line-9">    <span class="pseudo-keyword">Set</span> <span class="pseudo-datastructure">Parent</span>[<span class="pseudo-variable">w</span>] = <span class="pseudo-variable">v</span></code>
+<code id="line-10">   <span class="pseudo-keyword"> For each</span> neighbor <span class="pseudo-variable">u</span> of <span class="pseudo-variable">w</span>:</code>
+<code id="line-11">     <span class="pseudo-keyword"> If</span> <span class="pseudo-variable">u</span> is <span class="pseudo-keyword">NOT</span> visited:</code>
+<code id="line-12">       <span class="pseudo-keyword"> Enqueue</span> <span class="pseudo-variable">w</span> → <span class="pseudo-variable">u</span> to <span class="pseudo-datastructure">Q</span></code></pre>
+                </div>
+            </div>
+
+            <div class="panel" id="graph-panel">
+                <h2>Graph</h2>
+                <div id="graph-vis" class="panel-content vis-network"></div>
+            </div>
+
+            <div class="panel" id="tree-panel">
+                <h2>BFS Spanning Tree</h2>
+                <div id="tree-vis" class="panel-content vis-network"></div>
+            </div>
+
+            <!-- Row 2 -->
+            <div class="panel" id="queue-panel">
+                <h2>Queue: Source → Destination</h2>
+                <div id="queue-vis" class="panel-content"> <!-- Added panel-content class -->
+                     <span class="queue-empty">Queue empty</span>
+                </div>
+            </div>
+
+             <!-- Row 3 -->
+            <div class="panel" id="execution-info-panel">
+                <h2>Execution Info</h2>
+                <div class="panel-content"> <!-- Added panel-content class -->
+                    <div id="vwu-display">
+                        <span><span class="label">v (Source):</span> <span class="value">-</span></span>
+                        <span><span class="label">w (Current):</span> <span class="value">-</span></span>
+                        <span><span class="label">u (Neighbor):</span> <span class="value">-</span></span>
+                    </div>
+                    <div id="visited-sequence-container">
+                        <h3>Traversal Sequence</h3>
+                        <div id="visited-sequence">
+                            <span class="sequence-empty">Empty</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="panel" id="parent-panel"> <!-- Parent panel visible again -->
+                <h2>Parent Dictionary</h2>
+                <div id="parent-table" class="panel-content"> <!-- Added panel-content class -->
+                    <table><thead><tr><th>Node</th><th>Parent</th></tr></thead><tbody></tbody></table>
+                </div>
+            </div>
+
+        </div> <!-- End visualization-area -->
+        <span id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</span> <!-- End app-container -->        
+    </div>
+
+    <script type="text/javascript">
+        // --- Color/Style Constants ---
+        const NODE_COLOR_DEFAULT_BG = '#B0F9B0';
+        const NODE_COLOR_DEFAULT_BORDER = '#B0F9B0';
+        const NODE_COLOR_VISITED_BG = '#FFFF33';
+        const NODE_COLOR_VISITED_BORDER = '#FFFF33';
+        const NODE_COLOR_CURRENT_BG = '#CC99FF';
+        const NODE_COLOR_CURRENT_BORDER = '#CC99FF';
+        const NODE_COLOR_CONSIDERING_BORDER = '#7F00FF';
+        const NODE_COLOR_LABEL = '#cc0000';
+        const EDGE_COLOR_DEFAULT = '#1668BD';
+        const EDGE_COLOR_TREE = '#cc0000';
+        const EDGE_COLOR_CONSIDERED = '#7F00FF'; // Purple
+        // const EDGE_WIDTH_DEFAULT = 3; const EDGE_WIDTH_TREE = 4; // Use dynamic
+        // const NODE_SIZE = 50; // Use dynamic
+
+        // --- Global State ---
+        let graphNetwork = null,
+          treeNetwork = null;
+        let graphNodes = new vis.DataSet(),
+          graphEdges = new vis.DataSet();
+        let treeNodes = new vis.DataSet(),
+          treeEdges = new vis.DataSet();
+        let algorithmSteps = [],
+          currentStepIndex = -1;
+        let simulationRunning = false,
+          simulationInterval = null,
+          animationSpeed = 800;
+        let currentGraphData = {
+            nodes: [],
+            edges: []
+          },
+          allNodesMap = new Map(),
+          currentStartNodeId = null;
+        let currentVisSizes = {};
+
+        // --- Predefined Graphs ---
+        const predefinedGraphs = {
+          graph1: {
+            nodes: [{
+              id: 1,
+              label: 'A', y: -175, x: -225
+            }, {
+              id: 2,
+              label: 'B', y: -50, x: -125
+            }, {
+              id: 3,
+              label: 'C', y: -175, x: 75
+            }, {
+              id: 4,
+              label: 'D', y: 175, x: -225
+            }, {
+              id: 5,
+              label: 'E', y: 175, x: 75
+            }, {
+              id: 6,
+              label: 'F', y: 75, x: -125
+            }, {
+              id: 7,
+              label: 'G', y: -50, x: 225
+            }, {
+              id: 8,
+              label: 'H', y: -50, x: 75
+            }],
+            edges: [{
+              from: 1,
+              to: 3
+            }, {
+              from: 1,
+              to: 4
+            }, {
+              from: 1,
+              to: 8
+            }, {
+              from: 2,
+              to: 8
+            }, {
+              from: 3,
+              to: 7
+            }, {
+              from: 4,
+              to: 5
+            }, {
+              from: 4,
+              to: 6
+            }, {
+              from: 5,
+              to: 6
+            }, {
+              from: 5,
+              to: 7
+            }, {
+              from: 5,
+              to: 8
+            }],
+            physics: {
+                enabled: false
+            }
+          }
+        };
+
+        // --- DOM Elements ---
+        const graphSelect = document.getElementById('graph-select');
+        const startNodeSelect = document.getElementById('start-node-select');
+        const startButton = document.getElementById('start-button');
+        const stepButton = document.getElementById('step-button');
+        const runButton = document.getElementById('run-button');
+        const resetButton = document.getElementById('reset-button');
+        const speedSlider = document.getElementById('speed-slider');
+        const pseudocodeContent = document.querySelector('#pseudocode-panel .panel-content');
+        const pseudocodeLines = document.querySelectorAll('#pseudocode code');
+        const queueVisContainer = document.getElementById('queue-vis');
+        const queuePanelContent = document.querySelector('#queue-panel .panel-content'); // For scrolling queue
+        const uvwDisplayContainer = document.getElementById('vwu-display');
+        const sequenceContainer = document.getElementById('visited-sequence');
+        const parentTableBody = document.querySelector('#parent-table tbody');
+        const graphVisContainer = document.getElementById('graph-vis');
+        const treeVisContainer = document.getElementById('tree-vis');
+
+        // --- Vis.js Dynamic Size Calculation ---
+        function calculateVisSizes() {
+          const rootFontSize = parseFloat(getComputedStyle(document.documentElement).fontSize);
+          const nodeSize = Math.max(25, Math.round(rootFontSize * 3.0));
+          const fontSize = Math.max(12, Math.round(rootFontSize * 1.8));
+          const edgeWidth = Math.max(1.5, rootFontSize * 0.18);
+          const treeEdgeWidth = Math.max(2.5, rootFontSize * 0.28);
+          return {
+            nodeSize,
+            fontSize,
+            edgeWidth,
+            treeEdgeWidth
+          };
+        }
+
+        // --- Vis.js Network Options Function ---
+        function getVisOptions(isTree = false) {
+          const sizes = currentVisSizes;
+          const options = {
+            nodes: {
+              shape: 'circle',
+              size: sizes.nodeSize,
+              margin: 10,
+              font: {
+                size: sizes.fontSize,
+                color: NODE_COLOR_LABEL,
+                face: 'sans-serif',
+                bold: {
+                  color: NODE_COLOR_LABEL
+                },
+                vadjust: 1
+              },
+              borderWidth: sizes.edgeWidth,
+              color: {
+                background: isTree ? NODE_COLOR_VISITED_BG : NODE_COLOR_DEFAULT_BG,
+                border: isTree ? NODE_COLOR_VISITED_BORDER : NODE_COLOR_DEFAULT_BORDER,
+                highlight: {
+                  background: isTree ? '#fffacd' : '#e6f7ff',
+                  border: isTree ? '#fafa8e' : '#91d5ff'
+                },
+                hover: {
+                  background: isTree ? '#fffacd' : NODE_COLOR_DEFAULT_BORDER,
+                  border: isTree ? '#fafa8e' : EDGE_COLOR_DEFAULT
+                }
+              }
+            },
+            edges: {
+              width: isTree ? sizes.treeEdgeWidth : sizes.edgeWidth,
+              color: {
+                color: isTree ? EDGE_COLOR_TREE : EDGE_COLOR_DEFAULT,
+                highlight: isTree ? EDGE_COLOR_TREE : EDGE_COLOR_CONSIDERED, // Purple considered
+                hover: isTree ? EDGE_COLOR_TREE : EDGE_COLOR_CONSIDERED
+              },
+              arrows: {
+                to: {
+                  enabled: false
+                }
+              },
+              smooth: {
+                type: 'continuous',
+                enabled: !isTree
+              }
+            },
+            interaction: {
+              hover: true,
+              tooltipDelay: 200,
+              dragNodes: true,
+              dragView: true,
+              zoomView: true
+            },
+          };
+          if (isTree) {
+            options.layout = {
+              hierarchical: {
+                enabled: true,
+                levelSeparation: sizes.nodeSize * 1.8,
+                nodeSpacing: sizes.nodeSize * 2.2,
+                treeSpacing: sizes.nodeSize * 3,
+                direction: 'UD',
+                sortMethod: 'directed'
+              }
+            };
+            options.physics = {
+              enabled: false
+            };
+          } else {
+            options.layout = {
+              hierarchical: {
+                enabled: false
+              }
+            };
+
+            if(currentGraphData && currentGraphData.physics) {
+                options.physics = currentGraphData.physics;
+            } else {
+                options.physics = {
+                    enabled: true,
+                    solver: 'barnesHut',
+                    barnesHut: {
+                        gravitationalConstant: -8000,
+                        centralGravity: 0.3,
+                        springLength: sizes.nodeSize * 2,
+                        springConstant: 0.05,
+                        damping: 0.035
+                    },
+                    stabilization: {
+                        iterations: 250
+                    }
+                };
+            }
+          }
+          return options;
+        }
+
+        // --- Initialization ---
+        function init() {
+          currentVisSizes = calculateVisSizes();
+          graphSelect.addEventListener('change', loadSelectedGraph);
+          startNodeSelect.addEventListener('change', () => {
+            currentStartNodeId = startNodeSelect.value ? parseInt(startNodeSelect.value, 10) : null;
+            startButton.disabled = currentStartNodeId === null;
+          });
+          startButton.addEventListener('click', startSimulation);
+          stepButton.addEventListener('click', stepForward);
+          runButton.addEventListener('click', toggleAutoRun);
+          resetButton.addEventListener('click', resetVisualization);
+          speedSlider.addEventListener('input', updateSpeed);
+          graphNetwork = new vis.Network(graphVisContainer, {
+            nodes: graphNodes,
+            edges: graphEdges
+          }, getVisOptions(false));
+          treeNetwork = new vis.Network(treeVisContainer, {
+            nodes: treeNodes,
+            edges: treeEdges
+          }, getVisOptions(true));
+          loadSelectedGraph();
+          updateSpeed();
+          window.addEventListener('resize', debounce(handleResize, 250));
+        }
+
+        // --- Debounce Function ---
+        function debounce(func, wait) {
+          let timeout;
+          return function executedFunction(...args) {
+            const later = () => {
+              clearTimeout(timeout);
+              func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+          };
+        }
+
+        // --- Handle Window Resize ---
+        function handleResize() {
+          currentVisSizes = calculateVisSizes();
+          if (graphNetwork) {
+            let nodeUpdates = [];
+            graphNodes.forEach(node => {
+              nodeUpdates.push({
+                id: node.id,
+                font: {
+                  size: currentVisSizes.fontSize
+                },
+                size: currentVisSizes.nodeSize
+              });
+            });
+            if (nodeUpdates.length > 0) graphNodes.update(nodeUpdates);
+            let edgeUpdates = [];
+            graphEdges.forEach(edge => {
+              const isTreeEdge = edge.color === EDGE_COLOR_TREE || (typeof edge.color === 'object' && edge.color.color === EDGE_COLOR_TREE);
+              edgeUpdates.push({
+                id: edge.id,
+                width: isTreeEdge ? currentVisSizes.treeEdgeWidth : currentVisSizes.edgeWidth
+              });
+            });
+            if (edgeUpdates.length > 0) graphEdges.update(edgeUpdates);
+            graphNetwork.setOptions(getVisOptions(false));
+            graphNetwork.fit();
+          }
+          if (treeNetwork) {
+            let treeNodeUpdates = [];
+            treeNodes.forEach(node => {
+              treeNodeUpdates.push({
+                id: node.id,
+                font: {
+                  size: currentVisSizes.fontSize
+                },
+                size: currentVisSizes.nodeSize
+              });
+            });
+            if (treeNodeUpdates.length > 0) treeNodes.update(treeNodeUpdates);
+            let treeEdgeUpdates = [];
+            treeEdges.forEach(edge => {
+              treeEdgeUpdates.push({
+                id: edge.id,
+                width: currentVisSizes.treeEdgeWidth
+              });
+            });
+            if (treeEdgeUpdates.length > 0) treeEdges.update(treeEdgeUpdates);
+            treeNetwork.setOptions(getVisOptions(true));
+            treeNetwork.fit();
+          }
+        }
+
+        // --- Graph Loading (With new generators, range 5-25) ---
+        function loadSelectedGraph() {
+          const selectedValue = graphSelect.value;
+          if (selectedValue === 'weightedRandom') {
+            currentGraphData = generateCustomRandomGraph();
+          } else if (selectedValue === 'complete7') {
+            currentGraphData = generateCompleteGraph();
+          } else if (selectedValue === 'cycle10') {
+            currentGraphData = generateCycleGraph();
+          } else if (selectedValue === 'star12') {
+            currentGraphData = generateStarGraph();
+          } else if (selectedValue === 'grid5x5') {
+            currentGraphData = generateGridGraph();
+          } else if (selectedValue === 'tree5') {
+            currentGraphData = generateBinaryTree();
+          } else if (selectedValue === 'bridge8') {
+            currentGraphData = generateBridgeGraph();
+          } else if (predefinedGraphs[selectedValue]) {
+            currentGraphData = JSON.parse(JSON.stringify(predefinedGraphs[selectedValue]));
+          } else {
+            console.warn("Unknown graph type selected, defaulting to graph1");
+            currentGraphData = JSON.parse(JSON.stringify(predefinedGraphs['graph1']));
+          }
+
+          currentGraphData.nodes.forEach(n => n.label = ` ${n.label.trim()} `);
+          allNodesMap.clear();
+          currentGraphData.nodes.forEach(n => allNodesMap.set(n.id, n));
+          populateStartNodeSelect(currentGraphData.nodes);
+          currentStartNodeId = startNodeSelect.value ? parseInt(startNodeSelect.value, 10) : null;
+          resetVisualization();
+          startButton.disabled = currentStartNodeId === null;
+        }
+
+        // --- NEW GRAPH GENERATION FUNCTIONS (Copied, with size limits) ---
+        function generateCustomRandomGraph(minNodes = 8, maxNodes = 25) {
+          const nodes = [];
+          const edges = [];
+          const edgeSet = new Set();
+          const numNodes = Math.floor(Math.random() * (maxNodes - minNodes + 1)) + minNodes;
+          for (let i = 1; i <= numNodes; i++) nodes.push({
+            id: i,
+            label: ` ${String.fromCharCode('A'.charCodeAt(0) + i - 1)} `
+          });
+          if (numNodes <= 1) return {
+            nodes,
+            edges
+          };
+          const desiredDegrees = new Array(numNodes + 1).fill(0);
+          let totalDesiredDegreeSum = 0;
+          const degreeProbRanges = [{
+            degree: 0,
+            weight: 5
+          }, {
+            degree: 1,
+            weight: 20
+          }, {
+            degree: 2,
+            weight: 30
+          }, {
+            degree: 3,
+            weight: 30
+          }, {
+            degree: 4,
+            weight: 10
+          }, {
+            degree: 5,
+            weight: 5
+          }];
+          const totalWeight = degreeProbRanges.reduce((sum, item) => sum + item.weight, 0);
+          for (let i = 1; i <= numNodes; i++) {
+            const rand = Math.random() * totalWeight;
+            let cumulativeWeight = 0;
+            for (const range of degreeProbRanges) {
+              cumulativeWeight += range.weight;
+              if (rand <= cumulativeWeight) {
+                desiredDegrees[i] = Math.min(range.degree, numNodes - 1);
+                break;
+              }
+            }
+            totalDesiredDegreeSum += desiredDegrees[i];
+          }
+          while (totalDesiredDegreeSum % 2 !== 0) {
+            const nodeToAdjust = Math.floor(Math.random() * numNodes) + 1;
+            if (desiredDegrees[nodeToAdjust] < Math.min(4, numNodes - 1)) {
+              desiredDegrees[nodeToAdjust]++;
+              totalDesiredDegreeSum++;
+            } else if (desiredDegrees[nodeToAdjust] > 0) {
+              desiredDegrees[nodeToAdjust]--;
+              totalDesiredDegreeSum--;
+            }
+          }
+          const nodesNeedingEdges = [];
+          for (let i = 1; i <= numNodes; i++) {
+            if (desiredDegrees[i] > 0) nodesNeedingEdges.push([i, desiredDegrees[i]]);
+          }
+          let attempts = 0;
+          const maxAttempts = numNodes * numNodes * 2;
+          while (nodesNeedingEdges.length >= 2 && attempts < maxAttempts) {
+            attempts++;
+            nodesNeedingEdges.sort(() => Math.random() - 0.5);
+            const [nodeA, degreeA] = nodesNeedingEdges[0];
+            const [nodeB, degreeB] = nodesNeedingEdges[1];
+            if (nodeA === nodeB) continue;
+            const edgeKey = `${Math.min(nodeA, nodeB)}-${Math.max(nodeA, nodeB)}`;
+            if (!edgeSet.has(edgeKey)) {
+              edges.push({
+                from: nodeA,
+                to: nodeB,
+                id: `e-${nodeA}-${nodeB}`
+              });
+              edgeSet.add(edgeKey);
+              nodesNeedingEdges[0][1]--;
+              nodesNeedingEdges[1][1]--;
+              if (nodesNeedingEdges[1][1] === 0) nodesNeedingEdges.splice(1, 1);
+              if (nodesNeedingEdges[0][1] === 0) nodesNeedingEdges.splice(0, 1);
+              attempts = 0;
+            }
+          }
+          if (attempts >= maxAttempts) console.warn("generateCustomRandomGraph: Reached max attempts...");
+          edges.forEach((edge, index) => {
+            if (!edge.id) edge.id = `e-${index}`;
+          });
+          return {
+            nodes,
+            edges,
+            physics: {
+                    enabled: true,
+                    solver: 'barnesHut',
+                    barnesHut: {
+                        gravitationalConstant: -8000,
+                        centralGravity: 0.3,
+                        springLength: 100,
+                        springConstant: 0.02,
+                        damping: 0.08
+                    },
+                    stabilization: {
+                        iterations: 250
+                    }
+                }
+          };
+        }
+
+        function generateCompleteGraph() {
+          let n = Math.floor(Math.random() * 4) + 5;  
+          if (n < 1) n = 1;
+          if (n > 25) n = 25;
+          const nodes = [];
+          const edges = [];
+          const r = 500;
+          for (let i = 1; i <= n; i++) {
+            const alpha = (i - 1) * (2 * Math.PI) / n;
+            const x = Math.round(r * Math.cos(alpha));
+            const y = Math.round(r * Math.sin(alpha));
+            nodes.push({
+              id: i,
+              label: ` ${String.fromCharCode('A'.charCodeAt(0) + i - 1)} `,
+              x: x,
+              y: y
+            });
+            for (let j = i + 1; j <= n; j++) edges.push({
+              from: i,
+              to: j,
+              id: `e-${i}-${j}`
+            });
+          }
+          return {
+            nodes,
+            edges,
+            physics: {
+                    enabled: true,
+                    solver: 'barnesHut',
+                    barnesHut: {
+                        gravitationalConstant: -2000,
+                        centralGravity: 0.3,
+                        springLength: 225,
+                        springConstant: 0.2,
+                        damping: 0.2
+                    },
+                    stabilization: {
+                        iterations: 250
+                    }
+                }
+          };
+        }
+
+        function generateCycleGraph() {
+          let n = Math.floor(Math.random() * 10) + 5;  
+          if (n < 3) n = 3;
+          if (n > 25) n = 25;
+          const nodes = [];
+          const edges = [];
+          for (let i = 1; i <= n; i++) {
+            nodes.push({
+              id: i,
+              label: ` ${String.fromCharCode('A'.charCodeAt(0) + i - 1)} `
+            });
+            const nextNode = (i === n) ? 1 : i + 1;
+            edges.push({
+              from: i,
+              to: nextNode,
+              id: `e-${i}-${nextNode}`
+            });
+          }
+          return {
+            nodes,
+            edges
+          };
+        }
+
+        function generateStarGraph() {
+          let n = Math.floor(Math.random() * 10) + 5;    
+          if (n < 2) n = 2;
+          if (n > 25) n = 25;
+          const nodes = [];
+          const edges = [];
+          const centerNodeId = 1;
+          nodes.push({
+            id: centerNodeId,
+            label: ` A `
+          });
+          for (let i = 2; i <= n; i++) {
+            nodes.push({
+              id: i,
+              label: ` ${String.fromCharCode('B'.charCodeAt(0) + i - 2)} `
+            });
+            edges.push({
+              from: centerNodeId,
+              to: i,
+              id: `e-${centerNodeId}-${i}`
+            });
+          }
+          return {
+            nodes,
+            edges
+          };
+        }
+
+        function generateGridGraph() {
+          let rows = Math.floor(Math.random() * 5) + 2;  
+          let cols = Math.floor(Math.random() * 5) + 4;  
+          
+          if (rows < 1) rows = 1;
+          if (cols < 1) cols = 1;
+          if (rows * cols > 25) {
+            cols = Math.floor(Math.min(cols, 25 / rows));
+          }
+          const nodes = [];
+          const edges = [];
+          const edgeSet = new Set();
+
+          function getNodeId(r, c) {
+            return r * cols + c + 1;
+          }
+          let i = 0;
+          for (let r = 0; r < rows; r++) {
+            for (let c = 0; c < cols; c++) {
+              const nodeId = getNodeId(r, c);
+              nodes.push({
+                id: nodeId,
+                label: ` ${String.fromCharCode('A'.charCodeAt(0) + i)} `
+              });
+              i++;
+              if (c + 1 < cols) {
+                const rightNeighborId = getNodeId(r, c + 1);
+                const edgeKey = `${Math.min(nodeId, rightNeighborId)}-${Math.max(nodeId, rightNeighborId)}`;
+                if (!edgeSet.has(edgeKey)) {
+                  edges.push({
+                    from: nodeId,
+                    to: rightNeighborId,
+                    id: `e-${nodeId}-${rightNeighborId}`
+                  });
+                  edgeSet.add(edgeKey);
+                }
+              }
+              if (r + 1 < rows) {
+                const bottomNeighborId = getNodeId(r + 1, c);
+                const edgeKey = `${Math.min(nodeId, bottomNeighborId)}-${Math.max(nodeId, bottomNeighborId)}`;
+                if (!edgeSet.has(edgeKey)) {
+                  edges.push({
+                    from: nodeId,
+                    to: bottomNeighborId,
+                    id: `e-${nodeId}-${bottomNeighborId}`
+                  });
+                  edgeSet.add(edgeKey);
+                }
+              }
+            }
+          }
+          return {
+            nodes,
+            edges
+          };
+        }
+
+        function generateBinaryTree() {
+          const levels = Math.floor(Math.random() * 7) + 3;  
+
+          if (levels < 1) levels = 1;
+          const nodes = [];
+          const edges = [];
+          let nodeIdCounter = 0;
+
+          function addNodeAndChildren(level, parentId) {
+            if (level > levels || nodeIdCounter > 25) return;
+            const currentNodeId = nodeIdCounter++;
+            nodes.push({
+              id: currentNodeId,
+              label: ` ${String.fromCharCode('A'.charCodeAt(0) + nodeIdCounter - 1)} `
+            });
+            if (parentId !== null) edges.push({
+              from: parentId,
+              to: currentNodeId,
+              id: `e-${parentId}-${currentNodeId}`
+            });
+            if (level < levels && nodeIdCounter <= 25) {
+              addNodeAndChildren(level + 1, currentNodeId);
+              if (nodeIdCounter <= 25) addNodeAndChildren(level + 1, currentNodeId);
+            }
+          }
+          addNodeAndChildren(1, null);
+          return {
+            nodes,
+            edges,
+            physics: {
+                    enabled: true,
+                    solver: 'barnesHut',
+                    barnesHut: {
+                        gravitationalConstant: -8000,
+                        centralGravity: 0.3,
+                        springLength: 50,
+                        springConstant: 0.05,
+                        damping: 0.035
+                    },
+                    stabilization: {
+                        iterations: 250
+                    }
+                }
+          };
+        }
+
+        function generateBridgeGraph() {
+          let sizePerComponent = Math.floor(Math.random() * 12) + 6;  
+  
+          if (sizePerComponent < 2) sizePerComponent = 2;
+          if (sizePerComponent * 2 > 25) sizePerComponent = Math.floor(25 / 2) - 1;
+          const graph1 = generateCustomRandomGraphInternal(1, sizePerComponent);
+          const graph2 = generateCustomRandomGraphInternal(sizePerComponent + 1, sizePerComponent);
+          const bridgeNode1 = 1 + Math.floor(Math.random() * graph1.nodes.length);
+          const bridgeNode2 = (sizePerComponent + 1) + Math.floor(Math.random() * graph2.nodes.length);
+          const nodes = [...graph1.nodes, ...graph2.nodes];
+          const edges = [...graph1.edges, ...graph2.edges];
+          edges.push({
+            from: bridgeNode1,
+            to: bridgeNode2,
+            id: `e-bridge-${bridgeNode1}-${bridgeNode2}`
+          });
+          return {
+            nodes,
+            edges,
+            physics: {
+                    enabled: true,
+                    solver: 'barnesHut',
+                    barnesHut: {
+                        gravitationalConstant: -8000,
+                        centralGravity: 0.3,
+                        springLength: 150,
+                        springConstant: 0.02,
+                        damping: 0.06
+                    },
+                    stabilization: {
+                        iterations: 250
+                    }
+                }
+          };
+        }
+
+        function generateCustomRandomGraphInternal(idOffset, numNodes) {
+          const nodes = [];
+          const edges = [];
+          const edgeSet = new Set();
+          if (numNodes <= 0) return {
+            nodes,
+            edges
+          };
+          for (let i = 0; i < numNodes; i++) {
+            const nodeId = idOffset + i;
+            nodes.push({
+              id: nodeId,
+              label: ` ${String.fromCharCode('A'.charCodeAt(0) + nodeId - 1)} `
+            });
+          }
+          if (numNodes <= 1) return {
+            nodes,
+            edges
+          };
+          const edgeProb = 0.4;
+          for (let i = 0; i < numNodes; i++) {
+            for (let j = i + 1; j < numNodes; j++) {
+              if (Math.random() < edgeProb) {
+                const nodeA = idOffset + i;
+                const nodeB = idOffset + j;
+                const edgeKey = `${Math.min(nodeA, nodeB)}-${Math.max(nodeA, nodeB)}`;
+                if (!edgeSet.has(edgeKey)) {
+                  edges.push({
+                    from: nodeA,
+                    to: nodeB,
+                    id: `e-${nodeA}-${nodeB}`
+                  });
+                  edgeSet.add(edgeKey);
+                }
+              }
+            }
+          }
+          edges.forEach((edge, index) => {
+            if (!edge.id) edge.id = `e-${idOffset}-${index}`;
+          });
+          return {
+            nodes,
+            edges
+          };
+        }
+        // --- END NEW GRAPH GENERATION FUNCTIONS ---
+
+        function populateStartNodeSelect(nodes) {
+          /* Unchanged */
+          startNodeSelect.innerHTML = '';
+          if (!nodes || nodes.length === 0) {
+            const option = document.createElement('option');
+            option.value = "";
+            option.textContent = "N/A";
+            option.disabled = true;
+            startNodeSelect.appendChild(option);
+            startNodeSelect.value = "";
+            return;
+          }
+          nodes.forEach(node => {
+            const option = document.createElement('option');
+            option.value = node.id;
+            option.textContent = node.label.trim();
+            startNodeSelect.appendChild(option);
+          });
+          if (currentStartNodeId && allNodesMap.has(currentStartNodeId)) {
+            startNodeSelect.value = currentStartNodeId;
+          } else if (nodes.length > 0) {
+            startNodeSelect.value = nodes[0].id;
+          } else {
+            startNodeSelect.value = '';
+          }
+          currentStartNodeId = startNodeSelect.value ? parseInt(startNodeSelect.value, 10) : null;
+        }
+
+        // --- BFS Algorithm Simulation (Logic unchanged from V6) ---
+        function simulateBFS(startNodeId) {
+          algorithmSteps = [];
+          const localGraphNodes = new Map();
+          const localGraphEdges = new Map();
+          const localTreeNodes = new Map();
+          const localTreeEdges = new Map();
+
+          currentGraphData.nodes.forEach(n => localGraphNodes.set(n.id, {
+            id: n.id,
+            label: n.label,
+            size: currentVisSizes.nodeSize,
+            color: {
+              background: NODE_COLOR_DEFAULT_BG,
+              border: NODE_COLOR_DEFAULT_BORDER
+            },
+            font: {
+              size: currentVisSizes.fontSize,
+              color: NODE_COLOR_LABEL,
+              bold: {
+                color: NODE_COLOR_LABEL
+              }
+            }
+          }));
+          currentGraphData.edges.forEach((e, index) => {
+            const edgeId = e.id || `g-${e.from}-${e.to}-${index}`;
+            e.id = edgeId;
+            localGraphEdges.set(edgeId, {
+              id: edgeId,
+              from: e.from,
+              to: e.to,
+              color: EDGE_COLOR_DEFAULT,
+              width: currentVisSizes.edgeWidth
+            });
+          });
+
+          const queue = [];
+          const visited = new Set();
+          const parentMap = new Map();
+          const visitedSequence = [];
+          const adjacencyList = buildAdjacencyList(currentGraphData.edges);
+
+          function getNeighbors(nodeId) {
+            return adjacencyList.get(nodeId) || [];
+          }
+
+          function findEdgeId(u, v) {
+            for (const edge of currentGraphData.edges) {
+              if ((edge.from === u && edge.to === v) || (edge.from === v && edge.to === u)) return edge.id;
+            }
+            return null;
+          }
+
+          const L_INIT_QUEUE = 0,
+            L_INIT_V = 1,
+            L_INIT_PA = 2,
+            L_INIT_R = 3,
+            L_WHILE = 4,
+            L_DEQUEUE = 5,
+            L_IF_NOT_VISITED = 6,
+            L_MARK_VISITED = 7,
+            L_ADD_SEQUENCE = 8,
+            L_SET_PARENT = 9,
+            L_FOR_NEIGHBORS = 10,
+            L_IF_NEIGHBOR_NOT_VISITED = 11,
+            L_ENQUEUE_NEIGHBOR = 12;
+
+          addStep(L_INIT_QUEUE, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], null, null, null, "Initialization", cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+          if (startNodeId === null) {
+            addStep(L_INIT_QUEUE, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], null, null, null, "No start node selected", cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+            return;
+          }
+
+          queue.push({
+            dest: startNodeId,
+            src: null,
+            treeLevel: 0
+          });
+          addStep(L_INIT_QUEUE, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], null, null, null, `Enqueue initial node (${getNodeLabel(startNodeId)}, null)`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+
+          while (queue.length > 0) {
+            addStep(L_WHILE, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], null, null, null, "Check queue emptiness", cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+            const {
+              dest: w,
+              src: v,
+              treeLevel: lv
+            } = queue.shift(); // use pop() for stack
+            const dequeuedNodeUpdate = localGraphNodes.get(w);
+            if (dequeuedNodeUpdate && !visited.has(w)) {
+              dequeuedNodeUpdate.color = {
+                background: NODE_COLOR_CURRENT_BG,
+                border: NODE_COLOR_CURRENT_BORDER
+              };
+              dequeuedNodeUpdate.font = {
+                size: currentVisSizes.fontSize,
+                color: NODE_COLOR_LABEL,
+                bold: {
+                  color: NODE_COLOR_LABEL
+                }
+              };
+            }
+            addStep(L_DEQUEUE, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, null, `Dequeue (${getNodeLabel(w)}, ${getNodeLabel(v) ?? 'null'})`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+
+            addStep(L_IF_NOT_VISITED, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, null, `Check if ${getNodeLabel(w)} visited`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+            if (!visited.has(w)) {
+              visited.add(w);
+              localGraphNodes.get(w).color = {
+                background: NODE_COLOR_VISITED_BG,
+                border: NODE_COLOR_VISITED_BORDER
+              };
+              localGraphNodes.get(w).font = {
+                size: currentVisSizes.fontSize,
+                color: NODE_COLOR_LABEL,
+                bold: {
+                  color: NODE_COLOR_LABEL
+                }
+              };
+              visitedSequence.push(w);
+              addStep(L_MARK_VISITED, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], w, v, null, `Mark ${getNodeLabel(w)} as visited and add to sequence`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+
+
+              parentMap.set(w, v);
+              let parentActionDesc = `Set parent of ${getNodeLabel(w)} to ${getNodeLabel(v) ?? 'null'}`;
+              if (v !== null) {
+                const treeEdgeId = `tree-${v}-${w}`;
+                localTreeEdges.set(treeEdgeId, {
+                  id: treeEdgeId,
+                  from: v,
+                  to: w,
+                  color: EDGE_COLOR_TREE,
+                  width: currentVisSizes.treeEdgeWidth
+                });
+                const graphEdgeId = findEdgeId(v, w);
+                if (graphEdgeId && localGraphEdges.has(graphEdgeId)) {
+                  localGraphEdges.get(graphEdgeId).color = {
+                    color: EDGE_COLOR_TREE
+                  };
+                  localGraphEdges.get(graphEdgeId).width = currentVisSizes.treeEdgeWidth;
+                }
+              }
+              if (!localTreeNodes.has(w)) localTreeNodes.set(w, {
+                id: w,
+                label: ` ${getNodeLabel(w)} `,
+                level: lv,
+                size: currentVisSizes.nodeSize,
+                color: {
+                  background: NODE_COLOR_VISITED_BG,
+                  border: NODE_COLOR_VISITED_BORDER
+                },
+                font: {
+                  size: currentVisSizes.fontSize,
+                  color: NODE_COLOR_LABEL,
+                  bold: {
+                    color: NODE_COLOR_LABEL
+                  }
+                }
+              });
+              else {
+                const t = localTreeNodes.get(w);
+                t.color = {
+                  background: NODE_COLOR_VISITED_BG,
+                  border: NODE_COLOR_VISITED_BORDER
+                };
+                t.font = {
+                  size: currentVisSizes.fontSize,
+                  color: NODE_COLOR_LABEL,
+                  bold: {
+                    color: NODE_COLOR_LABEL
+                  }
+                };
+                t.size = currentVisSizes.nodeSize;
+                localTreeNodes.update(t);
+              }
+              addStep(L_SET_PARENT, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, null, parentActionDesc, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+
+              addStep(L_FOR_NEIGHBORS, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, null, `Iterate neighbors of ${getNodeLabel(w)}`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+              const neighbors = getNeighbors(w).sort();
+
+              if (dequeuedNodeUpdate) {
+                dequeuedNodeUpdate.color.background = NODE_COLOR_CURRENT_BG;
+                dequeuedNodeUpdate.color.border = NODE_COLOR_CURRENT_BORDER;
+              }
+
+              for (const u of neighbors) {
+                let consideredEdgeId = findEdgeId(w, u);
+                let originalEdgeColor = EDGE_COLOR_DEFAULT;
+                let originalEdgeWidth = currentVisSizes.edgeWidth;
+                let originalWBorder = NODE_COLOR_DEFAULT_BORDER;
+                const nodeWUpdate = localGraphNodes.get(u);
+                if (nodeWUpdate) {
+                  originalWBorder = nodeWUpdate.color.border;
+                  nodeWUpdate.color.border = NODE_COLOR_CONSIDERING_BORDER;
+                  nodeWUpdate.borderWidth = 3;
+                }
+                if (consideredEdgeId && localGraphEdges.has(consideredEdgeId)) {
+                  const edgeState = localGraphEdges.get(consideredEdgeId);
+                  originalEdgeColor = edgeState.color;
+                  originalEdgeWidth = edgeState.width;
+                  edgeState.color = {
+                    color: EDGE_COLOR_CONSIDERED
+                  };
+                  edgeState.width = 1.5 * originalEdgeWidth;
+                }
+
+                addStep(L_FOR_NEIGHBORS, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, u, `Considering neighbor ${getNodeLabel(u)}`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+
+                addStep(L_IF_NEIGHBOR_NOT_VISITED, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, u, `Check if ${getNodeLabel(u)} visited`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+                if (!visited.has(u)) {
+                  queue.push({
+                    dest: u,
+                    src: w,
+                    treeLevel: lv + 1
+                  });
+                  addStep(L_ENQUEUE_NEIGHBOR, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, u, `Enqueue (${getNodeLabel(u)}, ${getNodeLabel(w)})`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+                }
+
+                if (nodeWUpdate) {
+                  nodeWUpdate.color.border = visited.has(u) ? NODE_COLOR_VISITED_BORDER : NODE_COLOR_DEFAULT_BORDER;
+                  nodeWUpdate.borderWidth = currentVisSizes.edgeWidth;
+                }
+                if (consideredEdgeId && localGraphEdges.has(consideredEdgeId)) {
+                  const edgeState = localGraphEdges.get(consideredEdgeId);
+                  if (typeof edgeState.color === 'object' && edgeState.color !== null && edgeState.color.color === EDGE_COLOR_CONSIDERED) {
+                    edgeState.color = originalEdgeColor;
+                    edgeState.width = originalEdgeWidth;
+                  } else if (edgeState.color === EDGE_COLOR_CONSIDERED) {
+                    edgeState.color = originalEdgeColor;
+                    edgeState.width = originalEdgeWidth;
+                  }
+                }
+                addStep(L_FOR_NEIGHBORS, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, u, `Finished considering ${getNodeLabel(u)}`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+              }
+              if (dequeuedNodeUpdate && dequeuedNodeUpdate.color.background === NODE_COLOR_CURRENT_BG) {
+                dequeuedNodeUpdate.color = {
+                  background: NODE_COLOR_VISITED_BG,
+                  border: NODE_COLOR_VISITED_BORDER
+                };
+                dequeuedNodeUpdate.font = {
+                  size: currentVisSizes.fontSize,
+                  color: NODE_COLOR_LABEL,
+                  bold: {
+                    color: NODE_COLOR_LABEL
+                  }
+                };
+                addStep(L_FOR_NEIGHBORS, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], w, v, null, `Finished processing ${getNodeLabel(w)}`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+              }
+            } else {
+              if (dequeuedNodeUpdate && dequeuedNodeUpdate.color.background === NODE_COLOR_CURRENT_BG) {
+                dequeuedNodeUpdate.color = {
+                  background: NODE_COLOR_VISITED_BG,
+                  border: NODE_COLOR_VISITED_BORDER
+                };
+                dequeuedNodeUpdate.font = {
+                  size: currentVisSizes.fontSize,
+                  color: NODE_COLOR_LABEL,
+                  bold: {
+                    color: NODE_COLOR_LABEL
+                  }
+                };
+              }
+              addStep(L_IF_NOT_VISITED, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], v, w, null, `${getNodeLabel(w)} already visited, skipping`, cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+            }
+          }
+          addStep(L_WHILE, [...queue], new Set(visited), new Map(parentMap), [...visitedSequence], null, null, null, "Queue empty, BFS complete", cloneMapValues(localGraphNodes), cloneMapValues(localGraphEdges), cloneMapValues(localTreeNodes), cloneMapValues(localTreeEdges));
+        }
+
+        // --- Helper Functions ---
+        function buildAdjacencyList(edges) {
+          const adj = new Map();
+          edges.forEach(edge => {
+            if (!adj.has(edge.from)) adj.set(edge.from, []);
+            if (!adj.has(edge.to)) adj.set(edge.to, []);
+            adj.get(edge.from).push(edge.to);
+            adj.get(edge.to).push(edge.from);
+          });
+          return adj;
+        }
+
+        function getNodeLabel(nodeId) {
+          if (nodeId === null || nodeId === undefined) return null;
+          const node = allNodesMap.get(nodeId);
+          return (node ? (node.label || `ID ${nodeId}`) : `ID ${nodeId}`).trim();
+        }
+
+        function cloneMapValues(map) {
+          const newArr = [];
+          map.forEach(value => {
+            const clonedValue = {
+              ...value
+            };
+            if (value.color) clonedValue.color = {
+              ...value.color
+            };
+            if (value.font) clonedValue.font = {
+              ...value.font
+            };
+            newArr.push(clonedValue);
+          });
+          return newArr;
+        }
+
+        function addStep(line, queue, visited, parentMap, sequence, v, w, u, action, graphNodesState, graphEdgesState, treeNodesState, treeEdgesState) {
+          const step = {
+            line: line,
+            queue: [...queue],
+            visited: new Set(visited),
+            parentMap: new Map(parentMap),
+            visitedSequence: [...sequence],
+            currentV: v,
+            currentW: w,
+            currentU: u,
+            action: action,
+            graphNodeUpdates: graphNodesState,
+            graphEdgeUpdates: graphEdgesState,
+            treeNodeUpdates: treeNodesState,
+            treeEdgeUpdates: treeEdgesState
+          };
+          algorithmSteps.push(step);
+        }
+
+        // --- Animation Control ---
+        function startSimulation() {
+          if (currentStartNodeId === null) {
+            alert("Please select a valid start node.");
+            return;
+          }
+          resetVisualizationState();
+          disableControls(true);
+          simulateBFS(currentStartNodeId);
+          currentStepIndex = 0;
+          if (algorithmSteps.length > 0) {
+            updateVisuals(currentStepIndex);
+            stepButton.disabled = false;
+            runButton.disabled = false;
+          } else {
+            console.error("No steps generated for BFS simulation.");
+            disableControls(false);
+          }
+          startButton.disabled = true;
+          resetButton.disabled = false;
+        }
+
+        function stepForward() {
+          if (currentStepIndex < algorithmSteps.length - 1) {
+            currentStepIndex++;
+            updateVisuals(currentStepIndex);
+            if (currentStepIndex === algorithmSteps.length - 1) {
+              stopAutoRun();
+              stepButton.disabled = true;
+              runButton.disabled = true;
+              runButton.textContent = "Auto";
+            }
+          } else {
+            stopAutoRun();
+            stepButton.disabled = true;
+            runButton.disabled = true;
+            runButton.textContent = "Auto";
+          }
+        }
+
+        function toggleAutoRun() {
+          if (simulationRunning) stopAutoRun();
+          else startAutoRun();
+        }
+
+        function startAutoRun() {
+          if (currentStepIndex >= algorithmSteps.length - 1) return;
+          simulationRunning = true;
+          runButton.textContent = "Pause";
+          stepButton.disabled = true;
+          startButton.disabled = true;
+          simulationInterval = setInterval(() => {
+            stepForward();
+            if (currentStepIndex >= algorithmSteps.length - 1 || !simulationRunning) stopAutoRun();
+          }, animationSpeed);
+        }
+
+        function stopAutoRun() {
+          clearInterval(simulationInterval);
+          simulationRunning = false;
+          runButton.textContent = "Auto";
+          stepButton.disabled = (currentStepIndex >= algorithmSteps.length - 1);
+          runButton.disabled = (currentStepIndex >= algorithmSteps.length - 1);
+        }
+
+        function updateSpeed() {
+          animationSpeed = 2000 - parseInt(speedSlider.value, 10);
+          if (simulationRunning) {
+            stopAutoRun();
+            startAutoRun();
+          }
+        }
+
+        function resetVisualization(redraw = true) {
+          stopAutoRun();
+          resetVisualizationState();
+          if (redraw) {
+            currentVisSizes = calculateVisSizes();
+            drawGraph(currentGraphData);
+            treeNodes.clear();
+            treeEdges.clear();
+            if (graphNetwork) graphNetwork.setOptions(getVisOptions(false));
+            if (treeNetwork) treeNetwork.setOptions(getVisOptions(true));
+          }
+          disableControls(false);
+          startButton.disabled = currentStartNodeId === null;
+          resetButton.disabled = true;
+        }
+
+        function resetVisualizationState() {
+          stopAutoRun();
+          algorithmSteps = [];
+          currentStepIndex = -1;
+          queueVisContainer.innerHTML = '<span class="queue-empty">Queue empty</span>';
+          updateVWUDisplay(null, null, null);
+          sequenceContainer.innerHTML = '<span class="sequence-empty">Empty</span>';
+          parentTableBody.innerHTML = '';
+          highlightPseudocodeLine(-1);
+          stepButton.disabled = true;
+          runButton.disabled = true;
+          runButton.textContent = "Auto";
+        }
+
+        function disableControls(disable) {
+          graphSelect.disabled = disable;
+          startNodeSelect.disabled = disable;
+          resetButton.disabled = !disable;
+        }
+
+        // --- UI Update Functions ---
+        function updateVisuals(stepIndex) {
+          if (stepIndex < 0 || stepIndex >= algorithmSteps.length) return;
+          const state = algorithmSteps[stepIndex];
+          highlightPseudocodeLine(state.line);
+          const graphNodeUpdatesWithSize = state.graphNodeUpdates.map(n => ({
+            ...n,
+            size: currentVisSizes.nodeSize,
+            font: {
+              ...n.font,
+              size: currentVisSizes.fontSize
+            }
+          }));
+          const treeNodeUpdatesWithSize = state.treeNodeUpdates.map(n => ({
+            ...n,
+            size: currentVisSizes.nodeSize,
+            font: {
+              ...n.font,
+              size: currentVisSizes.fontSize
+            }
+          }));
+          const graphEdgeUpdatesWithSize = state.graphEdgeUpdates.map(e => {
+            const isTreeEdge = e.color === EDGE_COLOR_TREE || (typeof e.color === 'object' && e.color.color === EDGE_COLOR_TREE);
+            return {
+              ...e,
+              width: isTreeEdge ? currentVisSizes.treeEdgeWidth : e.width
+            };
+          });
+          const treeEdgeUpdatesWithSize = state.treeEdgeUpdates.map(e => ({
+            ...e,
+            width: currentVisSizes.treeEdgeWidth
+          }));
+
+          if (graphNodeUpdatesWithSize.length > 0) graphNodes.update(graphNodeUpdatesWithSize);
+          if (graphEdgeUpdatesWithSize.length > 0) {
+            const validEdgeUpdates = graphEdgeUpdatesWithSize.filter(update => graphEdges.get(update.id));
+            if (validEdgeUpdates.length > 0) graphEdges.update(validEdgeUpdates);
+          }
+          if (treeNodeUpdatesWithSize.length > 0) {
+            treeNodeUpdatesWithSize.forEach(nodeUpdate => {
+              if (treeNodes.get(nodeUpdate.id)) treeNodes.update(nodeUpdate);
+              else treeNodes.add(nodeUpdate);
+            });
+          }
+          if (treeEdgeUpdatesWithSize.length > 0) {
+            treeEdgeUpdatesWithSize.forEach(edgeUpdate => {
+              if (treeEdges.get(edgeUpdate.id)) treeEdges.update(edgeUpdate);
+              else if (treeNodes.get(edgeUpdate.from) && treeNodes.get(edgeUpdate.to)) treeEdges.add(edgeUpdate);
+            });
+          }
+          if (treeNetwork && (state.treeNodeUpdates.length > 0 || state.treeEdgeUpdates.length > 0)) {
+            setTimeout(() => {
+              if (treeNetwork) treeNetwork.fit();
+            }, 50);
+          }
+
+          updateQueueDisplay(state.queue); // Use queue display
+          updateVWUDisplay(state.currentV, state.currentW, state.currentU);
+          updateSequenceDisplay(state.visitedSequence);
+          updateParentTable(state.parentMap); // Update parent table data
+        }
+
+        function highlightPseudocodeLine(lineNumber) { // Includes Scroll
+          let highlightedElement = null;
+          pseudocodeLines.forEach((line) => {
+            if (line.id === `line-${lineNumber}`) {
+              line.classList.add('highlight');
+              highlightedElement = line;
+            } else {
+              line.classList.remove('highlight');
+            }
+          });
+          if (highlightedElement && pseudocodeContent) {
+            setTimeout(() => {
+              const panelRect = pseudocodeContent.getBoundingClientRect();
+              const lineRect = highlightedElement.getBoundingClientRect();
+              if (lineRect.top < panelRect.top || lineRect.bottom > panelRect.bottom) {
+                highlightedElement.scrollIntoView({
+                  behavior: 'smooth',
+                  block: 'nearest'
+                });
+              }
+            }, 50);
+          }
+        }
+
+        // UPDATED Queue Display function with Animation & Auto Scroll
+        function updateQueueDisplay(queue) {
+          queueVisContainer.innerHTML = '';
+          let newItemsAdded = false;
+          if (queue.length === 0) {
+            queueVisContainer.innerHTML = '<span class="queue-empty">Queue empty</span>';
+            return;
+          }
+
+          const newlyAddedIndices = new Set();
+          if (algorithmSteps.length > 0 && currentStepIndex > 0) {
+            const previousQueue = algorithmSteps[currentStepIndex - 1].queue;
+            if (queue.length > previousQueue.length) {
+              for (let i = previousQueue.length; i < queue.length; i++) {
+                newlyAddedIndices.add(i);
+              }
+              newItemsAdded = true;
+            }
+          } else if (queue.length > 0) {
+            queue.forEach((_, index) => newlyAddedIndices.add(index));
+            newItemsAdded = true;
+          }
+
+          let firstElementDOM = null; // To store the DOM element of the first queue item
+
+          queue.forEach((item, index) => {
+            const div = document.createElement('div');
+            div.classList.add('queue-item');
+            if (newlyAddedIndices.has(index)) {
+              div.classList.add('queue-item-enter');
+            }
+            if (index === 0) {
+              div.classList.add('queue-front');
+              div.title = "Front of queue";
+              firstElementDOM = div; // Store reference to the first element
+            }
+            const destLabel = getNodeLabel(item.dest) ?? '?';
+            const srcLabel = getNodeLabel(item.src) ?? 'null';
+            const destSpan = `<span class="label-red-bold">${destLabel}</span>`;
+            const srcSpan = `<span class="label-red-bold">${srcLabel}</span>`;
+            div.innerHTML = `${srcSpan} → ${destSpan}`;
+            queueVisContainer.appendChild(div);
+
+            if (newlyAddedIndices.has(index)) {
+              requestAnimationFrame(() => {
+                requestAnimationFrame(() => {
+                  div.classList.remove('queue-item-enter');
+                });
+              });
+            }
+          });
+
+          // Scroll queue panel content to the left if needed (to see the front)
+          // This scrolls the container, not just one element
+          if (queuePanelContent && queue.length > 0) { // Scroll whenever queue is not empty maybe? Or only when dequeuing? Let's try always.
+            setTimeout(() => {
+              // Scroll to the beginning horizontally
+              queuePanelContent.scrollTo({
+                left: 0,
+                behavior: 'smooth'
+              });
+            }, 60); // Delay slightly
+          }
+        }
+
+        function updateVWUDisplay(v, w, u) {
+          const vValue = getNodeLabel(v) ?? '-';
+          const wValue = getNodeLabel(w) ?? '-';
+          const uValue = getNodeLabel(u) ?? '-';
+          uvwDisplayContainer.innerHTML = `
+                <span><span class="label">v (Source):</span> <span class="value label-red-bold">${vValue}</span></span>
+                <span><span class="label">w (Current):</span> <span class="value label-red-bold">${wValue}</span></span>
+                <span><span class="label">u (Neighbor):</span> <span class="value label-red-bold">${uValue}</span></span>`;
+        }
+
+        function updateSequenceDisplay(sequence) {
+          /* Unchanged from V5 */
+          sequenceContainer.innerHTML = '';
+          if (sequence.length === 0) {
+            sequenceContainer.innerHTML = '<span class="sequence-empty">Empty</span>';
+            return;
+          }
+          sequence.forEach((nodeId) => {
+            const span = document.createElement('span');
+            span.classList.add('visited-node-text', 'label-red-bold');
+            span.textContent = getNodeLabel(nodeId);
+            span.title = `Node ${getNodeLabel(nodeId)}`;
+            sequenceContainer.appendChild(span);
+          });
+        }
+
+        function updateParentTable(parentMap) {
+          /* Unchanged from V5 */
+          parentTableBody.innerHTML = '';
+          const addedNodes = new Set();
+          parentMap.forEach((parentId, nodeId) => {
+            if (addedNodes.has(nodeId)) return;
+            const tr = document.createElement('tr');
+            const tdNode = document.createElement('td');
+            tdNode.textContent = getNodeLabel(nodeId);
+            tdNode.classList.add('label-red-bold');
+            const tdParent = document.createElement('td');
+            tdParent.textContent = getNodeLabel(parentId) ?? 'null';
+            tdParent.classList.add('label-red-bold');
+            tr.appendChild(tdNode);
+            tr.appendChild(tdParent);
+            parentTableBody.appendChild(tr);
+            addedNodes.add(nodeId);
+          });
+        }
+
+        function drawGraph(graphData) {
+          /* Unchanged from V5 */
+          graphNodes.clear();
+          graphEdges.clear();
+          const nodesToAdd = graphData.nodes.map(node => ({
+            ...node,
+            size: currentVisSizes.nodeSize,
+            color: {
+              background: NODE_COLOR_DEFAULT_BG,
+              border: NODE_COLOR_DEFAULT_BORDER
+            },
+            font: {
+              size: currentVisSizes.fontSize,
+              color: NODE_COLOR_LABEL,
+              bold: {
+                color: NODE_COLOR_LABEL
+              }
+            },
+            physics: true
+          }));
+          graphNodes.add(nodesToAdd);
+          const edgesToAdd = graphData.edges.map((edge, index) => ({
+            ...edge,
+            id: edge.id || `g-${edge.from}-${edge.to}-${index}`,
+            color: EDGE_COLOR_DEFAULT,
+            width: currentVisSizes.edgeWidth
+          }));
+          graphEdges.add(edgesToAdd);
+          if (graphNetwork) {
+            setTimeout(() => {
+              if (graphNetwork) {
+                graphNetwork.fit({
+                  animation: {
+                    duration: 2500,
+                    easingFunction: 'easeInOutQuad'
+                  }
+                });
+              }
+              setTimeout(() => {
+                if (graphNetwork) {
+                  graphNetwork.fit({
+                    animation: {
+                      duration: 1000,
+                      easingFunction: 'easeInOutQuad'
+                    }
+                  });
+                }
+              }, 2500);
+            }, 1000);
+          }
+        }
+
+        // --- Start the application ---
+        document.addEventListener('DOMContentLoaded', init);    
+    </script>
+</body>
+</html>
