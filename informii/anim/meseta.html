@@ -1,0 +1,759 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meseta Más Larga</title>
+    <style>
+        /* --- Estilos Generales --- */
+        body {
+            font-family: sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            background-color: #f4f4f4;
+            display: flex;
+            justify-content: center;
+        }
+
+        .container {
+            background-color: #fff;
+            padding: 25px;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            width: 95%;
+            max-width: 950px;
+        }
+
+        h1,
+        h2,
+        h3 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 15px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            color: #555;
+        }
+
+        input[type="text"],
+        input[type="number"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 1em;
+        }
+
+        input[type="range"] {
+            cursor: pointer;
+            width: 100%;
+        }
+
+        button {
+            padding: 10px 15px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.95em;
+            transition: background-color 0.3s ease, opacity 0.3s ease;
+            text-align: center;
+            margin-top: 5px;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: #0056b3;
+        }
+
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+
+        input:disabled {
+            background-color: #e9ecef;
+            opacity: 0.7;
+        }
+
+        /* --- Controles --- */
+        .controls {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f9f9f9;
+            border-radius: 6px;
+            border: 1px solid #eee;
+        }
+
+        .control-group {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .action-buttons-group {
+            grid-column: 1 / -1;
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+
+        .action-buttons-group button {
+            flex-grow: 1;
+        }
+
+        .main-action-button {
+            background-color: #28a745;
+            font-size: 1.1em;
+            padding: 12px;
+        }
+
+        .main-action-button:hover:not(:disabled) {
+            background-color: #218838;
+        }
+
+        .secondary-action-button {
+            background-color: #17a2b8;
+        }
+
+        .secondary-action-button:hover:not(:disabled) {
+            background-color: #117a8b;
+        }
+
+        .button-group {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+        }
+
+        .button-group button {
+            flex-grow: 1;
+            background-color: #6c757d;
+            font-size: 0.9em;
+            padding: 8px 10px;
+        }
+
+        .button-group button:hover:not(:disabled) {
+            background-color: #5a6268;
+        }
+
+        /* --- Visualización --- */
+        .visualization-container {
+            position: relative;
+            margin-top: 15px;
+            padding-bottom: 45px;
+            margin-bottom: 20px;
+        }
+
+        #visualization {
+            padding: 30px 10px 40px 10px;
+            border: 1px dashed #ccc;
+            border-radius: 4px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: flex-end;
+            min-height: 150px;
+            gap: 8px;
+            position: relative;
+            background-color: #fff;
+            transition: background-color 0.3s ease;
+        }
+
+        .array-element {
+            background-color: #e0e0e0;
+            color: #333;
+            padding: 5px;
+            border: 2px solid #bbb;
+            border-bottom-width: 5px;
+            border-radius: 4px;
+            text-align: center;
+            min-width: 38px;
+            transition: background-color 0.2s ease, border-color 0.2s ease, transform 0.2s ease;
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-end;
+            align-items: center;
+            font-weight: bold;
+            height: 60px;
+            box-sizing: border-box;
+            position: relative;
+        }
+
+        .element-value {
+            display: block;
+            font-size: 1.1em;
+            margin-bottom: 5px;
+        }
+
+        .element-index {
+            display: block;
+            font-size: 0.75em;
+            color: #666;
+            position: absolute;
+            bottom: -25px;
+            left: 0;
+            width: 100%;
+            text-align: center;
+        }
+
+        .pointer {
+            position: absolute;
+            bottom: 5px;
+            width: 20px;
+            height: 20px;
+            font-size: 0.8em;
+            font-weight: bold;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10%;
+            color: white;
+            transform: translateX(-50%);
+            transition: left 0.3s ease-in-out, visibility 0.3s ease-in-out, opacity 0.3s ease-in-out;
+            z-index: 20;
+            visibility: hidden;
+            opacity: 0;
+        }
+
+        #pointer-i {
+            min-width: 25px;
+            background-color: #007bff;
+        }
+
+        #pointer-k {
+            min-width: 25px;
+            background-color: #ffc107;
+            color: #333;
+        }
+
+        /* --- Estilos Mesetas --- */
+        /* ** RESTAURADO: Estilos Naranja por defecto para la meseta más larga ** */
+        .plateau-element {
+            background-color: #ffcc80;
+            border-color: #ff9800;
+            color: #a05a00;
+        }
+
+        .plateau-top {
+            background-color: #ffa726;
+            border-color: #f57c00;
+            color: #7f4500;
+            border-bottom-style: solid;
+        }
+
+        .plateau-edge {
+            background-color: #ffe0b2;
+            border-color: #ffb74d;
+            color: #b37415;
+        }
+
+        /* Colores Multi-Meseta (Sobrescriben los naranjas por defecto cuando se aplican) */
+        .plateau-color-1 {
+            background-color: #c8e6c9;
+            border-color: #a5d6a7;
+            color: #1b5e20;
+        }
+
+        /* Verde claro */
+        .plateau-color-2 {
+            background-color: #bbdefb;
+            border-color: #90caf9;
+            color: #0d47a1;
+        }
+
+        /* Azul claro */
+        .plateau-color-3 {
+            background-color: #ffcdd2;
+            border-color: #ef9a9a;
+            color: #b71c1c;
+        }
+
+        /* Rojo claro */
+        .plateau-color-4 {
+            background-color: #e1bee7;
+            border-color: #ce93d8;
+            color: #4a148c;
+        }
+
+        /* Púrpura claro */
+        .plateau-color-5 {
+            background-color: #fff9c4;
+            border-color: #fff59d;
+            color: #f57f17;
+        }
+
+        /* Amarillo claro */
+        .plateau-color-6 {
+            background-color: #b2dfdb;
+            border-color: #80cbc4;
+            color: #004d40;
+        }
+
+        /* Teal claro */
+
+
+        /* Clases de animación (con !important) */
+        .scan-pointer {
+            border-color: #007bff !important;
+            background-color: #cce5ff !important;
+        }
+
+        .checking-rise {
+            border-color: #17a2b8 !important;
+            background-color: #d1ecf1 !important;
+        }
+
+        .checking-flat {
+            border-color: #ffc107 !important;
+            background-color: #fff3cd !important;
+        }
+
+        .checking-fall {
+            border-color: #dc3545 !important;
+            background-color: #f8d7da !important;
+        }
+
+        .current-plateau-found {
+            animation: pulse 0.6s ease-in-out;
+            border-width: 3px !important;
+        }
+
+        @keyframes pulse {
+
+            0%,
+            100% {
+                transform: scale(1);
+            }
+
+            50% {
+                transform: scale(1.05);
+            }
+        }
+
+        /* --- SVG Overlay y Líneas --- */
+        #lineOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 10;
+            overflow: visible;
+        }
+
+        #lineOverlay line,
+        #lineOverlay polyline {
+            stroke-width: 3;
+            stroke-linecap: round;
+            fill: none;
+            transition: stroke 0.2s ease-out;
+        }
+
+        #lineOverlay text {
+            font-size: 10px;
+            font-weight: bold;
+            text-anchor: middle;
+            dominant-baseline: middle;
+            pointer-events: none;
+        }
+
+        .line-rise {
+            stroke: #17a2b8;
+        }
+
+        .line-flat {
+            stroke: #ffc107;
+        }
+
+        .line-fall {
+            stroke: #dc3545;
+        }
+
+        .line-final-plateau {
+            stroke: #f57c00;
+            stroke-width: 4;
+            stroke-dasharray: 4 4;
+        }
+
+        /* Colores línea/texto para showAll (coinciden con background) */
+        .line-color-1 {
+            stroke: #a5d6a7;
+        }
+
+        .text-color-1 {
+            fill: #1b5e20;
+        }
+
+        .line-color-2 {
+            stroke: #90caf9;
+        }
+
+        .text-color-2 {
+            fill: #0d47a1;
+        }
+
+        .line-color-3 {
+            stroke: #ef9a9a;
+        }
+
+        .text-color-3 {
+            fill: #b71c1c;
+        }
+
+        .line-color-4 {
+            stroke: #ce93d8;
+        }
+
+        .text-color-4 {
+            fill: #4a148c;
+        }
+
+        .line-color-5 {
+            stroke: #fff59d;
+        }
+
+        .text-color-5 {
+            fill: #f57f17;
+        }
+
+        .line-color-6 {
+            stroke: #80cbc4;
+        }
+
+        .text-color-6 {
+            fill: #004d40;
+        }
+
+        /* --- Resultados y Estado --- */
+        #results,
+        #animationStatus {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 50px;
+            transition: background-color 0.3s ease;
+        }
+
+        #results {
+            background-color: #e9f5ff;
+            border: 1px solid #b3d7ff;
+        }
+
+        #animationStatus {
+            background-color: #fffbeb;
+            border: 1px solid #ffeeba;
+            font-weight: bold;
+            color: #856404;
+            text-align: center;
+            margin-bottom: 5px;
+        }
+
+        #results p {
+            margin: 5px 0;
+            font-size: 1.1em;
+        }
+
+        .definition {
+            margin-bottom: 20px;
+            padding: 15px;
+            background-color: #f0f0f0;
+            border-left: 4px solid #007bff;
+        }
+
+        code {
+            background-color: #e4e4e4;
+            padding: 2px 4px;
+            border-radius: 3px;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <h1>Meseta Más Larga</h1>
+        <div class="definition">
+            <!-- Definición sin cambios -->
+            <h2>¿Qué es una Meseta?</h2>
+            <p>Una meseta en un array comienza en la posición <code>i</code> si:</p>
+            <ol>
+                <li><b>Subida:</b> <code>array[i+1] > array[i]</code>.</li>
+                <li><b>Parte Plana:</b> <code>array[i+1] == array[i+2] == ... == array[k]</code> (al menos un elemento).
+                </li>
+                <li><b>Bajada:</b> <code>array[k+1] < array[k]</code>.</li>
+            </ol>
+            <p>La <strong>longitud</strong> de una meseta es el número total de elementos (de <code>i</code> a
+                <code>k+1</code>).
+                Buscamos la más larga.
+            </p>
+            <p><strong>Nota:</strong> Si varias mesetas tienen la misma longitud máxima, se considera como resultado la
+                primera que se encuentra (la que tiene el índice <code>i</code> más bajo).</p>
+            <p><strong>Optimizaciones:</strong></p>
+            <ul>
+                <li>Si se encuentra una meseta <strong>completa</strong> de <code>i</code> a <code>k+1</code>, la
+                    siguiente búsqueda
+                    puede empezar en <code>i = k+1</code>.</li>
+                <li>Si se encuentra subida y plano (hasta <code>k</code>) pero <strong>falla</strong> la condición de
+                    bajada, la
+                    siguiente búsqueda puede empezar en <code>i = k</code>.</li>
+            </ul>
+        </div>
+        <div class="controls">
+            <!-- Controles sin cambios -->
+            <div class="control-group" style="grid-column: 1 / -1;"> <label for="arrayInput">Array (números separados
+                    por comas o espacios):</label> <input type="text" id="arrayInput"
+                    value="1, 2, 2, 2, 1, 5, 5, 3, 4, 6, 6, 6, 6, 5, 2, 3, 3, 1"> </div>
+            <div class="control-group"> <label>Generar/Cargar Arrays:</label>
+                <div class="button-group"> <button id="btnRandom" onclick="generateRandomArray()">Aleatorio</button>
+                    <button id="btnEx1" onclick="setExampleArray(1)">Ejemplo 1</button> <button id="btnEx2"
+                        onclick="setExampleArray(2)">Ejemplo 2</button> <button id="btnEx3"
+                        onclick="setExampleArray(3)">Sin Mesetas</button> <button id="btnEx4"
+                        onclick="setExampleArray(4)">Incompleta</button>
+                </div>
+                <div> <label for="randomSize" style="font-size: 0.8em; margin-top: 8px;">Tamaño:</label> <input
+                        type="number" id="randomSize" value="20" min="5" max="50" style="width: 50px; padding: 5px;">
+                    <label for="randomMax" style="font-size: 0.8em;">Valor Máx:</label> <input type="number"
+                        id="randomMax" value="9" min="1" max="20" style="width: 50px; padding: 5px;">
+                </div>
+            </div>
+            <div class="control-group"> <label for="animationSpeed">Velocidad Animación:</label>
+                <input type="range" id="animationSpeed" min="50" max="1500" value="1100" step="50"> <span
+                    id="speedValue" style="font-size: 0.8em; text-align: center;">400 ms</span>
+            </div>
+            <div class="action-buttons-group"> <button id="btnShowAll" class="secondary-action-button"
+                    onclick="showAllPlateaus()">Mostrar Todas</button> <button id="mainButton"
+                    class="main-action-button" onclick="startAnimation()">Animar Búsqueda</button> </div>
+        </div>
+        <h2>Visualización del Array</h2>
+        <div id="animationStatus">Esperando acción...</div>
+        <div class="visualization-container">
+            <div id="visualization"></div>
+            <svg id="lineOverlay"></svg>
+            <div id="pointer-i" class="pointer">i</div>
+            <div id="pointer-k" class="pointer">k</div>
+        </div>
+        <h2>Resultado</h2>
+        <div id="results">
+            <p>Edita el array o usa los botones para generar uno.</p>
+        </div>
+    </div>
+
+    <script>
+        // --- Variables Globales ---
+        let currentArray = []; let animationTimeoutId = null; let isAnimating = false;
+        let visualizationDiv = null; let resultsDiv = null; let statusDiv = null;
+        let mainButton = null; let speedSlider = null; let speedValueSpan = null;
+        let svgOverlay = null; let pointerI = null; let pointerK = null;
+        let arrayInput = null; let animState = {};
+        const plateauHighlightColors = ['plateau-color-1', 'plateau-color-2', 'plateau-color-3', 'plateau-color-4', 'plateau-color-5', 'plateau-color-6'];
+        const plateauLineColors = ['line-color-1', 'line-color-2', 'line-color-3', 'line-color-4', 'line-color-5', 'line-color-6'];
+        const plateauTextColors = ['text-color-1', 'text-color-2', 'text-color-3', 'text-color-4', 'text-color-5', 'text-color-6'];
+
+        // --- Funciones de Utilidad y UI ---
+        function getAnimationSpeed() { if (!speedSlider) return 400; const r = parseInt(speedSlider.value); return parseInt(speedSlider.max) + parseInt(speedSlider.min) - r; }
+        function disableControls(disabled) { isAnimating = disabled; if (mainButton) mainButton.disabled = disabled; if (arrayInput) arrayInput.disabled = disabled; if (speedSlider) speedSlider.disabled = disabled; const btnShowAll = document.getElementById('btnShowAll'); if (btnShowAll) btnShowAll.disabled = disabled; document.querySelectorAll('.controls .button-group button, .controls input[type="number"], #btnRandom').forEach(el => el.disabled = disabled); }
+        function robustParseArrayString(inputString) { if (!inputString) return []; const cleaned = inputString.trim().replace(/[\s,]+/g, ' '); const parts = cleaned.split(' '); return parts.filter(p => p !== '').map(p => Number(p)).filter(n => !isNaN(n)); }
+        function syncArrayFromInput() { if (!arrayInput) return []; currentArray = robustParseArrayString(arrayInput.value); return currentArray; }
+        function updateArrayInputDisplay() { if (arrayInput) arrayInput.value = currentArray.join(', '); }
+
+        // --- Generación de Arrays ---
+        function generatePurelyRandomArray(size, maxVal) { return Array.from({ length: size }, () => Math.floor(Math.random() * (maxVal + 1))); }
+        function generateRandomArrayWithPlateaus(size, maxVal) { let a = generatePurelyRandomArray(size, maxVal); const nP = 1 + Math.floor(Math.random() * 3); const minL = 3; for (let p = 0; p < nP; p++) { let att = 0; while (att < 10) { const fL = 1 + Math.floor(Math.random() * 3); const tL = 1 + fL + 1; const mS = size - tL; if (mS < 0) break; const i = Math.floor(Math.random() * (mS + 1)); const fV = 1 + Math.floor(Math.random() * maxVal); const rV = Math.floor(Math.random() * fV); const fallV = Math.floor(Math.random() * fV); a[i] = rV; for (let j = 1; j <= fL; j++) { a[i + j] = fV; } a[i + fL + 1] = fallV; att = 10; } } return a; }
+        function generateRandomArray() { if (isAnimating) return; const size = parseInt(document.getElementById('randomSize').value) || 20; const maxVal = parseInt(document.getElementById('randomMax').value) || 9; let typeGen = ""; if (Math.random() < 0.5) { currentArray = generateRandomArrayWithPlateaus(size, maxVal); typeGen = 'con mesetas'; } else { currentArray = generatePurelyRandomArray(size, maxVal); typeGen = 'puramente aleatorio'; } updateArrayInputDisplay(); handleInputChange(); if (resultsDiv) resultsDiv.innerHTML = `<p>Array aleatorio (${typeGen}) gen.</p>`; }
+        function generateNoPlateauArray(size, maxVal) { let a = []; let cV = Math.floor(Math.random() * (maxVal / 2)); if (Math.random() < 0.5) { a.push(cV); for (let i = 1; i < size; i++) { cV += 1 + Math.floor(Math.random() * 3); cV = Math.min(cV, maxVal); a.push(cV); } } else { cV = Math.floor(maxVal / 2) + Math.floor(Math.random() * (maxVal / 2 + 1)); a.push(cV); for (let i = 1; i < size; i++) { cV -= (1 + Math.floor(Math.random() * 3)); cV = Math.max(cV, 0); a.push(cV); } } return a; }
+        function setExampleArray(exampleNumber) { if (isAnimating) return; const size = parseInt(document.getElementById('randomSize').value) || 10; const maxVal = parseInt(document.getElementById('randomMax').value) || 20; switch (exampleNumber) { case 1: currentArray = [1, 2, 2, 2, 1, 5, 5, 3, 4, 6, 6, 6, 6, 5, 2, 3, 3, 1]; break; case 2: currentArray = [3, 3, 4, 2, 1, 3, 5, 7, 7, 7, 4]; break; case 3: currentArray = generateNoPlateauArray(size, maxVal); break; case 4: currentArray = [1, 3, 2, 4, 6, 6, 6]; break; default: currentArray = [1, 2, 2, 1]; break; } updateArrayInputDisplay(); handleInputChange(); if (resultsDiv) resultsDiv.innerHTML = `<p>Ejemplo ${exampleNumber} cargado.</p>`; }
+
+        // --- Visualización (CORREGIDA v9)---
+        function visualizeArray(arr, finalPlateauInfo, animationClasses = {}, highlightPlateaus = null) {
+            if (!visualizationDiv) return;
+
+            visualizationDiv.innerHTML = ''; // Limpiar barras anteriores
+            if (svgOverlay) svgOverlay.innerHTML = ''; // Limpiar SVG anterior
+            visualizationDiv.style.backgroundColor = isAnimating ? '#fdfdde' : '#fff';
+
+            // Ocultar/Mostrar punteros
+            if (!isAnimating) {
+                updatePointerPosition(pointerI, -1);
+                updatePointerPosition(pointerK, -1);
+            } else {
+                if (pointerI) { pointerI.style.visibility = 'visible'; pointerI.style.opacity = '1'; }
+            }
+
+            if (!arr || arr.length === 0) { visualizationDiv.textContent = arr === null ? "" : "Array vacío."; return; }
+            const maxV = arr.length > 0 ? Math.max(...arr.map(v => Math.abs(v)), 1) : 1;
+            const minV = arr.length > 0 ? Math.min(...arr.map(v => Math.abs(v)), 0) : 0;
+            const range = Math.max(1, maxV - minV);
+
+            // Crear elementos
+            arr.forEach((val, idx) => {
+                const el = document.createElement('div');
+                el.className = 'array-element'; // Clase base
+                el.dataset.index = idx;
+                const baseH = 60; const varH = 80; const relV = range > 0 ? (Math.abs(val) - minV) / range : 0.5; const h = baseH + relV * varH; el.style.height = `${h}px`;
+                // el.style.borderBottomWidth = `${Math.max(2, 2 + relV * 8)}px`;
+                const valS = document.createElement('span'); valS.className = 'element-value'; valS.textContent = val; el.appendChild(valS);
+                const idxS = document.createElement('span'); idxS.className = 'element-index'; idxS.textContent = idx; el.appendChild(idxS);
+
+                let isMultiHighlighted = false;
+                // 1. Aplicar resaltado múltiple (Show All) SI existe
+                if (highlightPlateaus) {
+                    highlightPlateaus.forEach((plateau, pIndex) => {
+                        if (idx >= plateau.index && idx < plateau.index + plateau.length) {
+                            const colorIndex = pIndex % plateauHighlightColors.length;
+                            el.classList.add(plateauHighlightColors[colorIndex]);
+                            // Aplicar estructura visual
+                            el.classList.add('plateau-element');
+                            const endIdx = plateau.index + plateau.length - 1;
+                            if (idx === plateau.index || idx === endIdx) { el.classList.add('plateau-edge'); }
+                            else { el.classList.add('plateau-top'); }
+                            isMultiHighlighted = true; // Marcar para no aplicar naranja
+                        }
+                    });
+                }
+
+                // 2. Aplicar resaltado final (Naranja) SI existe Y NO es Show All
+                if (!isMultiHighlighted && finalPlateauInfo && finalPlateauInfo.length > 0 && idx >= finalPlateauInfo.index && idx < finalPlateauInfo.index + finalPlateauInfo.length) {
+                    el.classList.add('plateau-element'); // Aplicar clase naranja por defecto
+                    const endIdx = finalPlateauInfo.index + finalPlateauInfo.length - 1;
+                    if (idx === finalPlateauInfo.index || idx === endIdx) { el.classList.add('plateau-edge'); }
+                    else { el.classList.add('plateau-top'); }
+                }
+
+                // 3. Aplicar clases de animación (sobrescriben lo demás si tienen !important)
+                if (animationClasses[idx]) {
+                    el.classList.add(...animationClasses[idx]);
+                }
+
+                visualizationDiv.appendChild(el);
+            });
+
+            // Dibujar Líneas SVG
+            if (highlightPlateaus) { // Modo "Mostrar Todas"
+                highlightPlateaus.forEach((plateau, pIndex) => {
+                    const lineClass = plateauLineColors[pIndex % plateauLineColors.length];
+                    const textClass = plateauTextColors[pIndex % plateauTextColors.length];
+                    drawPlateauLinesSVG(plateau.index, plateau.index + plateau.length - 1, lineClass, plateau.length, textClass);
+                });
+            } else if (finalPlateauInfo && finalPlateauInfo.length > 0 && !isAnimating) {
+                // Modo Finalización Animación: Línea final naranja
+                drawPlateauLinesSVG(finalPlateauInfo.index, finalPlateauInfo.index + finalPlateauInfo.length - 1, 'line-final-plateau');
+            }
+            // Durante la animación, las líneas se dibujan en redrawCurrentLines()
+        }
+
+
+        // --- Lógica de la Meseta ---
+        function findLongestPlateauLogic(arr) { let maxL = 0; let startI = -1; let n = arr.length; for (let i = 0; i < n - 2;) { let incI = true; if (i + 1 < n && arr[i + 1] > arr[i]) { let k = i + 1; while (k + 1 < n && arr[k + 1] === arr[k]) { k++; } if (k + 1 < n && arr[k + 1] < arr[k]) { let curL = (k + 1) - i + 1; if (curL > maxL) { maxL = curL; startI = i; } i = k + 1; incI = false; } else { i = k; incI = false; } } if (incI) { i++; } } return { length: maxL, index: startI }; }
+        function findAllPlateaus(arr) { const plateaus = []; let n = arr.length; for (let i = 0; i < n - 2; i++) { if (i + 1 < n && arr[i + 1] > arr[i]) { let k = i + 1; while (k + 1 < n && arr[k + 1] === arr[k]) { k++; } if (k + 1 < n && arr[k + 1] < arr[k]) { plateaus.push({ index: i, length: (k + 1) - i + 1, k_end_flat: k }); } } } return plateaus; }
+
+        // --- Funciones para Punteros ---
+        function getPointerTargetX(index) { if (!visualizationDiv || index < 0 || index >= currentArray.length) return null; const el = visualizationDiv.querySelector(`.array-element[data-index='${index}']`); if (!el) return null; const vR = visualizationDiv.getBoundingClientRect(); const eR = el.getBoundingClientRect(); return eR.left - vR.left + eR.width / 2; }
+        function updatePointerPosition(pEl, tIdx) { if (!pEl) return; if (tIdx < 0) { pEl.style.visibility = 'hidden'; pEl.style.opacity = '0'; } else { const tX = getPointerTargetX(tIdx); if (tX !== null) { pEl.style.left = `${tX}px`; pEl.style.visibility = 'visible'; pEl.style.opacity = '1'; } else { pEl.style.visibility = 'hidden'; pEl.style.opacity = '0'; } } }
+
+        // --- Animación ---
+        function stopAnimation(clearResult = true) { if (animationTimeoutId) { clearTimeout(animationTimeoutId); animationTimeoutId = null; } isAnimating = false; disableControls(false); if (statusDiv) statusDiv.textContent = 'Animación detenida.'; if (visualizationDiv) visualizationDiv.style.backgroundColor = '#fff'; const plateauToKeep = (animState && !clearResult) ? animState.longestPlateauFoundSoFar : null; visualizeArray(currentArray, plateauToKeep, {}, null); if (plateauToKeep && plateauToKeep.length > 0) { updatePointerPosition(pointerI, plateauToKeep.index); updatePointerPosition(pointerK, plateauToKeep.k_end_flat || plateauToKeep.index + plateauToKeep.length - 2); } else { updatePointerPosition(pointerI, -1); updatePointerPosition(pointerK, -1); } }
+        function clearPreviousRun(clearVis = true) { stopAnimation(true); animState = {}; if (statusDiv) statusDiv.textContent = 'Esperando acción...'; if (statusDiv) statusDiv.style.color = '#856404'; if (resultsDiv) resultsDiv.innerHTML = '<p>Edita el array o usa los botones.</p>'; if (clearVis) { visualizeArray(currentArray, null, {}, null); } updatePointerPosition(pointerI, -1); updatePointerPosition(pointerK, -1); }
+        function startAnimation() { if (isAnimating) return; currentArray = syncArrayFromInput(); if (currentArray.length < 3) { if (resultsDiv) resultsDiv.innerHTML = `<p style="color: orange;">Array corto (min 3).</p>`; visualizeArray(currentArray, null); return; } clearPreviousRun(false); visualizeArray(currentArray, null, {}, null); updatePointerPosition(pointerI, 0); updatePointerPosition(pointerK, -1); disableControls(true); animState = { i: 0, k: 0, foundPlateau: null, longestPlateauFoundSoFar: { length: 0, index: -1 }, phase: 'scan_i', animationClasses: {} }; if (statusDiv) statusDiv.textContent = 'Iniciando...'; if (resultsDiv) resultsDiv.innerHTML = '<p>Analizando...</p>'; animationTimeoutId = setTimeout(animateStep, 50); }
+        function animateStep() { const n = currentArray.length; animState.animationClasses = {}; if (svgOverlay) svgOverlay.innerHTML = ''; let nextPhase = animState.phase; let nextI = animState.i; let showK = false; switch (animState.phase) { case 'scan_i': if (animState.i >= n - 2) { nextPhase = 'finished'; } else { if (statusDiv) statusDiv.textContent = `Scan i=${animState.i}`; animState.animationClasses[animState.i] = ['scan-pointer']; nextPhase = 'check_rise'; } break; case 'check_rise': if (statusDiv) statusDiv.textContent = `i=${animState.i}: Check Rise`; animState.animationClasses[animState.i] = ['scan-pointer']; if (animState.i + 1 < n) animState.animationClasses[animState.i + 1] = ['checking-rise']; if (animState.i + 1 < n && currentArray[animState.i + 1] > currentArray[animState.i]) { animState.k = animState.i + 1; nextPhase = 'scan_flat'; } else { nextPhase = 'scan_i'; nextI = animState.i + 1; } break; case 'scan_flat': showK = true; animState.animationClasses[animState.i] = ['scan-pointer', 'checking-flat']; for (let j = animState.i + 1; j <= animState.k; j++) { if (j < n) animState.animationClasses[j] = ['checking-flat']; } if (statusDiv) statusDiv.textContent = `i=${animState.i}, k=${animState.k}: Scan Flat`; if (animState.k + 1 < n && currentArray[animState.k + 1] === currentArray[animState.k]) { animState.k++; nextPhase = 'scan_flat'; } else { nextPhase = 'check_fall'; } break; case 'check_fall': showK = true; animState.animationClasses[animState.i] = ['scan-pointer', 'checking-flat']; for (let j = animState.i + 1; j <= animState.k; j++) { if (j < n) animState.animationClasses[j] = ['checking-flat']; } if (statusDiv) statusDiv.textContent = `i=${animState.i}, k=${animState.k}: Check Fall`; if (animState.k + 1 < n) { animState.animationClasses[animState.k + 1] = ['checking-fall']; if (currentArray[animState.k + 1] < currentArray[animState.k]) { animState.foundPlateau = { index: animState.i, length: (animState.k + 1) - animState.i + 1, k_end_flat: animState.k }; nextPhase = 'compare'; } else { if (statusDiv) statusDiv.textContent += ` (Falló >=) -> Opt 2`; nextPhase = 'scan_i'; nextI = animState.k; } } else { if (statusDiv) statusDiv.textContent += ` (Falló Fin) -> Opt 2`; nextPhase = 'scan_i'; nextI = animState.k; } break; case 'compare': const len = animState.foundPlateau.length; const startIdx = animState.foundPlateau.index; if (statusDiv) statusDiv.textContent = `Found i=${startIdx}, L=${len}. Comp...`; for (let j = startIdx; j < startIdx + len; j++) { if (j < n) animState.animationClasses[j] = ['current-plateau-found']; } if (len > animState.longestPlateauFoundSoFar.length) { if (statusDiv) statusDiv.textContent += ` ¡Nueva! -> Opt 1`; animState.longestPlateauFoundSoFar = { ...animState.foundPlateau }; } else { if (statusDiv) statusDiv.textContent += ` No nueva. -> Opt 1`; } animState.foundPlateau = null; nextPhase = 'scan_i'; nextI = animState.k + 1; break; case 'finished': return; } updatePointerPosition(pointerI, animState.i); updatePointerPosition(pointerK, showK ? animState.k : -1); animState.i = nextI; animState.phase = nextPhase; visualizeArray(currentArray, animState.longestPlateauFoundSoFar, animState.animationClasses, null); redrawCurrentLines(); if (animState.phase !== 'finished') { animationTimeoutId = setTimeout(animateStep, getAnimationSpeed()); } else { finalizeAnimation(); } }
+
+        // finalizeAnimation (CORREGIDA v9)
+        function finalizeAnimation() {
+            isAnimating = false; // Marcar como no animando PRIMERO
+            disableControls(false);
+            if (visualizationDiv) visualizationDiv.style.backgroundColor = '#fff';
+
+            const finalResult = findLongestPlateauLogic(currentArray);
+
+            // Llamar a visualizeArray para aplicar el estilo final (naranja).
+            // Pasamos finalResult, sin clases de animación, sin highlight múltiple.
+            visualizeArray(currentArray, finalResult, {}, null);
+
+            // Ocultar los punteros de animación
+            updatePointerPosition(pointerI, -1);
+            updatePointerPosition(pointerK, -1);
+
+            // Actualizar el div de resultados y dibujar la línea final punteada
+            if (finalResult.length > 0) {
+                if (resultsDiv) resultsDiv.innerHTML = `<p>Completo.</p><p>Meseta Larga:</p><ul><li>Longitud: <strong>${finalResult.length}</strong></li><li>Índices: <strong>${finalResult.index}</strong> a <strong>${finalResult.index + finalResult.length - 1}</strong></li><li>Seq: <strong>[${currentArray.slice(finalResult.index, finalResult.index + finalResult.length).join(', ')}]</strong></li></ul>`;
+                if (svgOverlay) svgOverlay.innerHTML = ''; // Limpiar líneas temporales
+                drawPlateauLinesSVG(finalResult.index, finalResult.index + finalResult.length - 1, 'line-final-plateau');
+            } else {
+                if (resultsDiv) resultsDiv.innerHTML = `<p>Completo.</p><p>No se encontraron mesetas.</p>`;
+                if (svgOverlay) svgOverlay.innerHTML = '';
+            }
+            if (statusDiv) statusDiv.textContent = 'Animación completada.';
+        }
+
+        // --- Funciones Auxiliares SVG ---
+        function getElementCoords(index) {
+            // Check if visualizationDiv exists and is ready
+            if (!visualizationDiv) return null;
+            const element = visualizationDiv.querySelector(`.array-element[data-index='${index}']`);
+            if (!element) return null;
+
+            const vizRect = visualizationDiv.getBoundingClientRect();
+            const elemRect = element.getBoundingClientRect();
+
+            // Queremos el punto central superior de la barra, relativo al SVG overlay
+            // El SVG overlay tiene las mismas dimensiones y posición que visualizationDiv
+            const x = elemRect.left - vizRect.left + elemRect.width / 2;
+            // El top relativo al div de visualización, no a la ventana
+            const y = elemRect.top - vizRect.top;
+            return { x, y };
+        }
+        function createSVGLine(x1, y1, x2, y2, cl) { if (!svgOverlay) return; const l = document.createElementNS('http://www.w3.org/2000/svg', 'line'); l.setAttribute('x1', x1); l.setAttribute('y1', y1); l.setAttribute('x2', x2); l.setAttribute('y2', y2); l.setAttribute('class', cl); svgOverlay.appendChild(l); }
+        function createSVGText(x, y, text, className) { if (!svgOverlay) return; const txt = document.createElementNS('http://www.w3.org/2000/svg', 'text'); txt.setAttribute('x', x); txt.setAttribute('y', y); txt.setAttribute('class', className); txt.textContent = text; svgOverlay.appendChild(txt); }
+        function drawRiseLineSVG(i1, i2, cl) { const sC = getElementCoords(i1); const eC = getElementCoords(i2); if (sC && eC) { createSVGLine(sC.x, sC.y, eC.x, eC.y, cl); } }
+        function drawFlatLineSVG(sI, eI, cl) { const sC = getElementCoords(sI); const eC = getElementCoords(eI); if (sC && eC && eI >= sI) { const lY = Math.min(sC.y, eC.y) - 5; createSVGLine(sC.x, lY, eC.x, lY, cl); return { x1: sC.x, x2: eC.x, y: lY }; } return null; }
+        function drawFallLineSVG(i1, i2, cl) { drawRiseLineSVG(i1, i2, cl); }
+        function drawPlateauLinesSVG(sI, eI, lineClass, length = null, textClass = '') { if (!svgOverlay || sI < 0 || eI < 0 || eI < sI) return; const rS = getElementCoords(sI); const fS = getElementCoords(sI + 1); const fE = getElementCoords(eI - 1); const fEn = getElementCoords(eI); let flatLineInfo = null; if (rS && fS && fE && fEn && eI - 1 >= sI + 1) { const fY = Math.min(fS.y, fE.y) - 5; const pts = `${rS.x},${rS.y} ${fS.x},${fY} ${fE.x},${fY} ${fEn.x},${fEn.y}`; const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); pl.setAttribute('points', pts.trim()); pl.setAttribute('class', lineClass); svgOverlay.appendChild(pl); flatLineInfo = { x1: fS.x, x2: fE.x, y: fY }; } else if (rS && fS && fEn && sI + 1 === eI) { const fY = fS.y - 5; const pts = `${rS.x},${rS.y} ${fS.x},${fY} ${fEn.x},${fEn.y}`; const pl = document.createElementNS('http://www.w3.org/2000/svg', 'polyline'); pl.setAttribute('points', pts.trim()); pl.setAttribute('class', lineClass); svgOverlay.appendChild(pl); flatLineInfo = { x1: fS.x, x2: fS.x, y: fY }; } if (length !== null && flatLineInfo) { const textX = (flatLineInfo.x1 + flatLineInfo.x2) / 2; const textY = flatLineInfo.y - 7; createSVGText(textX, textY, length, textClass); } }
+        function redrawCurrentLines() { if (!svgOverlay || !animState || !animState.phase) return; svgOverlay.innerHTML = ''; switch (animState.phase) { case 'check_rise': if (animState.i + 1 < currentArray.length) drawRiseLineSVG(animState.i, animState.i + 1, 'line-rise'); break; case 'scan_flat': case 'check_fall': if (animState.i + 1 < currentArray.length) drawRiseLineSVG(animState.i, animState.i + 1, 'line-rise'); if (animState.k >= animState.i + 1) drawFlatLineSVG(animState.i + 1, animState.k, 'line-flat'); if (animState.phase === 'check_fall' && animState.k + 1 < currentArray.length) { drawFallLineSVG(animState.k, animState.k + 1, 'line-fall'); } break; case 'compare': if (animState.foundPlateau) { drawPlateauLinesSVG(animState.foundPlateau.index, animState.foundPlateau.index + animState.foundPlateau.length - 1, 'line-flat'); } break; } if (animState.longestPlateauFoundSoFar && animState.longestPlateauFoundSoFar.length > 0) { drawPlateauLinesSVG(animState.longestPlateauFoundSoFar.index, animState.longestPlateauFoundSoFar.index + animState.longestPlateauFoundSoFar.length - 1, 'line-final-plateau'); } }
+
+        // --- Mostrar Todas ---
+        function showAllPlateaus() { if (isAnimating) { stopAnimation(true); } currentArray = syncArrayFromInput(); const allPlateaus = findAllPlateaus(currentArray); if (resultsDiv) resultsDiv.innerHTML = ''; if (statusDiv) statusDiv.textContent = `Se encontraron ${allPlateaus.length} meseta(s).`; updatePointerPosition(pointerI, -1); updatePointerPosition(pointerK, -1); visualizeArray(currentArray, null, {}, allPlateaus); if (allPlateaus.length > 0) { if (resultsDiv) resultsDiv.innerHTML += "<p>Mesetas encontradas:</p><ul>"; allPlateaus.forEach((p, idx) => { const colorClass = plateauHighlightColors[idx % plateauHighlightColors.length]; if (resultsDiv) resultsDiv.innerHTML += `<li><span style="display:inline-block; width:12px; height:12px; margin-right: 5px; background-color: var(--${colorClass}-bg, #ccc); border: 1px solid var(--${colorClass}-border, #999); vertical-align: middle;"></span> Meseta ${idx + 1} (Índice ${p.index} a ${p.index + p.length - 1}, Long ${p.length})</li>`; }); if (resultsDiv) resultsDiv.innerHTML += "</ul>"; } else { if (resultsDiv) resultsDiv.innerHTML = '<p>No se encontraron mesetas.</p>'; } }
+
+        // --- Event Listener Input ---
+        function handleInputChange() { if (isAnimating) { stopAnimation(true); } const parsedArray = syncArrayFromInput(); visualizeArray(parsedArray, null, {}); if (resultsDiv) resultsDiv.innerHTML = '<p>Array modificado. Pulsa acción.</p>'; if (statusDiv) statusDiv.textContent = 'Listo.'; updatePointerPosition(pointerI, -1); updatePointerPosition(pointerK, -1); }
+
+        // --- Inicialización ---
+        window.onload = () => {
+            visualizationDiv = document.getElementById('visualization');
+            resultsDiv = document.getElementById('results');
+            statusDiv = document.getElementById('animationStatus');
+            mainButton = document.getElementById('mainButton');
+            speedSlider = document.getElementById('animationSpeed');
+            speedValueSpan = document.getElementById('speedValue');
+            svgOverlay = document.getElementById('lineOverlay');
+            pointerI = document.getElementById('pointer-i');
+            pointerK = document.getElementById('pointer-k');
+            arrayInput = document.getElementById('arrayInput');
+
+            if (speedSlider && speedValueSpan) {
+                speedSlider.oninput = () => { if (speedValueSpan) speedValueSpan.textContent = `${getAnimationSpeed()} ms`; };
+                speedSlider.dispatchEvent(new Event('input'));
+            }
+            if (arrayInput) {
+                arrayInput.addEventListener('input', handleInputChange);
+            }
+
+            syncArrayFromInput();
+            visualizeArray(currentArray, null);
+            if (resultsDiv) resultsDiv.innerHTML = '<p>Array inicial cargado. Pulsa acción.</p>';
+            if (statusDiv) statusDiv.textContent = 'Listo.';
+            updatePointerPosition(pointerI, -1);
+            updatePointerPosition(pointerK, -1);
+        };
+    </script>
+</body>
+
+</html>
