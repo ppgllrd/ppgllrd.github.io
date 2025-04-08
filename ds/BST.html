@@ -1,0 +1,517 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Visualizador de Árbol Binario de Búsqueda V4</title>
+    <style>
+        /* --- Base Layout & Typography --- */
+        body {
+            font-family: sans-serif;
+            display: flex;
+            flex-direction: column; /* Stack elements vertically */
+            align-items: center; /* Center items horizontally */
+            height: 100vh;
+            margin: 0;
+            overflow: hidden; /* Prevent body scrolling */
+            background-color: #f0f0f0;
+        }
+
+        h1 {
+            margin: 15px 0; /* Add some vertical space */
+            color: #333;
+            text-align: center;
+             flex-shrink: 0; /* Don't shrink the title */
+        }
+
+        /* --- Controls Panel --- */
+        #controls {
+            padding: 15px;
+            background-color: #e0e0e0;
+            border-radius: 8px;
+            margin-bottom: 15px; /* Space below controls */
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 95%; /* Match visualization width */
+            max-width: 800px; /* Optional: limit max width */
+             flex-shrink: 0; /* Don't shrink the controls panel */
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #controls input[type="number"] {
+            padding: 8px 12px;
+            font-size: 1em;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            width: 80px;
+        }
+        #controls label {
+             display: flex;
+             align-items: center;
+             gap: 5px;
+        }
+         #controls input[type="range"] {
+             cursor: pointer;
+         }
+
+        /* --- Button Styling (General) --- */
+        #controls button {
+            padding: 9px 15px; /* Slightly larger padding */
+            font-size: 1em;
+            font-weight: bold;
+            border-radius: 5px;
+            border: none; /* Remove default border */
+            color: white;
+            cursor: pointer;
+            transition: background-color 0.2s ease, filter 0.2s ease; /* Smooth transition */
+            min-width: 80px; /* Minimum width for consistency */
+            text-align: center;
+        }
+
+        /* --- Button Specific Colors --- */
+        #insertBtn { background-color: #4CAF50; } /* Green */
+        #searchBtn { background-color: #2196F3; } /* Blue */
+        #deleteBtn { background-color: #f44336; } /* Red */
+        #autoBtn   { background-color: #009688; } /* Teal */
+        #resetBtn  { background-color: #757575; } /* Grey */
+
+        /* --- Button Hover Effect (Darken) --- */
+        #controls button:hover:not(:disabled) {
+            filter: brightness(85%); /* Darken the base color */
+        }
+
+        /* --- Disabled Button Style --- */
+        #controls button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+            filter: grayscale(50%); /* Optional: make it look more disabled */
+             opacity: 0.7;
+        }
+
+        /* --- Visualization Panel --- */
+        #visualization {
+            width: 95%;
+            flex-grow: 1; /* Takes remaining vertical height */
+            border: 1px solid #ccc;
+            overflow: hidden; /* Crucial for SVG pan/zoom */
+            position: relative; /* Needed for absolute positioned elements like arrows */
+            background-color: #ffffff;
+             touch-action: none; /* Prevent browser default touch actions like scroll/zoom */
+             border-radius: 5px; /* Optional: rounded corners */
+        }
+
+        svg {
+            display: block;
+            width: 100%;
+            height: 100%;
+            cursor: grab;
+        }
+         svg.grabbing {
+             cursor: grabbing;
+         }
+
+         /* --- Status Panel --- */
+        #status {
+            margin-top: 10px; /* Space above status */
+            margin-bottom: 10px; /* Space below status */
+            padding: 10px;
+            background-color: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            min-height: 1.5em;
+            text-align: center;
+            width: 90%;
+            max-width: 800px; /* Limit width for readability */
+            font-size: 0.9em;
+             flex-shrink: 0; /* Don't shrink the status */
+        }
+
+        /* --- Node & Line Styles (Unchanged) --- */
+        .node circle { stroke: #B0F9B0; stroke-width: 1.5; fill: #B0F9B0; r: 20; transition: fill 0.3s ease, stroke 0.3s ease, r 0.3s ease; }
+        .node text { text-anchor: middle; dominant-baseline: middle; font-size: 14px; font-weight: bold; fill: #cc0000; pointer-events: none; transition: font-size 0.3s ease; -webkit-user-select: none; -ms-user-select: none; user-select: none; }
+        .node-line { stroke: #1668BD; stroke-width: 2; transition: stroke 0.3s ease, stroke-width 0.3s ease; }
+
+        /* Highlighting Classes (Unchanged) */
+        .node.current > circle { fill: #FFFF33; stroke: #FFFF33; r: 22; }
+        .node.path > circle { fill: #FFFF33; stroke: #FFFF33; } /* Light Blue */
+        .node.success > circle { stroke: #66dddd; fill: #66dddd; r: 23; } /* Light Green */
+        .node.success > text { fill: white; } /* Light Green */
+        .node.fail > circle { fill: #a30015; stroke: #a31515; text: white; r: 23; } /* Light Pink */
+        .node.fail > text { fill: white; } 
+        .node.delete > circle { fill: #CC99FF; stroke: #7F00FF; } /* Tomato Red */
+        .node.successor > circle { fill: #CC99FF; stroke: #7F00FF; } /* Pale Green */
+        .node-line.active { stroke: #FFA500; } /* Cornflower Blue */
+        .node-line.path { stroke: #FF0000; stroke-width: 3; } /* Orange */
+
+        /* Temporary Arrow Styles (Unchanged) */
+        .direction-arrow { position: absolute; font-size: 2.5em; font-weight: bold; pointer-events: none; animation: fadeOut 0.8s forwards; transform: translateY(-50%); -webkit-user-select: none; -ms-user-select: none; user-select: none; }
+        .arrow-left { color: green; } .arrow-right { color: red; }
+        .successor-arrow { stroke: #7F00FF; stroke-width: 3; stroke-dasharray: 5, 5; marker-end: url(#arrowhead-purple); animation: fadeOut 1.5s 0.2s forwards; pointer-events: none; }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; } }
+
+        /* Ghost Node (Unchanged) */
+        .ghost-node circle { fill: #FFCC99; stroke: orange; stroke-dasharray: 4, 4; }
+        .ghost-node text { fill: #cc0000; }
+
+    </style>
+</head>
+<body>
+
+    <h1>Árboles Binarios de Búsqueda</h1>
+
+    <div id="controls">
+        <input type="number" id="valueInput" placeholder="Valor">
+        <button id="insertBtn">Insertar</button>
+        <button id="searchBtn">Buscar</button>
+        <button id="deleteBtn">Eliminar</button>
+        <button id="autoBtn">Auto</button>
+        <button id="resetBtn">Reset</button>
+        <label for="speedControl">
+            Velocidad:
+            <input type="range" id="speedControl" min="100" max="1500" value="500" step="100" title="Ajustar velocidad animación (lento <-> rápido)">
+        </label>
+    </div>
+
+    <div id="visualization">
+        <svg id="bstSvg">
+             <defs>
+                <marker id="arrowhead-purple" markerWidth="10" markerHeight="7"
+                refX="8" refY="3.5" orient="auto" markerUnits="strokeWidth">
+                <polygon points="0 0, 10 3.5, 0 7" fill="purple" />
+                </marker>
+            </defs>
+            <g id="bstContainer">
+                <!-- BST elements will be drawn here -->
+            </g>
+        </svg>
+         <!-- Container for absolute positioned arrows -->
+         <div id="arrowContainer" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; pointer-events: none;"></div>
+    </div>
+
+    <div id="status">Introduce un valor y haz clic en una acción.</div>
+
+    <script>
+        // --- JAVASCRIPT (CON CORRECCIONES) ---
+        // --- DOM Elements ---
+        const svg = document.getElementById('bstSvg');
+        const svgContainer = document.getElementById('bstContainer');
+        const valueInput = document.getElementById('valueInput');
+        const insertBtn = document.getElementById('insertBtn');
+        const searchBtn = document.getElementById('searchBtn');
+        const deleteBtn = document.getElementById('deleteBtn');
+        const autoBtn = document.getElementById('autoBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const statusDiv = document.getElementById('status');
+        const speedControl = document.getElementById('speedControl');
+        const visualizationDiv = document.getElementById('visualization');
+        const arrowContainer = document.getElementById('arrowContainer');
+
+        // --- BST Node Class (Unchanged) ---
+        class Node { /* ... */
+             constructor(value) { this.value = value; this.left = null; this.right = null; this.x = 0; this.y = 0; this.depth = 0; this.groupElement = null; this.circleElement = null; this.textElement = null; this.incomingLineElement = null; }
+        }
+
+        // --- Global State (Unchanged) ---
+        let bstRoot = null; let animationSpeed = 1600 - parseInt(speedControl.value); let isAnimating = false;
+        const NODE_RADIUS = 20; const HORIZONTAL_SPACING = 55; const VERTICAL_SPACING = 75;
+        let scale = 1; let offsetX = 0; let offsetY = 0; let isDragging = false; let startDragX, startDragY; let startOffsetX, startOffsetY; let initialPinchDistance = null;
+
+        // --- Utility Functions ---
+        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
+        function updateStatus(message) { console.log("Status:", message); statusDiv.textContent = message; }
+
+        function disableControls() {
+            console.log("Disabling controls");
+            isAnimating = true;
+            insertBtn.disabled = true; searchBtn.disabled = true; deleteBtn.disabled = true;
+            autoBtn.disabled = true; resetBtn.disabled = true; valueInput.disabled = true;
+             speedControl.disabled = true;
+        }
+
+        // CORRECTION: Simplified and more reliable enableControls
+        function enableControls() {
+             console.log("Enabling controls");
+             insertBtn.disabled = false; searchBtn.disabled = false; deleteBtn.disabled = false;
+             autoBtn.disabled = false; resetBtn.disabled = false; valueInput.disabled = false;
+             speedControl.disabled = false;
+             isAnimating = false; // Set isAnimating to false AFTER enabling
+         }
+
+        // --- Highlighting/Drawing/Layout/Scaling (Unchanged, except updateTreeVisualization call) ---
+        function clearHighlights() { /* ... (unchanged) ... */
+             svgContainer.querySelectorAll('.node').forEach(g => { g.classList.remove('current', 'path', 'success', 'fail', 'delete', 'successor'); const circle = g.querySelector('circle'); if(circle) circle.style.r = NODE_RADIUS; });
+             svgContainer.querySelectorAll('.node-line').forEach(line => { line.classList.remove('path', 'active'); line.style.strokeWidth = 2; });
+             arrowContainer.innerHTML = ''; svgContainer.querySelectorAll('.successor-arrow').forEach(arrow => arrow.remove()); const ghost = svgContainer.querySelector('.ghost-node'); if (ghost) ghost.remove();
+        }
+        function highlightNode(node, className, temporary = false, duration = animationSpeed * 1.5) { /* ... (unchanged) ... */
+              if (!node || !node.groupElement) { const foundNode = findNodeByValue(bstRoot, node?.value); if (foundNode && foundNode.groupElement) node = foundNode; else { console.warn("Highlight: Could not find groupElement for node", node?.value); return; }}
+              if (!node.circleElement) node.circleElement = node.groupElement.querySelector('circle'); if (!node.circleElement) return;
+              node.groupElement.classList.add(className); if (className === 'current' || className === 'success' || className === 'fail') node.circleElement.style.r = NODE_RADIUS * 1.15;
+              if (temporary) { setTimeout(() => { if (node.groupElement) { node.groupElement.classList.remove(className); if (node.circleElement) node.circleElement.style.r = NODE_RADIUS; }}, duration); }
+         }
+        function highlightLine(lineElement, className, temporary = false, duration = animationSpeed) { /* ... (unchanged) ... */
+             if (!lineElement) return; lineElement.classList.add(className); if (className === 'active') lineElement.style.strokeWidth = 3;
+             if (temporary) { setTimeout(() => { if (lineElement) { lineElement.classList.remove(className); lineElement.style.strokeWidth = 2; }}, duration); }
+         }
+        function drawNode(node) { /* ... (unchanged) ... */
+             const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); group.setAttribute("class", "node"); group.setAttribute("transform", `translate(${node.x}, ${node.y})`); group.dataset.value = node.value;
+             const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle"); circle.setAttribute("r", NODE_RADIUS); const text = document.createElementNS("http://www.w3.org/2000/svg", "text"); text.textContent = node.value;
+             group.appendChild(circle); group.appendChild(text); svgContainer.appendChild(group); node.groupElement = group; node.circleElement = circle; node.textElement = text;
+         }
+        function drawLine(startX, startY, endX, endY, isPath = false, isActive = false) { /* ... (unchanged) ... */
+            const line = document.createElementNS("http://www.w3.org/2000/svg", "line"); line.setAttribute("class", "node-line"); line.setAttribute("x1", startX); line.setAttribute("y1", startY); line.setAttribute("x2", endX); line.setAttribute("y2", endY);
+             if (isPath) line.classList.add('path'); if (isActive) line.classList.add('active'); svgContainer.insertBefore(line, svgContainer.firstChild); return line;
+         }
+        let nextX = 0; function calculateNodePositionsRecursive(node, depth, xOffset, yOffset) { /* ... (unchanged) ... */ if (!node) return; node.depth = depth; node.y = depth * VERTICAL_SPACING + yOffset; if (node.left) calculateNodePositionsRecursive(node.left, depth + 1, xOffset, yOffset); node.x = nextX + xOffset; nextX += HORIZONTAL_SPACING; if (node.right) calculateNodePositionsRecursive(node.right, depth + 1, xOffset, yOffset); }
+        function calculateNodePositions(root) { /* ... (unchanged) ... */ nextX = NODE_RADIUS; if (!root) return; calculateNodePositionsRecursive(root, 0, 0, VERTICAL_SPACING); if (root) { let minX = Infinity, maxX = -Infinity; const nodes = getAllNodes(root); nodes.forEach(n => { minX = Math.min(minX, n.x); maxX = Math.max(maxX, n.x); }); nextX = Math.max(nextX, maxX + HORIZONTAL_SPACING); const treeWidth = maxX - minX; const shiftX = -(minX + treeWidth / 2); nodes.forEach(n => n.x += shiftX); }}
+        function updateTreeVisualization(clearOldHighlights = true) { /* ... (unchanged, autoScale call removed from here) ... */
+            if (clearOldHighlights) { /* clear visual highlights */ svgContainer.querySelectorAll('.node').forEach(g => g.classList.remove('current', 'path', 'success', 'fail', 'delete', 'successor')); svgContainer.querySelectorAll('.node-line').forEach(line => line.classList.remove('path', 'active')); }
+            calculateNodePositions(bstRoot);
+            const nodesMap = new Map(getAllNodes(bstRoot).map(n => [n.value, n]));
+            while (svgContainer.firstChild && svgContainer.firstChild.tagName !== 'defs') svgContainer.removeChild(svgContainer.firstChild);
+            svgContainer.querySelectorAll('.successor-arrow').forEach(arrow => arrow.remove());
+            const nodesToDraw = Array.from(nodesMap.values());
+            nodesToDraw.forEach(node => { const parent = findParent(bstRoot, node); if (parent) node.incomingLineElement = drawLine(parent.x, parent.y, node.x, node.y); else node.incomingLineElement = null; });
+            nodesToDraw.forEach(drawNode);
+            applyTransform();
+            // Auto-scaling is now called explicitly where needed (e.g., in autoBtn, resetBtn, resize)
+            console.log("Tree visualization updated (drawing only).");
+         }
+        function findParent(root, nodeToFind) { /* ... (unchanged) ... */ if (!root || root === nodeToFind) return null; let queue = [root]; while(queue.length > 0) { let current = queue.shift(); if(current.left === nodeToFind || current.right === nodeToFind) return current; if(nodeToFind.value < current.value && current.left) queue.push(current.left); else if (nodeToFind.value > current.value && current.right) queue.push(current.right); } return null; }
+        function getAllNodes(node) { /* ... (unchanged) ... */ if (!node) return []; const nodes = []; const queue = [node]; while (queue.length > 0) { const current = queue.shift(); nodes.push(current); if (current.left) queue.push(current.left); if (current.right) queue.push(current.right); } return nodes; }
+        function autoScaleAndCenter() { /* ... (unchanged) ... */
+            const nodes = getAllNodes(bstRoot); const viewWidth = visualizationDiv.clientWidth; const viewHeight = visualizationDiv.clientHeight;
+            if (nodes.length === 0) { scale = 1; offsetX = viewWidth / 2; offsetY = VERTICAL_SPACING; applyTransform(); return; }
+            let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity; nodes.forEach(n => { minX = Math.min(minX, n.x - NODE_RADIUS); maxX = Math.max(maxX, n.x + NODE_RADIUS); minY = Math.min(minY, n.y - NODE_RADIUS); maxY = Math.max(maxY, n.y + NODE_RADIUS); });
+            const treeWidth = Math.max(maxX - minX, NODE_RADIUS * 2); const treeHeight = Math.max(maxY - minY, NODE_RADIUS * 2); const padding = 40;
+            if (viewWidth <= padding * 2 || viewHeight <= padding * 2) { scale = 1; } else { const availableWidth = viewWidth - padding * 2; const availableHeight = viewHeight - padding * 2; const scaleX = availableWidth / treeWidth; const scaleY = availableHeight / treeHeight; scale = Math.min(scaleX, scaleY, 1.5); scale = Math.max(scale, 0.15); }
+            const treeCenterX = minX + treeWidth / 2; const treeCenterY = minY + treeHeight / 2; offsetX = (viewWidth / 2) - (treeCenterX * scale); offsetY = (viewHeight / 2) - (treeCenterY * scale) + padding/2;
+            applyTransform(); console.log("AutoScale and Center applied.");
+         }
+        function applyTransform() { svgContainer.setAttribute('transform', `translate(${offsetX}, ${offsetY}) scale(${scale})`); }
+
+        // --- BST Operations (Animated - Logic Unchanged, just structure for try/finally) ---
+         async function insertNodeLogic(value) {
+             if (isNaN(value)) { updateStatus("Por favor, introduce un número válido."); return; } // No disable/enable here
+             clearHighlights(); updateStatus(`Intentando insertar ${value}...`); await sleep(animationSpeed);
+             if (!bstRoot) { /* ... create root ... */ bstRoot = new Node(value); updateStatus(`Árbol vacío. ${value} insertado como raíz.`); updateTreeVisualization(); highlightNode(bstRoot, 'success', true); autoScaleAndCenter(); return; } // Added autoScale for first node
+             let current = bstRoot; let parent = null; let ghostNode = createGhostNode(value);
+             animateGhostNode(ghostNode, current.x, current.y - VERTICAL_SPACING * 1.5, 0);
+             while (current) { /* ... comparison logic ... */
+                 highlightNode(current, 'current'); await animateGhostNode(ghostNode, current.x, current.y - NODE_RADIUS * 2.5, animationSpeed / 2);
+                 updateStatus(`Comparando ${value} con ${current.value}.`); await sleep(animationSpeed);
+                 parent = current; highlightNode(current, 'path'); if (current.incomingLineElement) highlightLine(current.incomingLineElement, 'path');
+                 if (value === current.value) { updateStatus(`El valor ${value} ya existe.`); highlightNode(current, 'fail', true); if (ghostNode) ghostNode.remove(); setTimeout(clearHighlights, animationSpeed * 2); return; } // Exit early
+                 else if (value < current.value) { /* ... move left ... */ updateStatus(`${value} < ${current.value}. Izquierda.`); showDirectionArrow(current, 'left'); const nextNode = current.left; const lineToNext = nextNode?.incomingLineElement; if (lineToNext) highlightLine(lineToNext, 'active'); await animateGhostNode(ghostNode, nextNode ? nextNode.x : current.x - HORIZONTAL_SPACING/2 , nextNode ? nextNode.y - NODE_RADIUS * 2.5 : current.y + VERTICAL_SPACING, animationSpeed / 1.5); await sleep(animationSpeed); if (lineToNext) highlightLine(lineToNext, 'path'); current.groupElement.classList.remove('current'); current = nextNode; }
+                 else { /* ... move right ... */ updateStatus(`${value} > ${current.value}. Derecha.`); showDirectionArrow(current, 'right'); const nextNode = current.right; const lineToNext = nextNode?.incomingLineElement; if (lineToNext) highlightLine(lineToNext, 'active'); await animateGhostNode(ghostNode, nextNode ? nextNode.x : current.x + HORIZONTAL_SPACING/2, nextNode ? nextNode.y - NODE_RADIUS * 2.5 : current.y + VERTICAL_SPACING, animationSpeed / 1.5); await sleep(animationSpeed); if (lineToNext) highlightLine(lineToNext, 'path'); current.groupElement.classList.remove('current'); current = nextNode; }
+             }
+             /* ... insert new node ... */
+             const newNode = new Node(value); updateStatus(`Insertando ${value} como hijo de ${parent.value}.`); calculateNodePositions(bstRoot); let targetX = parent.x + (value < parent.value ? -HORIZONTAL_SPACING * 0.7 : HORIZONTAL_SPACING * 0.7); let targetY = parent.y + VERTICAL_SPACING; await animateGhostNode(ghostNode, targetX, targetY, animationSpeed);
+             if (value < parent.value) parent.left = newNode; else parent.right = newNode;
+             if (ghostNode) ghostNode.remove(); updateTreeVisualization(); autoScaleAndCenter(); // Added autoScale after insert
+             const newlyInsertedNode = findNodeByValue(bstRoot, value); if (newlyInsertedNode) { /* ... highlight path and success ... */ let pathNode = bstRoot; let pathLine = null; while(pathNode && pathNode !== newlyInsertedNode) { highlightNode(pathNode, 'path'); if(pathLine) highlightLine(pathLine, 'path'); if (value < pathNode.value) { pathLine = pathNode.left?.incomingLineElement; pathNode = pathNode.left; } else { pathLine = pathNode.right?.incomingLineElement; pathNode = pathNode.right; }} if (newlyInsertedNode.incomingLineElement) highlightLine(newlyInsertedNode.incomingLineElement, 'path'); await sleep(animationSpeed / 3); highlightNode(newlyInsertedNode, 'success', true, animationSpeed * 2); updateStatus(`${value} insertado con éxito.`);} else { updateStatus(`Error al encontrar ${value} recién insertado.`); } setTimeout(clearHighlights, animationSpeed * 2);
+         }
+         function createGhostNode(value) { /* ... (unchanged) ... */ const group = document.createElementNS("http://www.w3.org/2000/svg", "g"); group.setAttribute("class", "node ghost-node"); group.style.opacity = 0; const circle = document.createElementNS("http://www.w3.org/2000/svg", "circle"); circle.setAttribute("r", NODE_RADIUS * 0.9); const text = document.createElementNS("http://www.w3.org/2000/svg", "text"); text.textContent = value; text.style.fontSize = "12px"; group.appendChild(circle); group.appendChild(text); svgContainer.appendChild(group); return group; }
+         async function animateGhostNode(ghostElement, targetX, targetY, duration = animationSpeed) { /* ... (unchanged) ... */ if (!ghostElement) return; ghostElement.style.transition = `transform ${duration / 1000}s ease-in-out, opacity ${duration/2000}s ease-in-out`; ghostElement.style.opacity = 1; ghostElement.setAttribute("transform", `translate(${targetX}, ${targetY})`); if (duration > 0) await sleep(duration); }
+
+         async function searchNodeLogic(value) {
+             if (isNaN(value)) { updateStatus("Por favor, introduce un número válido."); return; }
+             clearHighlights();
+             if (!bstRoot) { updateStatus("Árbol vacío."); return; }
+             updateStatus(`Buscando ${value}...`); await sleep(animationSpeed); let current = bstRoot; let found = false; let lastVisited = null;
+             while (current) { /* ... comparison logic ... */
+                 lastVisited = current; highlightNode(current, 'current'); updateStatus(`Comparando ${value} con ${current.value}.`); if (current.incomingLineElement) highlightLine(current.incomingLineElement, 'active');
+                 await sleep(animationSpeed); highlightNode(current, 'path'); if (current.incomingLineElement) { highlightLine(current.incomingLineElement, 'path'); current.incomingLineElement.classList.remove('active'); }
+                 if (value === current.value) { updateStatus(`${value} encontrado.`); highlightNode(current, 'success', true, animationSpeed * 2); found = true; break; }
+                 else if (value < current.value) { /* ... move left ... */ updateStatus(`${value} < ${current.value}. Izquierda.`); showDirectionArrow(current, 'left'); current.groupElement.classList.remove('current'); if (!current.left) { updateStatus(`${value} no encontrado (null a la izq de ${current.value}).`); highlightNode(current, 'fail', true, animationSpeed * 2); break; } current = current.left; }
+                 else { /* ... move right ... */ updateStatus(`${value} > ${current.value}. Derecha.`); showDirectionArrow(current, 'right'); current.groupElement.classList.remove('current'); if (!current.right) { updateStatus(`${value} no encontrado (null a la der de ${current.value}).`); highlightNode(current, 'fail', true, animationSpeed * 2); break; } current = current.right; }
+                 await sleep(animationSpeed / 2);
+             }
+             if (!found && !lastVisited) { updateStatus(`${value} no encontrado (árbol vacío?).`); }
+             const duration = found ? animationSpeed * 2 : animationSpeed * 3; setTimeout(() => { if (!isAnimating) clearHighlights(); }, duration); // Keep highlights briefly
+         }
+
+         async function deleteNodeLogic(value) {
+             if (isNaN(value)) { updateStatus("Introduce un número válido."); return; }
+             clearHighlights();
+             if (!bstRoot) { updateStatus("Árbol vacío."); return; }
+             updateStatus(`Eliminando ${value}... Buscando.`); await sleep(animationSpeed);
+             let current = bstRoot; let parent = null; let nodeToDelete = null; let pathNodes = []; let pathLines = [];
+             while (current) { /* ... search logic ... */
+                 pathNodes.push(current); if(parent) { const line = current.incomingLineElement; if(line) pathLines.push(line); }
+                 highlightNode(current, 'current'); if (current.incomingLineElement) highlightLine(current.incomingLineElement, 'active'); updateStatus(`Buscando ${value}. Comparando con ${current.value}.`); await sleep(animationSpeed);
+                 pathNodes.forEach(n => highlightNode(n, 'path')); pathLines.forEach(l => highlightLine(l, 'path')); if (current.incomingLineElement) current.incomingLineElement.classList.remove('active');
+                 if (value === current.value) { nodeToDelete = current; updateStatus(`Nodo ${value} encontrado.`); highlightNode(nodeToDelete, 'delete'); break; }
+                 else { parent = current; current.groupElement.classList.remove('current'); if (value < current.value) { updateStatus(`Izquierda.`); showDirectionArrow(current, 'left'); current = current.left; } else { updateStatus(`Derecha.`); showDirectionArrow(current, 'right'); current = current.right; }}
+                 if (!current) { updateStatus(`Nodo ${value} no encontrado.`); if (parent) highlightNode(parent, 'fail', true); setTimeout(() => { if (!isAnimating) clearHighlights(); }, animationSpeed * 2); return; } // Exit early
+                 await sleep(animationSpeed / 2);
+             }
+             /* ... call recursive delete ... */
+             await deleteNodeRecursive(nodeToDelete, parent, pathNodes, pathLines);
+             updateStatus(`Gestión de ${value} completada. Actualizando...`); await sleep(animationSpeed / 2);
+             updateTreeVisualization(); autoScaleAndCenter(); // Added autoScale after delete
+             updateStatus(`Eliminación de ${value} finalizada.`); await sleep(animationSpeed);
+             clearHighlights();
+         }
+        async function deleteNodeRecursive(nodeToDelete, parent, pathNodes = [], pathLines = []) { /* ... (unchanged, handles structural changes) ... */
+             if (!nodeToDelete) return; if (nodeToDelete.groupElement) highlightNode(nodeToDelete, 'delete'); await sleep(animationSpeed);
+             if (!nodeToDelete.left && !nodeToDelete.right) { /* Leaf */ updateStatus(`Nodo ${nodeToDelete.value} es hoja. Eliminando...`); await sleep(animationSpeed); if (!parent) { updateStatus(`Eliminando raíz (hoja).`); bstRoot = null; } else { if (parent.left === nodeToDelete) { updateStatus(`Desconectando ${nodeToDelete.value} de ${parent.value} (izq).`); parent.left = null; } else { updateStatus(`Desconectando ${nodeToDelete.value} de ${parent.value} (der).`); parent.right = null; } await sleep(animationSpeed / 2); }}
+             else if (!nodeToDelete.right) { /* Only left child */ updateStatus(`Nodo ${nodeToDelete.value} solo tiene hijo izq (${nodeToDelete.left.value}). Conectando padre.`); await sleep(animationSpeed); if (!parent) { updateStatus(`Reemplazando raíz con ${nodeToDelete.left.value}.`); bstRoot = nodeToDelete.left; } else { if (parent.left === nodeToDelete) { updateStatus(`${parent.value} (izq) -> ${nodeToDelete.left.value}.`); parent.left = nodeToDelete.left; } else { updateStatus(`${parent.value} (der) -> ${nodeToDelete.left.value}.`); parent.right = nodeToDelete.left; } await sleep(animationSpeed / 2); }}
+             else if (!nodeToDelete.left) { /* Only right child */ updateStatus(`Nodo ${nodeToDelete.value} solo tiene hijo der (${nodeToDelete.right.value}). Conectando padre.`); await sleep(animationSpeed); if (!parent) { updateStatus(`Reemplazando raíz con ${nodeToDelete.right.value}.`); bstRoot = nodeToDelete.right; } else { if (parent.left === nodeToDelete) { updateStatus(`${parent.value} (izq) -> ${nodeToDelete.right.value}.`); parent.left = nodeToDelete.right; } else { updateStatus(`${parent.value} (der) -> ${nodeToDelete.right.value}.`); parent.right = nodeToDelete.right; } await sleep(animationSpeed / 2); }}
+             else { /* Two children */ updateStatus(`Nodo ${nodeToDelete.value} tiene 2 hijos. Buscando sucesor...`); pathNodes.forEach(n => highlightNode(n, 'path')); pathLines.forEach(l => highlightLine(l, 'path')); await sleep(animationSpeed); let successorParent = nodeToDelete; let successor = nodeToDelete.right; let successorPathNodes = [successor]; let successorPathLines = nodeToDelete.right.incomingLineElement ? [nodeToDelete.right.incomingLineElement] : []; highlightNode(successor, 'current'); if(successor.incomingLineElement) highlightLine(successor.incomingLineElement, 'active'); await sleep(animationSpeed);
+                 while (successor.left) { highlightNode(successor, 'path'); if (successor.incomingLineElement) { highlightLine(successor.incomingLineElement, 'path'); successor.incomingLineElement.classList.remove('active'); } successorParent = successor; successor = successor.left; successorPathNodes.push(successor); if(successor.incomingLineElement) successorPathLines.push(successor.incomingLineElement); highlightNode(successor, 'current'); if (successor.incomingLineElement) highlightLine(successor.incomingLineElement, 'active'); updateStatus(`Buscando min... Izq desde ${successorParent.value} a ${successor.value}.`); await sleep(animationSpeed); }
+                 highlightNode(successor, 'path'); if (successor.incomingLineElement) { highlightLine(successor.incomingLineElement, 'path'); successor.incomingLineElement.classList.remove('active'); } highlightNode(successor, 'successor'); updateStatus(`Sucesor: ${successor.value}.`); await sleep(animationSpeed); showSuccessorArrow(successor, nodeToDelete); updateStatus(`Copiando ${successor.value} a ${nodeToDelete.value}.`); await sleep(animationSpeed * 1.5); if(nodeToDelete.textElement) nodeToDelete.textElement.textContent = successor.value; highlightNode(nodeToDelete, 'success', true, animationSpeed); nodeToDelete.value = successor.value; if(nodeToDelete.groupElement) nodeToDelete.groupElement.classList.remove('delete'); updateStatus(`Eliminando recursivamente el sucesor original (${successor.value}).`); await sleep(animationSpeed); const correctSuccessorParent = (successorParent === nodeToDelete) ? nodeToDelete : successorParent; await deleteNodeRecursive(successor, correctSuccessorParent); updateStatus(`Llamada recursiva para ${successor.value} completada.`); await sleep(animationSpeed/2);
+             }
+        }
+         function findNodeByValue(startNode, value) { /* ... (unchanged) ... */ let c = startNode; while(c) { if (c.value === value) return c; if (value < c.value) c = c.left; else c = c.right; } return null; }
+         function showDirectionArrow(node, direction) { /* ... (unchanged) ... */ 
+            if (!node || !node.groupElement) return; 
+            const arrow = document.createElement('div'); 
+            arrow.classList.add('direction-arrow'); 
+            arrow.textContent = direction === 'left' ? '←' : '→'; 
+            arrow.classList.add(direction === 'left' ? 'arrow-left' : 'arrow-right'); 
+            const svgRect = visualizationDiv.getBoundingClientRect(); 
+            const screenX = offsetX + (node.x - NODE_RADIUS/2) * scale + svgRect.left; 
+            const screenY = offsetY + node.y * scale + svgRect.top; 
+            const vizRect = visualizationDiv.getBoundingClientRect(); 
+            const horizontalOffset = (NODE_RADIUS + 15) * scale; 
+            arrow.style.top = `${screenY - vizRect.top}px`; 
+            if (direction === 'left') 
+                arrow.style.left = `${screenX - vizRect.left - horizontalOffset}px`; 
+            else 
+                arrow.style.left = `${screenX - vizRect.left + horizontalOffset}px`; 
+            arrowContainer.appendChild(arrow); setTimeout(() => arrow.remove(), 800); }
+         function showSuccessorArrow(successorNode, targetNode) { /* ... (unchanged) ... */ if (!successorNode || !targetNode || !successorNode.groupElement || !targetNode.groupElement) return; const line = document.createElementNS("http://www.w3.org/2000/svg", "line"); line.setAttribute("class", "successor-arrow"); const angle = Math.atan2(targetNode.y - successorNode.y, targetNode.x - successorNode.x); const startX = successorNode.x + Math.cos(angle) * NODE_RADIUS; const startY = successorNode.y + Math.sin(angle) * NODE_RADIUS; const endX = targetNode.x - Math.cos(angle) * NODE_RADIUS; const endY = targetNode.y - Math.sin(angle) * NODE_RADIUS; line.setAttribute("x1", startX); line.setAttribute("y1", startY); line.setAttribute("x2", endX); line.setAttribute("y2", endY); line.setAttribute("marker-end", "url(#arrowhead-purple)"); svgContainer.appendChild(line); }
+
+        // --- Event Listeners (CORRECTED with try/finally and explicit autoScale) ---
+        insertBtn.addEventListener('click', async () => {
+            if (isAnimating) return;
+            const value = parseInt(valueInput.value);
+            if (!valueInput.value || isNaN(value)) {
+                updateStatus("Por favor, introduce un número válido.");
+                 valueInput.value = ''; // Clear invalid input
+                return;
+            }
+            disableControls();
+            try {
+                await insertNodeLogic(value); // Call the logic function
+            } catch (error) {
+                console.error("Error during insertion:", error);
+                updateStatus("Ocurrió un error durante la inserción.");
+                 // Optionally redraw and scale even on error to show current state
+                 updateTreeVisualization();
+                 autoScaleAndCenter();
+            } finally {
+                enableControls(); // GUARANTEED to run
+                valueInput.value = ''; // Clear input after attempt
+            }
+        });
+
+        searchBtn.addEventListener('click', async () => {
+            if (isAnimating) return;
+            const value = parseInt(valueInput.value);
+             if (!valueInput.value || isNaN(value)) {
+                updateStatus("Por favor, introduce un número válido.");
+                 valueInput.value = '';
+                return;
+            }
+            disableControls();
+            try {
+                await searchNodeLogic(value); // Call the logic function
+            } catch (error) {
+                 console.error("Error during search:", error);
+                 updateStatus("Ocurrió un error durante la búsqueda.");
+            } finally {
+                enableControls(); // GUARANTEED to run
+                 valueInput.value = '';
+            }
+        });
+
+        deleteBtn.addEventListener('click', async () => {
+            if (isAnimating) return;
+            const value = parseInt(valueInput.value);
+             if (!valueInput.value || isNaN(value)) {
+                updateStatus("Por favor, introduce un número válido.");
+                 valueInput.value = '';
+                return;
+            }
+            disableControls();
+            try {
+                await deleteNodeLogic(value); // Call the logic function
+            } catch (error) {
+                 console.error("Error during deletion:", error);
+                 updateStatus("Ocurrió un error durante la eliminación.");
+                 // Optionally redraw and scale even on error
+                 updateTreeVisualization();
+                 autoScaleAndCenter();
+            } finally {
+                enableControls(); // GUARANTEED to run
+                 valueInput.value = '';
+            }
+        });
+
+        resetBtn.addEventListener('click', () => {
+            if (isAnimating) { // If animating, just stop animation and enable controls
+                 // Might need a more forceful way to stop ongoing async operations if required
+                 // For now, just enable controls and reset state variable
+                 console.log("Reset clicked during animation - Enabling controls.");
+                 enableControls(); // This sets isAnimating = false
+            }
+             bstRoot = null; clearHighlights();
+             updateStatus("Árbol reseteado.");
+             updateTreeVisualization(); // Redraw empty
+             autoScaleAndCenter(); // Scale the empty view correctly
+             // Ensure controls are enabled if clicked when not animating
+             if (!isAnimating) enableControls();
+        });
+
+        autoBtn.addEventListener('click', () => { // No need for async here as generation is synchronous
+             if (isAnimating) return;
+             disableControls(); // Disable controls at the start
+             try {
+                 bstRoot = null; clearHighlights(); updateStatus("Generando árbol aleatorio...");
+                 const numNodes = Math.floor(Math.random() * 10) + 5; const values = new Set(); while(values.size < numNodes) { values.add(Math.floor(Math.random() * 100)); }
+                 values.forEach(val => { /* Non-animated insert */ if (!bstRoot) { bstRoot = new Node(val); } else { let c = bstRoot; while (true) { if (val < c.value) { if (!c.left) { c.left = new Node(val); break; } c = c.left; } else if (val > c.value) { if (!c.right) { c.right = new Node(val); break; } c = c.right; } else break; } } });
+
+                 updateTreeVisualization(); // Draw the generated tree
+                 autoScaleAndCenter(); // CORRECTION: Explicitly call autoScale AFTER drawing
+                 updateStatus(`Árbol aleatorio (${values.size} nodos) generado.`);
+             } catch (error) {
+                 console.error("Error during auto generation:", error);
+                 updateStatus("Ocurrió un error generando el árbol.");
+                 // Reset tree state on error?
+                 bstRoot = null;
+                 updateTreeVisualization();
+                 autoScaleAndCenter();
+             } finally {
+                 enableControls(); // Re-enable controls in finally block
+             }
+        });
+
+        speedControl.addEventListener('input', (e) => { animationSpeed = 1600 - parseInt(e.target.value); });
+        valueInput.addEventListener('keyup', (e) => { if (e.key === 'Enter' && valueInput.value) {
+             // Trigger insert only if not animating
+             if (!isAnimating) insertBtn.click();
+         } });
+
+        // --- Pan and Zoom Event Listeners (Unchanged) ---
+        let touchCache = []; function cacheTouch(e){ /* ... */ for(let i=0;i<e.changedTouches.length;i++){ const idx = touchCache.findIndex(t=>t.identifier===e.changedTouches[i].identifier); if(idx>=0)touchCache[idx]=e.changedTouches[i]; else touchCache.push(e.changedTouches[i]);} } function removeTouches(e){ /* ... */ for(let i=0;i<e.changedTouches.length;i++){ const idx = touchCache.findIndex(t=>t.identifier===e.changedTouches[i].identifier); if(idx>=0)touchCache.splice(idx,1);} } function getPinchDistance() { if(touchCache.length<2)return 0; const dx=touchCache[0].clientX-touchCache[1].clientX; const dy=touchCache[0].clientY-touchCache[1].clientY; return Math.sqrt(dx*dx+dy*dy); }
+        svg.addEventListener('mousedown', (e) => { if (e.button !== 0 || isAnimating) return; isDragging = true; svg.classList.add('grabbing'); startDragX = e.clientX; startDragY = e.clientY; startOffsetX = offsetX; startOffsetY = offsetY; e.preventDefault(); }); window.addEventListener('mousemove', (e) => { if (!isDragging) return; const dx = e.clientX - startDragX; const dy = e.clientY - startDragY; offsetX = startOffsetX + dx; offsetY = startOffsetY + dy; applyTransform(); }); window.addEventListener('mouseup', (e) => { if (isDragging && e.button === 0) { isDragging = false; svg.classList.remove('grabbing'); } });
+        svg.addEventListener('wheel', (e) => { if (isAnimating) return; e.preventDefault(); const scaleAmount = -e.deltaY > 0 ? 1.1 : 1 / 1.1; const svgRect = svg.getBoundingClientRect(); const mouseX = e.clientX - svgRect.left; const mouseY = e.clientY - svgRect.top; const pointX = (mouseX - offsetX) / scale; const pointY = (mouseY - offsetY) / scale; const newScale = Math.max(0.1, Math.min(scale * scaleAmount, 5)); offsetX = mouseX - pointX * newScale; offsetY = mouseY - pointY * newScale; scale = newScale; applyTransform(); });
+        svg.addEventListener('touchstart', (e) => { if (isAnimating) return; e.preventDefault(); cacheTouch(e); if (touchCache.length === 1) { isDragging = true; svg.classList.add('grabbing'); startDragX = touchCache[0].clientX; startDragY = touchCache[0].clientY; startOffsetX = offsetX; startOffsetY = offsetY; } else if (touchCache.length === 2) { isDragging = false; svg.classList.remove('grabbing'); initialPinchDistance = getPinchDistance(); } }); svg.addEventListener('touchmove', (e) => { if (isAnimating) return; e.preventDefault(); cacheTouch(e); if (touchCache.length === 1 && isDragging) { const dx = touchCache[0].clientX - startDragX; const dy = touchCache[0].clientY - startDragY; offsetX = startOffsetX + dx; offsetY = startOffsetY + dy; applyTransform(); } else if (touchCache.length === 2 && initialPinchDistance !== null && initialPinchDistance > 0) { const currentPinchDistance = getPinchDistance(); if (currentPinchDistance <= 0) return; const scaleAmount = currentPinchDistance / initialPinchDistance; const svgRect = svg.getBoundingClientRect(); const midX = (touchCache[0].clientX + touchCache[1].clientX) / 2 - svgRect.left; const midY = (touchCache[0].clientY + touchCache[1].clientY) / 2 - svgRect.top; const pointX = (midX - offsetX) / scale; const pointY = (midY - offsetY) / scale; const newScale = Math.max(0.1, Math.min(scale * scaleAmount, 5)); offsetX = midX - pointX * newScale; offsetY = midY - pointY * newScale; scale = newScale; applyTransform(); initialPinchDistance = currentPinchDistance; } }); svg.addEventListener('touchend', (e) => { if (isAnimating) return; e.preventDefault(); removeTouches(e); if (touchCache.length < 2) { initialPinchDistance = null; svg.classList.remove('grabbing'); } if (touchCache.length < 1) { isDragging = false; svg.classList.remove('grabbing'); } else if (touchCache.length === 1 && !isDragging) { isDragging = true; svg.classList.add('grabbing'); startDragX = touchCache[0].clientX; startDragY = touchCache[0].clientY; startOffsetX = offsetX; startOffsetY = offsetY; } }); svg.addEventListener('touchcancel', (e) => { removeTouches(e); if (touchCache.length < 2) initialPinchDistance = null; if (touchCache.length < 1) isDragging = false; svg.classList.remove('grabbing'); });
+
+        // --- Initial Setup ---
+        window.addEventListener('load', () => {
+            animationSpeed = 1600 - parseInt(speedControl.value);
+            updateTreeVisualization(); // Initial draw
+            autoScaleAndCenter(); // Initial scale
+            isAnimating = false; enableControls(); // Ensure enabled on load
+        });
+         window.addEventListener('resize', () => { if (!isAnimating) autoScaleAndCenter(); });
+
+    </script>
+
+</body>
+</html>

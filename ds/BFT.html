@@ -139,7 +139,13 @@
 
         /* Vis.js Network Styles */
         .vis-network { border: 1px solid var(--border-color); border-radius: 0.4rem; height: 100%; width: 100%; box-sizing: border-box; background-color: #fff; }
-
+        .vis-tooltip {
+          font-family: sans-serif, 'Arial', Tahoma, Geneva, Verdana !important;
+          background-color: black !important;
+          color: white !important;
+          padding: 0.75rem !important;
+        }
+         
         #author { font-size: 0.75em; color: #777; text-align: center; margin: 0.75rem 0 0 0; line-height: 0; }
 
         
@@ -1173,6 +1179,7 @@
               if (!localTreeNodes.has(w)) localTreeNodes.set(w, {
                 id: w,
                 label: ` ${getNodeLabel(w)} `,
+                title: reconstructAndFormatPath(w, parentMap, startNodeId),
                 level: lv,
                 size: currentVisSizes.nodeSize,
                 color: {
@@ -1517,8 +1524,8 @@
 
           updateQueueDisplay(state.queue); // Use queue display
           updateVWUDisplay(state.currentV, state.currentW, state.currentU);
-          updateSequenceDisplay(state.visitedSequence);
-          updateParentTable(state.parentMap); // Update parent table data
+          updateSequenceDisplay(state.visitedSequence, state.parentMap, currentStartNodeId);
+          updateParentTable(state.parentMap, currentStartNodeId); // Update parent table data
         }
 
         function highlightPseudocodeLine(lineNumber) { // Includes Scroll
@@ -1620,7 +1627,7 @@
                 <span><span class="label">u (Neighbor):</span> <span class="value label-red-bold">${uValue}</span></span>`;
         }
 
-        function updateSequenceDisplay(sequence) {
+        function updateSequenceDisplay(sequence, parentMap, startNodeId) {
           /* Unchanged from V5 */
           sequenceContainer.innerHTML = '';
           if (sequence.length === 0) {
@@ -1631,12 +1638,12 @@
             const span = document.createElement('span');
             span.classList.add('visited-node-text', 'label-red-bold');
             span.textContent = getNodeLabel(nodeId);
-            span.title = `Node ${getNodeLabel(nodeId)}`;
+            span.title = reconstructAndFormatPath(nodeId, parentMap, startNodeId); // Establece el atributo title
             sequenceContainer.appendChild(span);
           });
         }
 
-        function updateParentTable(parentMap) {
+        function updateParentTable(parentMap, startNodeId) {
           /* Unchanged from V5 */
           parentTableBody.innerHTML = '';
           const addedNodes = new Set();
@@ -1646,6 +1653,7 @@
             const tdNode = document.createElement('td');
             tdNode.textContent = getNodeLabel(nodeId);
             tdNode.classList.add('label-red-bold');
+            tdNode.title = reconstructAndFormatPath(nodeId, parentMap, startNodeId);
             const tdParent = document.createElement('td');
             tdParent.textContent = getNodeLabel(parentId) ?? 'null';
             tdParent.classList.add('label-red-bold');
@@ -1706,6 +1714,29 @@
               }, 2500);
             }, 1000);
           }
+        }
+
+        function reconstructPath(targetNodeId, parentMap, startNodeId) {
+            const path = [];
+            let currentNode = targetNodeId;
+
+            // Sigue a los padres hacia atrás hasta llegar al nodo inicial o a null
+            while (currentNode !== undefined && currentNode !== null) {
+                path.unshift(currentNode); // Añade al principio para construir el camino en orden
+                if (currentNode === startNodeId) {
+                    break; // Llegamos al inicio
+                }
+                currentNode = parentMap.get(currentNode); // Ve al padre
+            }
+            // Si el primer nodo del camino no es el nodo inicial (p.ej., componente desconectado)
+            // podrías querer indicarlo, pero por ahora simplemente devolvemos el camino encontrado.
+            return path;
+        }
+
+        function reconstructAndFormatPath(targetNodeId, parentMap, startNodeId) {
+            const path = reconstructPath(targetNodeId, parentMap, startNodeId);
+            const str = path.map(nodeId => getNodeLabel(nodeId)).join(' → ');
+            return `Path: ${str}`;
         }
 
         // --- Start the application ---
