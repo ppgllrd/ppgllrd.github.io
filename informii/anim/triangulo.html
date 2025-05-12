@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización del Área de un Triángulo</title>
+    <style>
+        /* --- CSS --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f4f4f9; /* Gris claro */
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #2c3e50; /* Azul oscuro grisáceo */
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        p {
+            text-align: center;
+            max-width: 700px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        #visualization-container {
+            position: relative;
+            border: 2px solid #bdc3c7; /* Gris medio */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff; /* Fondo blanco para el canvas */
+            touch-action: none; /* Previene acciones táctiles por defecto */
+            margin-bottom: 15px; /* Espacio antes de los resultados */
+        }
+
+        canvas {
+            display: block;
+            cursor: default;
+        }
+
+        #controls {
+            margin-top: 10px;
+            margin-bottom: 15px;
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+        }
+
+         /* Estilos de cursor para elementos arrastrables */
+        .draggable {
+            cursor: grab;
+        }
+        .dragging {
+            cursor: grabbing;
+        }
+
+        /* Estilo para mostrar resultados */
+        #results-display {
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.95em;
+            white-space: pre;
+            line-height: 1.6;
+            background-color: #e9ecef;
+            padding: 10px 15px;
+            border-radius: 5px;
+            border: 1px solid #ced4da;
+            text-align: left;
+            min-width: 250px; /* Ancho mínimo para que se vea bien */
+        }
+        #results-display strong {
+             color: #34495e; /* Azul oscuro */
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>📐 Calculadora Visual del Área de un Triángulo 📐</h1>
+    <p>
+        Arrastra los vértices P1, P2 o P3 para modificar el triángulo.
+        La visualización muestra la <strong>base</strong> (línea P1-P2), la <strong>altura</strong> (línea discontinua desde P3 perpendicular a la base)
+        y calcula el <strong>área</strong> en tiempo real.
+    </p>
+
+    <div id="visualization-container">
+        <canvas id="triangleCanvas"></canvas>
+    </div>
+
+    <div id="controls">
+        Haz clic y arrastra los Vértices (⚫) para moverlos.
+    </div>
+
+    <div id="results-display">
+        Cargando resultados...
+    </div>
+
+    <script>
+        // --- JavaScript ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('triangleCanvas');
+            const ctx = canvas.getContext('2d');
+            const resultsDisplay = document.getElementById('results-display');
+
+            // --- Configuración ---
+            const canvasSize = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.55, 600);
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            const simWidth = 10; // Rango de coordenadas de simulación (ej. de -5 a 5)
+            const scale = canvas.width / simWidth;
+            const originX = canvas.width / 2;
+            const originY = canvas.height / 2;
+            const pointRadius = 8; // Radio visual y de detección
+            const vertexEmoji = '⚫';
+            const emojiSize = 16;
+
+            // --- Estado ---
+            // Vértices iniciales (usando los del ejemplo Scala)
+            let p1 = { id: 'P1', x: -2.0, y: 0.0, emoji: vertexEmoji, label: 'P1', color: '#e74c3c' }; // Rojo
+            let p2 = { id: 'P2', x: 3.0, y: 1.0, emoji: vertexEmoji, label: 'P2', color: '#3498db' }; // Azul
+            let p3 = { id: 'P3', x: 1.0, y: 4.0, emoji: vertexEmoji, label: 'P3', color: '#2ecc71' }; // Verde
+
+            let vertices = [p1, p2, p3]; // Array para gestionar vértices arrastrables
+
+            // Variables para resultados
+            let baseLength = 0;
+            let heightLength = 0;
+            let area = 0;
+            let heightProjectionPoint = { x: 0, y: 0 }; // Punto donde la altura toca la línea base
+
+            let isDragging = false;
+            let draggedPoint = null;
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+            const epsilon = 1e-9; // Pequeño valor para comparaciones de flotantes
+
+            // --- Conversión de Coordenadas ---
+            function toCanvasCoords(simPoint) {
+                const simX = typeof simPoint.x === 'number' ? simPoint.x : 0;
+                const simY = typeof simPoint.y === 'number' ? simPoint.y : 0;
+                return {
+                    x: originX + simX * scale,
+                    y: originY - simY * scale // Y invertida
+                };
+            }
+
+            function toSimCoords(canvasPoint) {
+                const canvasX = typeof canvasPoint.x === 'number' ? canvasPoint.x : 0;
+                const canvasY = typeof canvasPoint.y === 'number' ? canvasPoint.y : 0;
+                return {
+                    x: (canvasX - originX) / scale,
+                    y: (originY - canvasY) / scale // Y invertida
+                };
+            }
+
+            // --- Cálculos Geométricos ---
+            function distance(pA, pB) {
+                const dx = pB.x - pA.x;
+                const dy = pB.y - pA.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            // Calcula la distancia desde pt a la línea que pasa por lineP1 y lineP2
+            // También calcula el punto de proyección para dibujar la altura
+            function pointLineDistance(pt, lineP1, lineP2) {
+                const dxLine = lineP2.x - lineP1.x;
+                const dyLine = lineP2.y - lineP1.y;
+
+                const lineLenSq = dxLine * dxLine + dyLine * dyLine;
+
+                // Si lineP1 y lineP2 son el mismo punto (o muy cercanos)
+                if (lineLenSq < epsilon * epsilon) {
+                     heightProjectionPoint = { ...lineP1 }; // Proyección es el propio punto
+                     return distance(pt, lineP1);
+                }
+
+                // Calcular parámetro t para la proyección del punto pt sobre la línea
+                // t = [(pt.x - lineP1.x) * dxLine + (pt.y - lineP1.y) * dyLine] / lineLenSq
+                const t = ((pt.x - lineP1.x) * dxLine + (pt.y - lineP1.y) * dyLine) / lineLenSq;
+
+                // Calcular el punto de proyección (pH) en la línea infinita
+                const projX = lineP1.x + t * dxLine;
+                const projY = lineP1.y + t * dyLine;
+                heightProjectionPoint = { x: projX, y: projY };
+
+                // La distancia es la distancia entre pt y su proyección pH
+                return distance(pt, heightProjectionPoint);
+            }
+
+
+            function calculateMetrics() {
+                // Base: Distancia entre p1 y p2
+                baseLength = distance(p1, p2);
+
+                // Altura: Distancia desde p3 a la línea que pasa por p1 y p2
+                // pointLineDistance también calcula heightProjectionPoint internamente
+                heightLength = pointLineDistance(p3, p1, p2);
+
+                // Área
+                area = (baseLength * heightLength) / 2;
+
+                // Manejar caso degenerado (área muy pequeña)
+                if (Math.abs(area) < epsilon) {
+                    area = 0;
+                    // Si el área es cero, la altura real es cero si p3 está en la línea p1-p2
+                    if(Math.abs(pointLineDistance(p3, p1, p2)) < epsilon) heightLength = 0;
+                }
+            }
+
+            // --- Funciones de Dibujo ---
+            function drawGrid() {
+                ctx.strokeStyle = '#e0e0e0';
+                ctx.lineWidth = 0.5;
+                const step = 1; // Dibuja una línea cada unidad de simulación
+
+                // Vert
+                for (let x = 0; originX + x * scale <= canvas.width; x += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(originX + x * scale, 0); ctx.lineTo(originX + x * scale, canvas.height);
+                    ctx.moveTo(originX - x * scale, 0); ctx.lineTo(originX - x * scale, canvas.height);
+                    ctx.stroke();
+                }
+                 // Horiz
+                for (let y = 0; originY + y * scale <= canvas.height; y += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, originY + y * scale); ctx.lineTo(canvas.width, originY + y * scale);
+                    ctx.moveTo(0, originY - y * scale); ctx.lineTo(canvas.width, originY - y * scale);
+                    ctx.stroke();
+                }
+
+                // Ejes
+                ctx.strokeStyle = '#aaaaaa';
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke(); // Y
+                ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke(); // X
+            }
+
+            function drawLine(p1Sim, p2Sim, color, lineWidth = 1.5, dashed = false) {
+                const p1Can = toCanvasCoords(p1Sim);
+                const p2Can = toCanvasCoords(p2Sim);
+                ctx.beginPath();
+                ctx.moveTo(p1Can.x, p1Can.y);
+                ctx.lineTo(p2Can.x, p2Can.y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = lineWidth;
+                if (dashed) {
+                    ctx.setLineDash([4, 4]); // Patrón discontinuo
+                } else {
+                    ctx.setLineDash([]);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]); // Reset
+            }
+
+            // Dibuja un vértice (punto)
+            function drawVertex(vertexData) {
+                const canvasPoint = toCanvasCoords(vertexData);
+                // Dibuja el círculo/emoji
+                ctx.font = `${emojiSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                // ctx.fillStyle = vertexData.color; // Usar si quieres círculos de color en vez de emoji
+                // ctx.beginPath();
+                // ctx.arc(canvasPoint.x, canvasPoint.y, pointRadius, 0, 2 * Math.PI);
+                // ctx.fill();
+                ctx.fillText(vertexData.emoji, canvasPoint.x, canvasPoint.y); // Dibuja el emoji
+
+                // Dibuja la etiqueta
+                ctx.font = '12px Arial';
+                ctx.fillStyle = vertexData.color;
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'bottom';
+                ctx.fillText(vertexData.label, canvasPoint.x + pointRadius * 0.8, canvasPoint.y - pointRadius * 0.8);
+            }
+
+             function updateResultsDisplay() {
+                 // Formatea los números con 2 decimales
+                const fmt = (num) => num.toFixed(2);
+                resultsDisplay.innerHTML = `
+<strong>P1:</strong> (${fmt(p1.x)}, ${fmt(p1.y)})
+<strong>P2:</strong> (${fmt(p2.x)}, ${fmt(p2.y)})
+<strong>P3:</strong> (${fmt(p3.x)}, ${fmt(p3.y)})
+---------------------
+<strong>Base</strong> (P1-P2): ${fmt(baseLength)}
+<strong>Altura</strong> (desde P3): ${fmt(heightLength)}
+<strong>Área:</strong> ${fmt(area)}
+                `.trim();
+            }
+
+            // --- Función Principal de Dibujo ---
+            function redraw() {
+                // Limpiar
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Dibujar fondo y ejes
+                drawGrid();
+
+                // Calcular métricas (IMPORTANTE: antes de dibujar altura y mostrar resultados)
+                calculateMetrics();
+
+                // Dibujar la línea de la base (P1 a P2) más gruesa
+                drawLine(p1, p2, '#34495e', 2.5); // Azul oscuro grisáceo
+
+                // Dibujar los otros dos lados del triángulo
+                drawLine(p2, p3, '#bdc3c7', 1.5); // Gris medio
+                drawLine(p3, p1, '#bdc3c7', 1.5); // Gris medio
+
+                // Dibujar la línea de altura (desde P3 hasta su proyección en la línea P1-P2)
+                if (heightLength > epsilon) { // Solo dibujar si no es degenerado
+                    drawLine(p3, heightProjectionPoint, '#e67e22', 1.5, true); // Naranja, discontinuo
+                }
+
+                // Dibujar los vértices (encima de las líneas)
+                vertices.forEach(v => drawVertex(v));
+
+                // Actualizar panel de resultados
+                updateResultsDisplay();
+            }
+
+            // --- Manejadores de Eventos ---
+            function getMousePos(event) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = event.clientX ?? event.touches[0].clientX;
+                const clientY = event.clientY ?? event.touches[0].clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            function isNearPoint(simPoint, canvasMousePos) {
+                const canvasPoint = toCanvasCoords(simPoint);
+                const dx = canvasMousePos.x - canvasPoint.x;
+                const dy = canvasMousePos.y - canvasPoint.y;
+                // Usar un radio un poco mayor para facilitar el agarre
+                const effectiveRadius = pointRadius * 1.5;
+                return (dx * dx + dy * dy) < (effectiveRadius * effectiveRadius);
+            }
+
+            function updateCursorStyle(event) {
+                let mousePos = null;
+                let hovering = false;
+                if (event && !isDragging) {
+                     mousePos = getMousePos(event);
+                     hovering = vertices.some(v => isNearPoint(v, mousePos));
+                }
+
+                if (isDragging) {
+                     canvas.classList.add('dragging');
+                     canvas.classList.remove('draggable');
+                } else if (hovering) {
+                    canvas.classList.add('draggable');
+                    canvas.classList.remove('dragging');
+                } else {
+                    canvas.classList.remove('draggable', 'dragging');
+                }
+            }
+
+            function handleMouseDown(event) {
+                event.preventDefault();
+                const mousePos = getMousePos(event);
+                draggedPoint = null;
+
+                for (const vertex of vertices) {
+                    if (isNearPoint(vertex, mousePos)) {
+                        isDragging = true;
+                        draggedPoint = vertex;
+                        const simMousePos = toSimCoords(mousePos);
+                        dragOffsetX = draggedPoint.x - simMousePos.x;
+                        dragOffsetY = draggedPoint.y - simMousePos.y;
+                        updateCursorStyle(event);
+                        // redraw(); // Opcional: redibujar para destacar el punto
+                        break;
+                    }
+                }
+            }
+
+            function handleMouseMove(event) {
+                 const mousePos = getMousePos(event);
+                 if (isDragging && draggedPoint) {
+                    event.preventDefault();
+                    const simMousePos = toSimCoords(mousePos);
+                    let newX = simMousePos.x + dragOffsetX;
+                    let newY = simMousePos.y + dragOffsetY;
+
+                    // Opcional: Restringir dentro de ciertos límites si se desea
+                    // const boundary = simWidth / 2;
+                    // draggedPoint.x = Math.max(-boundary, Math.min(boundary, newX));
+                    // draggedPoint.y = Math.max(-boundary, Math.min(boundary, newY));
+                     draggedPoint.x = newX; // Sin restricciones por ahora
+                     draggedPoint.y = newY;
+
+                    redraw(); // Redibujar con la nueva posición
+                 } else {
+                     // Actualizar cursor hover si no se está arrastrando
+                     updateCursorStyle(event);
+                 }
+            }
+
+             function handleMouseUp(event) {
+                 if (isDragging) {
+                    isDragging = false;
+                    draggedPoint = null;
+                    if (event.type !== 'mouseleave' && event.type !== 'touchcancel') {
+                       updateCursorStyle(event); // Actualiza cursor si sigue dentro
+                    } else {
+                        canvas.classList.remove('draggable', 'dragging');
+                    }
+                }
+            }
+
+            // Listeners
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp);
+            canvas.addEventListener('touchstart', handleMouseDown, { passive: false });
+            canvas.addEventListener('touchmove', handleMouseMove, { passive: false });
+            canvas.addEventListener('touchend', handleMouseUp);
+            canvas.addEventListener('touchcancel', handleMouseUp);
+
+            // Dibujo inicial
+            redraw();
+        });
+    </script>
+
+</body>
+</html>

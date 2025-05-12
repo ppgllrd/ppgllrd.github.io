@@ -1,0 +1,424 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización de la Búsqueda del Tesoro Pirata</title>
+    <style>
+        /* --- CSS (igual que antes) --- */
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            background-color: #f0f8ff; /* Azul cielo claro */
+            color: #333;
+            margin: 0;
+            padding: 20px;
+            box-sizing: border-box;
+        }
+
+        h1 {
+            color: #4682b4; /* Azul acero */
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        p {
+            text-align: center;
+            max-width: 700px;
+            line-height: 1.5;
+            margin-bottom: 20px;
+            color: #555;
+        }
+
+        #visualization-container {
+            position: relative;
+            border: 2px solid #4682b4;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            background-color: #ffffff; /* Fondo blanco para el canvas */
+            touch-action: none; /* Previene acciones táctiles por defecto como el scroll */
+        }
+
+        canvas {
+            display: block; /* Elimina espacio extra bajo el canvas */
+            cursor: default;
+        }
+
+        #controls {
+            margin-top: 15px;
+            font-size: 0.9em;
+            color: #666;
+            text-align: center;
+        }
+
+         /* Estilos de cursor para elementos arrastrables */
+        .draggable {
+            cursor: grab; /* Manita abierta */
+        }
+        .dragging {
+            cursor: grabbing; /* Manita cerrada */
+        }
+
+        /* Estilo para mostrar coordenadas */
+        #coords-display {
+            margin-top: 10px;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 0.85em;
+            white-space: pre; /* Preserva el formato */
+            line-height: 1.4;
+            background-color: #e9ecef;
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ced4da;
+        }
+
+    </style>
+</head>
+<body>
+
+    <h1>🏴‍☠️ Búsqueda del Tesoro Pirata 🏴‍☠️</h1>
+    <p>
+        ¡Sigue las instrucciones del pirata! Puedes mover las tres palmeras:
+        Amarilla (Am), Azul (Az) y Rosa (Ro).
+        Observa cómo cambian las ubicaciones de la Estaca Amarilla (EsAm), la Estaca Azul (EsAz),
+        y la posición final del Tesoro (💰).
+    </p>
+
+    <div id="visualization-container">
+        <canvas id="treasureCanvas"></canvas>
+    </div>
+
+    <div id="controls">
+        Haz clic y arrastra las Palmeras (🌴) para moverlas.
+    </div>
+
+    <div id="coords-display">
+        Cargando coordenadas...
+    </div>
+
+    <script>
+        // --- JavaScript ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('treasureCanvas');
+            const ctx = canvas.getContext('2d');
+            const container = document.getElementById('visualization-container');
+            const coordsDisplay = document.getElementById('coords-display');
+
+            // --- Configuración ---
+            const canvasSize = Math.min(window.innerWidth * 0.8, window.innerHeight * 0.7, 700); // Tamaño adaptable
+            canvas.width = canvasSize;
+            canvas.height = canvasSize;
+            const simWidth = 600; // Coordenadas de simulación de -300 a 300
+            const scale = canvas.width / simWidth;
+            const originX = canvas.width / 2;
+            const originY = canvas.height / 2;
+            const pointRadius = 12; // Radio para detección de clic (un poco más grande)
+            const palmEmojiSize = 24; // Tamaño de fuente para emojis
+
+            // --- Estado ---
+            let pAm = { id: 'Am', x: -86, y: 64, emoji: '🌴', label: 'Am', color: '#b8860b' }; // Palmera Amarilla
+            let pAz = { id: 'Az', x: 28, y: 109, emoji: '🌴', label: 'Az', color: '#1e90ff' };  // Palmera Azul
+            let pRo = { id: 'Ro', x: 0, y: -100, emoji: '🌴', label: 'Ro', color: '#ff69b4' }; // Palmera Rosa
+            let estA = { x: 0, y: 0 };     // Estaca Amarilla (solo coords x, y)
+            let estZ = { x: 0, y: 0 };     // Estaca Azul (solo coords x, y)
+            let pTesoro = { x: 0, y: 0 };  // Tesoro (solo coords x, y)
+
+            let palms = [pAm, pAz, pRo]; // Array para gestionar las palmeras arrastrables
+
+            let isDragging = false;
+            let draggedPoint = null; // Referencia al objeto palmera que se está arrastrando
+            let dragOffsetX = 0;
+            let dragOffsetY = 0;
+
+            // --- Conversión de Coordenadas ---
+            function toCanvasCoords(simPoint) {
+                // Asegurarse de que simPoint tiene x e y numéricos
+                const simX = typeof simPoint.x === 'number' ? simPoint.x : 0;
+                const simY = typeof simPoint.y === 'number' ? simPoint.y : 0;
+                return {
+                    x: originX + simX * scale,
+                    y: originY - simY * scale // Y se invierte en canvas
+                };
+            }
+
+            function toSimCoords(canvasPoint) {
+                 // Asegurarse de que canvasPoint tiene x e y numéricos
+                const canvasX = typeof canvasPoint.x === 'number' ? canvasPoint.x : 0;
+                const canvasY = typeof canvasPoint.y === 'number' ? canvasPoint.y : 0;
+                return {
+                    x: (canvasX - originX) / scale,
+                    y: (originY - canvasY) / scale // Y se invierte en canvas
+                };
+            }
+
+            // --- Lógica de Cálculo (del problema rectas.md) ---
+            function calculateTreasure() {
+                // Vector Rosa -> Amarilla
+                const vRA = { x: pAm.x - pRo.x, y: pAm.y - pRo.y };
+                // Vector Rosa -> Azul
+                const vRZ = { x: pAz.x - pRo.x, y: pAz.y - pRo.y };
+
+                // Rotar vRA 90 grados antihorario (-y, x)
+                const vRA_rot = { x: -vRA.y, y: vRA.x };
+                // Rotar vRZ 90 grados *horario* (y, -x)
+                const vRZ_rot = { x: vRZ.y, y: -vRZ.x };
+
+                // Calcular posición Estaca Amarilla (actualiza el objeto estA)
+                estA.x = pAm.x + vRA_rot.x;
+                estA.y = pAm.y + vRA_rot.y;
+                // Calcular posición Estaca Azul (actualiza el objeto estZ)
+                estZ.x = pAz.x + vRZ_rot.x;
+                estZ.y = pAz.y + vRZ_rot.y;
+
+                // Calcular posición Tesoro (actualiza el objeto pTesoro)
+                pTesoro.x = (estA.x + estZ.x) / 2;
+                pTesoro.y = (estA.y + estZ.y) / 2;
+            }
+
+            // --- Funciones de Dibujo ---
+            function drawGrid() {
+                ctx.strokeStyle = '#e0e0e0'; // Rejilla gris claro
+                ctx.lineWidth = 0.5;
+                const step = 50;
+
+                // Líneas verticales
+                for (let x = 0; originX + x * scale < canvas.width; x += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(originX + x * scale, 0); ctx.lineTo(originX + x * scale, canvas.height);
+                    ctx.moveTo(originX - x * scale, 0); ctx.lineTo(originX - x * scale, canvas.height);
+                    ctx.stroke();
+                }
+                // Líneas horizontales
+                for (let y = 0; originY + y * scale < canvas.height; y += step) {
+                    ctx.beginPath();
+                    ctx.moveTo(0, originY + y * scale); ctx.lineTo(canvas.width, originY + y * scale);
+                    ctx.moveTo(0, originY - y * scale); ctx.lineTo(canvas.width, originY - y * scale);
+                    ctx.stroke();
+                }
+
+                // Ejes
+                ctx.strokeStyle = '#aaaaaa'; // Ejes gris oscuro
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(originX, 0); ctx.lineTo(originX, canvas.height); ctx.stroke(); // Eje Y
+                ctx.beginPath(); ctx.moveTo(0, originY); ctx.lineTo(canvas.width, originY); ctx.stroke(); // Eje X
+
+                // Etiquetas de ejes
+                ctx.fillStyle = '#555';
+                ctx.font = '10px Arial';
+                ctx.textAlign = 'center'; ctx.textBaseline = 'top';
+                ctx.fillText('X', canvas.width - 10, originY + 5);
+                ctx.textAlign = 'right'; ctx.textBaseline = 'middle';
+                ctx.fillText('Y', originX - 5, 10);
+                ctx.textAlign = 'center'; // Reset
+                ctx.textBaseline = 'alphabetic'; // Reset
+            }
+
+            function drawLine(p1Sim, p2Sim, color, dashed = false) {
+                const p1Can = toCanvasCoords(p1Sim);
+                const p2Can = toCanvasCoords(p2Sim);
+                ctx.beginPath();
+                ctx.moveTo(p1Can.x, p1Can.y);
+                ctx.lineTo(p2Can.x, p2Can.y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 1.5;
+                if (dashed) {
+                    ctx.setLineDash([5, 5]);
+                } else {
+                    ctx.setLineDash([]);
+                }
+                ctx.stroke();
+                ctx.setLineDash([]); // Reset dash
+            }
+
+            // Dibuja un punto (palmera, estaca, tesoro)
+            // Espera un objeto con coords de SIMULACIÓN x, y, y además emoji, label, color
+            function drawPoint(pointData) {
+                // Convierte las coordenadas de SIMULACIÓN a CANVAS aquí dentro
+                const canvasPoint = toCanvasCoords(pointData);
+                // Dibuja el emoji en las coordenadas de canvas
+                ctx.font = `${palmEmojiSize}px Arial`;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(pointData.emoji, canvasPoint.x, canvasPoint.y);
+
+                // Dibuja la etiqueta
+                ctx.font = '12px Arial';
+                ctx.fillStyle = pointData.color || '#000'; // Usa el color definido o negro
+                ctx.textAlign = 'left';
+                ctx.textBaseline = 'bottom';
+                // Dibuja la etiqueta un poco desplazada del emoji
+                ctx.fillText(pointData.label, canvasPoint.x + palmEmojiSize / 2.5, canvasPoint.y - palmEmojiSize / 2.5);
+            }
+
+            function updateCoordsDisplay() {
+                const formatPoint = (p) => `(${(p.x).toFixed(0)}, ${(p.y).toFixed(0)})`;
+                coordsDisplay.textContent = `
+Palmera Am (Amarilla): ${formatPoint(pAm)}
+Palmera Az (Azul)   : ${formatPoint(pAz)}
+Palmera Ro (Rosa)   : ${formatPoint(pRo)}
+-----------------------------
+Estaca Am (📍)       : ${formatPoint(estA)}
+Estaca Az (📍)       : ${formatPoint(estZ)}
+-----------------------------
+Tesoro    (💰)       : ${formatPoint(pTesoro)}
+                `.trim();
+            }
+
+            // --- Función Principal de Dibujo ---
+            function redraw() {
+                // Limpiar canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Dibujar rejilla y ejes
+                drawGrid();
+
+                // Calcular posiciones actuales (IMPORTANTE: antes de dibujar)
+                calculateTreasure();
+
+                // Dibujar líneas (caminos)
+                drawLine(pRo, pAm, '#ffd700', true); // Dorado, discontinuo (Ro -> Am)
+                drawLine(pRo, pAz, '#add8e6', true); // Azul claro, discontinuo (Ro -> Az)
+                drawLine(pAm, estA, '#ffaa00');      // Naranja (Am -> Estaca Am)
+                drawLine(pAz, estZ, '#0077cc');      // Azul fuerte (Az -> Estaca Az)
+                drawLine(estA, estZ, '#ff00ff');      // Magenta (Estaca Am -> Estaca Az)
+                drawLine(estA, pTesoro, '#ff00ff', true); // Magenta discontinuo
+                drawLine(estZ, pTesoro, '#ff00ff', true); // Magenta discontinuo
+
+                // --- DIBUJAR PUNTOS (CORREGIDO) ---
+                // Palmeras (ya tienen emoji, label, color)
+                drawPoint(pAm);
+                drawPoint(pAz);
+                drawPoint(pRo);
+
+                // Estacas y Tesoro: Pasamos el objeto con coords de SIMULACIÓN (estA, estZ, pTesoro)
+                // y le añadimos las propiedades de dibujo necesarias EN EL MOMENTO DE LLAMAR.
+                drawPoint({ ...estA, emoji: '📍', label: 'EsAm', color: '#cc5500' }); // Pasa estA {x, y} + visualización
+                drawPoint({ ...estZ, emoji: '📍', label: 'EsAz', color: '#0055aa' }); // Pasa estZ {x, y} + visualización
+                drawPoint({ ...pTesoro, emoji: '💰', label: 'Tesoro', color: '#8b0000' });// Pasa pTesoro {x, y} + visualización
+
+
+                // Actualizar display de coordenadas
+                updateCoordsDisplay();
+
+                // No es necesario llamar a updateCursorStyle aquí, se gestiona en mousemove
+            }
+
+            // --- Manejadores de Eventos ---
+            function getMousePos(event) {
+                const rect = canvas.getBoundingClientRect();
+                const clientX = event.clientX ?? event.touches[0].clientX;
+                const clientY = event.clientY ?? event.touches[0].clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            }
+
+            function isNearPoint(simPoint, canvasMousePos) {
+                const canvasPoint = toCanvasCoords(simPoint);
+                const dx = canvasMousePos.x - canvasPoint.x;
+                const dy = canvasMousePos.y - canvasPoint.y;
+                return (dx * dx + dy * dy) < (pointRadius * pointRadius);
+            }
+
+            function updateCursorStyle(event) {
+                let mousePos = null;
+                let hovering = false;
+                // Solo comprobar hover si el evento existe y no estamos arrastrando
+                if (event && !isDragging) {
+                     mousePos = getMousePos(event);
+                     // Comprobar si está cerca de *alguna* palmera arrastrable
+                     hovering = palms.some(palm => isNearPoint(palm, mousePos));
+                }
+
+                if (isDragging) {
+                     canvas.classList.add('dragging');
+                     canvas.classList.remove('draggable');
+                } else if (hovering) {
+                    canvas.classList.add('draggable');
+                    canvas.classList.remove('dragging');
+                } else {
+                    canvas.classList.remove('draggable', 'dragging');
+                }
+            }
+
+            function handleMouseDown(event) {
+                event.preventDefault();
+                const mousePos = getMousePos(event);
+
+                draggedPoint = null; // Resetear
+                // Iterar sobre las palmeras arrastrables
+                for (const palm of palms) {
+                    if (isNearPoint(palm, mousePos)) {
+                        isDragging = true;
+                        draggedPoint = palm; // Guardar referencia al objeto palmera
+                        const simMousePos = toSimCoords(mousePos);
+                        dragOffsetX = draggedPoint.x - simMousePos.x;
+                        dragOffsetY = draggedPoint.y - simMousePos.y;
+                        updateCursorStyle(event); // Poner cursor 'grabbing'
+                        // redraw(); // Opcional: Redibujar para destacar visualmente el punto agarrado
+                        break;
+                    }
+                }
+            }
+
+            function handleMouseMove(event) {
+                 const mousePos = getMousePos(event); // Obtener posición para hover y arrastre
+
+                 if (isDragging && draggedPoint) { // Si estamos arrastrando una palmera válida
+                    event.preventDefault(); // Prevenir scroll/zoom en táctil
+                    const simMousePos = toSimCoords(mousePos);
+
+                    // Aplicar offset
+                    let newX = simMousePos.x + dragOffsetX;
+                    let newY = simMousePos.y + dragOffsetY;
+
+                    // Restringir a límites
+                    const boundary = simWidth / 2;
+                    draggedPoint.x = Math.max(-boundary, Math.min(boundary, newX));
+                    draggedPoint.y = Math.max(-boundary, Math.min(boundary, newY));
+
+                    redraw(); // Redibujar con la nueva posición
+                 } else {
+                    // Si no estamos arrastrando, solo actualizar el estilo del cursor (hover)
+                    updateCursorStyle(event);
+                 }
+            }
+
+             function handleMouseUp(event) {
+                 if (isDragging) {
+                    isDragging = false;
+                    draggedPoint = null;
+                    // El cursor se actualizará en el próximo mousemove o si se vuelve a hacer hover
+                    // Forzar actualización del cursor si el ratón sigue sobre el canvas
+                    if (event.type !== 'mouseleave' && event.type !== 'touchcancel') {
+                       updateCursorStyle(event);
+                    } else {
+                       canvas.classList.remove('draggable', 'dragging'); // Quitar estilos si el ratón sale
+                    }
+                }
+            }
+
+            // Añadir listeners de eventos
+            canvas.addEventListener('mousedown', handleMouseDown);
+            canvas.addEventListener('mousemove', handleMouseMove); // Gestiona hover y arrastre
+            canvas.addEventListener('mouseup', handleMouseUp);
+            canvas.addEventListener('mouseleave', handleMouseUp); // Importante para resetear si se sale arrastrando
+
+            // Eventos táctiles
+            canvas.addEventListener('touchstart', handleMouseDown, { passive: false });
+            canvas.addEventListener('touchmove', handleMouseMove, { passive: false });
+            canvas.addEventListener('touchend', handleMouseUp);
+            canvas.addEventListener('touchcancel', handleMouseUp);
+
+
+            // Dibujo inicial al cargar la página
+            redraw();
+        });
+    </script>
+
+</body>
+</html>

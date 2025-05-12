@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visualización del Teorema de Desargues</title>
+    <style>
+        /* --- CSS (sin cambios) --- */
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; min-height: 100vh; background-color: #ecf0f1; color: #2c3e50; margin: 0; padding: 20px; box-sizing: border-box; }
+        h1 { color: #2980b9; text-align: center; margin-bottom: 10px; }
+        p { text-align: center; max-width: 800px; line-height: 1.5; margin-bottom: 15px; color: #34495e; }
+        #visualization-container { position: relative; border: 2px solid #bdc3c7; box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); background-color: #ffffff; touch-action: none; margin-bottom: 15px; }
+        canvas { display: block; cursor: default; }
+        #controls { margin-bottom: 15px; font-size: 0.9em; color: #7f8c8d; text-align: center; }
+        .draggable { cursor: grab; }
+        .dragging { cursor: grabbing; }
+        #status-display { font-family: 'Consolas', 'Courier New', monospace; font-size: 0.95em; font-weight: bold; color: #27ae60; background-color: #e8f8f5; padding: 8px 12px; border-radius: 5px; border: 1px solid #a3e4d7; text-align: center; min-width: 300px; }
+        #status-display.error { color: #c0392b; background-color: #fdedec; border-color: #f5b7b1; }
+        #status-display.warning { color: #d35400; background-color: #fef5e7; border-color: #f5cba7; }
+    </style>
+</head>
+<body>
+
+    <h1>🔷 Teorema de Desargues Interactivo 🔷</h1>
+    <p>
+        Mueve los puntos <strong>O, A, B, C</strong> libremente. Mueve <strong>A', B', C'</strong> por sus líneas de perspectiva.<br>
+        Se visualizan las rectas extendidas (discontinuas finas de colores) que definen <strong>P</strong> (naranja), <strong>Q</strong> (verde) y <strong>R</strong> (rojo).<br>
+        Estos puntos deberían estar alineados sobre la <strong>línea de Desargues</strong> (morada gruesa).
+    </p>
+
+    <div id="visualization-container">
+        <canvas id="desarguesCanvas"></canvas>
+    </div>
+
+    <div id="controls">
+        Arrastra los puntos para ver cómo se cumple el teorema.
+    </div>
+
+    <div id="status-display">
+        Calculando estado...
+    </div>
+
+    <script>
+        // --- JavaScript ---
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('desarguesCanvas');
+            const ctx = canvas.getContext('2d');
+            const statusDisplay = document.getElementById('status-display');
+
+            // --- Configuración ---
+            const canvasSize = Math.min(window.innerWidth * 0.9, window.innerHeight * 0.65, 750);
+            canvas.width = canvasSize; canvas.height = canvasSize;
+            const simWidth = 20; const scale = canvas.width / simWidth;
+            const originX = canvas.width / 2; const originY = canvas.height / 2;
+            const pointRadius = 7; const detectionRadius = pointRadius * 1.8;
+            const epsilon = 1e-8; // Tolerancia para comparaciones (antes era 1e-8)
+
+            // --- Estado ---
+            let O ={ "id": "O", "x": 9.04, "y": 5.56, "emoji": "👁️", "label": "O", "color": "#34495e" };
+            let A = { id: 'A', x: 1.73, y: 4.69, emoji: 'A', label: 'A', color: '#e74c3c' }; // Rojo ABC
+            let B = { id: 'B', x: 3.06, y: 5.6, emoji: 'B', label: 'B', color: '#e74c3c' };
+            let C = { id: 'C', x: 3.1, y: 3.77, emoji: 'C', label: 'C', color: '#e74c3c' };
+            let tA = 1.45, tB = 1.6, tC = 1.25;
+            let A_prime = { id: "A'", x: -5.91, y: 4.33, emoji: "A'", label: "A'", color: '#3498db' }; // Azul A'B'C'
+            let B_prime = { id: "B'", x: -5.6, y: 6.46, emoji: "B'", label: "B'", color: '#3498db' };
+            let C_prime = { id: "C'", x: -0.44, y: 2.99, emoji: "C'", label: "C'", color: '#3498db' };
+            let P = null, Q = null, R = null;
+            let draggablePoints = [O, A, B, C, A_prime, B_prime, C_prime];
+            let isDragging = false, draggedPoint = null, dragOffsetX = 0, dragOffsetY = 0;
+            let statusMessage = "", statusClass = "";
+
+            // Colores para las líneas de intersección
+            const colorP_lines = '#f39c12'; // Naranja (AB, A'B')
+            const colorQ_lines = '#16a085'; // Verde Mar (AC, A'C')
+            const colorR_lines = '#c0392b'; // Rojo Granada (BC, B'C')
+
+            // --- Geometría y Cálculos ---
+            function toCanvasCoords(simPoint) { if (!simPoint || typeof simPoint.x !== 'number' || typeof simPoint.y !== 'number') { return { x: NaN, y: NaN }; } return { x: originX + simPoint.x * scale, y: originY - simPoint.y * scale }; }
+            function toSimCoords(canvasPoint) { return { x: (canvasPoint.x - originX) / scale, y: (originY - canvasPoint.y) / scale }; }
+            function updatePerspectivePoints() { A_prime.x = O.x + tA * (A.x - O.x); A_prime.y = O.y + tA * (A.y - O.y); B_prime.x = O.x + tB * (B.x - O.x); B_prime.y = O.y + tB * (B.y - O.y); C_prime.x = O.x + tC * (C.x - O.x); C_prime.y = O.y + tC * (C.y - O.y); }
+            function getLineImplicit(p1, p2) { if (!p1 || !p2 || (Math.abs(p2.x - p1.x) < epsilon && Math.abs(p2.y - p1.y) < epsilon)) return null; const vx = p2.x - p1.x; const vy = p2.y - p1.y; const a = vy; const b = -vx; const c = vx * p1.y - vy * p1.x; return { a, b, c }; }
+            function intersectLines(line1, line2) { if (!line1 || !line2) return null; const det = line1.a * line2.b - line1.b * line2.a; if (Math.abs(det) < epsilon) return null; const x = (line1.b * line2.c - line1.c * line2.b) / det; const y = (line1.c * line2.a - line1.a * line2.c) / det; return { x, y }; }
+            function calculateIntersections() { const lineAB = getLineImplicit(A, B); const lineBC = getLineImplicit(B, C); const lineCA = getLineImplicit(C, A); const lineApBp = getLineImplicit(A_prime, B_prime); const lineBpCp = getLineImplicit(B_prime, C_prime); const lineCpAp = getLineImplicit(C_prime, A_prime); P = intersectLines(lineAB, lineApBp); Q = intersectLines(lineCA, lineCpAp); R = intersectLines(lineBC, lineBpCp); if(P) { P.label = 'P'; P.color = '#8e44ad'; P.emoji = 'P';} if(Q) { Q.label = 'Q'; Q.color = '#8e44ad'; Q.emoji = 'Q';} if(R) { R.label = 'R'; R.color = '#8e44ad'; R.emoji = 'R';} }
+
+            /**
+             * Verifica colinealidad de P, Q, R si existen. Actualiza status.
+             * Devuelve true si son colineales, false si no o no se puede verificar.
+             */
+            function checkCollinearityAndSetStatus() {
+                let parallelPairs = [];
+                if (P === null) parallelPairs.push("AB || A'B'");
+                if (Q === null) parallelPairs.push("AC || A'C'");
+                if (R === null) parallelPairs.push("BC || B'C'");
+
+                if (parallelPairs.length > 0) {
+                    statusMessage = `Lados paralelos: ${parallelPairs.join(', ')}. No se pueden encontrar todos los puntos P, Q, R.`;
+                    statusClass = "warning";
+                    return false;
+                }
+
+                // Si P, Q, R existen:
+                const vPQ_x = Q.x - P.x; const vPQ_y = Q.y - P.y;
+                const vPR_x = R.x - P.x; const vPR_y = R.y - P.y;
+                const crossProduct = vPQ_x * vPR_y - vPQ_y * vPR_x;
+
+                // *** CAMBIO AQUÍ: Usar epsilon en lugar de epsilon^2 ***
+                if (Math.abs(crossProduct) < epsilon) {
+                     statusMessage = "¡Teorema Cumplido! P, Q y R son colineales.";
+                     statusClass = "";
+                     return true;
+                } else {
+                    statusMessage = `No colineales (crossProd = ${crossProduct.toExponential(2)}). Error numérico?`;
+                     statusClass = "error";
+                     return false;
+                }
+            }
+
+            // --- Funciones de Dibujo ---
+            function drawLine(p1Sim, p2Sim, color, lineWidth = 1, dashed = false, extend = false) { let p1 = toCanvasCoords(p1Sim); let p2 = toCanvasCoords(p2Sim); if (isNaN(p1.x) || isNaN(p1.y) || isNaN(p2.x) || isNaN(p2.y)) return; ctx.beginPath(); ctx.strokeStyle = color; ctx.lineWidth = lineWidth; if (dashed) ctx.setLineDash([4, 4]); else ctx.setLineDash([]); if (extend && p1Sim && p2Sim) { const dx = p2Sim.x - p1Sim.x; const dy = p2Sim.y - p1Sim.y; if (Math.abs(dx) < epsilon && Math.abs(dy) < epsilon) { ctx.moveTo(p1.x - 5, p1.y); ctx.lineTo(p1.x + 5, p1.y); } else { const largeScale = canvas.width * 2 / scale; const extP1 = toCanvasCoords({ x: p1Sim.x - dx * largeScale, y: p1Sim.y - dy * largeScale }); const extP2 = toCanvasCoords({ x: p1Sim.x + dx * largeScale, y: p1Sim.y + dy * largeScale }); ctx.moveTo(extP1.x, extP1.y); ctx.lineTo(extP2.x, extP2.y); } } else { ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); } ctx.stroke(); ctx.setLineDash([]); }
+            function drawPoint(pointData) { if (!pointData || typeof pointData.x !== 'number' || typeof pointData.y !== 'number') return; const canvasPoint = toCanvasCoords(pointData); if (isNaN(canvasPoint.x) || isNaN(canvasPoint.y)) return; const label = pointData.emoji || pointData.label; const fontSize = pointData.emoji ? 16 : 12; ctx.font = `${fontSize}px Arial`; ctx.fillStyle = pointData.color || '#000000'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(label, canvasPoint.x, canvasPoint.y); if (!pointData.emoji) { ctx.beginPath(); ctx.arc(canvasPoint.x, canvasPoint.y, pointRadius / 2, 0, 2 * Math.PI); ctx.fillStyle = pointData.color || '#000000'; ctx.fill(); } if (pointData.label && pointData.label !== pointData.emoji) { ctx.font = '10px Arial'; ctx.fillStyle = pointData.color || '#000000'; ctx.textAlign = 'left'; ctx.textBaseline = 'bottom'; ctx.fillText(pointData.label, canvasPoint.x + pointRadius, canvasPoint.y - pointRadius); } }
+            function updateStatusDisplay() { statusDisplay.textContent = statusMessage; statusDisplay.className = statusClass; }
+
+            // --- Función Principal de Dibujo ---
+            function redraw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // 1. Cálculos previos
+                updatePerspectivePoints();
+                calculateIntersections(); // Calcula P, Q, R
+
+                // 2. Dibujar líneas perspectiva (muy finas)
+                drawLine(O, A, '#bdc3c7', 0.5, true, true); // Gris claro
+                drawLine(O, B, '#bdc3c7', 0.5, true, true);
+                drawLine(O, C, '#bdc3c7', 0.5, true, true);
+
+                // 3. *** NUEVO: Dibujar las rectas extendidas que definen P, Q, R ***
+                //    (Finas, discontinuas, colores específicos, extendidas)
+                drawLine(A, B, colorP_lines, 0.75, true, true);       // Recta AB
+                drawLine(A_prime, B_prime, colorP_lines, 0.75, true, true); // Recta A'B'
+                drawLine(A, C, colorQ_lines, 0.75, true, true);       // Recta AC
+                drawLine(C_prime, A_prime, colorQ_lines, 0.75, true, true); // Recta C'A'
+                drawLine(B, C, colorR_lines, 0.75, true, true);       // Recta BC
+                drawLine(B_prime, C_prime, colorR_lines, 0.75, true, true); // Recta B'C'
+
+                // 4. Dibujar triángulo ABC (rojo)
+                drawLine(A, B, A.color, 1.5); drawLine(B, C, A.color, 1.5); drawLine(C, A, A.color, 1.5);
+
+                // 5. Dibujar triángulo A'B'C' (azul)
+                drawLine(A_prime, B_prime, A_prime.color, 1.5); drawLine(B_prime, C_prime, A_prime.color, 1.5); drawLine(C_prime, A_prime, A_prime.color, 1.5);
+
+                // 6. Comprobar colinealidad y DIBUJAR LÍNEA DESARGUES (morada gruesa)
+                const areCollinear = checkCollinearityAndSetStatus(); // Actualiza statusMessage/Class
+                const existingIntersections = [P, Q, R].filter(pt => pt !== null);
+                if (existingIntersections.length >= 2) {
+                    // Línea por los puntos de intersección existentes
+                    drawLine(existingIntersections[0], existingIntersections[1], '#8e44ad', 2, false, true);
+                }
+
+                // 7. Dibujar todos los puntos (encima de las líneas)
+                drawPoint(O);
+                [A, B, C].forEach(drawPoint);
+                [A_prime, B_prime, C_prime].forEach(drawPoint);
+                [P, Q, R].forEach(drawPoint); // Dibuja los que existen
+
+
+                // 8. Actualizar display de estado
+                updateStatusDisplay();
+            }
+
+            // --- Manejadores de Eventos ---
+            function getMousePos(event) { const rect = canvas.getBoundingClientRect(); const clientX = event.clientX ?? event.touches[0].clientX; const clientY = event.clientY ?? event.touches[0].clientY; return { x: clientX - rect.left, y: clientY - rect.top }; }
+            function isNearPoint(simPoint, canvasMousePos) { if (!simPoint || typeof simPoint.x !== 'number') return false; const canvasPoint = toCanvasCoords(simPoint); if (isNaN(canvasPoint.x)) return false; const dx = canvasMousePos.x - canvasPoint.x; const dy = canvasMousePos.y - canvasPoint.y; return (dx * dx + dy * dy) < (detectionRadius * detectionRadius); }
+            function updateCursorStyle(event) { let mousePos = null; let hovering = false; if (event && !isDragging) { mousePos = getMousePos(event); hovering = draggablePoints.some(p => isNearPoint(p, mousePos)); } canvas.classList.toggle('draggable', hovering && !isDragging); canvas.classList.toggle('dragging', isDragging); if(!hovering && !isDragging) canvas.classList.remove('draggable', 'dragging'); }
+            function handleMouseDown(event) { event.preventDefault(); const mousePos = getMousePos(event); draggedPoint = null; for (const point of draggablePoints) { if (isNearPoint(point, mousePos)) { isDragging = true; draggedPoint = point; const simMousePos = toSimCoords(mousePos); dragOffsetX = draggedPoint.x - simMousePos.x; dragOffsetY = draggedPoint.y - simMousePos.y; updateCursorStyle(event); break; } } }
+            function handleMouseMove(event) { const mousePos = getMousePos(event); if (isDragging && draggedPoint) { event.preventDefault(); const simMousePos = toSimCoords(mousePos); let targetX = simMousePos.x + dragOffsetX; let targetY = simMousePos.y + dragOffsetY; if (draggedPoint.id === 'O' || ['A', 'B', 'C'].includes(draggedPoint.id)) { draggedPoint.x = targetX; draggedPoint.y = targetY; } else if (['A\'', 'B\'', 'C\''].includes(draggedPoint.id)) { let basePoint = null; if (draggedPoint.id === 'A\'') basePoint = A; else if (draggedPoint.id === 'B\'') basePoint = B; else basePoint = C; const vOX = targetX - O.x; const vOY = targetY - O.y; const vOBaseX = basePoint.x - O.x; const vOBaseY = basePoint.y - O.y; const dotProduct = vOX * vOBaseX + vOY * vOBaseY; const lenSq = vOBaseX * vOBaseX + vOBaseY * vOBaseY; let newT = 0; if (lenSq > epsilon * epsilon) { newT = dotProduct / lenSq; } if (draggedPoint.id === 'A\'') tA = newT; else if (draggedPoint.id === 'B\'') tB = newT; else tC = newT; } redraw(); } else { updateCursorStyle(event); } }
+            function handleMouseUp(event) { if (isDragging) { isDragging = false; draggedPoint = null; if (event.type !== 'mouseleave' && event.type !== 'touchcancel') { updateCursorStyle(event); } else { canvas.classList.remove('draggable', 'dragging'); } } }
+
+            // --- Inicialización ---
+            canvas.addEventListener('mousedown', handleMouseDown); canvas.addEventListener('mousemove', handleMouseMove); canvas.addEventListener('mouseup', handleMouseUp); canvas.addEventListener('mouseleave', handleMouseUp); canvas.addEventListener('touchstart', handleMouseDown, { passive: false }); canvas.addEventListener('touchmove', handleMouseMove, { passive: false }); canvas.addEventListener('touchend', handleMouseUp); canvas.addEventListener('touchcancel', handleMouseUp);
+
+            redraw(); // Dibujo inicial
+        });
+    </script>
+
+</body>
+</html>
