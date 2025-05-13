@@ -1,0 +1,1266 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Puntos, Vectores y Rectas - Visualización Interactiva</title>
+    <style>
+        body {
+            font-family: 'FreeSerif', serif;
+            display: flex;
+            margin: 0;
+            height: 100vh;
+            background-color: #f4f4f4;
+            color: #333;
+            overflow: hidden; /* Prevent body scroll */
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            background-color: #fff;
+            border-right: 2px solid #ccc;
+            overflow: hidden; /* Prevents scrollbars if canvas slightly overflows */
+        }
+
+        canvas {
+            display: block;
+            background-color: #e0f2f7; /* Light blue background */
+            cursor: crosshair;
+        }
+
+        /* Make the main controls column a flex container */
+        #controls {
+            width: 350px;
+            height: 100vh; /* Ensure it takes full viewport height */
+            display: flex;           /* << ADDED */
+            flex-direction: column; /* << ADDED */
+            padding: 5px;
+            /* overflow-y: auto; /* << REMOVED this */
+            background-color: #f9f9f9;
+            border-left: 1px solid #ddd;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            box-sizing: border-box; /* << ADDED */
+        }
+
+        /* Style the new scrollable wrapper */
+        #scrollable-controls {
+            flex-grow: 1;         /* << ADDED: Allows this div to take up available space */
+            overflow-y: auto;     /* << ADDED: Enables scrolling *within* this div */
+            margin-bottom: 15px;  /* << ADDED: Space between scrollable area and Info heading */
+            min-height: 0;        /* << ADDED: Important for flex + overflow */
+            padding-right: 5px; /* Add some padding so scrollbar doesn't overlay content */
+        }
+
+        h2, h3 {
+            color: #0056b3; /* Darker blue for headings */
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 5px;
+            margin-top: 15px;
+            margin-bottom: 10px;
+        }
+
+        /* First H2 within the scrollable area */
+        #scrollable-controls > h2:first-child {
+            margin-top: 0;
+        }
+
+        .control-group {
+            margin-bottom: 5px;
+            padding: 5px;
+            background-color: #fff;
+            border: 1px solid #eee;
+            border-radius: 4px;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+            font-size: 0.9em;
+        }
+
+        select, input[type="number"], button {
+            width: calc(100% - 12px); /* Account for padding */
+            padding: 8px 6px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 0.9em;
+            box-sizing: border-box; /* Include padding in width */
+        }
+
+        button {
+            background-color: #007bff; /* Standard blue */
+            color: white;
+            border: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #0056b3; /* Darker blue on hover */
+        }
+
+        button.secondary {
+            background-color: #6c757d; /* Gray */
+        }
+        button.secondary:hover {
+            background-color: #5a6268;
+        }
+
+        /* Style the info panel - ensure it doesn't shrink */
+        #info-panel {
+            flex-shrink: 0;     /* << ADDED: Prevents shrinking */
+            margin-top: 0;      /* Reset any top margin */
+            padding: 10px;
+            background-color: #e9ecef; /* Light gray */
+            border: 1px solid #ced4da;
+            border-radius: 4px;
+            min-height: 70px; /* Adjust minimum height as needed */
+            max-height: 200px; /* Optional: limit max height */
+            overflow-y: auto; /* Allow scrolling within info panel if content exceeds max-height */
+            font-family: 'Jetbrains Mono', monospace;
+            font-size: 0.85em;
+            white-space: pre-wrap; /* Preserve line breaks */
+            word-wrap: break-word;
+        }
+
+        /* Adjust margin for the "Información" heading */
+        #controls > h2:last-of-type {
+            margin-top: 0;
+            margin-bottom: 5px;
+            flex-shrink: 0; /* Prevent shrinking */
+        }
+
+
+        .coord-display {
+            position: absolute;
+            bottom: 5px;
+            right: 5px;
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 3px 5px;
+            border-radius: 3px;
+            font-family: 'Jetbrains Mono', monospace;
+            font-size: 0.8em;
+            pointer-events: none; /* So it doesn't interfere with clicks */
+        }
+
+        .object-list {
+            list-style-type: none;
+            padding: 0;
+            max-height: 100px;
+            overflow-y: auto;
+            border: 1px solid #eee;
+            margin-bottom: 10px;
+            background-color: #fff; /* Ensure background for list */
+        }
+        .object-list li {
+            padding: 3px 5px;
+            font-size: 0.9em;
+            border-bottom: 1px dashed #eee; /* Separator */
+        }
+        .object-list li:last-child {
+            border-bottom: none;
+        }
+        .object-list li:nth-child(odd) {
+            background-color: #f8f8f8;
+        }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="mainCanvas"></canvas>
+        <div id="mouseCoords" class="coord-display">X: 0, Y: 0</div>
+    </div>
+
+    <div id="controls">
+        <div id="scrollable-controls">
+            <!-- Content that will scroll -->
+            <h2>Creación</h2>
+            <div class="control-group">
+                <h3>Punto</h3>
+                <button id="createOrigen">Crear Origen (0,0)</button>
+                <p style="font-size: 0.8em; color: #555;">Haz clic en el lienzo para crear puntos.</p>
+                 <label for="pointList">Puntos Creados:</label>
+                 <ul id="pointList" class="object-list"></ul>
+            </div>
+
+            <div class="control-group">
+                <h3>Vector</h3>
+                <label for="vecCreateType">Crear con:</label>
+                <select id="vecCreateType">
+                    <option value="componentes">Componentes</option>
+                    <option value="extremo">Extremo (desde Origen)</option>
+                    <option value="origenExtremo">Origen y Extremo</option>
+                </select>
+
+                <div id="vecInputsComponentes">
+                    <label for="vecX">Comp. X:</label> <input type="number" id="vecX" value="100">
+                    <label for="vecY">Comp. Y:</label> <input type="number" id="vecY" value="50">
+                </div>
+                <div id="vecInputsExtremo" style="display:none;">
+                    <label for="vecPuntoExtremo">Punto Extremo:</label> <select id="vecPuntoExtremo"></select>
+                </div>
+                <div id="vecInputsOrigenExtremo" style="display:none;">
+                    <label for="vecPuntoOrigen">Punto Origen:</label> <select id="vecPuntoOrigen"></select>
+                    <label for="vecPuntoExtremoOE">Punto Extremo:</label> <select id="vecPuntoExtremoOE"></select>
+                </div>
+                <button id="createVector">Crear Vector</button>
+                <label for="vectorList">Vectores Creados:</label>
+                <ul id="vectorList" class="object-list"></ul>
+            </div>
+
+            <div class="control-group">
+                <h3>Recta</h3>
+                 <label for="lineCreateType">Crear con:</label>
+                <select id="lineCreateType">
+                    <option value="puntoDirector">Punto y Vector Director</option>
+                    <option value="entrePuntos">Dos Puntos</option>
+                </select>
+                 <div id="lineInputsPuntoDirector">
+                    <label for="linePunto">Punto en Recta:</label> <select id="linePunto"></select>
+                    <label for="lineDirector">Vector Director:</label> <select id="lineDirector"></select>
+                </div>
+                <div id="lineInputsEntrePuntos" style="display:none;">
+                    <label for="lineP1">Punto 1:</label> <select id="lineP1"></select>
+                    <label for="lineP2">Punto 2:</label> <select id="lineP2"></select>
+                </div>
+                <button id="createLine">Crear Recta</button>
+                <label for="lineList">Rectas Creadas:</label>
+                <ul id="lineList" class="object-list"></ul>
+            </div>
+
+            <h2>Operaciones</h2>
+
+            <div class="control-group">
+                 <h3>Punto</h3>
+                 <label for="opPunto1">Punto 1:</label> <select id="opPunto1"></select>
+                 <label for="opPunto2">Punto 2:</label> <select id="opPunto2"></select>
+                 <button id="calcDistancia">Calcular Distancia</button>
+                 <button id="calcPuntoMedio">Calcular Punto Medio</button>
+            </div>
+
+            <div class="control-group">
+                 <h3>Vector</h3>
+                 <label for="opVector1">Vector 1:</label> <select id="opVector1"></select>
+                 <label for="opVector2">Vector 2:</label> <select id="opVector2"></select>
+                 <label for="opVectorPuntoOrigen">Punto Origen (para ExtremoDesde):</label> <select id="opVectorPuntoOrigen"></select>
+                  <label for="opVectorEscalar">Escalar (para * /):</label> <input type="number" id="opVectorEscalar" value="2">
+
+                 <button id="calcModulo">Módulo (Vector 1)</button>
+                 <button id="calcOrtogonal">Ortogonal (Vector 1)</button>
+                 <button id="calcExtremoDesde">ExtremoDesde (Vec1, Punto)</button>
+                 <button id="checkParaleloVec">¿V1 paralelo a V2?</button>
+                 <button id="calcSumaVec">Sumar V1 + V2</button>
+                 <button id="calcMultVec">Multiplicar V1 * Escalar</button>
+                 <button id="calcDivVec">Dividir V1 / Escalar</button>
+            </div>
+
+            <div class="control-group">
+                 <h3>Recta</h3>
+                 <label for="opRecta1">Recta 1:</label> <select id="opRecta1"></select>
+                 <label for="opRecta2">Recta 2:</label> <select id="opRecta2"></select>
+                 <label for="opRectaPunto">Punto:</label> <select id="opRectaPunto"></select>
+
+                 <button id="checkParaleloRecta">¿R1 paralela a R2?</button>
+                 <button id="checkContienePunto">¿R1 contiene Punto?</button>
+                 <button id="calcImplicita">Forma Implícita (R1)</button>
+                 <button id="calcInterseccion">Intersección R1 y R2</button>
+                 <button id="calcParalelaPor">Recta Paralela a R1 por Punto</button>
+                 <button id="calcPerpendicularPor">Recta Perpendicular a R1 por Punto</button>
+                 <button id="calcDistanciaDesde">Distancia R1 a Punto</button>
+            </div>
+
+             <div class="control-group">
+                 <h3>Utilidades</h3>
+                 <button id="clearAll" class="secondary">Limpiar Todo</button>
+                 <!-- Maybe add Desargues example button here later -->
+            </div>
+            <!-- End of scrollable content -->
+        </div>
+
+        <!-- Fixed content at the bottom -->
+        <h2>Información</h2>
+        <div id="info-panel">
+            Haz clic en el lienzo para añadir puntos. Usa los controles para crear vectores y rectas, y realizar operaciones.
+        </div>
+
+    </div> <!-- End of controls div -->
+
+<!-- JavaScript starts after this point -->
+    <script>
+        const canvas = document.getElementById('mainCanvas');
+        const ctx = canvas.getContext('2d');
+        const canvasContainer = document.getElementById('canvas-container');
+        const mouseCoordsDisplay = document.getElementById('mouseCoords');
+        const infoPanel = document.getElementById('info-panel');
+
+        // --- State ---
+        let points = [];
+        let vectors = [];
+        let lines = [];
+        let nextPointId = 1;
+        let nextVectorId = 1;
+        let nextLineId = 1;
+        let tempElements = []; // For visualizing results temporarily
+
+        // --- Configuration ---
+        const POINT_RADIUS = 5;
+        const POINT_COLOR = '#dc3545'; // Red
+        const VECTOR_COLOR = '#28a745'; // Green
+        const LINE_COLOR = '#007bff';   // Blue
+        const RESULT_COLOR = '#ffc107'; // Yellow/Orange
+        const TEMP_COLOR = '#6c757d';   // Gray
+        const AXIS_COLOR = '#cccccc';
+        const GRID_COLOR = '#eeeeee';
+        const EPSILON = 1e-9; // For float comparisons
+
+        // --- Coordinate Transformation ---
+        let canvasWidth, canvasHeight;
+        let scale = 1; // Adjust as needed, maybe add zoom later
+        let originX, originY;
+
+        function resizeCanvas() {
+            canvasWidth = canvasContainer.clientWidth;
+            canvasHeight = canvasContainer.clientHeight;
+            canvas.width = canvasWidth;
+            canvas.height = canvasHeight;
+            originX = canvasWidth / 2;
+            originY = canvasHeight / 2;
+            redrawAll();
+        }
+
+        function worldToCanvas(x, y) {
+            return { x: originX + x * scale, y: originY - y * scale };
+        }
+
+        function canvasToWorld(cx, cy) {
+            return { x: (cx - originX) / scale, y: (originY - cy) / scale };
+        }
+
+        // --- Geometric Classes (JavaScript implementation) ---
+
+        class Point {
+            constructor(x, y, id = `P${nextPointId++}`) {
+                this.x = x;
+                this.y = y;
+                this.id = id;
+            }
+
+            distancia(that) {
+                const dx = this.x - that.x;
+                const dy = this.y - that.y;
+                return Math.sqrt(dx * dx + dy * dy);
+            }
+
+            puntoMedio(that) {
+                return new Point((this.x + that.x) / 2, (this.y + that.y) / 2, `Mid(${this.id},${that.id})`);
+            }
+
+            toString() {
+                return `${this.id}(${this.x.toFixed(1)}, ${this.y.toFixed(1)})`;
+            }
+        }
+        Point.origen = () => new Point(0, 0, 'O');
+
+        class Vector {
+            constructor(x, y, id = `V${nextVectorId++}`) {
+                this.x = x;
+                this.y = y;
+                this.id = id;
+            }
+
+            static conExtremo(p, id) {
+                return new Vector(p.x, p.y, id);
+            }
+
+            static conComponentes(x, y, id) {
+                return new Vector(x, y, id);
+            }
+
+            static conOrigenExtremo(origen, extremo, id = `V(${origen.id}->${extremo.id})`) {
+                return new Vector(extremo.x - origen.x, extremo.y - origen.y, id);
+            }
+
+            get módulo() {
+                return Math.sqrt(this.x * this.x + this.y * this.y);
+            }
+
+            get ortogonal() {
+                return new Vector(-this.y, this.x, `Ort(${this.id})`);
+            }
+
+            esParaleloA(that) {
+                // vx * uy = vy * ux  => |vx * uy - vy * ux| < EPSILON
+                return Math.abs(this.x * that.y - this.y * that.x) < EPSILON;
+            }
+
+            extremoDesde(org) {
+                return new Point(org.x + this.x, org.y + this.y, `End(${this.id} from ${org.id})`);
+            }
+
+            suma(that) {
+                return new Vector(this.x + that.x, this.y + that.y, `Sum(${this.id},${that.id})`);
+            }
+
+            mult(e) {
+                return new Vector(this.x * e, this.y * e, `(${this.id}*${e.toFixed(1)})`);
+            }
+
+            div(e) {
+                if (Math.abs(e) < EPSILON) {
+                    console.error("Division by zero or near-zero scalar.");
+                    infoPanel.textContent = "Error: División por escalar cero o cercano a cero.";
+                    return null; // Indicate error
+                }
+                return new Vector(this.x / e, this.y / e, `(${this.id}/${e.toFixed(1)})`);
+            }
+
+             toString() {
+                return `${this.id}(${this.x.toFixed(1)}, ${this.y.toFixed(1)})`;
+            }
+        }
+
+        class Line {
+             constructor(director, punto, id = `L${nextLineId++}`) {
+                 // Ensure director is not a zero vector
+                if (director.módulo < EPSILON) {
+                    throw new Error("Line director vector cannot be zero.");
+                }
+                this.director = director; // Vector
+                this.punto = punto;       // Point
+                this.id = id;
+            }
+
+            static entrePuntos(p1, p2, id = `L(${p1.id}-${p2.id})`) {
+                 if (p1.distancia(p2) < EPSILON) {
+                    throw new Error("Cannot create line between two identical points.");
+                 }
+                 const director = Vector.conOrigenExtremo(p1, p2);
+                 return new Line(director, p1, id);
+            }
+
+            static determinante(a11, a12, a21, a22) {
+                return a11 * a22 - a12 * a21;
+            }
+
+            esParalelaA(that) {
+                return this.director.esParaleloA(that.director);
+            }
+
+            contieneA(p) {
+                // Vector from line's point to p must be parallel to director
+                const vectorPuntoA_P = Vector.conOrigenExtremo(this.punto, p);
+                // Handle case where p is the same as this.punto (vector is zero)
+                if (vectorPuntoA_P.módulo < EPSILON) return true;
+                return this.director.esParaleloA(vectorPuntoA_P);
+            }
+
+            get implícita() {
+                // director = (vx, vy), punto = (px, py)
+                // vy*x - vx*y + (vx*py - vy*px) = 0
+                // a = vy, b = -vx, c = vx*py - vy*px
+                const vx = this.director.x;
+                const vy = this.director.y;
+                const px = this.punto.x;
+                const py = this.punto.y;
+                const a = vy;
+                const b = -vx;
+                const c = vx * py - vy * px;
+                return { a, b, c };
+            }
+
+            intersección(that) {
+                const imp1 = this.implícita;
+                const imp2 = that.implícita;
+
+                const a1 = imp1.a, b1 = imp1.b, c1 = imp1.c;
+                const a2 = imp2.a, b2 = imp2.b, c2 = imp2.c;
+
+                const den = Line.determinante(a1, b1, a2, b2);
+
+                if (Math.abs(den) < EPSILON) {
+                    // Parallel lines. Check if coincident (contain same point)
+                    if (this.contieneA(that.punto)) {
+                        // Coincident - technically infinite intersection points
+                        // Representing this as null/None for a single point intersection
+                         console.warn("Lines are coincident.");
+                         return null; // Or maybe a special value/message?
+                    } else {
+                         // Parallel but not coincident
+                         return null;
+                    }
+                }
+
+                const numX = Line.determinante(-c1, b1, -c2, b2);
+                const numY = Line.determinante(a1, -c1, a2, -c2); // Corrected Y determinant
+
+                const x = numX / den;
+                const y = numY / den;
+
+                return new Point(x, y, `Int(${this.id},${that.id})`);
+            }
+
+            paralelaPor(p) {
+                return new Line(this.director, p, `Par(${this.id} thru ${p.id})`);
+            }
+
+            perpendicularPor(p) {
+                const perpDirector = this.director.ortogonal;
+                return new Line(perpDirector, p, `Perp(${this.id} thru ${p.id})`);
+            }
+
+            distanciaDesde(p) {
+                const perpLine = this.perpendicularPor(p);
+                const intersectionPoint = this.intersección(perpLine);
+                if (!intersectionPoint) {
+                    // Should not happen unless original line is ill-defined,
+                    // but handle defensively. Might occur if perpLine is somehow
+                    // parallel to original (only if director was zero, which constructor prevents)
+                     console.error("Could not find intersection for distance calculation.");
+                     return 0; // Or NaN
+                }
+                return p.distancia(intersectionPoint);
+            }
+
+             toString() {
+                return `${this.id}: P=${this.punto}, Dir=${this.director}`;
+            }
+        }
+
+        // --- Drawing Functions ---
+
+        function drawGrid() {
+            ctx.strokeStyle = GRID_COLOR;
+            ctx.lineWidth = 0.5;
+            ctx.beginPath();
+            const step = 50 * scale; // Grid lines every 50 units
+
+            // Vertical lines
+            for (let x = originX % step; x < canvasWidth; x += step) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvasHeight);
+            }
+             for (let x = originX % step - step; x > 0; x -= step) {
+                ctx.moveTo(x, 0);
+                ctx.lineTo(x, canvasHeight);
+            }
+
+            // Horizontal lines
+            for (let y = originY % step; y < canvasHeight; y += step) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvasWidth, y);
+            }
+             for (let y = originY % step - step; y > 0; y -= step) {
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvasWidth, y);
+            }
+            ctx.stroke();
+        }
+
+        function drawAxes() {
+            ctx.strokeStyle = AXIS_COLOR;
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            // X-axis
+            ctx.moveTo(0, originY);
+            ctx.lineTo(canvasWidth, originY);
+            // Y-axis
+            ctx.moveTo(originX, 0);
+            ctx.lineTo(originX, canvasHeight);
+            ctx.stroke();
+
+             // Labels
+            ctx.fillStyle = AXIS_COLOR;
+            ctx.font = "10px Arial";
+            ctx.fillText("X", canvasWidth - 10, originY - 5);
+            ctx.fillText("Y", originX + 5, 10);
+        }
+
+        function drawPoint(point, color = POINT_COLOR, radius = POINT_RADIUS, label = true) {
+            if (!point) return;
+            const c = worldToCanvas(point.x, point.y);
+            ctx.fillStyle = color;
+            ctx.beginPath();
+            ctx.arc(c.x, c.y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            if (label) {
+                ctx.fillStyle = '#000';
+                ctx.font = "12px Arial";
+                ctx.fillText(point.id, c.x + radius + 2, c.y - radius - 2);
+            }
+        }
+
+        function drawVector(vector, origin = Point.origen(), color = VECTOR_COLOR, label = true) {
+             if (!vector) return;
+             const start = worldToCanvas(origin.x, origin.y);
+             const end = worldToCanvas(origin.x + vector.x, origin.y + vector.y);
+
+             ctx.strokeStyle = color;
+             ctx.lineWidth = 2;
+             ctx.beginPath();
+             ctx.moveTo(start.x, start.y);
+             ctx.lineTo(end.x, end.y);
+             ctx.stroke();
+
+             // Arrowhead
+             const angle = Math.atan2(end.y - start.y, end.x - start.x);
+             const headLength = 10;
+             ctx.fillStyle = color;
+             ctx.beginPath();
+             ctx.moveTo(end.x, end.y);
+             ctx.lineTo(end.x - headLength * Math.cos(angle - Math.PI / 6), end.y - headLength * Math.sin(angle - Math.PI / 6));
+             ctx.lineTo(end.x - headLength * Math.cos(angle + Math.PI / 6), end.y - headLength * Math.sin(angle + Math.PI / 6));
+             ctx.closePath();
+             ctx.fill();
+
+              if (label) {
+                ctx.fillStyle = '#000';
+                ctx.font = "12px Arial";
+                // Position label near the midpoint of the vector
+                const midX = (start.x + end.x) / 2;
+                const midY = (start.y + end.y) / 2;
+                ctx.fillText(vector.id, midX + 5, midY - 5);
+            }
+        }
+
+         function drawLine(line, color = LINE_COLOR, label = true) {
+            if (!line) return;
+            const { a, b, c } = line.implícita;
+             // ax + by + c = 0
+
+             let p1, p2;
+
+             // Find two points on the line far apart to draw segment
+            if (Math.abs(b) > EPSILON) { // Line is not vertical
+                // y = (-a*x - c) / b
+                const x1 = -originX / scale - 500; // Extend beyond typical view
+                const y1 = (-a * x1 - c) / b;
+                const x2 = (canvasWidth - originX) / scale + 500;
+                const y2 = (-a * x2 - c) / b;
+                p1 = worldToCanvas(x1, y1);
+                p2 = worldToCanvas(x2, y2);
+            } else { // Line is vertical (b is near zero), use x = -c / a
+                 const x = -c / a;
+                 const y1 = -originY / scale - 500;
+                 const y2 = (canvasHeight - originY) / scale + 500;
+                 p1 = worldToCanvas(x, y1);
+                 p2 = worldToCanvas(x, y2);
+            }
+
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+
+            if (label) {
+                ctx.fillStyle = '#000';
+                ctx.font = "12px Arial";
+                // Position label near the line's defining point
+                 const labelPos = worldToCanvas(line.punto.x, line.punto.y);
+                 ctx.fillText(line.id, labelPos.x + 5, labelPos.y + 15);
+            }
+        }
+
+        function redrawAll() {
+            ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+            drawGrid();
+            drawAxes();
+
+            lines.forEach(l => drawLine(l));
+            vectors.forEach(v => drawVector(v)); // Draw vectors from origin by default
+            points.forEach(p => drawPoint(p));
+
+            // Draw temporary elements (like results)
+            tempElements.forEach(el => {
+                if (el instanceof Point) drawPoint(el, RESULT_COLOR, POINT_RADIUS + 1, true);
+                else if (el instanceof Vector) drawVector(el, Point.origen(), RESULT_COLOR, true); // Assume result vectors drawn from origin
+                else if (el instanceof Line) drawLine(el, RESULT_COLOR, true);
+            });
+        }
+
+        // --- UI Update Functions ---
+
+        function updateObjectLists() {
+            updateList('pointList', points, ['opPunto1', 'opPunto2', 'vecPuntoExtremo', 'vecPuntoOrigen', 'vecPuntoExtremoOE', 'linePunto', 'lineP1', 'lineP2', 'opVectorPuntoOrigen', 'opRectaPunto']);
+            updateList('vectorList', vectors, ['lineDirector', 'opVector1', 'opVector2']);
+            updateList('lineList', lines, ['opRecta1', 'opRecta2']);
+        }
+
+        function updateList(listId, items, selectIds) {
+            const listElement = document.getElementById(listId);
+            listElement.innerHTML = items.map(item => `<li>${item.toString()}</li>`).join('');
+
+            selectIds.forEach(selectId => {
+                const select = document.getElementById(selectId);
+                const currentVal = select.value; // Preserve selection if possible
+                select.innerHTML = items.map(item => `<option value="${item.id}">${item.toString()}</option>`).join('');
+                // Restore selection if the item still exists
+                if (items.some(item => item.id === currentVal)) {
+                    select.value = currentVal;
+                }
+            });
+        }
+
+        function getSelected(selectId) {
+            const select = document.getElementById(selectId);
+            if (!select || !select.value) return null;
+            const id = select.value;
+             // Find the object in the appropriate list
+            return points.find(p => p.id === id) ||
+                   vectors.find(v => v.id === id) ||
+                   lines.find(l => l.id === id) ||
+                   null;
+        }
+
+         function clearTemporaryElements() {
+             tempElements = [];
+             redrawAll();
+         }
+
+        // --- Event Listeners ---
+
+        canvas.addEventListener('click', (event) => {
+             clearTemporaryElements(); // Clear previous results on new click
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = event.clientX - rect.left;
+            const canvasY = event.clientY - rect.top;
+            const worldCoords = canvasToWorld(canvasX, canvasY);
+            const newPoint = new Point(worldCoords.x, worldCoords.y);
+            points.push(newPoint);
+            updateObjectLists();
+            redrawAll();
+            infoPanel.textContent = `Punto ${newPoint.id} creado en (${worldCoords.x.toFixed(1)}, ${worldCoords.y.toFixed(1)})`;
+        });
+
+        canvas.addEventListener('mousemove', (event) => {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = event.clientX - rect.left;
+            const canvasY = event.clientY - rect.top;
+            const worldCoords = canvasToWorld(canvasX, canvasY);
+            mouseCoordsDisplay.textContent = `X: ${worldCoords.x.toFixed(1)}, Y: ${worldCoords.y.toFixed(1)}`;
+        });
+
+         window.addEventListener('resize', resizeCanvas);
+
+         // Control Panel Listeners
+
+         // Creation Type Changers
+         document.getElementById('vecCreateType').addEventListener('change', (e) => {
+            document.getElementById('vecInputsComponentes').style.display = (e.target.value === 'componentes') ? 'block' : 'none';
+            document.getElementById('vecInputsExtremo').style.display = (e.target.value === 'extremo') ? 'block' : 'none';
+            document.getElementById('vecInputsOrigenExtremo').style.display = (e.target.value === 'origenExtremo') ? 'block' : 'none';
+         });
+         document.getElementById('lineCreateType').addEventListener('change', (e) => {
+            document.getElementById('lineInputsPuntoDirector').style.display = (e.target.value === 'puntoDirector') ? 'block' : 'none';
+            document.getElementById('lineInputsEntrePuntos').style.display = (e.target.value === 'entrePuntos') ? 'block' : 'none';
+         });
+
+
+         // Creation Buttons
+         document.getElementById('createOrigen').addEventListener('click', () => {
+             clearTemporaryElements();
+             if (!points.some(p => p.id === 'O')) {
+                 const origen = Point.origen();
+                 points.push(origen);
+                 updateObjectLists();
+                 redrawAll();
+                 infoPanel.textContent = `Punto Origen ${origen.id} creado.`;
+             } else {
+                 infoPanel.textContent = `Punto Origen ya existe.`;
+             }
+         });
+
+        document.getElementById('createVector').addEventListener('click', () => {
+            clearTemporaryElements();
+            const type = document.getElementById('vecCreateType').value;
+            let newVector = null;
+            try {
+                 if (type === 'componentes') {
+                     const x = parseFloat(document.getElementById('vecX').value);
+                     const y = parseFloat(document.getElementById('vecY').value);
+                     if (!isNaN(x) && !isNaN(y)) {
+                         newVector = Vector.conComponentes(x, y);
+                     } else { throw new Error("Valores de componentes inválidos."); }
+                 } else if (type === 'extremo') {
+                     const pExtremo = getSelected('vecPuntoExtremo');
+                     if (pExtremo) {
+                         newVector = Vector.conExtremo(pExtremo);
+                     } else { throw new Error("Selecciona un punto extremo."); }
+                 } else if (type === 'origenExtremo') {
+                     const pOrigen = getSelected('vecPuntoOrigen');
+                     const pExtremo = getSelected('vecPuntoExtremoOE');
+                     if (pOrigen && pExtremo) {
+                         newVector = Vector.conOrigenExtremo(pOrigen, pExtremo);
+                     } else { throw new Error("Selecciona puntos de origen y extremo."); }
+                 }
+
+                 if (newVector) {
+                     vectors.push(newVector);
+                     updateObjectLists();
+                     redrawAll();
+                     infoPanel.textContent = `Vector ${newVector.id} creado.`;
+                 }
+            } catch (e) {
+                infoPanel.textContent = `Error al crear vector: ${e.message}`;
+                console.error(e);
+            }
+        });
+
+         document.getElementById('createLine').addEventListener('click', () => {
+            clearTemporaryElements();
+            const type = document.getElementById('lineCreateType').value;
+            let newLine = null;
+             try {
+                if (type === 'puntoDirector') {
+                    const punto = getSelected('linePunto');
+                    const director = getSelected('lineDirector');
+                    if (punto && director) {
+                        newLine = new Line(director, punto);
+                    } else { throw new Error("Selecciona un punto y un vector director."); }
+                } else if (type === 'entrePuntos') {
+                    const p1 = getSelected('lineP1');
+                    const p2 = getSelected('lineP2');
+                    if (p1 && p2) {
+                         if (p1.id === p2.id) throw new Error("Los puntos deben ser diferentes.");
+                        newLine = Line.entrePuntos(p1, p2);
+                    } else { throw new Error("Selecciona dos puntos distintos."); }
+                }
+
+                if (newLine) {
+                    lines.push(newLine);
+                    updateObjectLists();
+                    redrawAll();
+                    infoPanel.textContent = `Recta ${newLine.id} creada.`;
+                }
+             } catch (e) {
+                 infoPanel.textContent = `Error al crear recta: ${e.message}`;
+                 console.error(e);
+             }
+        });
+
+         // Operation Buttons
+         document.getElementById('calcDistancia').addEventListener('click', () => {
+             clearTemporaryElements();
+             const p1 = getSelected('opPunto1');
+             const p2 = getSelected('opPunto2');
+             if (p1 && p2) {
+                 const dist = p1.distancia(p2);
+                 infoPanel.textContent = `Distancia entre ${p1.id} y ${p2.id}: ${dist.toFixed(3)}`;
+                 // Visualize the distance? Maybe draw a temp line segment
+                 tempElements.push(new Line(Vector.conOrigenExtremo(p1, p2), p1, ' ')); // Invisible line just for segment
+                 tempElements[0].isSegment = true; // Custom flag for drawLine if needed
+                 tempElements[0].endPoint = p2;    // To draw segment
+                 // TODO: Modify drawLine to draw segment if these flags exist
+                 redrawAll(); // Redraw needed to show segment if implemented
+             } else {
+                 infoPanel.textContent = "Selecciona dos puntos.";
+             }
+         });
+
+         document.getElementById('calcPuntoMedio').addEventListener('click', () => {
+             clearTemporaryElements();
+             const p1 = getSelected('opPunto1');
+             const p2 = getSelected('opPunto2');
+             if (p1 && p2) {
+                 const midPoint = p1.puntoMedio(p2);
+                 tempElements.push(midPoint);
+                 infoPanel.textContent = `Punto medio entre ${p1.id} y ${p2.id}: ${midPoint.toString()}`;
+                 redrawAll();
+             } else {
+                 infoPanel.textContent = "Selecciona dos puntos.";
+             }
+         });
+
+         document.getElementById('calcModulo').addEventListener('click', () => {
+            clearTemporaryElements();
+            const v1 = getSelected('opVector1');
+            if (v1) {
+                const mod = v1.módulo;
+                infoPanel.textContent = `Módulo de ${v1.id}: ${mod.toFixed(3)}`;
+            } else {
+                infoPanel.textContent = "Selecciona el Vector 1.";
+            }
+         });
+
+         document.getElementById('calcOrtogonal').addEventListener('click', () => {
+            clearTemporaryElements();
+            const v1 = getSelected('opVector1');
+            if (v1) {
+                const ort = v1.ortogonal;
+                tempElements.push(ort); // Show the orthogonal vector from origin
+                infoPanel.textContent = `Vector ortogonal a ${v1.id}: ${ort.toString()}`;
+                redrawAll();
+            } else {
+                infoPanel.textContent = "Selecciona el Vector 1.";
+            }
+         });
+
+        document.getElementById('calcExtremoDesde').addEventListener('click', () => {
+            clearTemporaryElements();
+            const v1 = getSelected('opVector1');
+            const org = getSelected('opVectorPuntoOrigen');
+             if (v1 && org) {
+                 const endPoint = v1.extremoDesde(org);
+                 tempElements.push(endPoint);
+                 // Also draw the vector starting from org
+                 tempElements.push({ type: 'vector', vector: v1, origin: org }); // Custom object for drawing
+                  infoPanel.textContent = `Extremo de ${v1.id} desde ${org.id}: ${endPoint.toString()}`;
+                 // Modify redraw logic to handle custom temp objects
+                 redrawAll();
+                  // Need to adjust redrawAll to handle this custom object
+                    ctx.save(); // Save context state
+                    drawVector(v1, org, TEMP_COLOR, false); // Draw the specific vector instance
+                    ctx.restore(); // Restore context state
+             } else {
+                 infoPanel.textContent = "Selecciona el Vector 1 y el Punto Origen.";
+             }
+        });
+
+
+         document.getElementById('checkParaleloVec').addEventListener('click', () => {
+            clearTemporaryElements();
+            const v1 = getSelected('opVector1');
+            const v2 = getSelected('opVector2');
+             if (v1 && v2) {
+                 const parallel = v1.esParaleloA(v2);
+                 infoPanel.textContent = `${v1.id} ${parallel ? 'ES' : 'NO ES'} paralelo a ${v2.id}.`;
+             } else {
+                 infoPanel.textContent = "Selecciona Vector 1 y Vector 2.";
+             }
+         });
+
+         document.getElementById('calcSumaVec').addEventListener('click', () => {
+            clearTemporaryElements();
+            const v1 = getSelected('opVector1');
+            const v2 = getSelected('opVector2');
+             if (v1 && v2) {
+                 const sum = v1.suma(v2);
+                 tempElements.push(sum);
+                 infoPanel.textContent = `Suma ${v1.id} + ${v2.id}: ${sum.toString()}`;
+                 redrawAll();
+             } else {
+                 infoPanel.textContent = "Selecciona Vector 1 y Vector 2.";
+             }
+         });
+
+         document.getElementById('calcMultVec').addEventListener('click', () => {
+            clearTemporaryElements();
+            const v1 = getSelected('opVector1');
+            const scalar = parseFloat(document.getElementById('opVectorEscalar').value);
+             if (v1 && !isNaN(scalar)) {
+                 const prod = v1.mult(scalar);
+                 tempElements.push(prod);
+                 infoPanel.textContent = `Producto ${v1.id} * ${scalar}: ${prod.toString()}`;
+                 redrawAll();
+             } else {
+                 infoPanel.textContent = "Selecciona el Vector 1 e introduce un escalar válido.";
+             }
+         });
+
+        document.getElementById('calcDivVec').addEventListener('click', () => {
+            clearTemporaryElements();
+            const v1 = getSelected('opVector1');
+            const scalar = parseFloat(document.getElementById('opVectorEscalar').value);
+            if (v1 && !isNaN(scalar)) {
+                const quot = v1.div(scalar);
+                if (quot) { // Check if division was successful (not by zero)
+                    tempElements.push(quot);
+                    infoPanel.textContent = `División ${v1.id} / ${scalar}: ${quot.toString()}`;
+                    redrawAll();
+                }
+                // Error message handled inside v1.div()
+            } else {
+                infoPanel.textContent = "Selecciona el Vector 1 e introduce un escalar válido.";
+            }
+        });
+
+
+         document.getElementById('checkParaleloRecta').addEventListener('click', () => {
+            clearTemporaryElements();
+            const r1 = getSelected('opRecta1');
+            const r2 = getSelected('opRecta2');
+             if (r1 && r2) {
+                 const parallel = r1.esParalelaA(r2);
+                 infoPanel.textContent = `${r1.id} ${parallel ? 'ES' : 'NO ES'} paralela a ${r2.id}.`;
+             } else {
+                 infoPanel.textContent = "Selecciona Recta 1 y Recta 2.";
+             }
+         });
+
+          document.getElementById('checkContienePunto').addEventListener('click', () => {
+            clearTemporaryElements();
+            const r1 = getSelected('opRecta1');
+            const p = getSelected('opRectaPunto');
+             if (r1 && p) {
+                 const contains = r1.contieneA(p);
+                 infoPanel.textContent = `${r1.id} ${contains ? 'CONTIENE' : 'NO CONTIENE'} al punto ${p.id}.`;
+             } else {
+                 infoPanel.textContent = "Selecciona Recta 1 y Punto.";
+             }
+         });
+
+        document.getElementById('calcImplicita').addEventListener('click', () => {
+            clearTemporaryElements();
+            const r1 = getSelected('opRecta1');
+            if (r1) {
+                const { a, b, c } = r1.implícita;
+                 infoPanel.textContent = `Forma implícita de ${r1.id}: ${a.toFixed(2)}x + ${b.toFixed(2)}y + ${c.toFixed(2)} = 0`;
+            } else {
+                infoPanel.textContent = "Selecciona Recta 1.";
+            }
+        });
+
+
+        document.getElementById('calcInterseccion').addEventListener('click', () => {
+            clearTemporaryElements();
+            const r1 = getSelected('opRecta1');
+            const r2 = getSelected('opRecta2');
+            if (r1 && r2) {
+                const intersection = r1.intersección(r2);
+                if (intersection) {
+                    tempElements.push(intersection);
+                    infoPanel.textContent = `Intersección de ${r1.id} y ${r2.id}: ${intersection.toString()}`;
+                } else {
+                    if (r1.esParalelaA(r2)) {
+                        infoPanel.textContent = `Las rectas ${r1.id} y ${r2.id} son paralelas ${r1.contieneA(r2.punto) ? 'y coincidentes' : 'y no se cortan'}.`;
+                    } else {
+                         infoPanel.textContent = `No se pudo calcular la intersección de ${r1.id} y ${r2.id}.`; // Should not happen if not parallel
+                    }
+                }
+                redrawAll();
+            } else {
+                infoPanel.textContent = "Selecciona Recta 1 y Recta 2.";
+            }
+        });
+
+        document.getElementById('calcParalelaPor').addEventListener('click', () => {
+            clearTemporaryElements();
+            const r1 = getSelected('opRecta1');
+            const p = getSelected('opRectaPunto');
+             if (r1 && p) {
+                 const parallelLine = r1.paralelaPor(p);
+                 tempElements.push(parallelLine);
+                 infoPanel.textContent = `Recta paralela a ${r1.id} por ${p.id}: ${parallelLine.id}`;
+                 redrawAll();
+             } else {
+                 infoPanel.textContent = "Selecciona Recta 1 y Punto.";
+             }
+         });
+
+         document.getElementById('calcPerpendicularPor').addEventListener('click', () => {
+            clearTemporaryElements();
+            const r1 = getSelected('opRecta1');
+            const p = getSelected('opRectaPunto');
+             if (r1 && p) {
+                 const perpLine = r1.perpendicularPor(p);
+                 tempElements.push(perpLine);
+                 infoPanel.textContent = `Recta perpendicular a ${r1.id} por ${p.id}: ${perpLine.id}`;
+                 redrawAll();
+             } else {
+                 infoPanel.textContent = "Selecciona Recta 1 y Punto.";
+             }
+         });
+
+         document.getElementById('calcDistanciaDesde').addEventListener('click', () => {
+            clearTemporaryElements();
+            const r1 = getSelected('opRecta1');
+            const p = getSelected('opRectaPunto');
+             if (r1 && p) {
+                 const dist = r1.distanciaDesde(p);
+                  // Visualize: draw perpendicular line segment from p to r1
+                 const perpLine = r1.perpendicularPor(p);
+                 const intersectionPoint = r1.intersección(perpLine);
+                 if (intersectionPoint) {
+                    tempElements.push(intersectionPoint); // Show intersection point
+                    // Draw line segment from p to intersection point
+                    tempElements.push({ type: 'segment', p1: p, p2: intersectionPoint });
+                 }
+                 infoPanel.textContent = `Distancia desde ${r1.id} a ${p.id}: ${dist.toFixed(3)}`;
+                 redrawAll();
+                 // Need to modify redrawAll to handle {type: 'segment'}
+                    if(intersectionPoint){
+                        ctx.save();
+                        ctx.setLineDash([5, 5]); // Dashed line for distance
+                        ctx.strokeStyle = TEMP_COLOR;
+                        ctx.lineWidth = 1;
+                        const c1 = worldToCanvas(p.x, p.y);
+                        const c2 = worldToCanvas(intersectionPoint.x, intersectionPoint.y);
+                        ctx.beginPath();
+                        ctx.moveTo(c1.x, c1.y);
+                        ctx.lineTo(c2.x, c2.y);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+             } else {
+                 infoPanel.textContent = "Selecciona Recta 1 y Punto.";
+             }
+         });
+
+         // Utilities
+         document.getElementById('clearAll').addEventListener('click', () => {
+            points = [];
+            vectors = [];
+            lines = [];
+            tempElements = [];
+            nextPointId = 1;
+            nextVectorId = 1;
+            nextLineId = 1;
+            updateObjectLists();
+            redrawAll();
+            infoPanel.textContent = "Lienzo y objetos limpiados.";
+         });
+
+        // --- Example Functions ---
+        function showTriangleAreaExample() {
+             document.getElementById('clearAll').click(); // Start fresh
+             infoPanel.textContent = "Ejemplo Área Triángulo: Crea 3 puntos (vértices).";
+
+             // Create sample points
+             let pA = new Point(-150, -50, 'A');
+             let pB = new Point(150, -70, 'B');
+             let pC = new Point(0, 150, 'C');
+             points.push(pA, pB, pC);
+             updateObjectLists();
+
+             try {
+                 // Calculate base (distance A-B)
+                 const base = pA.distancia(pB);
+
+                 // Create line through A and B
+                 const lineAB = Line.entrePuntos(pA, pB, 'L(AB)');
+                 lines.push(lineAB);
+
+                 // Calculate height (distance from C to line AB)
+                 const height = lineAB.distanciaDesde(pC);
+
+                 // Calculate Area
+                 const area = (base * height) / 2;
+
+                 // Display results
+                 infoPanel.textContent = `Triángulo ABC:\nBase (AB) = ${base.toFixed(2)}\nAltura (desde C a AB) = ${height.toFixed(2)}\nÁrea = ${area.toFixed(2)}`;
+
+                 // Visualize height
+                 const perpLine = lineAB.perpendicularPor(pC);
+                 const intersectionPoint = lineAB.intersección(perpLine);
+                  if (intersectionPoint) {
+                    tempElements.push(intersectionPoint); // Show intersection point
+                    tempElements.push({ type: 'segment', p1: pC, p2: intersectionPoint, color: TEMP_COLOR }); // Show height line
+                 }
+                 updateObjectLists(); // Show line AB
+                 redrawAll();
+                  // Draw the height segment again after redraw
+                  if(intersectionPoint){
+                        ctx.save();
+                        ctx.setLineDash([5, 5]); // Dashed line for distance
+                        ctx.strokeStyle = TEMP_COLOR;
+                        ctx.lineWidth = 1.5;
+                        const c1 = worldToCanvas(pC.x, pC.y);
+                        const c2 = worldToCanvas(intersectionPoint.x, intersectionPoint.y);
+                        ctx.beginPath();
+                        ctx.moveTo(c1.x, c1.y);
+                        ctx.lineTo(c2.x, c2.y);
+                        ctx.stroke();
+                         ctx.fillStyle = '#000';
+                         ctx.font = "12px Arial";
+                         ctx.fillText("h", (c1.x+c2.x)/2 + 5, (c1.y+c2.y)/2);
+                        ctx.restore();
+                    }
+
+
+             } catch (e) {
+                infoPanel.textContent = `Error en ejemplo: ${e.message}`;
+                console.error(e);
+             }
+        }
+        // document.getElementById('showExampleTriangle').addEventListener('click', showTriangleAreaExample);
+
+        function tesoro(pAm, pAz, pRo) {
+            try {
+                // 1 & 2: Rosa to Amarilla -> Rotate CCW -> Estaca Amarilla
+                const vRoAm = Vector.conOrigenExtremo(pRo, pAm); // Vector from Rosa to Amarilla
+                const vRotatedAm = vRoAm.ortogonal; // Rotated 90 deg CCW
+                const estacaAm = vRotatedAm.extremoDesde(pAm); // Position of Estaca Amarilla
+
+                // 3 & 4: Rosa to Azul -> Rotate CW -> Estaca Azul
+                const vRoAz = Vector.conOrigenExtremo(pRo, pAz); // Vector from Rosa to Azul
+                // Ortogonal is CCW, so ortogonal().ortogonal().ortogonal() is CW 90 deg
+                 // Or simply use (-y, x) -> (x, y) for CCW, so (y, -x) for CW
+                 const vRotatedAz = new Vector(vRoAz.y, -vRoAz.x); // Rotated 90 deg CW
+                const estacaAz = vRotatedAz.extremoDesde(pAz); // Position of Estaca Azul
+
+                // 5: Midpoint between stakes
+                const pTesoro = estacaAm.puntoMedio(estacaAz);
+                pTesoro.id = 'Tesoro';
+                estacaAm.id = 'EstacaAm';
+                estacaAz.id = 'EstacaAz';
+
+                return { tesoro: pTesoro, estacaAm, estacaAz, vRoAm, vRotatedAm, vRoAz, vRotatedAz };
+            } catch (e) {
+                 console.error("Error calculando tesoro:", e);
+                 infoPanel.textContent = `Error en cálculo del tesoro: ${e.message}`;
+                 return null;
+            }
+        }
+
+         function showTreasureExample() {
+            document.getElementById('clearAll').click();
+            infoPanel.textContent = "Ejemplo Tesoro: Mostrando cálculo para palmeras fijas.";
+
+             // Define palm locations
+             const pAz = new Point(100, 50, 'PAm');
+             const pAm = new Point(-80, 120, 'PAz');
+             const pRo = new Point(-50, -100, 'PRo'); // The one the pirate missed!
+
+             points.push(pAm, pAz, pRo);
+
+             const result = tesoro(pAm, pAz, pRo);
+
+             if (result) {
+                 points.push(result.estacaAm, result.estacaAz, result.tesoro);
+                 tempElements.push({type: 'vector', vector: result.vRoAm, origin: pRo, color: '#FFA500'}); // Orange
+                 tempElements.push({type: 'vector', vector: result.vRotatedAm, origin: pAm, color: '#FFD700'}); // Gold
+                 tempElements.push({type: 'vector', vector: result.vRoAz, origin: pRo, color: '#ADD8E6'}); // Light Blue
+                 tempElements.push({type: 'vector', vector: result.vRotatedAz, origin: pAz, color: '#4682B4'}); // Steel Blue
+                 tempElements.push({type: 'segment', p1: result.estacaAm, p2: result.estacaAz, color: '#888888'});
+
+
+                 infoPanel.textContent = `Tesoro encontrado en: ${result.tesoro.toString()}`;
+             }
+              updateObjectLists();
+              redrawAll();
+               // Need to redraw temp elements manually if redrawAll doesn't handle them fully
+              tempElements.forEach(el => {
+                   if (el.type === 'vector') {
+                       drawVector(el.vector, el.origin, el.color || TEMP_COLOR, false);
+                   } else if (el.type === 'segment') {
+                        ctx.save();
+                        ctx.setLineDash([3, 3]);
+                        ctx.strokeStyle = el.color || TEMP_COLOR;
+                        ctx.lineWidth = 1;
+                        const c1 = worldToCanvas(el.p1.x, el.p1.y);
+                        const c2 = worldToCanvas(el.p2.x, el.p2.y);
+                        ctx.beginPath();
+                        ctx.moveTo(c1.x, c1.y);
+                        ctx.lineTo(c2.x, c2.y);
+                        ctx.stroke();
+                        ctx.restore();
+                   }
+              });
+         }
+          // document.getElementById('showExampleTreasure').addEventListener('click', showTreasureExample);
+
+
+        // --- Initial Setup ---
+        resizeCanvas();
+        updateObjectLists();
+        infoPanel.textContent = "Listo. Haz clic en el lienzo para crear puntos.";
+
+    </script>
+
+</body>
+</html>
