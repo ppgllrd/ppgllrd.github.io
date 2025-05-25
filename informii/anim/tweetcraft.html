@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TweetCraft - Animación de Viralidad (Mejorada)</title>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; padding: 15px; background-color: #eef2f7; color: #333; }
+        .app-container { display: flex; flex-direction: column; align-items: center; }
+        .main-content { display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; max-width: 1400px; margin-top: 15px; }
+        
+        .controls-panel { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 10px; flex: 1; min-width: 320px; max-width: 450px; align-self: flex-start; }
+        .visualization-panel { background-color: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.1); margin: 10px; flex: 2; min-width: 600px; display: flex; flex-direction: column; }
+        
+        h1, h2 { color: #2c3e50; text-align: center; }
+        h1 { margin-bottom: 25px;}
+        h2 { margin-top: 0; border-bottom: 2px solid #3498db; padding-bottom: 10px; font-size: 1.4em;}
+        
+        .control-group { display: flex; flex-wrap: wrap; align-items: center; margin-bottom: 18px; }
+        .control-group label { margin-right: 10px; font-weight: 600; min-width: 180px; color: #455a64; }
+        .control-group input[type="number"], .control-group select, .control-group input[type="range"] {
+            flex-grow: 1; padding: 9px; border: 1px solid #ccc; border-radius: 5px; box-sizing: border-box;
+        }
+        .control-group input[type="range"] { padding: 0; }
+        .control-group span.value-display { margin-left: 10px; min-width: 45px; text-align: right; font-weight:500; background-color:#f0f0f0; padding: 5px 8px; border-radius: 4px;}
+
+        button { background-color: #3498db; color: white; padding: 12px 18px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 15px; transition: background-color 0.2s ease-in-out; width: 100%; }
+        button:hover { background-color: #2980b9; }
+        button:disabled { background-color: #bdc3c7; cursor: not-allowed; }
+
+        #networkAnimationContainer { width: 100%; height: 550px; border: 1px solid #ddd; background-color: #fdfdfd; margin-top: 15px; position: relative; border-radius: 6px;}
+        
+        #statusDisplay { text-align: center; margin-top: 15px; font-style: italic; color: #16a085; min-height: 22px; font-weight:500;}
+        
+        .summary-box { border: 1px solid #b0bec5; border-radius: 6px; padding: 15px; margin-top: 20px; background-color: #f8f9fa; }
+        .summary-box h3 { text-align: left; font-size: 1.1em; color: #3498db; margin-top: 0; margin-bottom: 12px; border-bottom: 1px solid #e0e0e0; padding-bottom: 8px;}
+        .summary-box p { margin: 6px 0; font-size: 0.95em; color: #37474f;}
+        .summary-box strong { color: #2c3e50; }
+
+        .generator-specific-params { padding-left: 10px; border-left: 3px solid #3498db; margin-top:10px; }
+    </style>
+</head>
+<body>
+
+    <div class="app-container">
+        <h1>Animación de Propagación Viral de un Tweet</h1>
+
+        <div class="main-content">
+            <div class="controls-panel">
+                <h2>Configuración</h2>
+                <div class="control-group">
+                    <label for="numUsuarios">Número de Usuarios (10-80):</label>
+                    <input type="number" id="numUsuarios" value="50" min="10" max="200">
+                </div>
+                <div class="control-group">
+                    <label for="autorOriginal">Autor del Tweet (ID):</label>
+                    <input type="number" id="autorOriginal" value="0" min="0">
+                    <span class="value-display">(0 a N-1)</span>
+                </div>
+                <div class="control-group">
+                    <label for="probRetweetBaseSlider">Viralidad Base del Tweet:</label>
+                    <input type="range" id="probRetweetBaseSlider" value="0.20" min="0.01" max="1.0" step="0.01" oninput="updateSliderValue(this.value, 'probRetweetBaseValue')">
+                    <span id="probRetweetBaseValue" class="value-display">0.20</span>
+                </div>
+                 <div class="control-group">
+                    <label for="networkGenerator">Generador de Red Social:</label>
+                    <select id="networkGenerator" onchange="toggleNetworkParams()">
+                        <option value="aleatorioSimple">Aleatorio Simple</option>
+                        <option value="barabasiAlbert">Barabási-Albert</option>
+                        <option value="conComunidades">Con Comunidades</option>
+                    </select>
+                </div>
+
+                <div id="paramsAleatorioSimple" class="generator-specific-params">
+                    <div class="control-group"> <label for="maxSeguidores">Max Seguidores/Usuario:</label> <input type="number" id="maxSeguidores" value="6" min="1"> </div>
+                </div>
+                <div id="paramsBarabasiAlbert" class="generator-specific-params" style="display:none;">
+                    <div class="control-group"> <label for="m0BA">Nodos Iniciales (m0):</label> <input type="number" id="m0BA" value="3" min="1"> </div>
+                    <div class="control-group"> <label for="mBA">Enlaces Nuevos (m):</label> <input type="number" id="mBA" value="2" min="1"> </div>
+                </div>
+                 <div id="paramsConComunidades" class="generator-specific-params" style="display:none;">
+                    <div class="control-group"> <label for="numComunidades">Nº Comunidades:</label> <input type="number" id="numComunidades" value="3" min="1"> </div>
+                    <div class="control-group"> <label for="probIntraComunidad">Prob. Enlace Intra-Com.:</label> <input type="range" id="probIntraComunidad" value="0.75" min="0.1" max="0.95" step="0.05" oninput="updateSliderValue(this.value, 'probIntraValue')"> <span id="probIntraValue" class="value-display">0.75</span></div>
+                </div>
+                 <div class="control-group">
+                    <label for="animationStepDelay">Retraso por Paso (ms):</label>
+                    <input type="number" id="animationStepDelay" value="400" min="50" max="2000" step="50">
+                </div>
+
+                <button id="startButton" onclick="prepararYCorrerAnimacion()">Iniciar / Reiniciar Animación</button>
+                <div id="statusDisplay">Configura y presiona "Iniciar".</div>
+            </div>
+
+            <div class="visualization-panel">
+                <h2>Visualización de la Propagación</h2>
+                <div id="networkAnimationContainer"></div>
+                <div id="summaryDisplay" class="summary-box" style="display:none;">
+                    <h3>Resumen de la Simulación</h3>
+                    <p><strong>Total Vistas:</strong> <span id="resTotalVistas"></span></p>
+                    <p><strong>Total Retweets:</strong> <span id="resTotalRetweets"></span></p>
+                    <p><strong>Profundidad Máxima Alcanzada:</strong> <span id="resProfundidadMaxima"></span></p>
+                    <p><strong>Pasos de Propagación (Olas):</strong> <span id="resPasosPropagacion"></span></p>
+                    <hr>
+                    <p><strong>Usuarios que Vieron (sin retuitear):</strong> <span id="resUsuariosVieron"></span></p>
+                    <p><strong>Usuarios que No Vieron:</strong> <span id="resUsuariosNoVieron"></span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="text/javascript">
+// --- Constantes y Estado Global ---
+const EstadoUsuario = { NO_HA_VISTO: 0, HA_VISTO: 1, HA_RETUITEADO: 2 };
+const ColoresEstado = {
+    [EstadoUsuario.NO_HA_VISTO]: { border: '#95a5a6', background: '#ecf0f1' },
+    [EstadoUsuario.HA_VISTO]:    { border: '#f39c12', background: '#f1c40f' },
+    [EstadoUsuario.HA_RETUITEADO]: { border: '#27ae60', background: '#2ecc71' },
+    AUTOR: { border: '#c0392b', background: '#e74c3c' }
+};
+
+let network = null;
+let nodosDataSet = null;
+// let aristasDataSet = null; // No es necesario modificar aristas para esta animación simple
+let animacionEnCurso = false;
+let animationTimeoutId = null;
+
+// --- Generadores de Red (Simplificados) ---
+// (Copiar las implementaciones de generarIds, generarFactoresInfluenciaAleatorios, 
+//  generarRedAleatoriaSimple, generarRedBarabasiAlbert, generarRedConComunidades del ejemplo anterior)
+function generarIds(num) { return Array.from({ length: num }, (_, i) => i); }
+function generarFactoresInfluenciaAleatorios(ids, minInf = 0.8, maxInf = 1.2) { 
+    const f = new Map(); 
+    ids.forEach(id => f.set(id, minInf + Math.random()*(maxInf-minInf))); return f; 
+}
+function generarRedAleatoriaSimple(numUsuarios, maxSeguidoresPorUsuario) {
+    const ids = generarIds(numUsuarios);
+    const factores = generarFactoresInfluenciaAleatorios(ids); // Asumimos factores base para todos los generadores
+    const red = new Map(ids.map(id => [id, new Set()]));
+    ids.forEach(usrSeguido => {
+        const numSeg = Math.floor(Math.random() * (maxSeguidoresPorUsuario + 1));
+        let posibles = ids.filter(id => id !== usrSeguido).sort(() => 0.5 - Math.random());
+        posibles.slice(0, numSeg).forEach(seg => red.get(usrSeguido).add(seg));
+    });
+    return { redDeSeguidores: red, factoresDeInfluencia: factores };
+}
+function generarRedBarabasiAlbert(numUsuarios, m0, m) { 
+    const ids = generarIds(numUsuarios);
+    const red = new Map(ids.map(id => [id, new Set()]));
+    if (numUsuarios < m0 || m > m0 || m <= 0 || m0 <= 0) return generarRedAleatoriaSimple(numUsuarios, 5);
+
+    for (let i = m0; i < numUsuarios; i++) {
+        const nuevoSeguidor = ids[i]; 
+        const nodosExistentes = ids.slice(0, i);
+        if (nodosExistentes.length === 0) continue;
+        let gradosMasUno = nodosExistentes.map(id => (red.get(id)?.size || 0) + 1.0);
+        let sumaPonderada = gradosMasUno.reduce((s, v) => s + v, 0);
+        const seguidosElegidos = new Set();
+        if (sumaPonderada > 0.001) {
+            let probsAcum = gradosMasUno.map(g=>g/sumaPonderada).reduce((acc,p,idx)=>{acc.push((acc[idx-1]||0)+p); return acc;},[]);
+            if(probsAcum.length > 0) probsAcum[probsAcum.length -1] = 1.00001;
+            while (seguidosElegidos.size < m && seguidosElegidos.size < nodosExistentes.length) {
+                const r = Math.random();
+                const idxElegido = probsAcum.findIndex(p => p >= r);
+                if (idxElegido !== -1) {
+                    const obj = nodosExistentes[idxElegido];
+                    if (!seguidosElegidos.has(obj)) seguidosElegidos.add(obj);
+                    else if (nodosExistentes.length === seguidosElegidos.size) break;
+                } else { const disp = nodosExistentes.filter(n=>!seguidosElegidos.has(n)); if(disp.length>0) seguidosElegidos.add(disp[Math.floor(Math.random()*disp.length)]); else break;}
+            }
+        } else { nodosExistentes.sort(()=>0.5-Math.random()).slice(0,m).forEach(n=>seguidosElegidos.add(n));}
+        seguidosElegidos.forEach(usrSeguido => red.get(usrSeguido).add(nuevoSeguidor));
+    }
+    const factores = generarFactoresInfluenciaAleatorios(ids, 0.7, 1.5); 
+    return { redDeSeguidores: red, factoresDeInfluencia: factores };
+}
+function generarRedConComunidades(numUsuarios, numComunidades, probIntraComunidad) { 
+    const ids = generarIds(numUsuarios);
+    const factores = generarFactoresInfluenciaAleatorios(ids);
+    const red = new Map(ids.map(id => [id, new Set()]));
+    const asignacionComunidades = new Map(ids.map(id => [id, Math.floor(Math.random() * numComunidades)]));
+    ids.forEach(usrSeguidor => {
+        const comOrigen = asignacionComunidades.get(usrSeguidor);
+        const numASeguir = 1 + Math.floor(Math.random() * Math.max(1, numUsuarios / (numComunidades*2) ) ); // Sigue a un % de su comunidad aprox
+        let seguidosPot = ids.filter(id => id !== usrSeguidor).sort(()=>0.5-Math.random());
+        let count = 0;
+        for (const usrASeguir of seguidosPot) {
+            if (count >= numASeguir) break;
+            const comDest = asignacionComunidades.get(usrASeguir);
+            const probConexion = (comOrigen === comDest) ? probIntraComunidad : (1 - probIntraComunidad) * 0.2; // Más baja para inter-comunidad
+            if (Math.random() < probConexion) {
+                red.get(usrASeguir).add(usrSeguidor); count++;
+            }
+        }
+    });
+    return { redDeSeguidores: red, factoresDeInfluencia: factores };
+}
+
+
+// --- Fase 1: Simulación Lógica para Recolectar Pasos de Animación ---
+function recolectarPasosAnimacion(autorOriginal, probBaseRetweet, redDeSeguidores, factoresDeInfluencia, numUsuarios) {
+    const todosLosUsuarios = generarIds(numUsuarios);
+    const estadosActuales = new Map(todosLosUsuarios.map(id => [id, EstadoUsuario.NO_HA_VISTO]));
+    const colaEventosLogica = []; 
+    const pasosAnimacion = []; 
+    let pasoActualAnim = -1; // Empezar en -1 para que el primer incremento sea 0
+
+    // Función para registrar un cambio de estado para la animación
+    function registrarCambioEstado(usuarioId, nuevoEstado, originadorId = null) {
+        // Asegurar que haya un array para el paso actual
+        if (pasoActualAnim < 0) pasoActualAnim = 0; // Para el autor
+        while (pasosAnimacion.length <= pasoActualAnim) {
+            pasosAnimacion.push([]);
+        }
+        // Evitar registrar un estado "inferior" si ya se registró uno "superior" en el mismo paso
+        const existenteIdx = pasosAnimacion[pasoActualAnim].findIndex(e => e.usuarioId === usuarioId);
+        if (existenteIdx !== -1) {
+            if (nuevoEstado > pasosAnimacion[pasoActualAnim][existenteIdx].nuevoEstado) {
+                pasosAnimacion[pasoActualAnim][existenteIdx] = { usuarioId, nuevoEstado, originadorId };
+            }
+        } else {
+            pasosAnimacion[pasoActualAnim].push({ usuarioId, nuevoEstado, originadorId });
+        }
+    }
+
+    // El autor publica
+    if (todosLosUsuarios.includes(autorOriginal)) {
+      estadosActuales.set(autorOriginal, EstadoUsuario.HA_VISTO);
+      registrarCambioEstado(autorOriginal, EstadoUsuario.HA_VISTO); // El autor se "ve" en el paso 0
+    }
+
+    (redDeSeguidores.get(autorOriginal) || new Set()).forEach(seguidorId => {
+        if (todosLosUsuarios.includes(seguidorId)) {
+            colaEventosLogica.push({ quienVeElTweet: seguidorId, vistoGraciasA: autorOriginal, profundidadActual: 1 });
+        }
+    });
+
+    let totalVistas = 0; // No contar al autor como una "vista" por propagación
+    let totalRetweets = 0;
+    let profundidadMaxima = 0;
+
+    while (colaEventosLogica.length > 0) {
+        pasoActualAnim++; // Cada ola de procesamiento de la cola es un nuevo paso de animación
+        const eventosEstePaso = [...colaEventosLogica];
+        colaEventosLogica.length = 0;
+
+        for (const evento of eventosEstePaso) {
+            const { quienVeElTweet, vistoGraciasA, profundidadActual } = evento;
+
+            if (estadosActuales.get(quienVeElTweet) === EstadoUsuario.NO_HA_VISTO) {
+                estadosActuales.set(quienVeElTweet, EstadoUsuario.HA_VISTO);
+                totalVistas++;
+                if (profundidadActual > profundidadMaxima) profundidadMaxima = profundidadActual;
+                registrarCambioEstado(quienVeElTweet, EstadoUsuario.HA_VISTO, vistoGraciasA);
+
+                const factorInfluencia = factoresDeInfluencia.get(vistoGraciasA) || 1.0;
+                const probEfectiva = probBaseRetweet * factorInfluencia;
+                const probReal = Math.min(1.0, Math.max(0.0, probEfectiva));
+
+                if (Math.random() < probReal) { 
+                    estadosActuales.set(quienVeElTweet, EstadoUsuario.HA_RETUITEADO);
+                    totalRetweets++;
+                    // El retuiteo visualmente puede ocurrir en el mismo paso que la vista, o en el siguiente.
+                    // Para este modelo, lo registramos en el mismo paso para simplificar.
+                    registrarCambioEstado(quienVeElTweet, EstadoUsuario.HA_RETUITEADO, vistoGraciasA);
+
+                    (redDeSeguidores.get(quienVeElTweet) || new Set()).forEach(segDelRT => {
+                        if (todosLosUsuarios.includes(segDelRT) && estadosActuales.get(segDelRT) === EstadoUsuario.NO_HA_VISTO) {
+                             colaEventosLogica.push({
+                                quienVeElTweet: segDelRT, vistoGraciasA: quienVeElTweet, profundidadActual: profundidadActual + 1
+                            });
+                        }
+                    });
+                }
+            }
+        }
+    }
+     // Contar estados finales para el resumen
+    let usuariosVieronSinRetuitear = 0;
+    let usuariosNoVieron = 0;
+    todosLosUsuarios.forEach(id => {
+        if (id === autorOriginal) return; // No contar al autor en estas categorías
+        const estado = estadosActuales.get(id);
+        if (estado === EstadoUsuario.HA_VISTO) usuariosVieronSinRetuitear++;
+        else if (estado === EstadoUsuario.NO_HA_VISTO) usuariosNoVieron++;
+    });
+
+    return { 
+        pasosAnimacion: pasosAnimacion.filter(p => p && p.length > 0),
+        resumen: { totalVistas, totalRetweets, profundidadMaxima, usuariosVieronSinRetuitear, usuariosNoVieron }
+    };
+}
+
+// --- Fase 2: Lógica de Animación Visual ---
+function reproducirAnimacion(pasos, delayPorPaso) {
+    let currentStepIndex = 0;
+    const status = document.getElementById('statusDisplay');
+
+    function siguientePasoVisual() {
+        if (animationTimeoutId) clearTimeout(animationTimeoutId); // Limpiar timeout anterior
+
+        if (currentStepIndex < pasos.length) {
+            status.textContent = `Paso de propagación ${currentStepIndex + 1} / ${pasos.length}...`;
+            const eventosDelPaso = pasos[currentStepIndex];
+            const updates = [];
+            eventosDelPaso.forEach(ev => {
+                updates.push({ 
+                    id: ev.usuarioId, 
+                    color: ColoresEstado[ev.nuevoEstado]
+                });
+            });
+            if (updates.length > 0) {
+                nodosDataSet.update(updates);
+            }
+            currentStepIndex++;
+            animationTimeoutId = setTimeout(siguientePasoVisual, delayPorPaso);
+        } else {
+            status.textContent = "Animación de propagación completada.";
+            document.getElementById('startButton').disabled = false;
+            animacionEnCurso = false;
+        }
+    }
+    siguientePasoVisual();
+}
+
+// --- Control Principal ---
+async function prepararYCorrerAnimacion() {
+    if (animacionEnCurso) {
+        clearTimeout(animationTimeoutId);
+        animacionEnCurso = false; // Permitir reiniciar
+        console.log("Animación previa detenida.");
+    }
+    animacionEnCurso = true;
+    document.getElementById('startButton').disabled = true;
+    const status = document.getElementById('statusDisplay');
+    const summaryDiv = document.getElementById('summaryDisplay');
+    status.textContent = "Configurando...";
+    summaryDiv.style.display = 'none';
+
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    const numUsuarios = parseInt(document.getElementById('numUsuarios').value);
+    let autorOriginal = parseInt(document.getElementById('autorOriginal').value);
+    if (autorOriginal >= numUsuarios || autorOriginal < 0) autorOriginal = 0;
+    
+    const probRetweetBase = parseFloat(document.getElementById('probRetweetBaseSlider').value);
+    const networkGenChoice = document.getElementById('networkGenerator').value;
+    const animationStepDelay = parseInt(document.getElementById('animationStepDelay').value);
+
+    status.textContent = "Generando red social...";
+    await new Promise(resolve => requestAnimationFrame(resolve));
+    let paramsRed;
+    if (networkGenChoice === 'aleatorioSimple') {
+        paramsRed = generarRedAleatoriaSimple(numUsuarios, parseInt(document.getElementById('maxSeguidores').value));
+    } else if (networkGenChoice === 'barabasiAlbert') {
+        paramsRed = generarRedBarabasiAlbert(numUsuarios, parseInt(document.getElementById('m0BA').value), parseInt(document.getElementById('mBA').value));
+    } else if (networkGenChoice === 'conComunidades') {
+        paramsRed = generarRedConComunidades(numUsuarios, parseInt(document.getElementById('numComunidades').value), parseFloat(document.getElementById('probIntraComunidad').value));
+    }
+    const { redDeSeguidores, factoresDeInfluencia } = paramsRed;
+
+    // Inicializar red en Vis.js
+    const nodosIniciales = generarIds(numUsuarios).map(id => ({
+        id: id, label: `U${id}`,
+        color: (id === autorOriginal) ? ColoresEstado.AUTOR : ColoresEstado[EstadoUsuario.NO_HA_VISTO]
+    }));
+    nodosDataSet = new vis.DataSet(nodosIniciales);
+    const aristas = [];
+    redDeSeguidores.forEach((seguidoresDeX, usuarioX) => {
+        seguidoresDeX.forEach(seguidorY => aristas.push({ from: seguidorY, to: usuarioX, arrows: 'to', color: {color: '#cccccc'} }));
+    });
+    const aristasDataSet = new vis.DataSet(aristas);
+
+    const container = document.getElementById('networkAnimationContainer');
+    const data = { nodes: nodosDataSet, edges: aristasDataSet };
+    const options = { 
+        layout: { hierarchical: false },
+        edges: { smooth: { type: 'dynamic' } }, // dynamic puede ser mejor para redes densas
+        physics: { 
+            forceAtlas2Based: { gravitationalConstant: -35, centralGravity: 0.005, springLength: 100, springConstant: 0.18, avoidOverlap:0.3 },
+            maxVelocity: 15, minVelocity: 0.75, solver: 'forceAtlas2Based',
+            stabilization: { iterations: 300, fit: true },
+            adaptiveTimestep: true
+        },
+        interaction: { hover: true }
+    };
+    if (network) network.destroy();
+    network = new vis.Network(container, data, options);
+    status.textContent = "Estabilizando disposición de la red...";
+
+    network.once("stabilizationIterationsDone", async function() {
+        network.setOptions({ physics: false });
+        status.textContent = "Calculando propagación del tweet...";
+        await new Promise(resolve => requestAnimationFrame(resolve));
+
+        const { pasosAnimacion, resumen } = recolectarPasosAnimacion(autorOriginal, probRetweetBase, redDeSeguidores, factoresDeInfluencia, numUsuarios);
+        
+        document.getElementById('resTotalVistas').textContent = resumen.totalVistas;
+        document.getElementById('resTotalRetweets').textContent = resumen.totalRetweets;
+        document.getElementById('resProfundidadMaxima').textContent = resumen.profundidadMaxima;
+        document.getElementById('resPasosPropagacion').textContent = pasosAnimacion.length;
+        document.getElementById('resUsuariosVieron').textContent = resumen.usuariosVieronSinRetuitear;
+        document.getElementById('resUsuariosNoVieron').textContent = resumen.usuariosNoVieron;
+        summaryDiv.style.display = 'block';
+
+        if (pasosAnimacion.length > 0) {
+            reproducirAnimacion(pasosAnimacion, animationStepDelay);
+        } else {
+            status.textContent = "No hubo propagación (o no hubo seguidores). Animación completada.";
+            document.getElementById('startButton').disabled = false;
+            animacionEnCurso = false;
+        }
+    });
+}
+
+// --- UI Helpers ---
+function updateSliderValue(value, outputId) { document.getElementById(outputId).textContent = parseFloat(value).toFixed(2); }
+function toggleNetworkParams() {
+    document.querySelectorAll('.generator-specific-params').forEach(el => el.style.display = 'none');
+    const sel = document.getElementById('networkGenerator').value;
+    const paramsDivId = `params${sel.charAt(0).toUpperCase() + sel.slice(1)}`;
+    const paramsDiv = document.getElementById(paramsDivId);
+    if (paramsDiv) paramsDiv.style.display = 'block';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    toggleNetworkParams(); 
+    updateSliderValue(document.getElementById('probRetweetBaseSlider').value, 'probRetweetBaseValue');
+    const probIntraSlider = document.getElementById('probIntraComunidad');
+    if (probIntraSlider) updateSliderValue(probIntraSlider.value, 'probIntraValue');
+});
+</script>
+</body>
+</html>
