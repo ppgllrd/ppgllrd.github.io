@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador Chuck-a-Luck</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; background-color: #f0f2f5; color: #333; display: flex; flex-direction: column; align-items: center; }
+        .container { display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; max-width: 1400px; }
+        .panel { background-color: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 5px 15px rgba(0,0,0,0.08); margin: 10px; }
+        .controls-panel { flex: 1; min-width: 320px; max-width: 450px; align-self: flex-start;}
+        .results-panel { flex: 2; min-width: 700px; }
+        h1, h2, h3 { color: #1a2533; text-align: center; }
+        h1 { margin-bottom: 25px; }
+        h2 { margin-top: 0; border-bottom: 2px solid #28a745; padding-bottom: 10px; font-size: 1.5em; } /* Verde casino */
+        h3 { font-size: 1.2em; margin-bottom: 15px; color: #1e7e34; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #495057; }
+        input[type="number"], select { width: calc(100% - 22px); padding: 10px; margin-top: 5px; border: 1px solid #ced4da; border-radius: 5px; box-sizing: border-box; }
+        button { background-color: #28a745; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 25px; transition: background-color 0.2s; display: block; width: 100%; }
+        button:hover { background-color: #1e7e34; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .results-summary { margin-top: 20px; padding: 15px; background-color: #e2f0e1; border-left: 5px solid #28a745; }
+        .results-summary p { margin: 10px 0; font-size: 1em; }
+        .results-summary strong { color: #000; }
+        .parameter-group { margin-bottom: 20px; }
+        .strategy-params { padding-left: 15px; border-left: 3px solid #28a745; margin-top: 10px; display: none; }
+        .strategy-params.active { display: block; }
+        .chart-container { width: 100%; height: 350px; margin-top: 20px; margin-bottom: 30px; }
+        #statusMessage { margin-top: 15px; text-align: center; font-style: italic; color: #17a2b8; min-height: 20px; }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #ccc; width:100%; max-width:1400px;}
+        .tab-button { padding: 10px 20px; cursor: pointer; background-color: #f8f9fa; border: 1px solid #ccc; border-bottom: none; margin-right: 5px; border-radius: 5px 5px 0 0; color: #505050 }
+        .tab-button:hover { color: #ffffff; }
+        .tab-button.active { background-color: #fff; border-bottom: 1px solid #fff; font-weight: bold; color: #28a745; }
+        .tab-content { display: none; width:100%;}
+        .tab-content.active { display: block; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Simulador del Juego Chuck-a-Luck</h1>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="showTab('singleSessionTab')">Simular una Sesión de Juego</button>
+        <button class="tab-button" onclick="showTab('multiSessionTab')">Análisis Estadístico (Múltiples Sesiones)</button>
+    </div>
+    
+    <div class="container">
+        <!-- Panel de Controles Comunes (visible en ambas pestañas o duplicado/adaptado) -->
+        <div class="panel controls-panel">
+            <h2>Configuración del Jugador y Juego</h2>
+            <div class="parameter-group">
+                <label for="capitalInicial">Capital Inicial (cInicial):</label>
+                <input type="number" id="capitalInicial" value="100" min="1">
+            </div>
+            <div class="parameter-group">
+                <label for="capitalObjetivo">Capital Objetivo (cObjetivo):</label>
+                <input type="number" id="capitalObjetivo" value="200" min="1">
+            </div>
+            <div class="parameter-group">
+                <label for="numeroApostado">Número Apostado (1-6):</label>
+                <input type="number" id="numeroApostado" value="6" min="1" max="6">
+            </div>
+            <div class="parameter-group">
+                <label for="maxGirosPorSesion">Máx. Giros por Sesión (si no llega a objetivo/ruina):</label>
+                <input type="number" id="maxGirosPorSesion" value="500" min="10">
+            </div>
+
+            <h3>Estrategia de Apuesta</h3>
+            <div class="parameter-group">
+                <label for="estrategiaMonto">Seleccionar Estrategia:</label>
+                <select id="estrategiaMonto" onchange="toggleStrategyParams()">
+                    <option value="fija">Apuesta Fija</option>
+                    <option value="porcentaje">Porcentaje del Capital</option>
+                    <option value="martingala">Martingala Simple</option>
+                </select>
+            </div>
+            <div id="paramsFija" class="strategy-params active">
+                <label for="montoFijo">Monto Fijo a Apostar:</label>
+                <input type="number" id="montoFijo" value="5" min="1">
+            </div>
+            <div id="paramsPorcentaje" class="strategy-params">
+                <label for="porcentajeCapital">Porcentaje del Capital a Apostar (0.01-0.5):</label>
+                <input type="number" id="porcentajeCapital" value="0.1" min="0.01" max="0.5" step="0.01">
+            </div>
+            <div id="paramsMartingala" class="strategy-params">
+                <label for="apuestaBaseMartingala">Apuesta Base (Martingala):</label>
+                <input type="number" id="apuestaBaseMartingala" value="1" min="1">
+                <label for="limiteApuestaMartingala">Límite Máx. Apuesta (Martingala):</label>
+                <input type="number" id="limiteApuestaMartingala" value="50" min="1">
+            </div>
+        </div>
+
+        <!-- Pestaña para Simulación de UNA Sesión -->
+        <div id="singleSessionTab" class="tab-content active" style="flex:2; min-width:700px;">
+             <div class="panel">
+                <h2>Resultados de una Sesión</h2>
+                <button id="runSingleSessionButton" onclick="ejecutarSimulacionUnaSesion()">Simular UNA Sesión</button>
+                <div id="statusMessageSingle"></div>
+                <div id="resultadosSummarySingle" class="results-summary" style="display:none;">
+                    <p><strong>Resultado Final:</strong> <span id="resultadoFinalSingle"></span></p>
+                    <p><strong>Capital Final:</strong> <span id="capitalFinalSingle"></span></p>
+                    <p><strong>Giros Jugados:</strong> <span id="girosJugadosSingle"></span></p>
+                </div>
+                <h3>Evolución del Capital en la Sesión</h3>
+                <div class="chart-container"> <canvas id="capitalEvolucionChart"></canvas> </div>
+            </div>
+        </div>
+
+        <!-- Pestaña para Análisis Estadístico (Múltiples Sesiones) -->
+        <div id="multiSessionTab" class="tab-content" style="flex:2; min-width:700px;">
+            <div class="panel">
+                <h2>Resultados Agregados (Múltiples Sesiones)</h2>
+                <div class="parameter-group" style="margin-top: -10px;"> <!-- Mover numExperimentos aquí -->
+                     <label for="numExperimentosMulti">Número de Sesiones a Simular:</label>
+                     <input type="number" id="numExperimentosMulti" value="10000" min="10" max="100000">
+                </div>
+                <button id="runMultiSessionButton" onclick="ejecutarMultiplesSesiones()">Ejecutar Múltiples Sesiones</button>
+                <div id="statusMessageMulti"></div>
+                <div id="resultadosSummaryMulti" class="results-summary" style="display:none;">
+                    <p><strong>Probabilidad de Alcanzar Objetivo:</strong> <span id="probObjetivoMulti"></span>%</p>
+                    <p><strong>Probabilidad de Ruina:</strong> <span id="probRuinaMulti"></span>%</p>
+                    <p><strong>Promedio Duración Sesión (giros):</strong> <span id="avgDuracionMulti"></span></p>
+                    <p><strong>Promedio Capital Final:</strong> <span id="avgCapitalFinalMulti"></span></p>
+                </div>
+                <div class="charts-grid">
+                    <div>
+                        <h3>Evolución Promedio del Capital</h3>
+                        <div class="chart-container"> <canvas id="avgCapitalEvolucionChart"></canvas> </div>
+                    </div>
+                    <div>
+                        <h3>Distribución: Capitales Finales</h3>
+                        <div class="chart-container"> <canvas id="capitalFinalDistChart"></canvas> </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="text/javascript">
+// --- Lógica del Juego Chuck-a-Luck ---
+/** Lanza 3 dados y devuelve un array con los resultados (números del 1 al 6) */
+function lanzarDados() {
+    return [
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1,
+        Math.floor(Math.random() * 6) + 1
+    ];
+}
+
+/**
+ * Calcula el resultado de una apuesta en Chuck-a-Luck.
+ * @param {number} apuestaMonto - El monto apostado.
+ * @param {number} numeroApostado - El número del dado al que se apostó (1-6).
+ * @param {number[]} resultadoDados - Array con los 3 números que salieron en los dados.
+ * @returns {number} La ganancia o pérdida neta (positiva si gana, negativa si pierde la apuesta).
+ */
+function calcularResultadoChuckALuck(apuestaMonto, numeroApostado, resultadoDados) {
+    const coincidencias = resultadoDados.filter(dado => dado === numeroApostado).length;
+    if (coincidencias === 1) return apuestaMonto;      // Gana 1c (neto)
+    if (coincidencias === 2) return apuestaMonto * 2;  // Gana 2c (neto)
+    if (coincidencias === 3) return apuestaMonto * 3;  // Gana 3c (neto)
+    return -apuestaMonto; // Pierde la apuesta
+}
+
+// --- Estrategias de Apuesta ---
+/**
+ * Determina el monto a apostar según la estrategia seleccionada.
+ * @param {string} estrategiaId - 'fija', 'porcentaje', 'martingala'.
+ * @param {object} paramsEstrategia - Contiene los parámetros específicos de la estrategia.
+ * @param {number} capitalActual
+ * @param {number} apuestaAnteriorMartingala - (Solo para Martingala) La apuesta del giro anterior.
+ * @param {boolean} ganoAnteriorMartingala - (Solo para Martingala) Si ganó en el giro anterior.
+ * @returns {monto: number, nuevaApuestaMartingala?: number} El monto a apostar y la nueva base para Martingala.
+ */
+function determinarMontoApuesta(estrategiaId, paramsEstrategia, capitalActual, apuestaAnteriorMartingala = 0, ganoAnteriorMartingala = false) {
+    let monto = 0;
+    let nuevaApuestaMartingala = paramsEstrategia.apuestaBaseMartingala || 1;
+
+    switch (estrategiaId) {
+        case 'fija':
+            monto = paramsEstrategia.montoFijo;
+            break;
+        case 'porcentaje':
+            monto = Math.floor(capitalActual * paramsEstrategia.porcentajeCapital);
+            break;
+        case 'martingala':
+            if (ganoAnteriorMartingala || apuestaAnteriorMartingala === 0) {
+                monto = paramsEstrategia.apuestaBaseMartingala;
+            } else {
+                monto = apuestaAnteriorMartingala * 2;
+            }
+            monto = Math.min(monto, paramsEstrategia.limiteApuestaMartingala);
+            nuevaApuestaMartingala = monto; // La siguiente apuesta base (si gana) o la actual (si pierde y duplica)
+            break;
+        default:
+            monto = 1; // Fallback
+    }
+    monto = Math.max(1, monto); // Apuesta mínima de 1 (o configurable)
+    return { monto: Math.min(monto, capitalActual), apuestaMartingalaSiguiente: nuevaApuestaMartingala }; // No apostar más de lo que se tiene
+}
+
+
+// --- Simulación de UNA Sesión de Juego ---
+/**
+ * @returns {{ capitalFinal: number, girosJugados: number, historialCapital: number[], resultado: string }}
+ */
+function simularUnaSesion(cInicial, cObjetivo, numeroApostado, maxGiros, estrategiaId, paramsEstrategia) {
+    let capital = cInicial;
+    const historialCapital = [capital];
+    let giros = 0;
+    let resultado = "En curso";
+
+    let apuestaMartingalaActual = (estrategiaId === 'martingala') ? paramsEstrategia.apuestaBaseMartingala : 0;
+    let ganoAnteriorParaMartingala = false;
+
+    while (capital > 0 && capital < cObjetivo && giros < maxGiros) {
+        giros++;
+        
+        const { monto: montoApostado, apuestaMartingalaSiguiente } = determinarMontoApuesta(
+            estrategiaId, paramsEstrategia, capital, 
+            apuestaMartingalaActual, ganoAnteriorParaMartingala
+        );
+
+        if (montoApostado === 0 || montoApostado > capital) { // No puede apostar
+            resultado = (capital <=0) ? "Ruina (sin fondos para apuesta mínima)" : "Objetivo no alcanzado (no puede apostar)";
+            break;
+        }
+
+        const resultadoDados = lanzarDados();
+        const gananciaNeta = calcularResultadoChuckALuck(montoApostado, numeroApostado, resultadoDados);
+        
+        capital += gananciaNeta;
+        historialCapital.push(capital);
+
+        if (estrategiaId === 'martingala') {
+            ganoAnteriorParaMartingala = gananciaNeta > -montoApostado; // Si no perdió la apuesta
+            apuestaMartingalaActual = apuestaMartingalaSiguiente;
+             if (gananciaNeta > -montoApostado) apuestaMartingalaActual = paramsEstrategia.apuestaBaseMartingala; // Reset si ganó
+        }
+
+        if (capital <= 0) { resultado = "Ruina"; }
+        else if (capital >= cObjetivo) { resultado = "Objetivo Alcanzado"; }
+    }
+
+    if (resultado === "En curso") { // Se detuvo por maxGiros
+        resultado = (capital >= cObjetivo) ? "Objetivo Alcanzado (en max giros)" : 
+                    (capital <= 0) ? "Ruina (en max giros)" : "Max Giros Alcanzado";
+    }
+    return { capitalFinal: capital, girosJugados: giros, historialCapital, resultado };
+}
+
+// --- Lógica para Pestaña "Simular una Sesión" ---
+let capitalEvolucionChart = null;
+
+function ejecutarSimulacionUnaSesion() {
+    const cInicial = parseInt(document.getElementById('capitalInicial').value);
+    const cObjetivo = parseInt(document.getElementById('capitalObjetivo').value);
+    const numeroApostado = parseInt(document.getElementById('numeroApostado').value);
+    const maxGiros = parseInt(document.getElementById('maxGirosPorSesion').value);
+    const estrategiaId = document.getElementById('estrategiaMonto').value;
+    const paramsEstrategia = getParamsEstrategiaSeleccionada();
+
+    const statusMsg = document.getElementById('statusMessageSingle');
+    const runButton = document.getElementById('runSingleSessionButton');
+    
+    if (cObjetivo <= cInicial) {
+        alert("El capital objetivo debe ser mayor que el capital inicial."); return;
+    }
+
+    runButton.disabled = true;
+    statusMsg.textContent = "Simulando una sesión...";
+
+    const resultadoSesion = simularUnaSesion(cInicial, cObjetivo, numeroApostado, maxGiros, estrategiaId, paramsEstrategia);
+
+    document.getElementById('resultadoFinalSingle').textContent = resultadoSesion.resultado;
+    document.getElementById('capitalFinalSingle').textContent = resultadoSesion.capitalFinal.toFixed(2);
+    document.getElementById('girosJugadosSingle').textContent = resultadoSesion.girosJugados;
+    document.getElementById('resultadosSummarySingle').style.display = 'block';
+
+    actualizarGraficoEvolucionCapital(resultadoSesion.historialCapital);
+    
+    statusMsg.textContent = "Simulación de sesión única completada.";
+    runButton.disabled = false;
+}
+
+function actualizarGraficoEvolucionCapital(historialCapital) {
+    const ctx = document.getElementById('capitalEvolucionChart').getContext('2d');
+    if (capitalEvolucionChart) capitalEvolucionChart.destroy();
+    
+    capitalEvolucionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: Array.from({ length: historialCapital.length }, (_, i) => i), // Giros
+            datasets: [{
+                label: 'Evolución del Capital',
+                data: historialCapital,
+                borderColor: 'rgba(40, 167, 69, 1)',
+                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                fill: true,
+                tension: 0.1,
+                pointRadius: historialCapital.length < 100 ? 3 : 0 // Menos puntos si hay muchos datos
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { title: { display: true, text: 'Capital' } },
+                x: { title: { display: true, text: 'Número de Giro' } }
+            }
+        }
+    });
+}
+
+// --- Lógica para Pestaña "Análisis Estadístico" ---
+let avgCapitalEvolucionChart = null;
+let capitalFinalDistChart = null;
+
+async function ejecutarMultiplesSesiones() {
+    const cInicial = parseInt(document.getElementById('capitalInicial').value);
+    const cObjetivo = parseInt(document.getElementById('capitalObjetivo').value);
+    const numeroApostado = parseInt(document.getElementById('numeroApostado').value);
+    const maxGiros = parseInt(document.getElementById('maxGirosPorSesion').value);
+    const estrategiaId = document.getElementById('estrategiaMonto').value;
+    const paramsEstrategia = getParamsEstrategiaSeleccionada();
+    const numExperimentos = parseInt(document.getElementById('numExperimentosMulti').value);
+
+    const statusMsg = document.getElementById('statusMessageMulti');
+    const runButton = document.getElementById('runMultiSessionButton');
+    
+    if (cObjetivo <= cInicial) {
+        alert("El capital objetivo debe ser mayor que el capital inicial."); return;
+    }
+    if (isNaN(numExperimentos) || numExperimentos < 1) {
+        alert("Número de sesiones inválido."); return;
+    }
+
+    runButton.disabled = true;
+    statusMsg.textContent = "Ejecutando múltiples sesiones...";
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    let contadorObjetivo = 0;
+    let contadorRuina = 0;
+    let sumaDuracion = 0;
+    let sumaCapitalFinal = 0;
+    const todosCapitalesFinales = [];
+    const historialesCapitalParaPromedio = []; // Array de arrays
+
+    for (let i = 0; i < numExperimentos; i++) {
+        const res = simularUnaSesion(cInicial, cObjetivo, numeroApostado, maxGiros, estrategiaId, paramsEstrategia);
+        if (res.resultado.includes("Objetivo Alcanzado")) contadorObjetivo++;
+        else if (res.resultado.includes("Ruina")) contadorRuina++;
+        sumaDuracion += res.girosJugados;
+        sumaCapitalFinal += res.capitalFinal;
+        todosCapitalesFinales.push(res.capitalFinal);
+        historialesCapitalParaPromedio.push(res.historialCapital);
+
+        if (i > 0 && i % Math.floor(numExperimentos / 20 || 1) === 0) {
+            statusMsg.textContent = `Procesando sesiones (${Math.round(((i + 1) / numExperimentos) * 100)}%)...`;
+            await new Promise(resolve => setTimeout(resolve, 0));
+        }
+    }
+
+    document.getElementById('probObjetivoMulti').textContent = ((contadorObjetivo / numExperimentos) * 100).toFixed(2);
+    document.getElementById('probRuinaMulti').textContent = ((contadorRuina / numExperimentos) * 100).toFixed(2);
+    document.getElementById('avgDuracionMulti').textContent = (sumaDuracion / numExperimentos).toFixed(2);
+    document.getElementById('avgCapitalFinalMulti').textContent = (sumaCapitalFinal / numExperimentos).toFixed(2);
+    document.getElementById('resultadosSummaryMulti').style.display = 'block';
+
+    actualizarGraficoEvolucionPromedioCapital(historialesCapitalParaPromedio, maxGiros);
+    capitalFinalDistChart = crearOActualizarHistograma(capitalFinalDistChart, 'capitalFinalDistChart', todosCapitalesFinales, 'Capital Final', {bg: 'rgba(0, 123, 255, 0.6)', border: 'rgba(0, 123, 255, 1)'}, cObjetivo * 1.1);
+
+    statusMsg.textContent = `¡${numExperimentos} sesiones completadas!`;
+    runButton.disabled = false;
+}
+
+function actualizarGraficoEvolucionPromedioCapital(historiales, maxGirosGlobal) {
+    const ctx = document.getElementById('avgCapitalEvolucionChart').getContext('2d');
+    if (avgCapitalEvolucionChart) avgCapitalEvolucionChart.destroy();
+
+    if (historiales.length === 0) return;
+
+    // Encontrar la longitud máxima de historial para el eje X
+    // O usar maxGirosGlobal si todas las simulaciones llegan allí
+    let maxLen = 0;
+    historiales.forEach(h => { if (h.length > maxLen) maxLen = h.length; });
+    maxLen = Math.min(maxLen, maxGirosGlobal +1); // +1 por el capital inicial en giro 0
+
+    const capitalesPromedioPorGiro = Array(maxLen).fill(0);
+    const conteosPorGiro = Array(maxLen).fill(0);
+
+    historiales.forEach(historial => {
+        for (let i = 0; i < Math.min(historial.length, maxLen); i++) {
+            capitalesPromedioPorGiro[i] += historial[i];
+            conteosPorGiro[i]++;
+        }
+    });
+
+    const dataPromedio = capitalesPromedioPorGiro.map((sum, i) => conteosPorGiro[i] > 0 ? sum / conteosPorGiro[i] : null).filter(d => d !== null);
+    const labelsPromedio = Array.from({ length: dataPromedio.length }, (_, i) => i);
+
+
+    avgCapitalEvolucionChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labelsPromedio,
+            datasets: [{
+                label: 'Evolución Promedio del Capital',
+                data: dataPromedio,
+                borderColor: 'rgba(220, 53, 69, 1)',
+                backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                fill: true,
+                tension: 0.1,
+                pointRadius: dataPromedio.length < 100 ? 2 : 0
+            }]
+        },
+        options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+                y: { title: { display: true, text: 'Capital Promedio' } },
+                x: { title: { display: true, text: 'Número de Giro' } }
+            }
+        }
+    });
+}
+
+// (Función crearOActualizarHistograma es la misma que en el ejemplo anterior de Rumores de Alicia)
+function crearOActualizarHistograma(chartInstance, canvasId, dataArray, labelSingular, colorRgba, maxValHint = null, binaryLabels = null) { /* ... igual que antes ... */ 
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    const parentP = document.getElementById(canvasId).parentNode.querySelector('p.no-data');
+    if (parentP) parentP.remove(); 
+    if (dataArray.length === 0) { /* ... mensaje no data ... */ return null; }
+    
+    let labels, dataCounts;
+    if (binaryLabels && binaryLabels.length === 2) {
+        labels = binaryLabels;
+        dataCounts = [dataArray.filter(d => d === 0).length, dataArray.filter(d => d === 1).length];
+    } else {
+        const dataNumerica = dataArray.map(Number).filter(n => !isNaN(n));
+        if(dataNumerica.length === 0) { /* ... mensaje no data ... */ return null; }
+
+        const maxValue = maxValHint !== null ? maxValHint : (dataNumerica.length > 0 ? Math.max(0, ...dataNumerica) : 0);
+        let binSize = 1;
+        if (maxValue > 100) binSize = Math.max(1, Math.ceil(maxValue / 20)); // ~20 bins
+        else if (maxValue > 30) binSize = Math.max(1, Math.ceil(maxValue / 15)); // ~15 bins
+        else binSize = Math.max(1, Math.ceil(maxValue/10));
+        
+        const numBins = (maxValue >= 0 && binSize > 0) ? Math.ceil(maxValue / binSize) + 1 : 1;
+        labels = Array.from({ length: numBins }, (_, i) => `${i * binSize}-${(i + 1) * binSize - 1}`);
+        dataCounts = Array(numBins).fill(0);
+        dataNumerica.forEach(count => {
+            const binIndex = (binSize > 0) ? Math.floor(count / binSize) : 0;
+            if (binIndex >= 0 && binIndex < numBins) dataCounts[binIndex]++;
+        });
+    }
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{ label: `Frecuencia de ${labelSingular}`, data: dataCounts, backgroundColor: colorRgba.bg, borderColor: colorRgba.border, borderWidth: 1 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Nº Sesiones' } }, x: { title: { display: true, text: binaryLabels ? 'Resultado' : `Rango de ${labelSingular}` } } } }
+    });
+}
+
+// --- UI Helpers ---
+function toggleStrategyParams() {
+    document.querySelectorAll('.strategy-params').forEach(el => el.classList.remove('active'));
+    const selectedStrategy = document.getElementById('estrategiaMonto').value;
+    document.getElementById(`params${selectedStrategy.charAt(0).toUpperCase() + selectedStrategy.slice(1)}`).classList.add('active');
+}
+
+function getParamsEstrategiaSeleccionada() {
+    const estrategiaId = document.getElementById('estrategiaMonto').value;
+    if (estrategiaId === 'fija') {
+        return { montoFijo: parseInt(document.getElementById('montoFijo').value) || 1 };
+    } else if (estrategiaId === 'porcentaje') {
+        return { porcentajeCapital: parseFloat(document.getElementById('porcentajeCapital').value) || 0.01 };
+    } else if (estrategiaId === 'martingala') {
+        return {
+            apuestaBaseMartingala: parseInt(document.getElementById('apuestaBaseMartingala').value) || 1,
+            limiteApuestaMartingala: parseInt(document.getElementById('limiteApuestaMartingala').value) || 50
+        };
+    }
+    return {};
+}
+
+function showTab(tabId) { /* ... igual que antes ... */ 
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    document.querySelectorAll('.tab-button').forEach(tb => tb.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    toggleStrategyParams(); // Mostrar params de la estrategia por defecto
+});
+</script>
+</body>
+</html>
