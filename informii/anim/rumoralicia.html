@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Simulador del Rumor de Alicia</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="text/javascript" src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+    <style>
+        body { font-family: 'Arial', sans-serif; margin: 0; padding: 20px; background-color: #f4f7f9; color: #333; display: flex; flex-direction: column; align-items: center; }
+        .container { display: flex; flex-wrap: wrap; justify-content: space-around; width: 100%; max-width: 1300px; }
+        .panel { background-color: #fff; padding: 25px; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.07); margin: 10px; }
+        .controls-panel { flex: 1; min-width: 300px; max-width: 420px; align-self: flex-start;}
+        .results-panel { flex: 2; min-width: 650px; }
+        h1, h2, h3 { color: #2c3e50; text-align: center; }
+        h1 { margin-bottom: 25px; }
+        h2 { margin-top: 0; border-bottom: 2px solid #5c6bc0; padding-bottom: 10px; font-size: 1.5em; }
+        h3 { font-size: 1.2em; margin-bottom: 15px; color: #3f51b5; }
+        label { display: block; margin-top: 15px; font-weight: bold; color: #455a64; }
+        input[type="number"], select { width: calc(100% - 22px); padding: 10px; margin-top: 5px; border: 1px solid #ced4da; border-radius: 5px; box-sizing: border-box; }
+        button { background-color: #5c6bc0; color: white; padding: 12px 20px; border: none; border-radius: 5px; cursor: pointer; font-size: 16px; margin-top: 25px; transition: background-color 0.2s; display: block; width: 100%; }
+        button:hover { background-color: #3f51b5; }
+        button:disabled { background-color: #cccccc; cursor: not-allowed; }
+        .results-summary { margin-top: 20px; padding: 15px; background-color: #e8eaf6; border-left: 5px solid #5c6bc0; }
+        .results-summary p { margin: 10px 0; font-size: 1em; }
+        .results-summary strong { color: #000; }
+        .parameter-group { margin-bottom: 20px; }
+        .chart-container { width: 100%; height: 320px; margin-top: 20px; margin-bottom: 30px; }
+        #statusMessage, #trendStatusMessage { margin-top: 15px; text-align: center; font-style: italic; color: #17a2b8; min-height: 20px; }
+        .tabs { display: flex; margin-bottom: 20px; border-bottom: 1px solid #ccc; width:100%; max-width: 1300px;}
+        .tab-button { padding: 10px 20px; cursor: pointer; background-color: #f8f9fa; border: 1px solid #ccc; border-bottom: none; margin-right: 5px; border-radius: 5px 5px 0 0; color: #505050}
+        .tab-button:hover { background-color: #3f51b5; color: #ffffff}
+        .tab-button.active { background-color: #fff; border-bottom: 1px solid #fff; font-weight: bold; color: #5c6bc0; }
+        .tab-content { display: none; width:100%;}
+        .tab-content.active { display: block; }
+        .charts-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; }
+        #animationNetworkContainer { width: 100%; height: 300px; border: 1px solid #ddd; margin-top: 15px; }
+    </style>
+</head>
+<body>
+
+    <h1>Simulador del Rumor de Alicia</h1>
+
+    <div class="tabs">
+        <button class="tab-button active" onclick="showTab('fixedNTab')">Simulación para N Fijo</button>
+        <button class="tab-button" onclick="showTab('trendNTab')">Análisis de Tendencia por N</button>
+    </div>
+
+    <!-- Pestaña para Simulación con N Fijo -->
+    <div id="fixedNTab" class="tab-content active">
+        <div class="container">
+            <div class="panel controls-panel">
+                <h2>Configuración (N Fijo)</h2>
+                <div class="parameter-group">
+                    <label for="nInvitadosFijo">Nº Invitados (n, Juan es 1 de ellos):</label>
+                    <input type="number" id="nInvitadosFijo" value="10" min="1" max="100">
+                </div>
+                <div class="parameter-group">
+                    <label for="numExperimentosFijo">Número de Experimentos:</label>
+                    <input type="number" id="numExperimentosFijo" value="10000" min="1" max="50000">
+                </div>
+                <button id="runFixedNSimButton" onclick="ejecutarSimulacionNFijo()">Ejecutar Simulación</button>
+                <div id="statusMessage"></div>
+                <h3>Animación de una Propagación:</h3>
+                <div id="animationNetworkContainer"></div>
+                <div id="animationStatus"></div>
+            </div>
+
+            <div class="panel results-panel">
+                <h2>Resultados (N Fijo)</h2>
+                <div id="resultadosSummaryFijo" class="results-summary" style="display:none;">
+                    <p><strong>Para n = <span id="nFijoValue"></span> invitados:</strong></p>
+                    <p><strong>Promedio Longitud Cadena (Personas que escucharon):</strong> <span id="avgLongitudCadenaFijo"></span></p>
+                    <p><strong>Probabilidad de que Todos (N) Escuchen:</strong> <span id="probTodosEscucharonFijo"></span></p>
+                </div>
+                <div class="charts-grid">
+                     <div>
+                        <h3>Distribución: Longitud de Cadena del Rumor</h3>
+                        <div class="chart-container"> <canvas id="longitudCadenaDistChart"></canvas> </div>
+                    </div>
+                    <div>
+                        <h3>Distribución: ¿Todos Escucharon el Rumor?</h3>
+                        <div class="chart-container"> <canvas id="todosEscucharonDistChart"></canvas> </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Pestaña para Análisis de Tendencia por N -->
+    <div id="trendNTab" class="tab-content">
+        <div class="container">
+            <div class="panel controls-panel">
+                <h2>Configuración (Tendencia por N)</h2>
+                <div class="parameter-group">
+                    <label for="nMinTrend">N Mínimo (Nº Invitados):</label>
+                    <input type="number" id="nMinTrend" value="2" min="1" max="50">
+                </div>
+                <div class="parameter-group">
+                    <label for="nMaxTrend">N Máximo (Nº Invitados):</label>
+                    <input type="number" id="nMaxTrend" value="30" min="2" max="100">
+                </div>
+                <div class="parameter-group">
+                    <label for="nStepTrend">Paso para N:</label>
+                    <input type="number" id="nStepTrend" value="1" min="1" max="10">
+                </div>
+                <div class="parameter-group">
+                    <label for="numExperimentosTrend">Experimentos por cada N:</label>
+                    <input type="number" id="numExperimentosTrend" value="10000" min="100" max="10000">
+                </div>
+                <button id="runTrendSimButton" onclick="ejecutarSimulacionTendenciaN()">Analizar Tendencia por N</button>
+                <div id="trendStatusMessage"></div>
+            </div>
+            <div class="panel results-panel">
+                <h2>Resultados (Tendencia por N)</h2>
+                 <div class="charts-grid">
+                    <div>
+                        <h3>Tendencia: Promedio Longitud Cadena vs. N</h3>
+                        <div class="chart-container"> <canvas id="avgLongitudTrendChart"></canvas> </div>
+                    </div>
+                    <div>
+                        <h3>Tendencia: Probabilidad Todos Escuchen vs. N</h3>
+                        <div class="chart-container"> <canvas id="probTodosTrendChart"></canvas> </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<script type="text/javascript">
+// --- Lógica de Simulación del Rumor de Alicia ---
+/**
+ * Simula una única propagación del rumor.
+ * @param {number} nTotalInvitados - Número total de invitados (Juan es uno de ellos). Alicia no cuenta.
+ * @returns {{numPersonasEscucharon: number, todosEscucharon: boolean, pasosAnimacion: Array}}
+ */
+function simularPropagacionRumorConAnimacion(nTotalInvitados) {
+    if (nTotalInvitados <= 0) return { numPersonasEscucharon: 0, todosEscucharon: false, pasosAnimacion: [] };
+
+    // IDs de 0 a nTotalInvitados-1. Juan es el 0.
+    const todosLosIds = Array.from({ length: nTotalInvitados }, (_, i) => i);
+    const idJuan = 0;
+    const hanEscuchadoRumor = new Set();
+    const pasosAnimacion = []; // { de: id, a: id }
+
+    hanEscuchadoRumor.add(idJuan);
+    // El "paso 0" de animación es Juan conociendo el rumor.
+    // Podríamos representarlo como un cambio de estado del nodo de Juan.
+
+    if (nTotalInvitados === 1) { // Solo Juan
+        return { numPersonasEscucharon: 1, todosEscucharon: true, pasosAnimacion: [] };
+    }
+
+    // Juan (propagadorActual) elige al primer receptor
+    let propagadorActual = idJuan;
+    let personaQueLeContoAlPropagador = -1; // Nadie le contó a Juan inicialmente
+
+    // Paso 1: Juan elige
+    let candidatos = todosLosIds.filter(id => id !== propagadorActual); // n-1 candidatos
+    if (candidatos.length === 0) { // No debería pasar si nTotalInvitados > 1
+        return { numPersonasEscucharon: hanEscuchadoRumor.size, todosEscucharon: hanEscuchadoRumor.size === nTotalInvitados, pasosAnimacion };
+    }
+    let receptorElegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+    
+    hanEscuchadoRumor.add(receptorElegido);
+    pasosAnimacion.push({ de: propagadorActual, a: receptorElegido, nuevoEstadoReceptor: 'escuchado' });
+    personaQueLeContoAlPropagador = propagadorActual;
+    propagadorActual = receptorElegido;
+
+
+    // Bucle de propagación
+    let continuarPropagando = true;
+    while (continuarPropagando) {
+        // El propagadorActual va a elegir a quién contarle.
+        // No puede ser él mismo ni la persona que le contó a él.
+        candidatos = todosLosIds.filter(id => id !== propagadorActual && id !== personaQueLeContoAlPropagador);
+
+        if (candidatos.length === 0) {
+            continuarPropagando = false; // No hay a quién más contar
+        } else {
+            receptorElegido = candidatos[Math.floor(Math.random() * candidatos.length)];
+            
+            if (hanEscuchadoRumor.has(receptorElegido)) {
+                // El receptor ya lo había escuchado, la cadena se detiene.
+                pasosAnimacion.push({ de: propagadorActual, a: receptorElegido, nuevoEstadoReceptor: 'ya_escuchado_fin' });
+                continuarPropagando = false;
+            } else {
+                // El receptor lo escucha por primera vez.
+                hanEscuchadoRumor.add(receptorElegido);
+                pasosAnimacion.push({ de: propagadorActual, a: receptorElegido, nuevoEstadoReceptor: 'escuchado' });
+                
+                // Preparar para la siguiente iteración
+                personaQueLeContoAlPropagador = propagadorActual;
+                propagadorActual = receptorElegido;
+            }
+        }
+    }
+
+    return { 
+        numPersonasEscucharon: hanEscuchadoRumor.size, 
+        todosEscucharon: hanEscuchadoRumor.size === nTotalInvitados,
+        pasosAnimacion
+    };
+}
+
+// --- Lógica para Pestaña N Fijo ---
+let longitudCadenaDistChart = null;
+let todosEscucharonDistChart = null;
+let animNetwork = null;
+let animTimeoutId = null;
+
+async function ejecutarSimulacionNFijo() {
+    const nInvitados = parseInt(document.getElementById('nInvitadosFijo').value);
+    const numExperimentos = parseInt(document.getElementById('numExperimentosFijo').value);
+    const statusMsg = document.getElementById('statusMessage');
+    const runButton = document.getElementById('runFixedNSimButton');
+
+    if (isNaN(nInvitados) || nInvitados < 1 || isNaN(numExperimentos) || numExperimentos < 1) {
+        alert("Valores inválidos."); return;
+    }
+    
+    runButton.disabled = true;
+    statusMsg.textContent = "Ejecutando simulaciones...";
+    document.getElementById('animationStatus').textContent = "";
+    if (animTimeoutId) clearTimeout(animTimeoutId);
+
+
+    // Ejecutar todas las simulaciones lógicas primero (rápidamente)
+    await new Promise(resolve => requestAnimationFrame(resolve)); // Permitir que la UI actualice "Ejecutando..."
+
+    const resultadosLongitudCadena = [];
+    const resultadosTodosEscucharonBinario = []; // 0 para no, 1 para sí
+    let sumaLongitudCadena = 0;
+    let contadorTodosEscucharon = 0;
+    let ultimaAnimacionPasos = [];
+
+    for (let i = 0; i < numExperimentos; i++) {
+        const { numPersonasEscucharon, todosEscucharon, pasosAnimacion } = simularPropagacionRumorConAnimacion(nInvitados);
+        resultadosLongitudCadena.push(numPersonasEscucharon);
+        resultadosTodosEscucharonBinario.push(todosEscucharon ? 1 : 0);
+        sumaLongitudCadena += numPersonasEscucharon;
+        if (todosEscucharon) contadorTodosEscucharon++;
+        if (i === numExperimentos - 1) ultimaAnimacionPasos = pasosAnimacion; // Guardar pasos de la última para animar
+
+        if (i > 0 && i % Math.floor(numExperimentos / 20 || 1) === 0) {
+            statusMsg.textContent = `Simulando (${Math.round(((i + 1) / numExperimentos) * 100)}%)...`;
+            await new Promise(resolve => setTimeout(resolve, 0)); // Pequeña pausa para no bloquear UI
+        }
+    }
+
+    const avgLongitud = numExperimentos > 0 ? sumaLongitudCadena / numExperimentos : 0;
+    const probTodos = numExperimentos > 0 ? contadorTodosEscucharon / numExperimentos : 0;
+
+    document.getElementById('nFijoValue').textContent = nInvitados;
+    document.getElementById('avgLongitudCadenaFijo').textContent = avgLongitud.toFixed(2);
+    document.getElementById('probTodosEscucharonFijo').textContent = probTodos.toFixed(4);
+    document.getElementById('resultadosSummaryFijo').style.display = 'block';
+
+    longitudCadenaDistChart = crearOActualizarHistograma(longitudCadenaDistChart, 'longitudCadenaDistChart', resultadosLongitudCadena, 'Longitud Cadena', {bg: 'rgba(92, 107, 192, 0.6)', border: 'rgba(92, 107, 192, 1)'}, nInvitados);
+    todosEscucharonDistChart = crearOActualizarHistograma(todosEscucharonDistChart, 'todosEscucharonDistChart', resultadosTodosEscucharonBinario, '¿Todos Escucharon?', {bg: 'rgba(255, 138, 101, 0.6)', border: 'rgba(255, 138, 101, 1)'}, true, ["No", "Sí"]);
+    
+    statusMsg.textContent = `¡${numExperimentos} simulaciones completadas! Mostrando animación de la última ejecución.`;
+    runButton.disabled = false;
+    
+    // Iniciar animación con los pasos de la última simulación
+    animarPropagacion(ultimaAnimacionPasos, nInvitados);
+}
+
+function animarPropagacion(pasos, nTotalInvitados) {
+    const container = document.getElementById('animationNetworkContainer');
+    const animStatus = document.getElementById('animationStatus');
+    animStatus.textContent = "Iniciando animación...";
+
+    const nodosArray = Array.from({ length: nTotalInvitados }, (_, i) => ({
+        id: i,
+        label: `Inv. ${i}` + (i === 0 ? " (Juan)" : ""),
+        color: { background: '#dfe4ea', border: '#a4b0be' }, // Estado inicial: no escuchado
+        shape: 'ellipse'
+    }));
+    // Juan conoce el rumor inicialmente
+    const juanNode = nodosArray.find(n => n.id === 0);
+    if(juanNode) juanNode.color = { background: '#f1c40f', border: '#f39c12' }; // Amarillo: conoce
+
+    const aristasArray = []; // Se añadirán dinámicamente
+
+    const nodosDS = new vis.DataSet(nodosArray);
+    const aristasDS = new vis.DataSet(aristasArray);
+
+    const data = { nodes: nodosDS, edges: aristasDS };
+    const options = {
+        layout: {
+            hierarchical: { enabled: true, sortMethod: 'directed', levelSeparation: 100, nodeSpacing: 120 }
+        },
+        edges: { arrows: 'to', smooth: true, color: '#84817a' },
+        physics: false, // Desactivar físicas para layout jerárquico
+        interaction: {dragNodes: false, dragView: true, zoomView: true}
+    };
+
+    if (animNetwork) animNetwork.destroy();
+    animNetwork = new vis.Network(container, data, options);
+
+    let currentStep = 0;
+    function procesarPasoAnimacion() {
+        if (animTimeoutId) clearTimeout(animTimeoutId);
+        if (currentStep < pasos.length) {
+            const paso = pasos[currentStep];
+            animStatus.textContent = `Paso ${currentStep + 1}: Inv. ${paso.de} cuenta a Inv. ${paso.a}`;
+            
+            // Añadir arista de propagación
+            aristasDS.add({ from: paso.de, to: paso.a, id: `edge-${currentStep}` });
+
+            // Actualizar color del receptor
+            let colorReceptor = { background: '#f1c40f', border: '#f39c12' }; // Amarillo: escuchado
+            if (paso.nuevoEstadoReceptor === 'ya_escuchado_fin') {
+                colorReceptor = { background: '#ff7675', border: '#d63031' }; // Rojo: ya lo sabía, fin
+                animStatus.textContent += ". ¡Ya lo sabía! El rumor se detiene.";
+            }
+            nodosDS.update({ id: paso.a, color: colorReceptor });
+            
+            currentStep++;
+            animTimeoutId = setTimeout(procesarPasoAnimacion, 1200); // Retraso entre pasos
+        } else {
+            animStatus.textContent = "Animación de propagación completada.";
+        }
+    }
+    if (pasos.length > 0) {
+        animTimeoutId = setTimeout(procesarPasoAnimacion, 500); // Inicio con un pequeño retraso
+    } else {
+        animStatus.textContent = "No hubo propagación para animar (o solo Juan lo supo).";
+    }
+}
+
+
+// (crearOActualizarHistograma es similar al de enfermedad, ajustado para etiquetas)
+function crearOActualizarHistograma(chartInstance, canvasId, dataArray, labelSingular, colorRgba, maxValHint = null, binaryLabels = null) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+
+    const parentP = document.getElementById(canvasId).parentNode.querySelector('p.no-data');
+    if (parentP) parentP.remove();
+
+    if (dataArray.length === 0) { /* ... mensaje no data ... */ return null; }
+    
+    let labels, dataCounts;
+    if (binaryLabels && binaryLabels.length === 2) { // Para el de "¿Todos Escucharon?"
+        labels = binaryLabels;
+        dataCounts = [dataArray.filter(d => d === 0).length, dataArray.filter(d => d === 1).length];
+    } else {
+        const maxValue = maxValHint !== null ? maxValHint : (dataArray.length > 0 ? Math.max(0, ...dataArray) : 0);
+        const binSize = 1; 
+        const numBins = maxValue + 1;
+        labels = Array.from({ length: numBins }, (_, i) => `${i}`);
+        dataCounts = Array(numBins).fill(0);
+        dataArray.forEach(count => {
+            if (count >= 0 && count < numBins) dataCounts[count]++;
+        });
+    }
+    
+    return new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{ label: `Frecuencia de ${labelSingular}`, data: dataCounts, backgroundColor: colorRgba.bg, borderColor: colorRgba.border, borderWidth: 1 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: 'Nº Experimentos' } }, x: { title: { display: true, text: binaryLabels ? 'Respuesta' : labelSingular } } } }
+    });
+}
+
+
+// --- Lógica para Análisis de Tendencia por N ---
+let avgLongitudTrendChart = null;
+let probTodosTrendChart = null;
+
+async function ejecutarSimulacionTendenciaN() {
+    const nMin = parseInt(document.getElementById('nMinTrend').value);
+    const nMax = parseInt(document.getElementById('nMaxTrend').value);
+    const nStep = parseInt(document.getElementById('nStepTrend').value);
+    const numExperimentosPorN = parseInt(document.getElementById('numExperimentosTrend').value);
+    const statusMsg = document.getElementById('trendStatusMessage');
+    const runButton = document.getElementById('runTrendSimButton');
+    
+    if (isNaN(nMin) || isNaN(nMax) || isNaN(nStep) || isNaN(numExperimentosPorN) || nMin < 1 || nMax < nMin || nStep < 1 || numExperimentosPorN < 1) {
+        alert("Valores inválidos para tendencia."); return;
+    }
+    runButton.disabled = true;
+    statusMsg.textContent = "Ejecutando análisis de tendencia...";
+    await new Promise(resolve => requestAnimationFrame(resolve));
+
+    const nValores = [];
+    const avgLongitudValores = [];
+    const probTodosValores = [];
+    let nActual = nMin;
+
+    while (nActual <= nMax) {
+        nValores.push(nActual);
+        statusMsg.textContent = `Procesando para N = ${nActual}... (${nValores.length}/${Math.ceil((nMax-nMin)/nStep)+1})`;
+        await new Promise(resolve => setTimeout(resolve, 0)); 
+
+        let sumaLongitudN = 0;
+        let contadorTodosN = 0;
+        for (let i = 0; i < numExperimentosPorN; i++) {
+            const { numPersonasEscucharon, todosEscucharon } = simularPropagacionRumorConAnimacion(nActual); // No necesitamos los pasos de anim aquí
+            sumaLongitudN += numPersonasEscucharon;
+            if (todosEscucharon) contadorTodosN++;
+        }
+        avgLongitudValores.push(numExperimentosPorN > 0 ? sumaLongitudN / numExperimentosPorN : 0);
+        probTodosValores.push(numExperimentosPorN > 0 ? contadorTodosN / numExperimentosPorN : 0);
+        
+        if (nActual === nMax) break; // Salir si ya procesamos el N máximo
+        nActual += nStep;
+        if (nActual > nMax && nValores[nValores.length-1] < nMax) nActual = nMax; // Asegurar que el N máximo se procese
+    }
+    
+    avgLongitudTrendChart = actualizarGraficoLineaTendencia(avgLongitudTrendChart, 'avgLongitudTrendChart', nValores, avgLongitudValores, 'Prom. Longitud Cadena', 'rgba(92, 107, 192, 0.8)', 'Nº Invitados (N)');
+    probTodosTrendChart = actualizarGraficoLineaTendencia(probTodosTrendChart, 'probTodosTrendChart', nValores, probTodosValores, 'Prob. Todos Escuchen', 'rgba(255, 138, 101, 0.8)', 'Nº Invitados (N)');
+    
+    statusMsg.textContent = `Análisis de tendencia completado.`;
+    runButton.disabled = false;
+}
+
+// (actualizarGraficoLineaTendencia es la misma que en el ejemplo de enfermedad)
+function actualizarGraficoLineaTendencia(chartInstance, canvasId, xValores, yValores, labelY, color, labelXBase) {
+    const ctx = document.getElementById(canvasId).getContext('2d');
+    if (chartInstance) chartInstance.destroy();
+    return new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: xValores.map(String),
+            datasets: [{ label: labelY, data: yValores, borderColor: color, backgroundColor: color.replace('0.8', '0.2'), fill: false, tension: 0.1 }]
+        },
+        options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, title: { display: true, text: labelY } }, x: { title: { display: true, text: labelXBase } } } }
+    });
+}
+
+// --- Manejo de Pestañas (Tabs) ---
+function showTab(tabId) {
+    document.querySelectorAll('.tab-content').forEach(tc => tc.classList.remove('active'));
+    document.querySelectorAll('.tab-button').forEach(tb => tb.classList.remove('active'));
+    document.getElementById(tabId).classList.add('active');
+    event.currentTarget.classList.add('active');
+}
+
+// Inicialización
+document.addEventListener('DOMContentLoaded', () => { /* No hacer nada al cargar */ });
+</script>
+</body>
+</html>
