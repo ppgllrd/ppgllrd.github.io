@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>BST Visualizer</title>
+    <title>AVL Visualizer</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -17,7 +17,6 @@
             --btn-search: #1565C0; 
             --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
-            --btn-info: #009688; /* Teal for traversals/info */
         }
 
         body {
@@ -62,7 +61,6 @@
         .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); }
         .btn-random { background-color: #EF6C00; }
-        .btn-info { background-color: var(--btn-info); }
         .btn-pause { background-color: #455A64; width: 80px;}
 
         #canvas-container {
@@ -99,7 +97,7 @@
 
 <header>
     <div class="header-top">
-        <h1>BST Visualizer</h1>
+        <h1>AVL Visualizer</h1>        
     </div>
     <div class="gui">
         <div class="controls">
@@ -107,10 +105,6 @@
             <button class="btn-insert" onclick="app.handleInsert()">Insert</button>
             <button class="btn-search" onclick="app.handleSearch()">Search</button>
             <button class="btn-delete" onclick="app.handleDelete()">Delete</button>
-            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
-            <button class="btn-info" onclick="app.handleMin()">Min</button>
-            <button class="btn-info" onclick="app.handleMax()">Max</button>
-            <button class="btn-info" onclick="app.handleInOrder()">InOrder</button>
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             <button class="btn-undo" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
             <button class="btn-random" onclick="app.handleRandomTree()">Random Tree</button>
@@ -123,20 +117,21 @@
             </label>
             <button class="btn-pause" onclick="app.togglePause()" id="btnPause">Pause</button>
         </div>
-    </div> 
+    </div>
     <div id="status-bar">
         <span id="status-text">Ready.</span>
-        <!-- span id="queue-info">Queue: 0</span-->
-    </div>
-</header>
+    <span id="queue-info">Queue: 0</span>
 
+</div>
+</header>
 
 <div id="canvas-container">
     <canvas id="treeCanvas"></canvas>
     <div id="legend">
         <div class="legend-item"><div class="dot" style="background:#B2FBA5; border:1px solid #B2FBA5"></div><span style="color:#D50000; font-weight:bold;">12</span> &nbsp; Normal</div>
         <div class="legend-item"><div class="dot" style="background:#4CAF50; border:1px solid #fff"></div>Inserted</div>
-        <div class="legend-item"><div class="dot" style="background:#FFC107; border:1px solid #fff"></div>Child</div>
+        <div class="legend-item"><div class="dot" style="background:#FF5722; border:1px solid #fff"></div>Pivot (Orange)</div>
+        <div class="legend-item"><div class="dot" style="background:#FFC107; border:1px solid #fff"></div>Child (Yellow)</div>
         <div class="legend-item"><div class="arrow-icon">&#8635;</div>Rotation</div>
         <div class="legend-item"><div class="dot" style="background:#F44336; border:1px solid #fff"></div>Delete</div>
         <div class="legend-item"><div class="dot" style="background:#2196F3; border:1px solid #fff"></div>Visiting</div>
@@ -166,13 +161,14 @@ class Node {
         this.value = value;
         this.left = null;
         this.right = null;
+        this.height = 1;
         this.id = Node.nextId++;
         this.color = COLORS.DEFAULT;
         this.x = 0; this.y = 0;
     }
     clone() {
         const newNode = new Node(this.value);
-        newNode.id = this.id; newNode.color = this.color;
+        newNode.height = this.height; newNode.id = this.id; newNode.color = this.color;
         newNode.x = this.x; newNode.y = this.y;
         if (this.left) newNode.left = this.left.clone();
         if (this.right) newNode.right = this.right.clone();
@@ -181,9 +177,8 @@ class Node {
 }
 Node.nextId = 0;
 
-class BinarySearchTree {
+class AVLTree {
     constructor() { this.root = null; this.history = []; }
-    
     saveToHistory() {
         const state = this.root ? this.root.clone() : null;
         this.history.push(state);
@@ -202,7 +197,38 @@ class BinarySearchTree {
         this.resetVisuals(this.root);
         recordSnapshot(this.root, null, { text: 'Ready.' });
     }
+    getHeight(node) { return node ? node.height : 0; }
+    updateHeight(node) { node.height = 1 + Math.max(this.getHeight(node.left), this.getHeight(node.right)); }
+    getBalance(node) { return node ? this.getHeight(node.left) - this.getHeight(node.right) : 0; }
 
+    rightRotate(y, record) {
+        const x = y.left; const T2 = x.right;
+        const pY = y.color; const pX = x.color;
+        y.color = COLORS.PIVOT; x.color = COLORS.CHILD;
+        record(this.root, null, { 
+            pause: true, 
+            text: `Right Rotate: ${y.value} moves down`,
+            rotation: { id: y.id, dir: 'CW' } 
+        });
+        x.right = y; y.left = T2;
+        this.updateHeight(y); this.updateHeight(x);
+        y.color = pY; x.color = pX;
+        return x;
+    }
+    leftRotate(x, record) {
+        const y = x.right; const T2 = y.left;
+        const pX = x.color; const pY = y.color;
+        x.color = COLORS.PIVOT; y.color = COLORS.CHILD;
+        record(this.root, null, { 
+            pause: true, 
+            text: `Left Rotate: ${x.value} moves down`,
+            rotation: { id: x.id, dir: 'CCW' }
+        });
+        y.left = x; x.right = T2;
+        this.updateHeight(x); this.updateHeight(y);
+        x.color = pX; y.color = pY;
+        return y;
+    }
     insert(value, recordSnapshot) {
         this.saveToHistory();
         const _insert = (node) => {
@@ -214,14 +240,19 @@ class BinarySearchTree {
             } else if (value > node.value) {
                 if (!node.right) recordSnapshot(this.root, null, { text: `Reached null link (Right of ${node.value})`, activeNull: { nodeId: node.id, side: 'R', color: COLORS.VISIT } });
                 node.right = _insert(node.right);
-            }
+            } else return node;
+            this.updateHeight(node);
+            const balance = this.getBalance(node);
+            if (balance > 1 && value < node.left.value) return this.rightRotate(node, recordSnapshot);
+            if (balance < -1 && value > node.right.value) return this.leftRotate(node, recordSnapshot);
+            if (balance > 1 && value > node.left.value) { node.left = this.leftRotate(node.left, recordSnapshot); return this.rightRotate(node, recordSnapshot); }
+            if (balance < -1 && value < node.right.value) { node.right = this.rightRotate(node.right, recordSnapshot); return this.leftRotate(node, recordSnapshot); }
             return node;
         };
         this.root = _insert(this.root);
         recordSnapshot(this.root, null, { text: `Inserted ${value}` });
         this.cleanUp(recordSnapshot);
     }
-
     delete(value, recordSnapshot) {
         this.saveToHistory();
         let found = false;
@@ -240,14 +271,11 @@ class BinarySearchTree {
                 node.right = _delete(node.right, val, showSearch);
             } else {
                 found = true;
-                if (!node.left) {
+                if (!node.left || !node.right) {
                     node.color = COLORS.DELETE;
                     recordSnapshot(this.root, null, { pause: true, text: `Deleting ${node.value}` });
-                    return node.right;
-                } else if (!node.right) {
-                    node.color = COLORS.DELETE;
-                    recordSnapshot(this.root, null, { pause: true, text: `Deleting ${node.value}` });
-                    return node.left;
+                    const temp = node.left ? node.left : node.right;
+                    node = temp ? temp : null;
                 } else {
                     let temp = node.right;
                     recordSnapshot(this.root, null, { text: "Finding successor (right side)..." });
@@ -266,13 +294,19 @@ class BinarySearchTree {
                     node.right = _delete(node.right, temp.value, false);
                 }
             }
+            if (!node) return node;
+            this.updateHeight(node);
+            const balance = this.getBalance(node);
+            if (balance > 1 && this.getBalance(node.left) >= 0) return this.rightRotate(node, recordSnapshot);
+            if (balance > 1 && this.getBalance(node.left) < 0) { node.left = this.leftRotate(node.left, recordSnapshot); return this.rightRotate(node, recordSnapshot); }
+            if (balance < -1 && this.getBalance(node.right) <= 0) return this.leftRotate(node, recordSnapshot);
+            if (balance < -1 && this.getBalance(node.right) > 0) { node.right = this.rightRotate(node.right, recordSnapshot); return this.leftRotate(node, recordSnapshot); }
             return node;
         };
         this.root = _delete(this.root, value);
         if(found) recordSnapshot(this.root, null, { text: `Finished` }); else recordSnapshot(this.root, null, { text: `Value ${value} not found` });
         this.cleanUp(recordSnapshot);
     }
-
     search(value, recordSnapshot) {
         let current = this.root;
         let found = false;
@@ -291,78 +325,6 @@ class BinarySearchTree {
             }
         }
         if(!found) recordSnapshot(this.root, null, { text: "Not found." });
-        this.cleanUp(recordSnapshot);
-    }
-
-    findMin(recordSnapshot) {
-        let current = this.root;
-        if(!current) { recordSnapshot(null, null, { text: "Tree is empty" }); return; }
-        
-        while(current) {
-            current.color = COLORS.VISIT;
-            recordSnapshot(this.root, null, { text: `Checking ${current.value}...` });
-            
-            if (current.left) {
-                current.color = COLORS.DEFAULT; // Leave trail default
-                current = current.left;
-            } else {
-                current.color = COLORS.FOUND;
-                recordSnapshot(this.root, null, { text: `Minimum value is ${current.value}`, pause: true });
-                break;
-            }
-        }
-        this.cleanUp(recordSnapshot);
-    }
-
-    findMax(recordSnapshot) {
-        let current = this.root;
-        if(!current) { recordSnapshot(null, null, { text: "Tree is empty" }); return; }
-        
-        while(current) {
-            current.color = COLORS.VISIT;
-            recordSnapshot(this.root, null, { text: `Checking ${current.value}...` });
-            
-            if (current.right) {
-                current.color = COLORS.DEFAULT;
-                current = current.right;
-            } else {
-                current.color = COLORS.FOUND;
-                recordSnapshot(this.root, null, { text: `Maximum value is ${current.value}`, pause: true });
-                break;
-            }
-        }
-        this.cleanUp(recordSnapshot);
-    }
-
-    inOrder(recordSnapshot) {
-        const result = [];
-        const _traverse = (node) => {
-            if(!node) return;
-            
-            // Visualize going left (VISIT color)
-            node.color = COLORS.NEW;
-            recordSnapshot(this.root, null, { text: `Traversing...` });
-            
-            _traverse(node.left);
-            
-            // Process current
-            node.color = COLORS.VISIT;
-            result.push(node.value);
-            recordSnapshot(this.root, null, { 
-                text: `In-Order: [${result.join(', ')}]`, 
-                pause: true 
-            });
-            
-            // Visualize going right
-            _traverse(node.right);
-        };
-        
-        if(!this.root) {
-             recordSnapshot(null, null, { text: "Tree is empty" });
-        } else {
-             _traverse(this.root);
-             recordSnapshot(this.root, null, { text: `Traversal Complete: [${result.join(', ')}]` });
-        }
         this.cleanUp(recordSnapshot);
     }
 }
@@ -500,7 +462,7 @@ class Visualizer {
         this.camera.x += (this.camera.targetX - this.camera.x) * camSpeed;
         this.camera.y += (this.camera.targetY - this.camera.y) * camSpeed;
         const pending = this.pendingSnapshots ? this.pendingSnapshots.length : 0;
-        // document.getElementById('queue-info').innerText = `In Queue: ${pending}`;
+        document.getElementById('queue-info').innerText = `In Queue: ${pending}`;
         if (this.state === 'CAMERA') {
              const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
              if (dist < 10 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.05) {
@@ -605,10 +567,10 @@ class Visualizer {
 
         nodesToDraw.forEach(n => this.drawNodeCircle(n.x, n.y, n.value, n.color || COLORS.DEFAULT));
 
-        // Generic Rotation Arrows (kept for code reuse if needed later)
         if (currentMeta && currentMeta.rotation) {
             const pivotNode = nodesToDraw.find(n => n.color === COLORS.PIVOT);
             const childNode = nodesToDraw.find(n => n.color === COLORS.CHILD);
+            
             if (pivotNode && childNode) {
                 this.drawRotationArrow(childNode.x, childNode.y, pivotNode.x, pivotNode.y, currentMeta.rotation.dir);
             }
@@ -630,38 +592,80 @@ class Visualizer {
         this.ctx.restore();
     }
 
-    // Cubic Bezier for smooth Rotation Arrows
     drawRotationArrow(x1, y1, x2, y2, dir) {
         const ctx = this.ctx;
         const r = this.nodeRadius;
-        const startX = x1; const startY = y1 - r;
-        const endY = y2; let endX;
+        
+        // Start: Top of Child
+        const startX = x1;
+        const startY = y1 - r;
+        
+        // End: Side of Parent (Vertical Center)
+        const endY = y2;
+        let endX;
+        
         let cp1X, cp1Y, cp2X, cp2Y;
-        const arcHeight = 60; const sideOffset = 40; const startBulge = 30; 
+        const arcHeight = 60; 
+        const sideOffset = 40; // CP2 Push out
+        
+        // START BULGE LOGIC: Move CP1 outwards to avoid vertical start
+        const startBulge = 30; 
 
         if (dir === 'CW') { 
-            endX = x2 - r; 
-            cp1X = startX - startBulge; cp1Y = startY - arcHeight;
-            cp2X = endX - sideOffset; cp2Y = endY; 
+            // Child is Left -> Hits Parent Left Side
+            endX = x2 - r;
+            
+            // CP1: Up and Left (Outwards)
+            cp1X = startX - startBulge;
+            cp1Y = startY - arcHeight;
+            
+            // CP2: Horizontal Out from Parent
+            cp2X = endX - sideOffset;
+            cp2Y = endY; 
+            
         } else { 
-            endX = x2 + r; 
-            cp1X = startX + startBulge; cp1Y = startY - arcHeight;
-            cp2X = endX + sideOffset; cp2Y = endY;
+            // Child is Right -> Hits Parent Right Side
+            endX = x2 + r;
+            
+            // CP1: Up and Right (Outwards)
+            cp1X = startX + startBulge;
+            cp1Y = startY - arcHeight;
+            
+            // CP2: Horizontal Out from Parent
+            cp2X = endX + sideOffset;
+            cp2Y = endY;
         }
-        ctx.beginPath(); ctx.strokeStyle = COLORS.ARROW; ctx.lineWidth = 5;
-        ctx.moveTo(startX, startY); ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY); ctx.stroke();
-        const vecX = endX - cp2X; const vecY = endY - cp2Y;
+
+        ctx.beginPath();
+        ctx.strokeStyle = COLORS.ARROW;
+        ctx.lineWidth = 5;
+        
+        ctx.moveTo(startX, startY);
+        ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
+        ctx.stroke();
+        
+        // Arrowhead Angle
+        const vecX = endX - cp2X;
+        const vecY = endY - cp2Y;
         const angle = Math.atan2(vecY, vecX);
+        
         this.drawArrowHead(endX, endY, angle);
     }
 
     drawArrowHead(x, y, angle) {
         const ctx = this.ctx;
         const size = 16;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-        ctx.beginPath(); ctx.fillStyle = COLORS.ARROW;
-        ctx.moveTo(0, 0); ctx.lineTo(-size, -size/2.5); ctx.lineTo(-size, size/2.5);
-        ctx.closePath(); ctx.fill(); ctx.restore();
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.fillStyle = COLORS.ARROW;
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-size, -size/2.5);
+        ctx.lineTo(-size, size/2.5);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
     }
 
     drawNullLink(x, y, side, color, isActive) {
@@ -795,7 +799,7 @@ class Visualizer {
 }
 
 const app = {
-    tree: new BinarySearchTree(),
+    tree: new AVLTree(),
     viz: null,
     init: function() { this.viz = new Visualizer('treeCanvas'); this.updateUI(); },
     updateSpeed: function() {
@@ -821,9 +825,6 @@ const app = {
         const inp = document.getElementById('inputValue'); const val = parseInt(inp.value);
         if (!isNaN(val)) this.runOp(rec => this.tree.search(val, rec), false);
     },
-    handleMin: function() { this.runOp(rec => this.tree.findMin(rec), false); },
-    handleMax: function() { this.runOp(rec => this.tree.findMax(rec), false); },
-    handleInOrder: function() { this.runOp(rec => this.tree.inOrder(rec), false); },
     handleUndo: function() { 
         if (this.tree.history.length === 0) return;
         const oldRoot = this.tree.restoreFromHistory();
@@ -832,7 +833,7 @@ const app = {
         this.updateUI();
     },
     handleClear: function() { 
-        this.tree = new BinarySearchTree(); this.viz.snapshots = []; this.viz.currentSnapshotIndex = -1; 
+        this.tree = new AVLTree(); this.viz.snapshots = []; this.viz.currentSnapshotIndex = -1; 
         this.viz.camera.targetScale = 1; this.viz.draw(); this.updateUI(); 
     },
     handleRandomTree: function() {
