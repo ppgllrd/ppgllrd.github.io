@@ -81,6 +81,11 @@
         .dot { width: 14px; height: 14px; border-radius: 50%; }
         .line-icon { width: 15px; height: 3px; border-radius: 2px; }
         .arrow-icon { font-size: 16px; font-weight: bold; color: #D50000; }
+        .badge-example {
+            width: 16px; height: 16px; background: #555; color: white; 
+            border-radius: 50%; display:flex; align-items:center; justify-content:center; 
+            font-size: 9px; font-weight: bold;
+        }
 
         #status-bar {
             padding: 8px 2px 0px 0px; background-color: var(--panel-bg);
@@ -92,7 +97,20 @@
 
         #author { 
             flex-grow: 1; position: relative; overflow: hidden;
-            background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2;}    
+            background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2;
+        }
+        .node-sample {
+            display: inline-block; width: 30px; height: 30px; border-radius: 50%;
+            background: #B2FBA5; border: 1px solid #B2FBA5;
+            text-align: center; line-height: 30px; position: relative;
+            font-family: Arial, sans-serif; font-weight: bold;
+        }    
+                .node-val { color: #D50000; font-size: 12px; }
+        .node-weight { 
+            position: absolute; bottom: -2px; right: -2px; 
+            font-size: 10px; color: #1565C0; background: rgba(255,255,255,0.8); 
+            border-radius: 50%; padding: 1px 3px;
+        }
     </style>
 </head>
 <body>
@@ -116,22 +134,21 @@
              <label for="speed-slider">Speed:</label>
             <label title="Animation Speed">
                 <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
-                <!--span id="speedLabel">1x</span-->
             </label>
             <button class="btn-pause" onclick="app.togglePause()" id="btnPause">Pause</button>
         </div>
     </div>
     <div id="status-bar">
         <span id="status-text">Ready.</span>
-    <!--span id="queue-info">Queue: 0</span-->
-
 </div>
 </header>
 
 <div id="canvas-container">
     <canvas id="treeCanvas"></canvas>
     <div id="legend">
-        <div class="legend-item"><div class="dot" style="background:#B2FBA5; border:1px solid #B2FBA5"></div><span style="color:#D50000; font-weight:bold;">12</span> &nbsp; Normal</div>
+        <div class="legend-item">
+            <div class="node-sample"><span class="node-val">V</span><span class="node-weight">H</span></div>&nbsp; Value / Height
+        </div>
         <div class="legend-item"><div class="dot" style="background:#4CAF50; border:1px solid #fff"></div>Inserted</div>
         <div class="legend-item"><div class="dot" style="background:#FF5722; border:1px solid #fff"></div>Pivot (Orange)</div>
         <div class="legend-item"><div class="dot" style="background:#FFC107; border:1px solid #fff"></div>Child (Yellow)</div>
@@ -245,6 +262,7 @@ class AVLTree {
                 node.right = _insert(node.right);
             } else return node;
             this.updateHeight(node);
+            recordSnapshot(this.root, null, { text: `Updating height of ${node.value} (H: ${node.height})` });
             const balance = this.getBalance(node);
             if (balance > 1 && value < node.left.value) return this.rightRotate(node, recordSnapshot);
             if (balance < -1 && value > node.right.value) return this.leftRotate(node, recordSnapshot);
@@ -299,6 +317,7 @@ class AVLTree {
             }
             if (!node) return node;
             this.updateHeight(node);
+            recordSnapshot(this.root, null, { text: `Updating height of ${node.value} (H: ${node.height})` });
             const balance = this.getBalance(node);
             if (balance > 1 && this.getBalance(node.left) >= 0) return this.rightRotate(node, recordSnapshot);
             if (balance > 1 && this.getBalance(node.left) < 0) { node.left = this.leftRotate(node.left, recordSnapshot); return this.rightRotate(node, recordSnapshot); }
@@ -568,7 +587,8 @@ class Visualizer {
             }
         });
 
-        nodesToDraw.forEach(n => this.drawNodeCircle(n.x, n.y, n.value, n.color || COLORS.DEFAULT));
+        // Pass n.height to the draw function
+        nodesToDraw.forEach(n => this.drawNodeCircle(n.x, n.y, n.value, n.color || COLORS.DEFAULT, false, n.height));
 
         if (currentMeta && currentMeta.rotation) {
             const pivotNode = nodesToDraw.find(n => n.color === COLORS.PIVOT);
@@ -701,7 +721,7 @@ class Visualizer {
         this.ctx.fill();
     }
 
-    drawNodeCircle(x, y, val, color, isFloating=false) {
+    drawNodeCircle(x, y, val, color, isFloating=false, height=null) {
         const r = this.nodeRadius;
         this.ctx.beginPath(); this.ctx.arc(x, y, r, 0, Math.PI * 2);
         this.ctx.fillStyle = color; this.ctx.fill();
@@ -716,6 +736,28 @@ class Visualizer {
         this.ctx.font = '20px Arial';
         this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
         this.ctx.fillText(val, x, y);
+
+        // --- NEW: Draw Height Badge ---
+        if (height !== null && height !== undefined) {
+            const badgeRadius = 9;
+            // Offset towards top-right
+            const bx = x + (r * 0.7); 
+            const by = y - (r * 0.7);
+
+            this.ctx.beginPath();
+            this.ctx.arc(bx, by, badgeRadius, 0, Math.PI*2);
+            this.ctx.fillStyle = 'rgba(255,255,255,0.9)'; // Dark grey background
+            this.ctx.fill();
+            this.ctx.strokeStyle = '#1565C0';
+            this.ctx.lineWidth = 1.5;
+            this.ctx.stroke();
+
+            this.ctx.fillStyle = '#1565C0';
+            this.ctx.font = 'bold 10px Arial';
+            this.ctx.textAlign = 'center';
+            this.ctx.textBaseline = 'middle';
+            this.ctx.fillText(height, bx, by);
+        }
     }
 
     findNode(root, id) {
@@ -740,6 +782,9 @@ class Visualizer {
                 const x = dA.node.x + (dB.node.x - dA.node.x) * t;
                 const y = dA.node.y + (dB.node.y - dA.node.y) * t;
                 const color = (t > 0.5) ? dB.node.color : dA.node.color;
+                // Interpolate or switch height
+                const height = (t > 0.5) ? dB.node.height : dA.node.height;
+
                 let pX, pY;
                 if (dA.pId === dB.pId && dA.pId !== null) {
                      const pdA = mapA.get(dA.pId); const pdB = mapB.get(dB.pId);
@@ -749,7 +794,7 @@ class Visualizer {
                 }
                 const hasL = (t > 0.5) ? !!dB.node.left : !!dA.node.left;
                 const hasR = (t > 0.5) ? !!dB.node.right : !!dA.node.right;
-                result.push({ id: id, x, y, value: dB.node.value, color, parentX: pX, parentY: pY, hasLeft: hasL, hasRight: hasR });
+                result.push({ id: id, x, y, value: dB.node.value, color, parentX: pX, parentY: pY, hasLeft: hasL, hasRight: hasR, height: height });
             } else if (dB && !dA) {
                 let startX = dB.node.x; let startY = dB.node.y;
                 if (dB.pId !== null) {
@@ -771,13 +816,15 @@ class Visualizer {
                 result.push({ 
                     id: id, x: x, y: y, value: dB.node.value, color: dB.node.color, 
                     parentX: pX, parentY: pY,
-                    hasLeft: !!dB.node.left, hasRight: !!dB.node.right
+                    hasLeft: !!dB.node.left, hasRight: !!dB.node.right,
+                    height: dB.node.height
                 });
             } else if (dA && !dB) {
                 if(t < 0.8) result.push({ 
                     id: id, x: dA.node.x, y: dA.node.y, value: dA.node.value, color: COLORS.DELETE, 
                     parentX: dA.pX, parentY: dA.pY,
-                    hasLeft: !!dA.node.left, hasRight: !!dA.node.right
+                    hasLeft: !!dA.node.left, hasRight: !!dA.node.right,
+                    height: dA.node.height
                 });
             }
         });
@@ -791,7 +838,8 @@ class Visualizer {
             res.push({ 
                 id: n.id, x: n.x, y: n.y, value: n.value, color: n.color, 
                 parentX: p ? p.x : undefined, parentY: p ? p.y : undefined,
-                hasLeft: !!n.left, hasRight: !!n.right
+                hasLeft: !!n.left, hasRight: !!n.right,
+                height: n.height // Include height here
             });
             trav(n.left, n); trav(n.right, n);
         };
