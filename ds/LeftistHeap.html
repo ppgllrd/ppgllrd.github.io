@@ -3,21 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WB Leftist Heap Visualizer</title>
+    <title>WBLH Visualizer</title>
     <style>
         :root {
             --bg-color: #ffffff;
             --panel-bg: #f5f5f5;
             --border-color: #ddd;
+            
+            /* UI Colors */
+            --btn-insert: #2E7D32; 
+            --btn-delete: #c62828; 
+            --btn-search: #1668BD; 
+            --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
-            --btn-heapify: #00838F;
+            --btn-merge: #EF6C00;
+            --btn-build: #7B1FA2; /* Purple for Build Algos */
         }
 
         body {
             margin: 0; padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
-            display: flex; flex-direction: column; height: 100vh;
+            display: flex; flex-direction: column; 
+            /* Use dvh for better tablet/mobile support (avoids address bar overlay issues) */
+            height: 100vh; 
+            height: 100dvh; 
             overflow: hidden; user-select: none;
         }
 
@@ -26,7 +36,7 @@
             display: flex; flex-direction: column; gap: 10px;
             border-bottom: 1px solid var(--border-color);
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
-            flex-shrink: 0;
+            flex-shrink: 0; /* Prevent header from shrinking */
         }
 
         .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
@@ -51,20 +61,21 @@
         button:active { transform: scale(0.95); }
         button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
 
-        .btn-insert { background-color: #2E7D32; }
-        .btn-delete { background-color: #c62828; }
-        .btn-search { background-color: #1565C0; }
-        .btn-undo { background-color: #6A1B9A; }
+        .btn-insert { background-color: var(--btn-insert); }
+        .btn-delete { background-color: var(--btn-delete); }
+        .btn-search { background-color: var(--btn-search); }
+        .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); }
-        .btn-merge { background-color: #EF6C00; }
+        .btn-merge { background-color: var(--btn-merge); }
+        .btn-build { background-color: var(--btn-build); }
         .btn-pause { background-color: #455A64; width: 80px;}
+        .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
         #canvas-container {
-            flex-grow: 100; position: relative; overflow: hidden;
+            flex-grow: 1; position: relative; overflow: hidden;
             background-color: var(--bg-color);
-            /* Crosshair cursor as requested */
-            cursor: crosshair; 
-            min-height: 200px;
+            cursor: crosshair;
+            min-height: 0; /* Crucial for flexbox resizing */
         }
         canvas { display: block; width: 100%; height: 100%; }
 
@@ -88,9 +99,33 @@
         #status-text { font-weight: bold; color: #222; }
 
         #author { 
-            flex-grow: 1; position: relative; overflow: hidden;
-            background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2;
-            flex-shrink: 0;
+            width: 100%;
+            background: #f4f7f6; 
+            font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0; /* Forces visibility at bottom */
+        }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        h2 { color: #2E7D32; margin-top:0; }
+        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
+        .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+        .node-sample {
+            display: inline-block; width: 30px; height: 30px; border-radius: 50%;
+            background: #99FFFF; border: 1px solid #99FFFF;
+            text-align: center; line-height: 30px; position: relative;
+            font-family: Arial, sans-serif; font-weight: bold;
+        }    
+                .node-val { color: #D50000; font-size: 12px; }
+        .node-weight { 
+            position: absolute; bottom: -2px; right: -2px; 
+            font-size: 10px; color: #1565C0; background: rgba(255,255,255,0.8); 
+            border-radius: 50%; padding: 1px 3px;
         }
     </style>
 </head>
@@ -98,7 +133,8 @@
 
 <header>
     <div class="header-top">
-        <h1>Weight-Biased Leftist Tree Visualizer</h1>
+        <h1>Weight-Biased Leftist Heap Visualizer</h1>
+        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
     </div>
     <div class="gui">
         <div class="controls">
@@ -106,9 +142,18 @@
             <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
             <button class="btn-delete" title="Delete Minimum" onclick="app.handleDeleteMin()">Delete Min</button>
             <button class="btn-search" title="Show Minimum" onclick="app.handleGetMin()">Get Min</button>
+            
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+            
             <button class="btn-merge" title="Merge two random trees" onclick="app.handleMergeScenario()">Merge Demo</button>
+            
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
+            <button class="btn-build" title="Sequential Insertion (O(n log n))" onclick="app.handleRandomBuild()">Build Rand</button>
+            <button class="btn-build" title="Pairwise Merge (O(n))" onclick="app.handleBottomUpBuild()">Build Bottom-Up</button>
+
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+            
             <button class="btn-undo" title="Undo last action" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
             <button class="btn-clear" title="Clear tree" onclick="app.handleClear()">Clear</button>
         </div>
@@ -129,31 +174,53 @@
 <div id="canvas-container">
     <canvas id="treeCanvas"></canvas>
     <div id="legend">
-        <div class="legend-item"><div class="dot" style="background:#C8E6C9; border:2px solid #C8E6C9"></div>&nbsp; Tree 1 (Left)</div>
-        <div class="legend-item"><div class="dot" style="background:#D1C4E9; border:2px solid #D1C4E9"></div>&nbsp; Tree 2 (Right)</div>
-        <div class="legend-item"><div class="dot" style="background:#FFCC80; border:2px solid #E65100"></div>&nbsp; Comparing</div>
-        <div class="legend-item"><div class="line-icon" style="background:#1565C0;"></div>&nbsp; Null Link</div>
-        <div class="legend-item"><div style="border:1px solid #1565C0; border-radius:50%; width:16px; height:16px; text-align:center; font-size:9px; color:#1565C0; font-weight:bold; line-height:16px;">s</div>&nbsp; Weight</div>
+        <div class="legend-item">
+            <div class="node-sample"><span class="node-val">V</span><span class="node-weight">w</span></div>&nbsp; Value / Height
+        </div>
+        <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:2px solid #B0F9B0"></div>&nbsp; Tree 1 (Left)</div>
+        <div class="legend-item"><div class="dot" style="background:#99FFFF; border:2px solid #99FFFF"></div>&nbsp; Tree 2 (Right)</div>
+        <div class="legend-item"><div class="dot" style="background:#FFFF66; border:2px solid #E65100"></div>&nbsp; Comparing</div>
+        <div class="legend-item"><div class="line-icon" style="background:#1668BD;"></div>&nbsp; Null Link</div>
     </div>
 </div>
 
 <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
 
+<!-- Help Modal -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>Algorithm Details</h2>
+        
+        <h3>Weight-Biased Leftist Heap (WBLH)</h3>
+        <p>A binary tree with the <strong>Min-Heap property</strong> (Parent &le; Child) and the <strong>Leftist property</strong>: for every node, the weight of the left child is &ge; weight of the right child. The "weight" is the number of nodes in the subtree.</p>
+        
+        <h3>Merge Operation</h3>
+        <p>The fundamental operation. Merges two heaps by traversing the <strong>rightmost path</strong> of the heap with the smaller root. After merging, if the Leftist property is violated, children are swapped.</p>
+        <ul>
+            <li>Complexity: <span class="complexity">O(log N)</span></li>
+        </ul>
+
+        <h3>Build Algorithms</h3>
+        <p><strong>Build Random (Sequential):</strong> Inserts N elements one by one into an empty heap.<br>
+        Complexity: <span class="complexity">O(n log n)</span></p>
+        
+        <p><strong>Build Bottom-Up (Pairwise):</strong> Places N single-node heaps in a queue. Repeatedly merges the first two heaps and places the result at the end, until one remains.<br>
+        Complexity: <span class="complexity">O(n)</span> (More efficient!)</p>
+    </div>
+</div>
+
 <script>
-// --- PALETTE ---
 const COLORS = {
-    // Fill and Stroke identical for "No border" look
-    FILL1: '#C8E6C9', STROKE1: '#C8E6C9', 
-    FILL2: '#D1C4E9', STROKE2: '#D1C4E9',
+    // Colors
+    FILL1: '#99FFFF', STROKE1: '#99FFFF',
+    FILL2: '#B0F9B0', STROKE2: '#B0F9B0', 
+    COMPARE_FILL: '#FFFF66', COMPARE_STROKE: '#E65100',
     
-    // Interaction
-    COMPARE_FILL: '#FFCC80', COMPARE_STROKE: '#E65100', // Keep border for highlight
-    
-    // General
-    TEXT_VAL: '#CC0000',
-    EDGE: '#1565C0',
-    WEIGHT_TEXT: '#1565C0',
-    WEIGHT_STROKE: '#1565C0',
+    TEXT_VAL: '#CC0000', // red
+    EDGE: '#1668BD',
+    WEIGHT_TEXT: '#1668BD',
+    WEIGHT_STROKE: '#1668BD',
     ARROW: '#D50000'
 };
 
@@ -168,7 +235,6 @@ class Node {
         this.x = 0; this.y = 0;
         this.highlight = false;
     }
-
     clone() {
         const n = new Node(this.val, this.origin);
         n.id = this.id; 
@@ -181,16 +247,13 @@ class Node {
     }
 }
 
-// --- ALGORITHM LOGIC ---
 const WBLT = {
     getWeight: (n) => n ? n.weight : 0,
-    
-    updateWeight: (n) => {
-        if (n) n.weight = 1 + WBLT.getWeight(n.left) + WBLT.getWeight(n.right);
-    },
+    updateWeight: (n) => { if (n) n.weight = 1 + WBLT.getWeight(n.left) + WBLT.getWeight(n.right); },
 
     recordMerge: (rootList, h1Original, h2Original) => {
         const steps = [];
+        // WorldRoots is the list of trees currently visible as independent structures
         let worldRoots = rootList.map(r => r ? r.clone() : null).filter(r => r);
         
         const snapshot = (msg, highlightIds=[]) => {
@@ -205,16 +268,15 @@ const WBLT = {
         };
 
         function mergeRec(t1, t2, parent) {
-            if (t1 && t2) {
-                snapshot(`Comparing roots: ${t1.val} vs ${t2.val}`, [t1.id, t2.id]);
-            }
+            if (t1 && t2) snapshot(`Comparing roots: ${t1.val} vs ${t2.val}`, [t1.id, t2.id]);
 
             if (!t1) {
                 if (parent) {
+                    // t2 attaches to parent, so it's no longer a root in worldRoots
                     const idx = worldRoots.findIndex(n => n.id === t2.id);
                     if (idx !== -1) worldRoots.splice(idx, 1);
                     parent.right = t2;
-                    snapshot(`Node ${t2.val} becomes right child of ${parent.val}`, [t2.id, parent.id]);
+                    snapshot(`Node ${t2.val} attached`, [t2.id, parent.id]);
                 }
                 return t2;
             }
@@ -236,15 +298,15 @@ const WBLT = {
                     const idxT1 = worldRoots.findIndex(n => n.id === t1.id);
                     if (idxT1 !== -1) worldRoots.splice(idxT1, 1);
                 }
-
                 snapshot(`Swap: ${t1.val} < ${t2.val}`, [t1.id, t2.id]);
             }
 
-            snapshot(`Descending right of ${t1.val} with ${t2.val}`, [t1.id]);
+            snapshot(`Descending right of ${t1.val}`, [t1.id]);
 
             t1.right = mergeRec(t1.right, t2, t1);
 
             if (t1.right) {
+                // Cleanup: ensure child is not in worldRoots
                 const idx = worldRoots.findIndex(n => n.id === t1.right.id);
                 if (idx !== -1) worldRoots.splice(idx, 1);
             }
@@ -264,47 +326,65 @@ const WBLT = {
             return t1;
         }
 
-        snapshot("Initial State", []);
-        let t1 = worldRoots[0];
-        let t2 = worldRoots.length > 1 ? worldRoots[1] : null;
-        const res = mergeRec(t1, t2, null);
-        worldRoots = [res];
-        snapshot("Merge Complete", []);
+        snapshot("Merge Start", []);
+        
+        let t1 = null;
+        let t2 = null;
+        
+        // Identify visual roots to merge. 
+        // If h1/h2 IDs provided, use them. Else use first two.
+        if (h1Original && h2Original) {
+             t1 = worldRoots.find(n => n.id === h1Original.id);
+             t2 = worldRoots.find(n => n.id === h2Original.id);
+        }
+        
+        if (!t1 && worldRoots.length > 0) t1 = worldRoots[0];
+        if (!t2 && worldRoots.length > 1) t2 = worldRoots[1];
 
+        const res = mergeRec(t1, t2, null);
+        
+        // Important: After merge complete, we must ensure the result is the only thing 
+        // representing these two trees in worldRoots, PLUS keep any other independent trees!
+        // The current logic in mergeRec modifies worldRoots in place correctly for the two active trees.
+        // But let's double check: the final 'res' might need to be updated in worldRoots if not there.
+        
+        // In Bottom-Up Build, worldRoots has many trees. 
+        // mergeRec reduces two of them into one.
+        // The 'res' should already be in worldRoots[someIndex].
+        
+        snapshot("Merge Complete", []);
         return steps;
     }
 };
 
-// --- CONTROLLER ---
 const app = {
-    mainTree: null,
-    history: [],
-    steps: [],
-    currentStep: 0,
-    isPlaying: false,
-    transition: 1,
-    
-    canvas: null, ctx: null,
-    camera: { scale: 1, x: 0, y: 0, targetScale: 1, targetX: 0, targetY: 0 },
-    nodeRadius: 28, 
-    levelGap: 70,
+    mainTree: null, history: [], steps: [], currentStep: 0, isPlaying: false, transition: 1,
+    canvas: null, ctx: null, camera: { scale: 1, x: 0, y: 0, targetScale: 1, targetX: 0, targetY: 0 },
+    nodeRadius: 28, levelGap: 70,
 
     init: function() {
         this.canvas = document.getElementById('treeCanvas');
         this.ctx = this.canvas.getContext('2d');
         this.resize();
         window.addEventListener('resize', () => this.resize());
-        
-        // Canvas Click Listener
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
         
-        this.updateUI(); 
-        this.loop();
+        // Modal close
+        window.onclick = (e) => {
+             if (e.target == document.getElementById('helpModal')) app.toggleModal();
+        }
+        
+        this.updateUI(); this.loop();
     },
 
     resize: function() {
         this.canvas.width = document.getElementById('canvas-container').offsetWidth;
         this.canvas.height = document.getElementById('canvas-container').offsetHeight;
+    },
+
+    toggleModal: function() {
+        const m = document.getElementById('helpModal');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     },
 
     saveState: function() {
@@ -314,37 +394,16 @@ const app = {
         this.updateUI();
     },
 
-    // Click Handler for copying values
     handleClick: function(e) {
         const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        
-        // We need to check against the last drawn nodes
-        // To do this accurately, we need to map mouse coord to world coord
-        // Screen = (World * Scale) + Translate + Center
-        // Mouse - Center - Translate = World * Scale
-        // (Mouse - Center - Translate) / Scale = World
-        
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        const cx = w/2 - this.camera.x; // Center X logic from draw
-        const cy = h/2 - this.camera.y;
-        
+        const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+        const w = this.canvas.width; const h = this.canvas.height;
         if (!this.vizNodes) return;
-
         for (let n of this.vizNodes) {
-            // Transform node world pos to screen pos
-            // draw() uses: translate(w/2, h/2), scale(zoom), translate(-camX, -camY)
-            // Effective: ScreenX = w/2 + (n.x - camX) * zoom
-            
             const sx = w/2 + (n.x - this.camera.x) * this.camera.scale;
             const sy = h/2 + (n.y - this.camera.y) * this.camera.scale;
-            
             const r = this.nodeRadius * this.camera.scale;
-            
-            const dist = Math.hypot(mx - sx, my - sy);
-            if (dist < r) {
+            if (Math.hypot(mx - sx, my - sy) < r) {
                 document.getElementById('inputValue').value = n.val;
                 document.getElementById('inputValue').focus();
                 return;
@@ -352,6 +411,8 @@ const app = {
         }
     },
 
+    // --- ACTIONS ---
+    
     handleInsert: function() {
         const val = parseInt(document.getElementById('inputValue').value);
         if (isNaN(val)) return;
@@ -365,41 +426,26 @@ const app = {
         document.getElementById('inputValue').value = '';
     },
 
-    handleGetMin: function() {
-        if (!this.mainTree) return;
-        
-        // Animated sequence: Highlight -> Normal
-        const rootHighlight = this.mainTree.clone();
-        rootHighlight.highlight = 'compare'; // Orange highlight
-        
-        const rootNormal = this.mainTree.clone();
-        
-        this.steps = [
-            { msg: `Minimum is ${rootHighlight.val}`, roots: [rootHighlight] },
-            { msg: "Ready.", roots: [rootNormal] }
-        ];
-        this.startAnimation();
-    },
-
     handleDeleteMin: function() {
         if (!this.mainTree) return;
         this.saveState();
-        const left = this.mainTree.left;
-        const right = this.mainTree.right;
+        const left = this.mainTree.left; const right = this.mainTree.right;
         const h1 = left ? left.clone() : null;
         const h2 = right ? right.clone() : null;
         const roots = [h1, h2].filter(x=>x);
-        
-        if(roots.length === 0) {
-            this.steps = [{msg: "Heap empty", roots: []}];
-            this.mainTree = null;
-        } else if (roots.length === 1) {
-            this.steps = [{msg: "Root removed, child promotes", roots: roots}];
-            this.mainTree = roots[0];
-        } else {
+        if(roots.length === 0) { this.steps = [{msg: "Heap empty", roots: []}]; this.mainTree = null; }
+        else if (roots.length === 1) { this.steps = [{msg: "Root removed", roots: roots}]; this.mainTree = roots[0]; }
+        else {
             this.steps = WBLT.recordMerge(roots, h1, h2);
             this.mainTree = this.performMerge(this.mainTree.left, this.mainTree.right);
         }
+        this.startAnimation();
+    },
+
+    handleGetMin: function() {
+        if (!this.mainTree) return;
+        const root = this.mainTree.clone(); root.highlight = 'compare';
+        this.steps = [{ msg: `Minimum: ${root.val}`, roots: [root] }, { msg: "Ready", roots: [this.mainTree.clone()] }];
         this.startAnimation();
     },
 
@@ -411,15 +457,68 @@ const app = {
         this.mainTree = this.performMerge(h1.clone(), h2.clone()); 
         this.startAnimation();
     },
+    
+    // Build 1: Random Sequential
+    handleRandomBuild: function() {
+        this.handleClear();
+        const vals = Array.from({length: 8}, () => Math.floor(Math.random()*99)+1);
+        let tempTree = null;
+        let allSteps = [{ msg: "Start Random Build (O(n log n))", roots: [] }];
+        
+        for(let val of vals) {
+            const newNode = new Node(val, 2);
+            const h1 = tempTree ? tempTree.clone() : null;
+            const h2 = newNode.clone();
+            const mergeSteps = WBLT.recordMerge([h1, h2].filter(x=>x), h1, h2);
+            mergeSteps.forEach(s => s.msg = `Insert ${val}: ${s.msg}`);
+            allSteps.push(...mergeSteps);
+            tempTree = this.performMerge(tempTree, newNode);
+        }
+        this.steps = allSteps;
+        this.mainTree = tempTree;
+        this.startAnimation();
+    },
+    
+    // Build 2: Bottom-Up
+    handleBottomUpBuild: function() {
+        this.handleClear();
+        const count = 12;
+        // Create Queue of single node trees
+        let queue = Array.from({length: count}, (_, i) => new Node(Math.floor(Math.random()*99)+1, (i%2)+1));
+        let allSteps = [{ msg: "Initial Queue of Trees (O(n))", roots: queue.map(r=>r.clone()) }];
+        
+        while(queue.length > 1) {
+            const h1 = queue.shift();
+            const h2 = queue.shift();
+            
+            // IMPORTANT: Pass full queue context to recordMerge so they stay visible
+            const contextRoots = [h1, h2, ...queue];
+            
+            const mergeSteps = WBLT.recordMerge(contextRoots, h1, h2);
+            mergeSteps.forEach(s => s.msg = `Merging Pair: ${s.msg}`);
+            allSteps.push(...mergeSteps);
+            
+            const merged = this.performMerge(h1, h2);
+            queue.push(merged);
+            
+            // Add a stabilization frame showing the result at end of queue
+            allSteps.push({ 
+                msg: "Pair merged. Next...", 
+                roots: queue.map(r => r.clone()) 
+            });
+        }
+        
+        this.mainTree = queue[0];
+        this.steps = allSteps;
+        this.startAnimation();
+    },
 
     handleUndo: function() {
         if (this.history.length > 0) {
             this.mainTree = this.history.pop();
             this.steps = [{ msg: "Undo successful", roots: this.mainTree ? [this.mainTree] : [] }];
             this.startAnimation();
-            this.isPlaying = false; 
-            this.transition = 1;
-            this.updateUI();
+            this.isPlaying = false; this.transition = 1; this.updateUI();
         }
     },
 
@@ -452,286 +551,204 @@ const app = {
     },
 
     startAnimation: function() {
-        this.currentStep = 0;
-        this.transition = 0;
-        this.isPlaying = true;
-        this.updateUI();
+        this.currentStep = 0; this.transition = 0; this.isPlaying = true; this.updateUI();
     },
-
     updateUI: function() {
-        const step = this.steps[this.currentStep];
-        const msg = step ? step.msg : "Ready.";
-        const count = this.steps.length > 0 ? `${this.currentStep + 1} / ${this.steps.length}` : "0 / 0";
-        
-        document.getElementById('status-text').innerText = msg;
-        document.getElementById('queue-info').innerText = `Step: ${count}`;
+        document.getElementById('status-text').innerText = this.steps[this.currentStep]?.msg || "Ready.";
+        document.getElementById('queue-info').innerText = `Step: ${this.steps.length>0 ? this.currentStep+1 : 0} / ${this.steps.length}`;
         document.getElementById('btnUndo').disabled = this.history.length === 0;
-        
-        const btnPause = document.getElementById('btnPause');
-        if (this.currentStep === this.steps.length - 1 && !this.isPlaying && this.steps.length > 1) {
-             btnPause.innerText = "Restart";
-        } else {
-             btnPause.innerText = this.isPlaying ? "Pause" : "Resume";
-        }
+        document.getElementById('btnPause').innerText = (this.currentStep === this.steps.length - 1 && !this.isPlaying && this.steps.length > 1) ? "Restart" : (this.isPlaying ? "Pause" : "Resume");
     },
-
     togglePause: function() {
-        if (this.currentStep === this.steps.length - 1) {
-            this.currentStep = 0;
-            this.transition = 0;
-        }
-        this.isPlaying = !this.isPlaying;
-        this.updateUI();
+        if (this.currentStep === this.steps.length - 1) { this.currentStep = 0; this.transition = 0; }
+        this.isPlaying = !this.isPlaying; this.updateUI();
     },
+    updateSpeed: function() {},
+    loop: function(ts) {
+        if (!this.lastTime) this.lastTime = ts;
+        let dt = ts - this.lastTime; this.lastTime = ts;
+        dt /= parseFloat(document.getElementById('speedSlider').value);
 
-    updateSpeed: function() { },
-
-    loop: function(timestamp) {
-        if (!this.lastTime) this.lastTime = timestamp;
-        let dt = timestamp - this.lastTime;
-        this.lastTime = timestamp;
-
-        const slowdown = parseFloat(document.getElementById('speedSlider').value);
-        dt /= slowdown;
-
-        // Camera Lerp
         this.camera.x += (this.camera.targetX - this.camera.x) * 0.1;
         this.camera.y += (this.camera.targetY - this.camera.y) * 0.1;
         this.camera.scale += (this.camera.targetScale - this.camera.scale) * 0.1;
 
         if (this.isPlaying) {
             this.transition += dt * 0.0015; 
-            if (this.transition >= 1.2) { 
+            if (this.transition >= 1.3) { 
                 this.transition = 0;
-                if (this.currentStep < this.steps.length - 1) {
-                    this.currentStep++;
-                    this.updateUI();
-                } else {
-                    this.isPlaying = false;
-                    this.transition = 1;
-                    this.updateUI();
-                }
+                if (this.currentStep < this.steps.length - 1) { this.currentStep++; this.updateUI(); }
+                else { this.isPlaying = false; this.transition = 1; this.updateUI(); }
             }
         } else {
-            if (this.transition < 1) this.transition += dt * 0.005;
-            else this.transition = 1;
+            if (this.transition < 1) this.transition += dt * 0.005; else this.transition = 1;
         }
-
-        this.draw();
-        requestAnimationFrame((t) => this.loop(t));
+        this.draw(); requestAnimationFrame((t) => this.loop(t));
     },
 
     draw: function() {
-        const ctx = this.ctx;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
+        const ctx = this.ctx; const w = this.canvas.width; const h = this.canvas.height;
         ctx.clearRect(0, 0, w, h);
-
         if (this.steps.length === 0) return;
 
         const curSnap = this.steps[this.currentStep];
         const prevSnap = this.currentStep > 0 ? this.steps[this.currentStep - 1] : curSnap;
-
         const layoutCur = this.layoutInOrder(curSnap.roots);
         const layoutPrev = this.layoutInOrder(prevSnap.roots);
         
-        const allNodes = [...this.flatten(layoutCur), ...this.flatten(layoutPrev)];
-        this.fitCamera(allNodes, w, h);
+        this.fitCamera([...this.flatten(layoutCur), ...this.flatten(layoutPrev)], w, h);
 
         let t = Math.min(Math.max(this.transition, 0), 1);
         const easeT = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-
         const prevMap = new Map();
         this.flatten(layoutPrev).forEach(n => prevMap.set(n.id, {x:n.x, y:n.y}));
 
         ctx.save();
-        ctx.translate(w/2, h/2);
-        ctx.scale(this.camera.scale, this.camera.scale);
-        ctx.translate(-this.camera.x, -this.camera.y);
-
-        layoutCur.forEach(root => {
-            this.drawLinksRec(root, prevMap, easeT);
-        });
-
-        // Collect render nodes for click detection
-        this.vizNodes = [];
-        layoutCur.forEach(root => {
-            this.drawNodesRec(root, prevMap, easeT);
-        });
+        ctx.translate(w/2, h/2); ctx.scale(this.camera.scale, this.camera.scale); ctx.translate(-this.camera.x, -this.camera.y);
         
+        layoutCur.forEach(r => this.drawLinksRec(r, prevMap, easeT));
+        this.vizNodes = [];
+        layoutCur.forEach(r => this.drawNodesRec(r, prevMap, easeT));
         ctx.restore();
     },
 
-    // Layout
     layoutInOrder: function(roots) {
         const clones = roots.map(r => r.clone());
-        let counter = 0;
-        const X_SPACING = 70; 
-        
+        let counter = 0; const X_SPACING = 70; 
         const traverse = (n, depth) => {
             if(!n) return;
             traverse(n.left, depth+1);
-            n.x = counter * X_SPACING;
-            n.y = 50 + depth * this.levelGap;
+            n.x = counter * X_SPACING; n.y = 50 + depth * this.levelGap;
             counter++;
             traverse(n.right, depth+1);
         };
-        
-        clones.forEach(root => {
-            traverse(root, 0);
-            counter += 1; 
-        });
+        clones.forEach(root => { traverse(root, 0); counter += 1; });
         return clones;
     },
-
+    
     fitCamera: function(nodes, w, h) {
         if (nodes.length === 0) return;
         let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
         nodes.forEach(n => {
-            minX = Math.min(minX, n.x - 40);
-            maxX = Math.max(maxX, n.x + 40);
-            minY = Math.min(minY, n.y - 40);
-            maxY = Math.max(maxY, n.y + 40);
+            minX = Math.min(minX, n.x - 40); maxX = Math.max(maxX, n.x + 40);
+            minY = Math.min(minY, n.y - 40); maxY = Math.max(maxY, n.y + 40);
         });
-        
-        const contentW = maxX - minX;
-        const contentH = maxY - minY;
-        const scale = Math.min(w / (contentW + 100), h / (contentH + 100), 1.1);
-
-        this.camera.targetScale = scale;
-        this.camera.targetX = minX + contentW/2;
-        this.camera.targetY = minY + contentH/2;
+        const sc = Math.min(w/(maxX-minX+100), h/(maxY-minY+150), 1.1);
+        this.camera.targetScale = sc;
+        this.camera.targetX = (minX+maxX)/2; this.camera.targetY = minY + (maxY-minY)/2;
     },
 
     drawLinksRec: function(node, prevMap, t) {
         if (!node) return;
+        let cx = node.x, cy = node.y;
+        const p = prevMap.get(node.id);
+        if(p) { cx = p.x + (node.x-p.x)*t; cy = p.y + (node.y-p.y)*t; }
         
-        let curX = node.x;
-        let curY = node.y;
-        const prev = prevMap.get(node.id);
-        if (prev) {
-            curX = prev.x + (node.x - prev.x) * t;
-            curY = prev.y + (node.y - prev.y) * t;
-        }
-
-        if (!node.left) this.drawNull(curX, curY, 'L');
-        if (!node.right) this.drawNull(curX, curY, 'R');
-
-        const drawLineTo = (child) => {
-            let childX = child.x;
-            let childY = child.y;
-            const pChild = prevMap.get(child.id);
-            if(pChild) {
-                childX = pChild.x + (child.x - pChild.x) * t;
-                childY = pChild.y + (child.y - pChild.y) * t;
-            }
-            this.ctx.beginPath();
-            this.ctx.moveTo(curX, curY);
-            this.ctx.lineTo(childX, childY);
-            this.ctx.strokeStyle = COLORS.EDGE;
-            this.ctx.lineWidth = 3;
-            this.ctx.stroke();
+        if(!node.left) this.drawNull(cx, cy, 'L');
+        if(!node.right) this.drawNull(cx, cy, 'R');
+        
+        const line = (child) => {
+            let chx = child.x, chy = child.y;
+            const cp = prevMap.get(child.id);
+            if(cp) { chx = cp.x + (child.x-cp.x)*t; chy = cp.y + (child.y-cp.y)*t; }
+            this.ctx.beginPath(); this.ctx.moveTo(cx, cy); this.ctx.lineTo(chx, chy);
+            this.ctx.strokeStyle = COLORS.EDGE; this.ctx.lineWidth = 3; this.ctx.stroke();
         };
-
-        if (node.left) { drawLineTo(node.left); this.drawLinksRec(node.left, prevMap, t); }
-        if (node.right) { drawLineTo(node.right); this.drawLinksRec(node.right, prevMap, t); }
+        if(node.left) { line(node.left); this.drawLinksRec(node.left, prevMap, t); }
+        if(node.right) { line(node.right); this.drawLinksRec(node.right, prevMap, t); }
     },
-
+    
     drawNull: function(x, y, dir) {
-        const r = this.nodeRadius;
-        const dx = dir === 'L' ? -15 : 15;
-        const dy = 25;
-        this.ctx.beginPath();
-        this.ctx.moveTo(x, y + r/2); 
-        this.ctx.lineTo(x + dx, y + r + dy);
-        this.ctx.strokeStyle = COLORS.EDGE;
-        this.ctx.lineWidth = 3;
-        this.ctx.stroke();
-        
-        const endX = x + dx;
-        const endY = y + r + dy;
-        this.ctx.beginPath();
-        this.ctx.moveTo(endX - 5, endY);
-        this.ctx.lineTo(endX + 5, endY);
-        this.ctx.stroke();
+        const dx = dir === 'L' ? -15 : 15; const dy = 25;
+        this.ctx.beginPath(); this.ctx.moveTo(x, y+this.nodeRadius/2); this.ctx.lineTo(x+dx, y+this.nodeRadius+dy);
+        this.ctx.strokeStyle = COLORS.EDGE; this.ctx.lineWidth = 3; this.ctx.stroke();
+        this.ctx.beginPath(); this.ctx.moveTo(x+dx-5, y+this.nodeRadius+dy); this.ctx.lineTo(x+dx+5, y+this.nodeRadius+dy); this.ctx.stroke();
     },
 
-    drawNodesRec: function(node, prevMap, t) {
-        if (!node) return;
-
-        let curX = node.x;
-        let curY = node.y;
-        const prev = prevMap.get(node.id);
-        if (prev) {
-            curX = prev.x + (node.x - prev.x) * t;
-            curY = prev.y + (node.y - prev.y) * t;
-        } else {
-            this.ctx.globalAlpha = t;
-        }
-
-        // Store visual node for click detection
-        this.vizNodes.push({ x: curX, y: curY, val: node.val });
+    drawNodesRec: function(n, prevMap, t) {
+        if(!n) return;
+        let cx = n.x, cy = n.y;
+        const p = prevMap.get(n.id);
+        if(p) { cx = p.x + (n.x-p.x)*t; cy = p.y + (n.y-p.y)*t; } else this.ctx.globalAlpha = t;
+        
+        this.vizNodes.push({x:cx, y:cy, val:n.val});
 
         const ctx = this.ctx;
-        let fillColor = (node.origin === 1) ? COLORS.FILL1 : COLORS.FILL2;
-        let strokeColor = (node.origin === 1) ? COLORS.STROKE1 : COLORS.STROKE2;
+        let fill = n.origin===1 ? COLORS.FILL1 : COLORS.FILL2;
+        let stroke = n.origin===1 ? COLORS.STROKE1 : COLORS.STROKE2;
+        if(n.highlight === 'compare') { fill = COLORS.COMPARE_FILL; stroke = COLORS.COMPARE_STROKE; }
 
-        if (node.highlight === 'compare') {
-            fillColor = COLORS.COMPARE_FILL;
-            strokeColor = COLORS.COMPARE_STROKE;
+        ctx.beginPath(); ctx.arc(cx, cy, this.nodeRadius, 0, 2*Math.PI);
+        ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke();
+        
+        if (n.highlight === 'compare' && this.steps[this.currentStep].msg.includes('Swapping children')) {
+             this.drawRotationArrow(cx, cy);
         }
 
-        ctx.beginPath();
-        ctx.arc(curX, curY, this.nodeRadius, 0, 2 * Math.PI);
-        ctx.fillStyle = fillColor;
-        ctx.fill();
-        ctx.strokeStyle = strokeColor;
-        ctx.lineWidth = 3;
-        ctx.stroke();
+        // Ensure text is black/dark red on top
+        ctx.fillStyle = COLORS.TEXT_VAL; 
+        ctx.font = '22px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
+        ctx.fillText(n.val, cx, cy+1);
 
-        // ARROWS (Visual Cue for Rotation)
-        if (node.highlight === 'compare' && this.steps[this.currentStep].msg.includes('Swap')) {
-             // Draw simple curved arrow visual if needed, omitted for clean look per instructions
-        }
-
-        ctx.fillStyle = COLORS.TEXT_VAL;
-        ctx.font = 'bold 18px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(node.val, curX, curY + 1);
-
-        const badgeX = curX + this.nodeRadius - 5;
-        const badgeY = curY - this.nodeRadius + 5;
-        ctx.beginPath();
-        ctx.arc(badgeX, badgeY, 10, 0, 2 * Math.PI);
-        ctx.fillStyle = '#ffffff';
-        ctx.fill();
-        ctx.strokeStyle = COLORS.WEIGHT_STROKE;
-        ctx.lineWidth = 1;
-        ctx.stroke();
-        ctx.fillStyle = COLORS.WEIGHT_TEXT;
-        ctx.font = 'bold 11px Arial';
-        ctx.fillText(node.weight, badgeX, badgeY + 1);
+        const bx = cx+this.nodeRadius-5; const by = cy-this.nodeRadius+5;
+        ctx.beginPath(); ctx.arc(bx, by, 10, 0, 2*Math.PI);
+        ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = COLORS.WEIGHT_STROKE; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = COLORS.WEIGHT_TEXT; ctx.font = 'bold 11px Arial'; ctx.fillText(n.weight, bx, by+1);
 
         ctx.globalAlpha = 1;
-
-        this.drawNodesRec(node.left, prevMap, t);
-        this.drawNodesRec(node.right, prevMap, t);
+        this.drawNodesRec(n.left, prevMap, t); this.drawNodesRec(n.right, prevMap, t);
     },
 
+    drawRotationArrow: function(x, y) {
+        const ctx = this.ctx;
+        const r = this.nodeRadius + 15;
+        // Semicircle arrow (Bottom) for child swap
+        const startX = x - r; const startY = y + 10;
+        const endX = x + r; const endY = y + 10;
+        const cpX = x; const cpY = y + 10 + 60; // Bulge down
+
+        ctx.beginPath();
+        ctx.strokeStyle = COLORS.ARROW; ctx.lineWidth = 3;
+        ctx.moveTo(startX, startY);
+        ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+        ctx.stroke();
+        
+        const size = 14;
+
+        // Arrowhead 1: At End (Right side)
+        const vecEndX = endX - cpX; 
+        const vecEndY = endY - cpY;
+        const angleEnd = Math.atan2(vecEndY, vecEndX);
+        
+        ctx.save(); 
+        ctx.translate(endX, endY); 
+        ctx.rotate(angleEnd);
+        ctx.beginPath(); ctx.fillStyle = COLORS.ARROW;
+        ctx.moveTo(0,0); ctx.lineTo(-size, -size/2.5); ctx.lineTo(-size, size/2.5); ctx.fill();
+        ctx.restore();
+        
+        // Arrowhead 2: At Start (Left side)
+        // Calculate vector pointing towards start (from control point) to aim arrow correctly
+        const vecStartX = startX - cpX;
+        const vecStartY = startY - cpY;
+        const angleStart = Math.atan2(vecStartY, vecStartX);
+
+        ctx.save();
+        ctx.translate(startX, startY);
+        ctx.rotate(angleStart);
+        ctx.beginPath(); ctx.fillStyle = COLORS.ARROW;
+        ctx.moveTo(0,0); ctx.lineTo(-size, -size/2.5); ctx.lineTo(-size, size/2.5); ctx.fill();
+        ctx.restore();
+    },
+    
     flatten: function(roots) {
         let list = [];
-        const trav = (n) => {
-            if(!n) return;
-            list.push(n);
-            trav(n.left);
-            trav(n.right);
-        };
-        roots.forEach(r => trav(r));
+        const t = (n) => { if(!n)return; list.push(n); t(n.left); t(n.right); };
+        roots.forEach(t);
         return list;
     }
 };
-
 app.init();
 </script>
 </body>
