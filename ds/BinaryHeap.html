@@ -5,30 +5,27 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Binary Min-Heap Visualizer</title>
     <style>
-        /* --- CSS FROM BST.html (Adapted) --- */
         :root {
             --bg-color: #ffffff;
             --panel-bg: #f5f5f5;
-            --text-color: #333333;
             --border-color: #ddd;
             
             /* UI Colors */
             --btn-insert: #2E7D32; 
             --btn-delete: #c62828; 
-            --btn-search: #1565C0; 
+            --btn-search: #1668BD; 
             --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
-            --btn-info: #009688; 
-            /* Specific to Heap */
             --btn-random: #EF6C00;
-            --btn-heapify: #00838F;
+            --btn-heapify: #00838F; 
         }
 
         body {
             margin: 0; padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color); color: var(--text-color);
-            display: flex; flex-direction: column; height: 100vh;
+            background-color: var(--bg-color);
+            display: flex; flex-direction: column; 
+            height: 100vh; height: 100dvh; 
             overflow: hidden; user-select: none;
         }
 
@@ -64,18 +61,19 @@
 
         .btn-insert { background-color: var(--btn-insert); }
         .btn-delete { background-color: var(--btn-delete); }
-        .btn-search { background-color: var(--btn-search); } /* Used for Minimum/Extract */
+        .btn-search { background-color: var(--btn-search); }
         .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); }
         .btn-random { background-color: var(--btn-random); }
         .btn-heapify { background-color: var(--btn-heapify); }
         .btn-pause { background-color: #455A64; width: 80px;}
+        .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
         #canvas-container {
-            flex-grow: 100; position: relative; overflow: hidden;
+            flex-grow: 1; position: relative; overflow: hidden;
             background-color: var(--bg-color);
             cursor: crosshair;
-            min-height: 200px;
+            min-height: 0;
         }
         canvas { display: block; width: 100%; height: 100%; }
 
@@ -89,6 +87,7 @@
         .dot { width: 14px; height: 14px; border-radius: 50%; }
         .square { width: 14px; height: 14px; border-radius: 2px; }
         .line-icon { width: 15px; height: 3px; border-radius: 2px; }
+        .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
 
         #status-bar {
             padding: 8px 2px 0px 0px; background-color: var(--panel-bg);
@@ -99,10 +98,30 @@
         #status-text { font-weight: bold; color: #222; }
 
         #author { 
-            flex-grow: 1; position: relative; overflow: hidden;
-            background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2;
-            flex-shrink: 0; /* Ensure author bar doesn't shrink away */
+            width: 100%;
+            background: #f4f7f6; 
+            font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
         }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        h2 { color: #2E7D32; margin-top:0; }
+        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
+        .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+        
+        .node-sample {
+            display: inline-block; width: 30px; height: 30px; border-radius: 50%;
+            background: #B0F9B0; border: 2px solid #B0F9B0; /* Updated Sample Color */
+            text-align: center; line-height: 26px; position: relative;
+            font-family: Arial, sans-serif; font-weight: bold;
+        }    
+        .node-val { color: #D50000; font-size: 12px; }
     </style>
 </head>
 <body>
@@ -110,66 +129,100 @@
 <header>
     <div class="header-top">
         <h1>Binary Min-Heap Visualizer</h1>
+        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
     </div>
     <div class="gui">
         <div class="controls">
             <input type="number" id="inputValue" title="Enter a number" placeholder="#" onkeydown="if(event.key==='Enter') app.handleInsert()">
-            <button class="btn-insert" title="Insert a new node into the heap" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-delete" title="Remove the minimum element (Root)" onclick="app.handleExtractMin()">Delete Minimum</button>
-            <button class="btn-search" title="Highlight the minimum element" onclick="app.handleMinimum()">Minimum</button>
+            <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
+            <button class="btn-delete" title="Delete the minimum element (Root)" onclick="app.handleExtractMin()">Delete Minimum</button>
+            <button class="btn-search" title="Show minimum element" onclick="app.handleMinimum()">Minimum</button>
+            
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+            
+            <button class="btn-random" title="Sequential Insertion O(n log n)" onclick="app.handleRandomHeap()">Random Heap</button>
+            <button class="btn-heapify" title="Floyd's Algorithm O(n)" onclick="app.handleBuildHeap()">Build Heap</button>
+            
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
             <button class="btn-undo" title="Undo last operation" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
-            <button class="btn-random" title="Create a random heap by sequential insertion O(n log n)" onclick="app.handleRandomHeap()">Random Heap</button>
-            <button class="btn-heapify" title="Turn a random array into a heap (Floyd's algorithm) O(n)" onclick="app.handleBuildHeap()">Heapify</button>
             <button class="btn-clear" title="Clear the heap" onclick="app.handleClear()">Clear</button>
         </div>
         <div class="sub-controls">
             <label for="speedSlider">Slowdown:</label>
-            <label title="Slide right to slow down the animation (1x = Normal, 5x = Very Slow)">
+            <label title="Slide right to slow down the animation">
                 <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
             </label>
-            <button class="btn-pause" title="Pause or Resume the animation" onclick="app.togglePause()" id="btnPause">Pause</button>
+            <button class="btn-pause" title="Pause or Resume" onclick="app.togglePause()" id="btnPause">Pause</button>
         </div>
     </div>
     <div id="status-bar">
         <span id="status-text">Ready.</span>
-        <!--span id="queue-info">Queue: 0</span-->
     </div>
 </header>
 
 <div id="canvas-container">
     <canvas id="treeCanvas"></canvas>
     <div id="legend">
-        <div class="legend-item"><div class="dot" style="background:#B2FBA5; border:1px solid #B2FBA5"></div><span style="color:#cc0000; font-weight:bold">12</span>&nbsp; Normal</div>
-        <div class="legend-item"><div class="dot" style="background:#4CAF50;"></div>Inserted / Moved</div>
-        <div class="legend-item"><div class="dot" style="background:#2979FF;"></div>Comparing</div>
-        <div class="legend-item"><div class="dot" style="background:#1B5E20;"></div>Satisfied Condition</div>
-        <div class="legend-item"><div class="dot" style="background:#FFC107;"></div>Heapified Subtree</div>
-        <div class="legend-item"><div class="dot" style="background:#F44336;"></div>Delete</div>
-        <div class="legend-item"><div class="line-icon" style="background:#1565C0;"></div>Null Link</div>
+        <div class="legend-item">
+            <div class="node-sample"><span class="node-val">V</span></div>&nbsp; Node
+        </div>
+        <div class="legend-item"><div class="dot" style="background:#CC99FF; border:1px solid #fff"></div>&nbsp; Insert / Move</div>
+        <div class="legend-item"><div class="dot" style="background:#99FFFF; border:1px solid #fff"></div>&nbsp; Comparing</div>
+        <div class="legend-item"><div class="dot" style="background:#00E676; border:1px solid #fff"></div>&nbsp; Satisfied</div>
+        <div class="legend-item"><div class="dot" style="background:#FFFF66; border:1px solid #fff"></div>&nbsp; Heapified Subtree</div>
+        <div class="legend-item"><div class="dot" style="background:#F44336; border:1px solid #fff"></div>&nbsp; Delete</div>
+        <div class="legend-item"><div class="line-icon" style="background:#1668BD;"></div>&nbsp; Link</div>
     </div>
 </div>
 
 <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
 
+<!-- Help Modal -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>Binary Min-Heap</h2>
+        
+        <h3>Properties</h3>
+        <p>A complete binary tree where each node satisfies the <strong>Min-Heap property</strong>: The key of the parent is less than or equal to the key of the children.</p>
+        <p>The minimum element is always at the root.</p>
+        
+        <h3>Operations</h3>
+        <ul>
+            <li><strong>Insert:</strong> Add at the end (bottom-right) and "bubble up" (swap with parent). <span class="complexity">O(log n)</span></li>
+            <li><strong>Delete Minimum:</strong> Remove root, move last element to root, and "bubble down" (swap with smallest child). <span class="complexity">O(log n)</span></li>
+            <li><strong>Get Minimum:</strong> <span class="complexity">O(1)</span></li>
+        </ul>
+
+        <h3>Build Algorithms</h3>
+        <p><strong>Random Heap (Sequential):</strong> Inserts N elements one by one.<br>
+        Complexity: <span class="complexity">O(n log n)</span></p>
+        
+        <p><strong>Build Heap (Floyd's Algorithm):</strong> Treats array as a tree and fixes subtrees from bottom up.<br>
+        Complexity: <span class="complexity">O(n)</span> (More efficient!)</p>
+    </div>
+</div>
+
 <script>
-/**
- * LOGIC (Identical to v28)
- */
 const COLORS = {
-    DEFAULT: '#B2FBA5',  
-    TEXT: '#CC0000',     
-    EDGE: '#1565C0',     
-    NEW: '#4CAF50',      
-    COMPARE: '#2979FF',  
-    SELECTED: '#9C27B0', 
-    PARENT: '#FF9800',   
-    SATISFIED_DARK: '#1B5E20', 
-    HEAPIFIED: '#FFC107',      
-    DELETE: '#F44336',         
-    ARROW: '#CC0000',          
+    DEFAULT: '#B0F9B0',    // Green
+    STROKE: '#B0F9B0',     
+  
+
+    TEXT: '#CC0000',       // Red Text
+    EDGE: '#1668BD',       // Blue Edges
+    
+    NEW: '#CC99FF',        // Purple (Insert/Move)
+    SELECTED: '#99FFFF',   // Cyan (Selected child)
+    COMPARING: '#99FFFF',     // Cyan (Parent in compare)
+    SATISFIED: '#00E676', // Green (Condition met)
+    HEAPIFIED: '#FFFF66',      // Yellow (Subtree done)
+    DELETE: '#F44336',         // Red (Delete)
+    
+    ARROW: '#D50000',          // Red Arrow
     ARRAY_BG: '#FAFAFA',
-    ARRAY_BORDER: '#ffffff'    
+    ARRAY_BORDER: '#1668BD'    
 };
 
 class MinHeap {
@@ -214,7 +267,8 @@ class MinHeap {
         
         recordSnapshot([...this.heap], { 
             text: `Inserted ${val.val} at index ${curr}`,
-            highlights: [{ idx: curr, color: COLORS.NEW }]
+            highlights: [{ idx: curr, color: COLORS.NEW }],
+            pause: true
         });
 
         while (curr > 0) {
@@ -223,8 +277,8 @@ class MinHeap {
             recordSnapshot([...this.heap], {
                 text: `Comparing ${this.heap[curr].val} with parent ${this.heap[p].val}`,
                 highlights: [
-                    { idx: curr, color: COLORS.COMPARE }, 
-                    { idx: p, color: COLORS.PARENT }
+                    { idx: curr, color: COLORS.NEW },
+                    { idx: p, color: COLORS.COMPARING }
                 ],
                 pause: true
             });
@@ -239,12 +293,20 @@ class MinHeap {
             } else {
                 recordSnapshot([...this.heap], { 
                     text: 'Order Satisfied (Parent <= Child)', 
-                    highlights: [{ idx: curr, color: COLORS.SATISFIED_DARK }, { idx: p, color: COLORS.SATISFIED_DARK }],
+                    highlights: [{ idx: curr, color: COLORS.SATISFIED }, { idx: p, color: COLORS.SATISFIED }],
                     pause: true
                 });
                 break;
             }
         }
+        if (curr === 0) {
+            recordSnapshot([...this.heap], { 
+                text: 'Reached root, insertion complete.', 
+                highlights: [{ idx: curr, color: COLORS.SATISFIED }],
+                pause: true
+            });
+        }
+
         recordSnapshot([...this.heap], { text: 'Insert complete.' });
     }
 
@@ -310,12 +372,12 @@ class MinHeap {
         for (let i = startIdx; i >= 0; i--) {
             recordSnapshot([...this.heap], {
                 text: `Heapifying down from index ${i}`,
-                highlights: [{ idx: i, color: COLORS.PARENT }],
+                highlights: [{ idx: i, color: COLORS.NEW }],
                 heapifiedSet: new Set(heapifiedSet),
                 pause: true
             });
 
-            this.heapifyDown(i, recordSnapshot, heapifiedSet);
+            this.heapifyDown(i, recordSnapshot, heapifiedSet, true);
 
             const markSubtree = (idx) => {
                 if (idx >= this.heap.length) return;
@@ -338,7 +400,7 @@ class MinHeap {
         });
     }
 
-    heapifyDown(index, recordSnapshot, persistentSet = null) {
+    heapifyDown(index, recordSnapshot, persistentSet = null, isBuildHeap = false) {
         const size = this.heap.length;
         
         while (true) {
@@ -356,7 +418,7 @@ class MinHeap {
             if (left < size && right < size) {
                 recordSnapshot([...this.heap], getMeta(
                     `Comparing children: ${this.heap[left].val} vs ${this.heap[right].val}`,
-                    [{ idx: left, color: COLORS.COMPARE }, { idx: right, color: COLORS.COMPARE }]
+                    [{ idx: left, color: COLORS.SELECTED }, { idx: right, color: COLORS.SELECTED }]
                 ));
                 smallestChildIdx = (this.heap[left].val <= this.heap[right].val) ? left : right;
             } else if (left < size) {
@@ -364,7 +426,7 @@ class MinHeap {
             } else {
                 recordSnapshot([...this.heap], { 
                     text: 'Leaf reached', 
-                    highlights: [{idx: index, color: COLORS.SATISFIED_DARK}],
+                    highlights: [{idx: index, color: COLORS.SATISFIED}],
                     heapifiedSet: persistentSet ? new Set(persistentSet) : null,
                     pause: true
                 });
@@ -373,7 +435,7 @@ class MinHeap {
 
             recordSnapshot([...this.heap], getMeta(
                 `Comparing Parent (${this.heap[index].val}) vs Child (${this.heap[smallestChildIdx].val})`,
-                [{ idx: index, color: COLORS.PARENT }, { idx: smallestChildIdx, color: COLORS.SELECTED }]
+                [{ idx: index, color: COLORS.NEW }, { idx: smallestChildIdx, color: COLORS.SELECTED }]
             ));
 
             if (this.heap[smallestChildIdx].val < this.heap[index].val) {
@@ -381,7 +443,7 @@ class MinHeap {
                 
                 recordSnapshot([...this.heap], {
                     text: 'Swapped',
-                    highlights: [{ idx: smallestChildIdx, color: COLORS.NEW }],
+                    highlights: [{ idx: smallestChildIdx, color: COLORS.NEW }, { idx: index, color: isBuildHeap ? COLORS.HEAPIFIED : COLORS.DEFAULT }],
                     heapifiedSet: persistentSet ? new Set(persistentSet) : null
                 });
                 index = smallestChildIdx;
@@ -389,8 +451,8 @@ class MinHeap {
                 recordSnapshot([...this.heap], {
                     text: 'Order Satisfied',
                     highlights: [
-                        { idx: index, color: COLORS.SATISFIED_DARK },
-                        { idx: smallestChildIdx, color: COLORS.SATISFIED_DARK }
+                        { idx: index, color: COLORS.SATISFIED },
+                        { idx: smallestChildIdx, color: COLORS.SATISFIED }
                     ],
                     heapifiedSet: persistentSet ? new Set(persistentSet) : null,
                     pause: true
@@ -406,9 +468,9 @@ class Visualizer {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
-        this.nodeRadius = 25;
+        this.nodeRadius = 28;
         this.levelHeight = 80;
-        this.arrayBoxSize = 40; 
+        this.arrayBoxSize = 45; 
         this.snapshots = [];
         this.currentSnapshotIndex = -1;
         this.lastDrawnNodes = [];
@@ -423,13 +485,19 @@ class Visualizer {
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        
+        // Modal close
+        window.onclick = (e) => {
+             if (e.target == document.getElementById('helpModal')) app.toggleModal();
+        }
+
         this.lastTime = 0;
         requestAnimationFrame(t => this.loop(t));
     }
 
     resize() {
-        this.canvas.width = this.canvas.parentElement.clientWidth;
-        this.canvas.height = this.canvas.parentElement.clientHeight;
+        this.canvas.width = document.getElementById('canvas-container').offsetWidth;
+        this.canvas.height = document.getElementById('canvas-container').offsetHeight;
         if (this.snapshots.length > 0 && this.currentSnapshotIndex >= 0) {
             const snap = this.snapshots[this.currentSnapshotIndex];
             if(snap) {
@@ -478,7 +546,8 @@ class Visualizer {
         if (!heapData || heapData.length === 0) return { nodes: [] };
         const nodes = [];
         const depth = Math.floor(Math.log2(heapData.length));
-        const initialSpan = Math.pow(2, depth) * 50; 
+        // Increased from 40 to 60 to avoid null link overlap
+        const initialSpan = Math.pow(2, depth) * 60; 
         const traverse = (idx, x, y, span) => {
             if (idx >= heapData.length) return;
             nodes.push({ id: heapData[idx].id, val: heapData[idx].val, x: x, y: y, idx: idx });
@@ -553,9 +622,6 @@ class Visualizer {
         this.camera.x += (this.camera.targetX - this.camera.x) * 0.1;
         this.camera.y += (this.camera.targetY - this.camera.y) * 0.1;
 
-        const pending = (this.snapshots.length - 1) - this.currentSnapshotIndex;
-        // document.getElementById('queue-info').innerText = `Queue: ${pending > 0 ? pending : 0}`;
-
         if (this.state === 'CAMERA') {
             if (Math.abs(this.camera.scale - this.camera.targetScale) < 0.01) this.state = 'MORPH';
         } else if (this.state === 'MORPH') {
@@ -589,8 +655,12 @@ class Visualizer {
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(this.camera.x, this.camera.y);
-        this.ctx.scale(this.camera.scale, this.camera.scale);
+        
+        // Consistent Camera transform
+        this.ctx.translate(this.canvas.width/2, this.canvas.height/2); 
+        this.ctx.translate((this.camera.x - this.canvas.width/2), (this.camera.y - this.canvas.height/2));
+        this.ctx.translate(-this.camera.x, -this.camera.y); 
+        this.ctx.setTransform(this.camera.scale, 0, 0, this.camera.scale, this.camera.x, this.camera.y);
 
         if (this.snapshots.length === 0) { this.ctx.restore(); return; }
 
@@ -710,10 +780,10 @@ class Visualizer {
         
         for(let i=0; i<len; i++) {
             const bx = startX + i * boxSize;
-            this.ctx.fillStyle = '#333';
+            this.ctx.fillStyle = '#222';
             this.ctx.font = '14px Arial';
             this.ctx.textAlign = 'center';
-            this.ctx.fillText(i, bx + boxSize/2, treeBottom - 8); 
+            this.ctx.fillText(i, bx + boxSize/2, treeBottom - 9); 
         }
 
         const mapA = new Map(heapA.map((d, i) => [d.id, i]));
@@ -753,6 +823,8 @@ class Visualizer {
                 const hl = meta.highlights.find(h => h.idx === refIdx);
                 if (hl) {
                     color = hl.color;
+                }
+                if (color === COLORS.DELETE || color == COLORS.SATISFIED) {
                     textColor = '#fff';
                 }
             }
@@ -760,12 +832,14 @@ class Visualizer {
             this.ctx.fillStyle = color;
             this.ctx.fillRect(bx, by, boxSize, boxSize);
             
+            // Array Border
             this.ctx.strokeStyle = '#fff';
+            
             this.ctx.lineWidth = 2;
             this.ctx.strokeRect(bx, by, boxSize, boxSize);
 
             this.ctx.fillStyle = textColor;
-            this.ctx.font = 'bold 20px Arial';
+            this.ctx.font = '21px Arial';
             this.ctx.textAlign = 'center';
             this.ctx.textBaseline = 'middle';
             this.ctx.fillText(val, bx + boxSize/2, by + boxSize/2);
@@ -823,19 +897,27 @@ class Visualizer {
         let stroke = '#fff';
         let textCol = '#fff';
         
-        if (color === COLORS.DEFAULT || color === COLORS.HEAPIFIED) {
-            stroke = color; 
-            textCol = COLORS.TEXT;
+        this.ctx.fillStyle = COLORS.TEXT; // Red Text
+        if (color === COLORS.DEFAULT) {
+            this.ctx.strokeStyle = COLORS.STROKE; 
+            
+        } else {
+            // Highlights have white border
+            this.ctx.strokeStyle = '#fff';
+            // this.ctx.fillStyle = '#fff';
         }
 
-        this.ctx.strokeStyle = stroke;
-        this.ctx.lineWidth = 2;
+        if (color === COLORS.DELETE || color === COLORS.SATISFIED) {
+            this.ctx.fillStyle = '#fff';
+        }
+
+        this.ctx.lineWidth = 3;
         this.ctx.stroke();
-        this.ctx.fillStyle = textCol;
-        this.ctx.font = 'bold 20px Arial';
+        
+        this.ctx.font = '22px Arial';
         this.ctx.textAlign = 'center'; 
         this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(val, x, y);
+        this.ctx.fillText(val, x, y+1);
     }
 
     easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
@@ -849,8 +931,8 @@ const app = {
     updateSpeed: function() { this.viz.setSpeed(parseFloat(document.getElementById('speedSlider').value)); },
     togglePause: function() {
         const isPaused = this.viz.togglePause();
-        document.getElementById('btnPause').innerText = isPaused ? "Resume" : "Pause";
-        document.getElementById('btnPause').style.backgroundColor = isPaused ? "#2E7D32" : "#455A64";
+        const btn = document.getElementById('btnPause');
+        btn.innerText = isPaused ? "Resume" : "Pause";
     },
     createItem: function(val) { return { val: val, id: this.uidCounter++ }; },
     handleInsert: function() {
@@ -890,6 +972,10 @@ const app = {
         const input = [];
         for(let i=0; i<13; i++) input.push(this.createItem(Math.floor(Math.random() * 100) + 1));
         this.runOp(rec => this.heap.buildHeap(input, rec));
+    },
+    toggleModal: function() {
+        const m = document.getElementById('helpModal');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     },
     runOp: function(fn) {
         if(this.viz.isPaused) this.togglePause();

@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WBLH Visualizer</title>
+    <title>Weight-Biased Leftist Min-Heap Visualizer</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -18,6 +18,7 @@
             --btn-gray: #546E7A;
             --btn-merge: #EF6C00;
             --btn-build: #7B1FA2; /* Purple for Build Algos */
+            --btn-merges: #00838F; 
         }
 
         body {
@@ -68,6 +69,7 @@
         .btn-clear { background-color: var(--btn-gray); }
         .btn-merge { background-color: var(--btn-merge); }
         .btn-build { background-color: var(--btn-build); }
+        .btn-merges { background-color: var(--btn-merges); }
         .btn-pause { background-color: #455A64; width: 80px;}
         .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
@@ -117,7 +119,7 @@
         .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
         .node-sample {
             display: inline-block; width: 30px; height: 30px; border-radius: 50%;
-            background: #99FFFF; border: 1px solid #99FFFF;
+            background: #B0F9B0; border: 1px solid #B0F9B0;
             text-align: center; line-height: 30px; position: relative;
             font-family: Arial, sans-serif; font-weight: bold;
         }    
@@ -133,15 +135,15 @@
 
 <header>
     <div class="header-top">
-        <h1>Weight-Biased Leftist Heap Visualizer</h1>
+        <h1>Weight-Biased Leftist Min-Heap Visualizer</h1>
         <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
     </div>
     <div class="gui">
         <div class="controls">
             <input type="number" id="inputValue" title="Enter a number" placeholder="#" onkeydown="if(event.key==='Enter') app.handleInsert()">
             <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-delete" title="Delete Minimum" onclick="app.handleDeleteMin()">Delete Min</button>
-            <button class="btn-search" title="Show Minimum" onclick="app.handleGetMin()">Get Min</button>
+            <button class="btn-delete" title="Delete the minimum element (Root)" onclick="app.handleDeleteMin()">Delete Minimum</button>
+            <button class="btn-search" title="Show minimum element" onclick="app.handleGetMin()">Minimum</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
@@ -150,7 +152,7 @@
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
             <button class="btn-build" title="Sequential Insertion (O(n log n))" onclick="app.handleRandomBuild()">Build Rand</button>
-            <button class="btn-build" title="Pairwise Merge (O(n))" onclick="app.handleBottomUpBuild()">Build Bottom-Up</button>
+            <button class="btn-merges" title="Pairwise Merge (O(n))" onclick="app.handleBottomUpBuild()">Build Bottom-Up</button>
 
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
@@ -167,7 +169,7 @@
     </div>
     <div id="status-bar">
         <span id="status-text">Ready.</span>
-        <span id="queue-info">Queue: 0</span>
+        <!--span id="queue-info">Queue: 0</span-->
     </div>
 </header>
 
@@ -200,6 +202,9 @@
         <ul>
             <li>Complexity: <span class="complexity">O(log N)</span></li>
         </ul>
+
+        <h3>Minimum / Delete Minimum</h3>
+        <p>The minimum is at the root <span class="complexity">O(1)</span>. Deleting it involves merging its left and right subtrees (<span class="complexity">O(log n)</span>).</p>
 
         <h3>Build Algorithms</h3>
         <p><strong>Build Random (Sequential):</strong> Inserts N elements one by one into an empty heap.<br>
@@ -555,7 +560,7 @@ const app = {
     },
     updateUI: function() {
         document.getElementById('status-text').innerText = this.steps[this.currentStep]?.msg || "Ready.";
-        document.getElementById('queue-info').innerText = `Step: ${this.steps.length>0 ? this.currentStep+1 : 0} / ${this.steps.length}`;
+        // document.getElementById('queue-info').innerText = `Step: ${this.steps.length>0 ? this.currentStep+1 : 0} / ${this.steps.length}`;
         document.getElementById('btnUndo').disabled = this.history.length === 0;
         document.getElementById('btnPause').innerText = (this.currentStep === this.steps.length - 1 && !this.isPlaying && this.steps.length > 1) ? "Restart" : (this.isPlaying ? "Pause" : "Resume");
     },

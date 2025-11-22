@@ -8,24 +8,25 @@
         :root {
             --bg-color: #ffffff;
             --panel-bg: #f5f5f5;
-            --text-color: #333333;
             --border-color: #ddd;
             
             /* UI Colors */
             --btn-insert: #2E7D32; 
             --btn-delete: #c62828; 
-            --btn-search: #1565C0; 
+            --btn-search: #1668BD; 
             --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
-            --btn-info: #009688; /* Teal for traversals/info */
+            --btn-random: #EF6C00;
+            --btn-info: #009688; /* Teal for Traversals/Min/Max */
         }
 
         body {
             margin: 0; padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color); color: var(--text-color);
-            display: flex; flex-direction: column; height: 100vh;
-            overflow: auto; user-select: none;
+            background-color: var(--bg-color);
+            display: flex; flex-direction: column; 
+            height: 100vh; height: 100dvh; 
+            overflow: hidden; user-select: none;
         }
 
         header {
@@ -38,7 +39,9 @@
 
         .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         .gui { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        
         h1 { margin: 0; font-size: 1.2rem; color: #222; }
+        
         .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .sub-controls { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; color: #555; vertical-align: middle;}
 
@@ -61,15 +64,16 @@
         .btn-search { background-color: var(--btn-search); }
         .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); }
-        .btn-random { background-color: #EF6C00; }
+        .btn-random { background-color: var(--btn-random); }
         .btn-info { background-color: var(--btn-info); }
         .btn-pause { background-color: #455A64; width: 80px;}
+        .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
         #canvas-container {
-            flex-grow: 100; position: relative; overflow: hidden;
+            flex-grow: 1; position: relative; overflow: hidden;
             background-color: var(--bg-color);
             cursor: crosshair;
-            min-height: 200px;
+            min-height: 0;
         }
         canvas { display: block; width: 100%; height: 100%; }
 
@@ -93,76 +97,139 @@
         #status-text { font-weight: bold; color: #222; }
 
         #author { 
-            flex-grow: 1; position: relative; overflow: hidden;
-            background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2;}
+            width: 100%;
+            background: #f4f7f6; 
+            font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
+        }
 
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        h2 { color: #2E7D32; margin-top:0; }
+        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
+        .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+        
+        .node-sample {
+            display: inline-block; width: 30px; height: 30px; border-radius: 50%;
+            background: #B0F9B0; border: 1px solid #B0F9B0;
+            text-align: center; line-height: 30px; position: relative;
+            font-family: Arial, sans-serif; font-weight: bold;
+        }    
+        .node-val { color: #D50000; font-size: 12px; }
     </style>
 </head>
 <body>
 
 <header>
     <div class="header-top">
-        <h1>BST Visualizer</h1>
+        <h1>Binary Search Tree (BST) Visualizer</h1>
+        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
     </div>
     <div class="gui">
         <div class="controls">
-            <input type="number" id="inputValue" title="Enter a number" placeholder="#" onkeydown="if(event.key==='Enter') app.handleInsert()">
+            <input type="number" id="inputValue" placeholder="#" title="Enter a number" onkeydown="if(event.key==='Enter') app.handleInsert()">
             <button class="btn-insert" title="Insert value" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-search" title="Search value" onclick="app.handleSearch()">Search</button>
             <button class="btn-delete" title="Delete value" onclick="app.handleDelete()">Delete</button>
+            <button class="btn-search" title="Search value" onclick="app.handleSearch()">Search</button>
+            
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
             <button class="btn-info" title="Find minimum value" onclick="app.handleMin()">Min</button>
             <button class="btn-info" title="Find maximum value" onclick="app.handleMax()">Max</button>
             <button class="btn-info" title="In-order traversal" onclick="app.handleInOrder()">InOrder</button>
+            
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
+            <button class="btn-random" title="Generate random tree" onclick="app.handleRandomTree()">Random</button>
+
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
             <button class="btn-undo" title="Undo last action" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
-            <button class="btn-random" title="Generate random tree" onclick="app.handleRandomTree()">Random Tree</button>
             <button class="btn-clear" title="Clear the tree" onclick="app.handleClear()">Clear</button>
         </div>
         <div class="sub-controls">
-             <label for="speed-slider">Slowdown:</label>
-            <label title="Slide right to slow down the animation (1x = Normal, 5x = Very Slow)">
+            <label for="speedSlider">Slowdown:</label>
+            <label title="Slide right to slow down the animation">
                 <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
-                <!--span id="speedLabel">1x</span-->
             </label>
             <button class="btn-pause" title="Pause animation" onclick="app.togglePause()" id="btnPause">Pause</button>
         </div>
-    </div> 
+    </div>
     <div id="status-bar">
         <span id="status-text">Ready.</span>
-        <!-- span id="queue-info">Queue: 0</span-->
     </div>
 </header>
-
 
 <div id="canvas-container">
     <canvas id="treeCanvas"></canvas>
     <div id="legend">
-        <div class="legend-item"><div class="dot" style="background:#B2FBA5; border:1px solid #B2FBA5"></div><span style="color:#D50000; font-weight:bold;">12</span> &nbsp; Normal</div>
-        <div class="legend-item"><div class="dot" style="background:#4CAF50; border:1px solid #fff"></div>Inserted</div>
-        <div class="legend-item"><div class="dot" style="background:#FFC107; border:1px solid #fff"></div>Child</div>
-        <div class="legend-item"><div class="arrow-icon">&#8635;</div>Rotation</div>
-        <div class="legend-item"><div class="dot" style="background:#F44336; border:1px solid #fff"></div>Delete</div>
-        <div class="legend-item"><div class="dot" style="background:#2196F3; border:1px solid #fff"></div>Visiting</div>
-        <div class="legend-item"><div class="line-icon" style="background:#1565C0;"></div>Null Link</div>
+        <div class="legend-item">
+            <div class="node-sample"><span class="node-val">V</span></div>&nbsp; Value
+        </div>
+        <div class="legend-item"><div class="dot" style="background:#4CAF50; border:1px solid #fff"></div>&nbsp; Inserted</div>
+        <div class="legend-item"><div class="dot" style="background:#2196F3; border:1px solid #fff"></div>&nbsp; Visiting</div>
+        <div class="legend-item"><div class="dot" style="background:#00E676; border:1px solid #fff"></div>&nbsp; Found</div>
+        <div class="legend-item"><div class="dot" style="background:#F44336; border:1px solid #fff"></div>&nbsp; Delete</div>
+        <div class="legend-item"><div class="line-icon" style="background:#1668BD;"></div>&nbsp; Null Link</div>
     </div>
 </div>
 
 <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
 
+<!-- Help Modal -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>Binary Search Tree (BST)</h2>
+        
+        <h3>Properties</h3>
+        <p>A rooted binary tree data structure with the key of each internal node being:</p>
+        <ul>
+            <li>Greater than all keys in the respective node's <strong>left subtree</strong>.</li>
+            <li>Less than all keys in the respective node's <strong>right subtree</strong>.</li>
+        </ul>
+        
+        <h3>Complexity</h3>
+        <p>The time complexity of operations depends on the height (h) of the tree.</p>
+        <ul>
+            <li><strong>Average Case:</strong> <span class="complexity">O(log n)</span> (when balanced).</li>
+            <li><strong>Worst Case:</strong> <span class="complexity">O(n)</span> (when the tree becomes a linked list, e.g., inserting sorted data).</li>
+        </ul>
+
+        <h3>Algorithms</h3>
+        <p><strong>Search/Insert:</strong> Traverse down from root comparing values.</p>
+        <p><strong>Delete:</strong>
+            <ul>
+                <li>Leaf: Just remove.</li>
+                <li>One Child: Replace with child.</li>
+                <li>Two Children: Find successor (min of right subtree), replace value, and delete successor.</li>
+            </ul>
+        </p>
+    </div>
+</div>
+
 <script>
 const COLORS = {
-    DEFAULT: '#B2FBA5',
-    TEXT: '#D50000',
-    EDGE: '#1565C0',
-    NEW: '#4CAF50',
-    VISIT: '#2196F3',
-    PIVOT: '#FF5722', 
-    CHILD: '#FFC107',
-    FOUND: '#00E676',
-    DELETE: '#F44336',
-    NULL_LINK: '#1565C0',
-    ARROW: '#D50000' 
+    DEFAULT: '#B0F9B0',    // Light Green (Standard)
+    STROKE: '#B0F9B0',     // Border Standard
+    
+    TEXT: '#CC0000',       // Red Text
+    EDGE: '#1668BD',       // Blue Edges
+    
+    NEW: '#4CAF50',        // Darker Green
+    VISIT: '#2196F3',      // Blue traversal
+    PIVOT: '#FF5722',      // Orange (Used in rotation logic if present)
+    CHILD: '#FFC107',      // Yellow
+    FOUND: '#00E676',      // Bright Green
+    PROCESSED: '#00E676',      // Bright Green
+    DELETE: '#F44336',     // Red
+    NULL_LINK: '#1668BD',  // Blue
+    ARROW: '#D50000'       // Red Arrows
 };
 
 class Node {
@@ -287,10 +354,10 @@ class BinarySearchTree {
             recordSnapshot(this.root, null, { text: txt, pause: (current.value === value) });
             if (current.value === value) { found = true; break; }
             else if (value < current.value) {
-                if(!current.left) recordSnapshot(this.root, null, { text: `${value} not found (Left of ${current.value})`, activeNull: { nodeId: current.id, side: 'L', color: COLORS.DELETE } });
+                if(!current.left) recordSnapshot(this.root, null, { text: `${value} not found (Left of ${current.value})`, activeNull: { nodeId: current.id, side: 'L', color: COLORS.DELETE }, pause: true });
                 current = current.left;
             } else {
-                if(!current.right) recordSnapshot(this.root, null, { text: `${value} not found (Right of ${current.value})`, activeNull: { nodeId: current.id, side: 'R', color: COLORS.DELETE } });
+                if(!current.right) recordSnapshot(this.root, null, { text: `${value} not found (Right of ${current.value})`, activeNull: { nodeId: current.id, side: 'R', color: COLORS.DELETE }, pause: true });
                 current = current.right;
             }
         }
@@ -340,24 +407,25 @@ class BinarySearchTree {
 
     inOrder(recordSnapshot) {
         const result = [];
+        
         const _traverse = (node) => {
             if(!node) return;
             
-            // Visualize going left (VISIT color)
-            node.color = COLORS.NEW;
-            recordSnapshot(this.root, null, { text: `Traversing...` });
+            if (node.color !== COLORS.PROCESSED) {
+                node.color = COLORS.VISIT;
+                recordSnapshot(this.root, null, { text: `Traversing to left child of ${node.value}...` });
+            }
             
             _traverse(node.left);
             
-            // Process current
-            node.color = COLORS.VISIT;
+            node.color = COLORS.PROCESSED;
             result.push(node.value);
+            
             recordSnapshot(this.root, null, { 
                 text: `In-Order: [${result.join(', ')}]`, 
-                pause: true 
+                pause: true // Pequeña pausa para ver que se ha añadido
             });
             
-            // Visualize going right
             _traverse(node.right);
         };
         
@@ -365,10 +433,15 @@ class BinarySearchTree {
              recordSnapshot(null, null, { text: "Tree is empty" });
         } else {
              _traverse(this.root);
-             recordSnapshot(this.root, null, { text: `Traversal Complete: [${result.join(', ')}]` });
+             
+             recordSnapshot(this.root, null, { 
+                 text: `Traversal Complete: [${result.join(', ')}]`,
+                 pause: true 
+             });
         }
+        
         this.cleanUp(recordSnapshot);
-    }
+    }    
 }
 
 class Visualizer {
@@ -376,8 +449,8 @@ class Visualizer {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
-        this.nodeRadius = 25;
-        this.levelHeight = 80;
+        this.nodeRadius = 28; // Matched to others
+        this.levelHeight = 70; 
         this.snapshots = [];
         this.currentSnapshotIndex = -1;
         this.lastDrawnNodes = [];
@@ -390,13 +463,19 @@ class Visualizer {
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        
+        // Modal close
+        window.onclick = (e) => {
+             if (e.target == document.getElementById('helpModal')) app.toggleModal();
+        }
+
         this.lastTime = 0;
         requestAnimationFrame(t => this.loop(t));
     }
 
     resize() {
-        this.canvas.width = this.canvas.parentElement.clientWidth;
-        this.canvas.height = this.canvas.parentElement.clientHeight;
+        this.canvas.width = document.getElementById('canvas-container').offsetWidth;
+        this.canvas.height = document.getElementById('canvas-container').offsetHeight;
         if (this.snapshots.length > 0) {
             const snap = this.snapshots[this.currentSnapshotIndex >= 0 ? this.currentSnapshotIndex : 0];
             if (snap && snap.root) {
@@ -465,13 +544,13 @@ class Visualizer {
         const traverse = (node, depth) => {
             if (!node) return;
             traverse(node.left, depth + 1);
-            node.x = order * (this.nodeRadius * 2.8);
+            node.x = order * (this.nodeRadius * 2.5); // Spacing matching others
             node.y = depth * this.levelHeight + 80;
             order++;
             traverse(node.right, depth + 1);
         };
         traverse(root, 0);
-        const width = (order > 0 ? order - 1 : 0) * (this.nodeRadius * 2.8);
+        const width = (order > 0 ? order - 1 : 0) * (this.nodeRadius * 2.5);
         const offset = width / 2;
         const centerTree = (node) => { if(!node) return; node.x -= offset; centerTree(node.left); centerTree(node.right); };
         centerTree(root);
@@ -503,8 +582,7 @@ class Visualizer {
         this.camera.scale += (this.camera.targetScale - this.camera.scale) * camSpeed;
         this.camera.x += (this.camera.targetX - this.camera.x) * camSpeed;
         this.camera.y += (this.camera.targetY - this.camera.y) * camSpeed;
-        const pending = this.pendingSnapshots ? this.pendingSnapshots.length : 0;
-        // document.getElementById('queue-info').innerText = `In Queue: ${pending}`;
+        
         if (this.state === 'CAMERA') {
              const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
              if (dist < 10 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.05) {
@@ -543,8 +621,13 @@ class Visualizer {
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(this.camera.x, this.camera.y);
-        this.ctx.scale(this.camera.scale, this.camera.scale);
+        
+        // Consistent Camera transform
+        this.ctx.translate(this.canvas.width/2, this.canvas.height/2); 
+        this.ctx.translate((this.camera.x - this.canvas.width/2), (this.camera.y - this.canvas.height/2));
+        this.ctx.translate(-this.camera.x, -this.camera.y); 
+        this.ctx.setTransform(this.camera.scale, 0, 0, this.camera.scale, this.camera.x, this.camera.y);
+
         if (this.snapshots.length === 0) { this.ctx.restore(); return; }
 
         const idx = this.currentSnapshotIndex;
@@ -609,15 +692,6 @@ class Visualizer {
 
         nodesToDraw.forEach(n => this.drawNodeCircle(n.x, n.y, n.value, n.color || COLORS.DEFAULT));
 
-        // Generic Rotation Arrows (kept for code reuse if needed later)
-        if (currentMeta && currentMeta.rotation) {
-            const pivotNode = nodesToDraw.find(n => n.color === COLORS.PIVOT);
-            const childNode = nodesToDraw.find(n => n.color === COLORS.CHILD);
-            if (pivotNode && childNode) {
-                this.drawRotationArrow(childNode.x, childNode.y, pivotNode.x, pivotNode.y, currentMeta.rotation.dir);
-            }
-        }
-
         if (arrowsToDraw.length > 0) {
             this.ctx.strokeStyle = COLORS.CHILD; this.ctx.fillStyle = COLORS.CHILD; this.ctx.lineWidth = 3;
             arrowsToDraw.forEach(arr => {
@@ -632,40 +706,6 @@ class Visualizer {
             this.ctx.shadowBlur = 0;
         }
         this.ctx.restore();
-    }
-
-    // Cubic Bezier for smooth Rotation Arrows
-    drawRotationArrow(x1, y1, x2, y2, dir) {
-        const ctx = this.ctx;
-        const r = this.nodeRadius;
-        const startX = x1; const startY = y1 - r;
-        const endY = y2; let endX;
-        let cp1X, cp1Y, cp2X, cp2Y;
-        const arcHeight = 60; const sideOffset = 40; const startBulge = 30; 
-
-        if (dir === 'CW') { 
-            endX = x2 - r; 
-            cp1X = startX - startBulge; cp1Y = startY - arcHeight;
-            cp2X = endX - sideOffset; cp2Y = endY; 
-        } else { 
-            endX = x2 + r; 
-            cp1X = startX + startBulge; cp1Y = startY - arcHeight;
-            cp2X = endX + sideOffset; cp2Y = endY;
-        }
-        ctx.beginPath(); ctx.strokeStyle = COLORS.ARROW; ctx.lineWidth = 5;
-        ctx.moveTo(startX, startY); ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY); ctx.stroke();
-        const vecX = endX - cp2X; const vecY = endY - cp2Y;
-        const angle = Math.atan2(vecY, vecX);
-        this.drawArrowHead(endX, endY, angle);
-    }
-
-    drawArrowHead(x, y, angle) {
-        const ctx = this.ctx;
-        const size = 16;
-        ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
-        ctx.beginPath(); ctx.fillStyle = COLORS.ARROW;
-        ctx.moveTo(0, 0); ctx.lineTo(-size, -size/2.5); ctx.lineTo(-size, size/2.5);
-        ctx.closePath(); ctx.fill(); ctx.restore();
     }
 
     drawNullLink(x, y, side, color, isActive) {
@@ -702,17 +742,25 @@ class Visualizer {
         const r = this.nodeRadius;
         this.ctx.beginPath(); this.ctx.arc(x, y, r, 0, Math.PI * 2);
         this.ctx.fillStyle = color; this.ctx.fill();
-        if (color === COLORS.DEFAULT) {
-            this.ctx.strokeStyle = color; 
+        
+        if (color === COLORS.DEFAULT || color === COLORS.STROKE) {
+            this.ctx.strokeStyle = COLORS.STROKE; 
             this.ctx.fillStyle = COLORS.TEXT; 
         } else {
             this.ctx.strokeStyle = '#fff';
             this.ctx.fillStyle = '#fff';
         }
-        this.ctx.lineWidth = isFloating ? 3 : 2; this.ctx.stroke();
-        this.ctx.font = '20px Arial';
+        
+        // Ensure highlighted nodes have contrast if background is light (yellow/found)
+        if (color === COLORS.CHILD || color === COLORS.FOUND) {
+             this.ctx.fillStyle = '#333';
+             this.ctx.strokeStyle = '#fff';
+        }
+
+        this.ctx.lineWidth = isFloating ? 3 : 3; this.ctx.stroke();
+        this.ctx.font = '22px Arial';
         this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(val, x, y);
+        this.ctx.fillText(val, x, y+1);
     }
 
     findNode(root, id) {
@@ -804,14 +852,12 @@ const app = {
     init: function() { this.viz = new Visualizer('treeCanvas'); this.updateUI(); },
     updateSpeed: function() {
         const val = parseFloat(document.getElementById('speedSlider').value);
-        // document.getElementById('speedLabel').innerText = '1/' + val + 'x';
         this.viz.setSpeed(val);
     },
     togglePause: function() {
         const isPaused = this.viz.togglePause();
         const btn = document.getElementById('btnPause');
         btn.innerText = isPaused ? "Resume" : "Pause";
-        btn.style.backgroundColor = isPaused ? "#2E7D32" : "#455A64";
     },
     handleInsert: function() { 
         const inp = document.getElementById('inputValue'); const val = parseInt(inp.value);
@@ -848,6 +894,10 @@ const app = {
         for (let val of values) { this.tree.insert(val, batchRecorder); }
         this.viz.enqueueOperation(snaps);
         this.updateUI();
+    },
+    toggleModal: function() {
+        const m = document.getElementById('helpModal');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     },
     runOp: function(fn, allowsUndo = true) {
         if(this.viz.isPaused) this.togglePause();

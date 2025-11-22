@@ -8,23 +8,24 @@
         :root {
             --bg-color: #ffffff;
             --panel-bg: #f5f5f5;
-            --text-color: #333333;
             --border-color: #ddd;
             
-            /* UI Colors */
+            /* UI Colors - Matching LeftistHeap */
             --btn-insert: #2E7D32; 
             --btn-delete: #c62828; 
-            --btn-search: #1565C0; 
+            --btn-search: #1668BD; 
             --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
+            --btn-random: #EF6C00;
         }
 
         body {
             margin: 0; padding: 0;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color); color: var(--text-color);
-            display: flex; flex-direction: column; height: 100vh;
-            overflow: auto; user-select: none;
+            background-color: var(--bg-color);
+            display: flex; flex-direction: column; 
+            height: 100vh; height: 100dvh; 
+            overflow: hidden; user-select: none;
         }
 
         header {
@@ -37,7 +38,9 @@
 
         .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
         .gui { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        
         h1 { margin: 0; font-size: 1.2rem; color: #222; }
+        
         .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .sub-controls { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; color: #555; vertical-align: middle;}
 
@@ -60,14 +63,15 @@
         .btn-search { background-color: var(--btn-search); }
         .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); }
-        .btn-random { background-color: #EF6C00; }
+        .btn-random { background-color: var(--btn-random); }
         .btn-pause { background-color: #455A64; width: 80px;}
+        .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
         #canvas-container {
-            flex-grow: 100; position: relative; overflow: hidden;
+            flex-grow: 1; position: relative; overflow: hidden;
             background-color: var(--bg-color);
             cursor: crosshair;
-            min-height: 200px;
+            min-height: 0;
         }
         canvas { display: block; width: 100%; height: 100%; }
 
@@ -81,11 +85,6 @@
         .dot { width: 14px; height: 14px; border-radius: 50%; }
         .line-icon { width: 15px; height: 3px; border-radius: 2px; }
         .arrow-icon { font-size: 16px; font-weight: bold; color: #D50000; }
-        .badge-example {
-            width: 16px; height: 16px; background: #555; color: white; 
-            border-radius: 50%; display:flex; align-items:center; justify-content:center; 
-            font-size: 9px; font-weight: bold;
-        }
 
         #status-bar {
             padding: 8px 2px 0px 0px; background-color: var(--panel-bg);
@@ -96,16 +95,30 @@
         #status-text { font-weight: bold; color: #222; }
 
         #author { 
-            flex-grow: 1; position: relative; overflow: hidden;
-            background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2;
+            width: 100%;
+            background: #f4f7f6; 
+            font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
         }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        h2 { color: #2E7D32; margin-top:0; }
+        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
+        .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+        
         .node-sample {
             display: inline-block; width: 30px; height: 30px; border-radius: 50%;
-            background: #B2FBA5; border: 1px solid #B2FBA5;
+            background: #B0F9B0; border: 1px solid #B0F9B0;
             text-align: center; line-height: 30px; position: relative;
             font-family: Arial, sans-serif; font-weight: bold;
         }    
-                .node-val { color: #D50000; font-size: 12px; }
+        .node-val { color: #D50000; font-size: 12px; }
         .node-weight { 
             position: absolute; bottom: -2px; right: -2px; 
             font-size: 10px; color: #1565C0; background: rgba(255,255,255,0.8); 
@@ -117,30 +130,36 @@
 
 <header>
     <div class="header-top">
-        <h1>AVL Visualizer</h1>        
+        <h1>AVL Tree Visualizer</h1>
+        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
     </div>
     <div class="gui">
         <div class="controls">
             <input type="number" id="inputValue" placeholder="#" title="Enter a number" onkeydown="if(event.key==='Enter') app.handleInsert()">
             <button class="btn-insert" title="Insert value" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-search" title="Search value" onclick="app.handleSearch()">Search</button>
             <button class="btn-delete" title="Delete value" onclick="app.handleDelete()">Delete</button>
+            <button class="btn-search" title="Search value" onclick="app.handleSearch()">Search</button>
+            
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+            
+            <button class="btn-random" title="Generate random tree" onclick="app.handleRandomTree()">Random</button>
+            
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
             <button class="btn-undo" title="Undo last action" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
-            <button class="btn-random" title="Generate random tree" onclick="app.handleRandomTree()">Random Tree</button>
             <button class="btn-clear" title="Clear the tree" onclick="app.handleClear()">Clear</button>
         </div>
         <div class="sub-controls">
-             <label for="speed-slider">Slowdown:</label>
-            <label title="Slide right to slow down the animation (1x = Normal, 5x = Very Slow)">
-                <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1"  oninput="app.updateSpeed()">
+            <label for="speedSlider">Slowdown:</label>
+            <label title="Slide right to slow down the animation">
+                <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
             </label>
             <button class="btn-pause" title="Pause animation" onclick="app.togglePause()" id="btnPause">Pause</button>
         </div>
     </div>
     <div id="status-bar">
         <span id="status-text">Ready.</span>
-</div>
+    </div>
 </header>
 
 <div id="canvas-container">
@@ -149,31 +168,63 @@
         <div class="legend-item">
             <div class="node-sample"><span class="node-val">V</span><span class="node-weight">H</span></div>&nbsp; Value / Height
         </div>
-        <div class="legend-item"><div class="dot" style="background:#4CAF50; border:1px solid #fff"></div>Inserted</div>
-        <div class="legend-item"><div class="dot" style="background:#FF5722; border:1px solid #fff"></div>Pivot (Orange)</div>
-        <div class="legend-item"><div class="dot" style="background:#FFC107; border:1px solid #fff"></div>Child (Yellow)</div>
-        <div class="legend-item"><div class="arrow-icon">&#8635;</div>Rotation</div>
-        <div class="legend-item"><div class="dot" style="background:#F44336; border:1px solid #fff"></div>Delete</div>
-        <div class="legend-item"><div class="dot" style="background:#2196F3; border:1px solid #fff"></div>Visiting</div>
-        <div class="legend-item"><div class="line-icon" style="background:#1565C0;"></div>Null Link</div>
+        <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:2px solid #B0F9B0"></div>&nbsp; Balanced Node</div>
+        <div class="legend-item"><div class="dot" style="background:#4CAF50; border:1px solid #fff"></div>&nbsp; New Node</div>
+        <div class="legend-item"><div class="dot" style="background:#FF5722; border:1px solid #fff"></div>&nbsp; Pivot (Orange)</div>
+        <div class="legend-item"><div class="dot" style="background:#FFC107; border:1px solid #fff"></div>&nbsp; Child (Yellow)</div>
+        <div class="legend-item"><div class="arrow-icon">&#8635;</div>&nbsp; Rotation</div>
+        <div class="legend-item"><div class="line-icon" style="background:#1668BD;"></div>&nbsp; Null Link</div>
     </div>
 </div>
 
 <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
 
+<!-- Help Modal -->
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>AVL Tree Algorithms</h2>
+        
+        <h3>AVL Property</h3>
+        <p>An AVL tree is a self-balancing Binary Search Tree (BST) where the difference between heights of left and right subtrees cannot be more than 1 for all nodes.</p>
+        <p><strong>Balance Factor</strong> = Height(Left) - Height(Right). Must be in {-1, 0, 1}.</p>
+        
+        <h3>Complexity</h3>
+        <p>Since the tree is always balanced, operations are guaranteed to be logarithmic.</p>
+        <ul>
+            <li>Search: <span class="complexity">O(log n)</span></li>
+            <li>Insert: <span class="complexity">O(log n)</span></li>
+            <li>Delete: <span class="complexity">O(log n)</span></li>
+        </ul>
+
+        <h3>Rotations</h3>
+        <p>Used to restore balance after insertion or deletion. There are 4 cases:</p>
+        <ul>
+            <li><strong>Left Rotation (L):</strong> Right child moves up.</li>
+            <li><strong>Right Rotation (R):</strong> Left child moves up.</li>
+            <li><strong>Left-Right (LR):</strong> Left child rotates left, then node rotates right.</li>
+            <li><strong>Right-Left (RL):</strong> Right child rotates right, then node rotates left.</li>
+        </ul>
+    </div>
+</div>
+
 <script>
+// Adapted colors to match the LeftistHeap style (Cyan/Green theme with Blue edges)
 const COLORS = {
-    DEFAULT: '#B2FBA5',
-    TEXT: '#D50000',
-    EDGE: '#1565C0',
-    NEW: '#4CAF50',
-    VISIT: '#2196F3',
-    PIVOT: '#FF5722', 
-    CHILD: '#FFC107',
-    FOUND: '#00E676',
-    DELETE: '#F44336',
-    NULL_LINK: '#1565C0',
-    ARROW: '#D50000' 
+    DEFAULT: '#B0F9B0',    // Light Green (standard node)
+    STROKE: '#B0F9B0',     // Border standard
+    
+    TEXT: '#CC0000',       // Red text
+    EDGE: '#1668BD',       // Blue edges
+    
+    NEW: '#4CAF50',        // Darker Green for new
+    VISIT: '#2196F3',      // Blue for traversal
+    PIVOT: '#FF5722',      // Orange for rotation pivot
+    CHILD: '#FFC107',      // Yellow for rotation child
+    FOUND: '#00E676',      // Bright Green found
+    DELETE: '#F44336',     // Red delete
+    NULL_LINK: '#1668BD',  // Blue null links
+    ARROW: '#D50000'       // Red arrows
 };
 
 class Node {
@@ -356,8 +407,8 @@ class Visualizer {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
-        this.nodeRadius = 25;
-        this.levelHeight = 80;
+        this.nodeRadius = 28; // Matched to LeftistHeap
+        this.levelHeight = 70; // Matched to LeftistHeap
         this.snapshots = [];
         this.currentSnapshotIndex = -1;
         this.lastDrawnNodes = [];
@@ -370,13 +421,19 @@ class Visualizer {
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        
+        // Modal close
+        window.onclick = (e) => {
+             if (e.target == document.getElementById('helpModal')) app.toggleModal();
+        }
+
         this.lastTime = 0;
         requestAnimationFrame(t => this.loop(t));
     }
 
     resize() {
-        this.canvas.width = this.canvas.parentElement.clientWidth;
-        this.canvas.height = this.canvas.parentElement.clientHeight;
+        this.canvas.width = document.getElementById('canvas-container').offsetWidth;
+        this.canvas.height = document.getElementById('canvas-container').offsetHeight;
         if (this.snapshots.length > 0) {
             const snap = this.snapshots[this.currentSnapshotIndex >= 0 ? this.currentSnapshotIndex : 0];
             if (snap && snap.root) {
@@ -445,13 +502,13 @@ class Visualizer {
         const traverse = (node, depth) => {
             if (!node) return;
             traverse(node.left, depth + 1);
-            node.x = order * (this.nodeRadius * 2.8);
+            node.x = order * (this.nodeRadius * 2.5); // adjusted for spacing
             node.y = depth * this.levelHeight + 80;
             order++;
             traverse(node.right, depth + 1);
         };
         traverse(root, 0);
-        const width = (order > 0 ? order - 1 : 0) * (this.nodeRadius * 2.8);
+        const width = (order > 0 ? order - 1 : 0) * (this.nodeRadius * 2.5);
         const offset = width / 2;
         const centerTree = (node) => { if(!node) return; node.x -= offset; centerTree(node.left); centerTree(node.right); };
         centerTree(root);
@@ -483,8 +540,7 @@ class Visualizer {
         this.camera.scale += (this.camera.targetScale - this.camera.scale) * camSpeed;
         this.camera.x += (this.camera.targetX - this.camera.x) * camSpeed;
         this.camera.y += (this.camera.targetY - this.camera.y) * camSpeed;
-        const pending = this.pendingSnapshots ? this.pendingSnapshots.length : 0;
-        // document.getElementById('queue-info').innerText = `In Queue: ${pending}`;
+        
         if (this.state === 'CAMERA') {
              const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
              if (dist < 10 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.05) {
@@ -523,8 +579,13 @@ class Visualizer {
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(this.camera.x, this.camera.y);
-        this.ctx.scale(this.camera.scale, this.camera.scale);
+        this.ctx.translate(this.canvas.width/2, this.canvas.height/2); // Center align like LeftistHeap
+        this.ctx.translate((this.camera.x - this.canvas.width/2), (this.camera.y - this.canvas.height/2));
+        this.ctx.translate(-this.camera.x, -this.camera.y); // Reset for standard cam calc
+        
+        // Simplified camera application matching logic
+        this.ctx.setTransform(this.camera.scale, 0, 0, this.camera.scale, this.camera.x, this.camera.y);
+
         if (this.snapshots.length === 0) { this.ctx.restore(); return; }
 
         const idx = this.currentSnapshotIndex;
@@ -587,7 +648,6 @@ class Visualizer {
             }
         });
 
-        // Pass n.height to the draw function
         nodesToDraw.forEach(n => this.drawNodeCircle(n.x, n.y, n.value, n.color || COLORS.DEFAULT, false, n.height));
 
         if (currentMeta && currentMeta.rotation) {
@@ -618,77 +678,36 @@ class Visualizer {
     drawRotationArrow(x1, y1, x2, y2, dir) {
         const ctx = this.ctx;
         const r = this.nodeRadius;
-        
-        // Start: Top of Child
-        const startX = x1;
-        const startY = y1 - r;
-        
-        // End: Side of Parent (Vertical Center)
-        const endY = y2;
-        let endX;
-        
+        const startX = x1; const startY = y1 - r;
+        const endY = y2; let endX;
         let cp1X, cp1Y, cp2X, cp2Y;
-        const arcHeight = 60; 
-        const sideOffset = 40; // CP2 Push out
-        
-        // START BULGE LOGIC: Move CP1 outwards to avoid vertical start
+        const arcHeight = 60; const sideOffset = 40; 
         const startBulge = 30; 
 
         if (dir === 'CW') { 
-            // Child is Left -> Hits Parent Left Side
             endX = x2 - r;
-            
-            // CP1: Up and Left (Outwards)
-            cp1X = startX - startBulge;
-            cp1Y = startY - arcHeight;
-            
-            // CP2: Horizontal Out from Parent
-            cp2X = endX - sideOffset;
-            cp2Y = endY; 
-            
+            cp1X = startX - startBulge; cp1Y = startY - arcHeight;
+            cp2X = endX - sideOffset; cp2Y = endY; 
         } else { 
-            // Child is Right -> Hits Parent Right Side
             endX = x2 + r;
-            
-            // CP1: Up and Right (Outwards)
-            cp1X = startX + startBulge;
-            cp1Y = startY - arcHeight;
-            
-            // CP2: Horizontal Out from Parent
-            cp2X = endX + sideOffset;
-            cp2Y = endY;
+            cp1X = startX + startBulge; cp1Y = startY - arcHeight;
+            cp2X = endX + sideOffset; cp2Y = endY;
         }
 
-        ctx.beginPath();
-        ctx.strokeStyle = COLORS.ARROW;
-        ctx.lineWidth = 5;
+        ctx.beginPath(); ctx.strokeStyle = COLORS.ARROW; ctx.lineWidth = 5;
+        ctx.moveTo(startX, startY); ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY); ctx.stroke();
         
-        ctx.moveTo(startX, startY);
-        ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX, endY);
-        ctx.stroke();
-        
-        // Arrowhead Angle
-        const vecX = endX - cp2X;
-        const vecY = endY - cp2Y;
+        const vecX = endX - cp2X; const vecY = endY - cp2Y;
         const angle = Math.atan2(vecY, vecX);
-        
         this.drawArrowHead(endX, endY, angle);
     }
 
     drawArrowHead(x, y, angle) {
-        const ctx = this.ctx;
-        const size = 16;
-        ctx.save();
-        ctx.translate(x, y);
-        ctx.rotate(angle);
-        ctx.beginPath();
-        ctx.fillStyle = COLORS.ARROW;
-        ctx.moveTo(0, 0);
-        ctx.lineTo(-size, -size/2.5);
-        ctx.lineTo(-size, size/2.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.restore();
+        const ctx = this.ctx; const size = 16;
+        ctx.save(); ctx.translate(x, y); ctx.rotate(angle);
+        ctx.beginPath(); ctx.fillStyle = COLORS.ARROW;
+        ctx.moveTo(0, 0); ctx.lineTo(-size, -size/2.5); ctx.lineTo(-size, size/2.5);
+        ctx.closePath(); ctx.fill(); ctx.restore();
     }
 
     drawNullLink(x, y, side, color, isActive) {
@@ -708,8 +727,7 @@ class Visualizer {
     }
 
     drawStraightArrow(fromX, fromY, toX, toY) {
-        const headlen = 15;
-        const angle = Math.atan2(toY - fromY, toX - fromX);
+        const headlen = 15; const angle = Math.atan2(toY - fromY, toX - fromX);
         const r = this.nodeRadius + 5;
         const startX = fromX + r * Math.cos(angle); const startY = fromY + r * Math.sin(angle);
         const endX = toX - r * Math.cos(angle); const endY = toY - r * Math.sin(angle);
@@ -724,39 +742,42 @@ class Visualizer {
     drawNodeCircle(x, y, val, color, isFloating=false, height=null) {
         const r = this.nodeRadius;
         this.ctx.beginPath(); this.ctx.arc(x, y, r, 0, Math.PI * 2);
-        this.ctx.fillStyle = color; this.ctx.fill();
-        if (color === COLORS.DEFAULT) {
-            this.ctx.strokeStyle = color; 
-            this.ctx.fillStyle = COLORS.TEXT; 
+        
+        // Fill Logic matching LeftistHeap aesthetics
+        this.ctx.fillStyle = color; 
+        this.ctx.fill();
+
+        // Border Logic
+        if (color === COLORS.DEFAULT || color === COLORS.STROKE) {
+            this.ctx.strokeStyle = COLORS.STROKE; 
+            this.ctx.fillStyle = COLORS.TEXT; // Text Red
         } else {
             this.ctx.strokeStyle = '#fff';
-            this.ctx.fillStyle = '#fff';
+            this.ctx.fillStyle = '#fff'; // Text White for highlighted nodes
         }
-        this.ctx.lineWidth = isFloating ? 3 : 2; this.ctx.stroke();
-        this.ctx.font = '20px Arial';
+        
+        // Special check for yellow/light backgrounds on highlighted nodes
+        if (color === COLORS.CHILD || color === COLORS.FOUND) {
+             this.ctx.fillStyle = '#333';
+             this.ctx.strokeStyle = '#fff';
+        }
+
+        this.ctx.lineWidth = isFloating ? 3 : 3; 
+        this.ctx.stroke();
+        
+        this.ctx.font = '22px Arial';
         this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
-        this.ctx.fillText(val, x, y);
+        this.ctx.fillText(val, x, y+1);
 
-        // --- NEW: Draw Height Badge ---
+        // Draw Height Badge (Similar to Weight in LeftistHeap)
         if (height !== null && height !== undefined) {
-            const badgeRadius = 9;
-            // Offset towards top-right
-            const bx = x + (r * 0.7); 
-            const by = y - (r * 0.7);
-
-            this.ctx.beginPath();
-            this.ctx.arc(bx, by, badgeRadius, 0, Math.PI*2);
-            this.ctx.fillStyle = 'rgba(255,255,255,0.9)'; // Dark grey background
-            this.ctx.fill();
-            this.ctx.strokeStyle = '#1565C0';
-            this.ctx.lineWidth = 1.5;
-            this.ctx.stroke();
-
-            this.ctx.fillStyle = '#1565C0';
-            this.ctx.font = 'bold 10px Arial';
-            this.ctx.textAlign = 'center';
-            this.ctx.textBaseline = 'middle';
-            this.ctx.fillText(height, bx, by);
+            const badgeRadius = 10;
+            const bx = x + (r * 0.7); const by = y - (r * 0.7);
+            this.ctx.beginPath(); this.ctx.arc(bx, by, badgeRadius, 0, Math.PI*2);
+            this.ctx.fillStyle = '#ffffff'; this.ctx.fill();
+            this.ctx.strokeStyle = COLORS.EDGE; this.ctx.lineWidth = 1; this.ctx.stroke();
+            this.ctx.fillStyle = COLORS.EDGE; this.ctx.font = 'bold 11px Arial';
+            this.ctx.fillText(height, bx, by+1);
         }
     }
 
@@ -782,9 +803,7 @@ class Visualizer {
                 const x = dA.node.x + (dB.node.x - dA.node.x) * t;
                 const y = dA.node.y + (dB.node.y - dA.node.y) * t;
                 const color = (t > 0.5) ? dB.node.color : dA.node.color;
-                // Interpolate or switch height
                 const height = (t > 0.5) ? dB.node.height : dA.node.height;
-
                 let pX, pY;
                 if (dA.pId === dB.pId && dA.pId !== null) {
                      const pdA = mapA.get(dA.pId); const pdB = mapB.get(dB.pId);
@@ -839,7 +858,7 @@ class Visualizer {
                 id: n.id, x: n.x, y: n.y, value: n.value, color: n.color, 
                 parentX: p ? p.x : undefined, parentY: p ? p.y : undefined,
                 hasLeft: !!n.left, hasRight: !!n.right,
-                height: n.height // Include height here
+                height: n.height
             });
             trav(n.left, n); trav(n.right, n);
         };
@@ -855,14 +874,12 @@ const app = {
     init: function() { this.viz = new Visualizer('treeCanvas'); this.updateUI(); },
     updateSpeed: function() {
         const val = parseFloat(document.getElementById('speedSlider').value);
-        // document.getElementById('speedLabel').innerText = '1/' + val + 'x';
         this.viz.setSpeed(val);
     },
     togglePause: function() {
         const isPaused = this.viz.togglePause();
         const btn = document.getElementById('btnPause');
         btn.innerText = isPaused ? "Resume" : "Pause";
-        btn.style.backgroundColor = isPaused ? "#2E7D32" : "#455A64";
     },
     handleInsert: function() { 
         const inp = document.getElementById('inputValue'); const val = parseInt(inp.value);
@@ -896,6 +913,10 @@ const app = {
         for (let val of values) { this.tree.insert(val, batchRecorder); }
         this.viz.enqueueOperation(snaps);
         this.updateUI();
+    },
+    toggleModal: function() {
+        const m = document.getElementById('helpModal');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
     },
     runOp: function(fn, allowsUndo = true) {
         if(this.viz.isPaused) this.togglePause();
