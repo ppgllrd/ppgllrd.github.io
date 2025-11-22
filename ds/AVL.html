@@ -17,6 +17,7 @@
             --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
             --btn-random: #EF6C00;
+            --btn-demo: #7B1FA2; /* Deep Purple for Demos */
         }
 
         body {
@@ -64,6 +65,7 @@
         .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); }
         .btn-random { background-color: var(--btn-random); }
+        .btn-demo { background-color: var(--btn-demo); }
         .btn-pause { background-color: #455A64; width: 80px;}
         .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
@@ -142,10 +144,12 @@
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
-            <button class="btn-random" title="Generate random tree" onclick="app.handleRandomTree()">Random</button>
+            <button class="btn-demo" title="Demo: Simple Rotation (Line)" onclick="app.handleDemoSimple()">Simple Rot</button>
+            <button class="btn-demo" title="Demo: Double Rotation (Zig-Zag)" onclick="app.handleDemoDouble()">Double Rot</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
+            <button class="btn-random" title="Generate random tree" onclick="app.handleRandomTree()">Random</button>
             <button class="btn-undo" title="Undo last action" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
             <button class="btn-clear" title="Clear the tree" onclick="app.handleClear()">Clear</button>
         </div>
@@ -209,22 +213,19 @@
 </div>
 
 <script>
-// Adapted colors to match the LeftistHeap style (Cyan/Green theme with Blue edges)
 const COLORS = {
-    DEFAULT: '#B0F9B0',    // Light Green (standard node)
-    STROKE: '#B0F9B0',     // Border standard
-    
-    TEXT: '#CC0000',       // Red text
-    EDGE: '#1668BD',       // Blue edges
-    
-    NEW: '#4CAF50',        // Darker Green for new
-    VISIT: '#2196F3',      // Blue for traversal
-    PIVOT: '#FF5722',      // Orange for rotation pivot
-    CHILD: '#FFC107',      // Yellow for rotation child
-    FOUND: '#00E676',      // Bright Green found
-    DELETE: '#F44336',     // Red delete
-    NULL_LINK: '#1668BD',  // Blue null links
-    ARROW: '#D50000'       // Red arrows
+    DEFAULT: '#B0F9B0',    
+    STROKE: '#B0F9B0',     
+    TEXT: '#CC0000',       
+    EDGE: '#1668BD',       
+    NEW: '#4CAF50',        
+    VISIT: '#2196F3',      
+    PIVOT: '#FF5722',      
+    CHILD: '#FFC107',      
+    FOUND: '#00E676',      
+    DELETE: '#F44336',     
+    NULL_LINK: '#1668BD',  
+    ARROW: '#D50000'       
 };
 
 class Node {
@@ -278,7 +279,7 @@ class AVLTree {
         y.color = COLORS.PIVOT; x.color = COLORS.CHILD;
         record(this.root, null, { 
             pause: true, 
-            text: `Right Rotate: ${y.value} moves down`,
+            text: `Right Rotation: ${y.value} moves down, ${x.value} moves up. Order Preserved.`,
             rotation: { id: y.id, dir: 'CW' } 
         });
         x.right = y; y.left = T2;
@@ -292,7 +293,7 @@ class AVLTree {
         x.color = COLORS.PIVOT; y.color = COLORS.CHILD;
         record(this.root, null, { 
             pause: true, 
-            text: `Left Rotate: ${x.value} moves down`,
+            text: `Left Rotation: ${x.value} moves down, ${y.value} moves up. Order Preserved.`,
             rotation: { id: x.id, dir: 'CCW' }
         });
         y.left = x; x.right = T2;
@@ -407,8 +408,8 @@ class Visualizer {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
-        this.nodeRadius = 28; // Matched to LeftistHeap
-        this.levelHeight = 70; // Matched to LeftistHeap
+        this.nodeRadius = 28; 
+        this.levelHeight = 70; 
         this.snapshots = [];
         this.currentSnapshotIndex = -1;
         this.lastDrawnNodes = [];
@@ -422,7 +423,6 @@ class Visualizer {
         window.addEventListener('resize', () => this.resize());
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
         
-        // Modal close
         window.onclick = (e) => {
              if (e.target == document.getElementById('helpModal')) app.toggleModal();
         }
@@ -502,7 +502,7 @@ class Visualizer {
         const traverse = (node, depth) => {
             if (!node) return;
             traverse(node.left, depth + 1);
-            node.x = order * (this.nodeRadius * 2.5); // adjusted for spacing
+            node.x = order * (this.nodeRadius * 2.5);
             node.y = depth * this.levelHeight + 80;
             order++;
             traverse(node.right, depth + 1);
@@ -579,11 +579,9 @@ class Visualizer {
     draw() {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         this.ctx.save();
-        this.ctx.translate(this.canvas.width/2, this.canvas.height/2); // Center align like LeftistHeap
+        this.ctx.translate(this.canvas.width/2, this.canvas.height/2); 
         this.ctx.translate((this.camera.x - this.canvas.width/2), (this.camera.y - this.canvas.height/2));
-        this.ctx.translate(-this.camera.x, -this.camera.y); // Reset for standard cam calc
-        
-        // Simplified camera application matching logic
+        this.ctx.translate(-this.camera.x, -this.camera.y); 
         this.ctx.setTransform(this.camera.scale, 0, 0, this.camera.scale, this.camera.x, this.camera.y);
 
         if (this.snapshots.length === 0) { this.ctx.restore(); return; }
@@ -742,21 +740,16 @@ class Visualizer {
     drawNodeCircle(x, y, val, color, isFloating=false, height=null) {
         const r = this.nodeRadius;
         this.ctx.beginPath(); this.ctx.arc(x, y, r, 0, Math.PI * 2);
-        
-        // Fill Logic matching LeftistHeap aesthetics
         this.ctx.fillStyle = color; 
         this.ctx.fill();
 
-        // Border Logic
         if (color === COLORS.DEFAULT || color === COLORS.STROKE) {
             this.ctx.strokeStyle = COLORS.STROKE; 
-            this.ctx.fillStyle = COLORS.TEXT; // Text Red
+            this.ctx.fillStyle = COLORS.TEXT; 
         } else {
             this.ctx.strokeStyle = '#fff';
-            this.ctx.fillStyle = '#fff'; // Text White for highlighted nodes
+            this.ctx.fillStyle = '#fff'; 
         }
-        
-        // Special check for yellow/light backgrounds on highlighted nodes
         if (color === COLORS.CHILD || color === COLORS.FOUND) {
              this.ctx.fillStyle = '#333';
              this.ctx.strokeStyle = '#fff';
@@ -769,7 +762,6 @@ class Visualizer {
         this.ctx.textAlign = 'center'; this.ctx.textBaseline = 'middle';
         this.ctx.fillText(val, x, y+1);
 
-        // Draw Height Badge (Similar to Weight in LeftistHeap)
         if (height !== null && height !== undefined) {
             const badgeRadius = 10;
             const bx = x + (r * 0.7); const by = y - (r * 0.7);
@@ -911,6 +903,45 @@ const app = {
         while(values.size < count) values.add(Math.floor(Math.random() * 100) + 1);
         const batchRecorder = (root, floating, meta) => { snaps.push({ root: root ? root.clone() : null, floating, meta }); };
         for (let val of values) { this.tree.insert(val, batchRecorder); }
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+    handleDemoSimple: function() {
+        this.handleClear();
+        const snaps = []; snaps.push({ root: null });
+        
+        // Step 1: Build initial unbalanced state (30 -> 20)
+        // We simulate insertion without animation for the setup
+        const silentRecorder = (root, floating, meta) => {}; 
+        this.tree.insert(30, silentRecorder);
+        this.tree.insert(20, silentRecorder);
+        
+        // Snapshot of the setup
+        snaps.push({ root: this.tree.root.clone(), meta: { text: "Setup: 30 -> 20. Next: Insert 10 (Causes Right Rotation)" } });
+        
+        // Step 2: Record the rotation
+        const activeRecorder = (root, floating, meta) => { snaps.push({ root: root ? root.clone() : null, floating, meta }); };
+        this.tree.insert(10, activeRecorder);
+        
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+    handleDemoDouble: function() {
+        this.handleClear();
+        const snaps = []; snaps.push({ root: null });
+        
+        // Step 1: Build initial zigzag state (30 -> 10)
+        const silentRecorder = (root, floating, meta) => {}; 
+        this.tree.insert(30, silentRecorder);
+        this.tree.insert(10, silentRecorder);
+        
+        // Snapshot of the setup
+        snaps.push({ root: this.tree.root.clone(), meta: { text: "Setup: 30 -> 10. Next: Insert 20 (Causes Double Rotation)" } });
+        
+        // Step 2: Record the rotation
+        const activeRecorder = (root, floating, meta) => { snaps.push({ root: root ? root.clone() : null, floating, meta }); };
+        this.tree.insert(20, activeRecorder);
+        
         this.viz.enqueueOperation(snaps);
         this.updateUI();
     },
