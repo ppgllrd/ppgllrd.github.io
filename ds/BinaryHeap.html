@@ -140,8 +140,8 @@
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
-            <button class="btn-random" title="Sequential Insertion O(n log n)" onclick="app.handleRandomHeap()">Random Heap</button>
-            <button class="btn-heapify" title="Floyd's Algorithm O(n)" onclick="app.handleBuildHeap()">Build Heap</button>
+            <button class="btn-random" title="Sequential Insertion O(n log n)" onclick="app.handleRandomHeap()">Build Random</button>
+            <button class="btn-heapify" title="Floyd's Algorithm O(n)" onclick="app.handleBuildHeap()">Build from Array</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
@@ -192,14 +192,14 @@
         <ul>
             <li><strong>Insert:</strong> Add at the end (bottom-right) and "bubble up" (swap with parent). <span class="complexity">O(log n)</span></li>
             <li><strong>Delete Minimum:</strong> Remove root, move last element to root, and "bubble down" (swap with smallest child). <span class="complexity">O(log n)</span></li>
-            <li><strong>Get Minimum:</strong> <span class="complexity">O(1)</span></li>
+            <li><strong>Get Minimum:</strong> Minimum element is at the root. <span class="complexity">O(1)</span></li>
         </ul>
 
         <h3>Build Algorithms</h3>
-        <p><strong>Random Heap (Sequential):</strong> Inserts N elements one by one.<br>
+        <p><strong>Random Heap (Sequential):</strong> Inserts n elements one by one.<br>
         Complexity: <span class="complexity">O(n log n)</span></p>
         
-        <p><strong>Build Heap (Floyd's Algorithm):</strong> Treats array as a tree and fixes subtrees from bottom up.<br>
+        <p><strong>Build Heap (Floyd's Algorithm):</strong> Treats array as a tree and heapifies subtrees from bottom up (last non-leaf node to root).<br>
         Complexity: <span class="complexity">O(n)</span> (More efficient!)</p>
     </div>
 </div>
@@ -440,10 +440,14 @@ class MinHeap {
 
             if (this.heap[smallestChildIdx].val < this.heap[index].val) {
                 [this.heap[index], this.heap[smallestChildIdx]] = [this.heap[smallestChildIdx], this.heap[index]];
-                
+                let heapifiedColor = COLORS.DEFAULT;
+                if (isBuildHeap) {
+                    persistentSet.add(index);
+                    heapifiedColor = COLORS.HEAPIFIED;
+                }
                 recordSnapshot([...this.heap], {
                     text: 'Swapped',
-                    highlights: [{ idx: smallestChildIdx, color: COLORS.NEW }, { idx: index, color: isBuildHeap ? COLORS.HEAPIFIED : COLORS.DEFAULT }],
+                    highlights: [{ idx: smallestChildIdx, color: COLORS.NEW }, { idx: index, color: heapifiedColor }],
                     heapifiedSet: persistentSet ? new Set(persistentSet) : null
                 });
                 index = smallestChildIdx;

@@ -147,11 +147,11 @@
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
-            <button class="btn-merge" title="Merge two random trees" onclick="app.handleMergeScenario()">Merge Demo</button>
+            <button class="btn-merge" title="Merge two random leftist heaps" onclick="app.handleMergeScenario()">Merge</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
-            <button class="btn-build" title="Sequential Insertion (O(n log n))" onclick="app.handleRandomBuild()">Build Rand</button>
+            <button class="btn-build" title="Sequential Insertion (O(n log n))" onclick="app.handleRandomBuild()">Build Random</button>
             <button class="btn-merges" title="Pairwise Merge (O(n))" onclick="app.handleBottomUpBuild()">Build Bottom-Up</button>
 
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
@@ -195,22 +195,24 @@
         <h2>Algorithm Details</h2>
         
         <h3>Weight-Biased Leftist Heap (WBLH)</h3>
-        <p>A binary tree with the <strong>Min-Heap property</strong> (Parent &le; Child) and the <strong>Leftist property</strong>: for every node, the weight of the left child is &ge; weight of the right child. The "weight" is the number of nodes in the subtree.</p>
+        <p>A binary tree where each node satisfies the <strong>Min-Heap property</strong> (the key of the parent is less than or equal to the key of the children) and
+             the <strong>Leftist property</strong> (the weight of the left child is greater than or equal to the weight of the right child). 
+             The <strong>weight</strong> is the number of nodes in the subtree.</p>
         
         <h3>Merge Operation</h3>
         <p>The fundamental operation. Merges two heaps by traversing the <strong>rightmost path</strong> of the heap with the smaller root. After merging, if the Leftist property is violated, children are swapped.</p>
         <ul>
-            <li>Complexity: <span class="complexity">O(log N)</span></li>
+            <li>Complexity: <span class="complexity">O(log n)</span></li>
         </ul>
 
         <h3>Minimum / Delete Minimum</h3>
         <p>The minimum is at the root <span class="complexity">O(1)</span>. Deleting it involves merging its left and right subtrees (<span class="complexity">O(log n)</span>).</p>
 
         <h3>Build Algorithms</h3>
-        <p><strong>Build Random (Sequential):</strong> Inserts N elements one by one into an empty heap.<br>
+        <p><strong>Build Random (Sequential):</strong> Inserts n elements one by one into an empty heap.<br>
         Complexity: <span class="complexity">O(n log n)</span></p>
         
-        <p><strong>Build Bottom-Up (Pairwise):</strong> Places N single-node heaps in a queue. Repeatedly merges the first two heaps and places the result at the end, until one remains.<br>
+        <p><strong>Build Bottom-Up (Pairwise):</strong> Places n single-node heaps in a queue. Repeatedly merges the first two heaps and places the result at the end, until one remains.<br>
         Complexity: <span class="complexity">O(n)</span> (More efficient!)</p>
     </div>
 </div>
@@ -221,7 +223,8 @@ const COLORS = {
     FILL1: '#99FFFF', STROKE1: '#99FFFF',
     FILL2: '#B0F9B0', STROKE2: '#B0F9B0', 
     COMPARE_FILL: '#FFFF66', COMPARE_STROKE: '#E65100',
-    
+    MINIMUM: '#CC99FF',    
+    DELETE: '#D32F2F',
     TEXT_VAL: '#CC0000', // red
     EDGE: '#1668BD',
     WEIGHT_TEXT: '#1668BD',
@@ -434,22 +437,45 @@ const app = {
     handleDeleteMin: function() {
         if (!this.mainTree) return;
         this.saveState();
-        const left = this.mainTree.left; const right = this.mainTree.right;
+
+        const rootToDelete = this.mainTree.clone();
+        rootToDelete.highlight = 'delete-target'; 
+
+        const left = this.mainTree.left; 
+        const right = this.mainTree.right;
+        
         const h1 = left ? left.clone() : null;
         const h2 = right ? right.clone() : null;
-        const roots = [h1, h2].filter(x=>x);
-        if(roots.length === 0) { this.steps = [{msg: "Heap empty", roots: []}]; this.mainTree = null; }
-        else if (roots.length === 1) { this.steps = [{msg: "Root removed", roots: roots}]; this.mainTree = roots[0]; }
-        else {
-            this.steps = WBLT.recordMerge(roots, h1, h2);
-            this.mainTree = this.performMerge(this.mainTree.left, this.mainTree.right);
+        
+        const childrenRoots = [h1, h2].filter(x => x);
+
+        let mergeSteps = [];
+        let finalTree = null;
+
+        if (childrenRoots.length === 0) {
+            mergeSteps = [{msg: "Heap empty", roots: []}];
+            finalTree = null;
+        } else if (childrenRoots.length === 1) {
+            mergeSteps = [{msg: "Root removed. Single child remains.", roots: [childrenRoots[0]]}];
+            finalTree = childrenRoots[0];
+        } else {
+            mergeSteps = WBLT.recordMerge(childrenRoots, h1, h2);
+            finalTree = this.performMerge(this.mainTree.left, this.mainTree.right);
         }
+
+        this.steps = [
+            { msg: "Selected Minimum for Deletion", roots: [rootToDelete] }, 
+            { msg: "Removing root...", roots: childrenRoots },
+            ...mergeSteps 
+        ];
+
+        this.mainTree = finalTree;
         this.startAnimation();
     },
 
     handleGetMin: function() {
         if (!this.mainTree) return;
-        const root = this.mainTree.clone(); root.highlight = 'compare';
+        const root = this.mainTree.clone(); root.highlight = 'minimum';
         this.steps = [{ msg: `Minimum: ${root.val}`, roots: [root] }, { msg: "Ready", roots: [this.mainTree.clone()] }];
         this.startAnimation();
     },
@@ -572,7 +598,7 @@ const app = {
     loop: function(ts) {
         if (!this.lastTime) this.lastTime = ts;
         let dt = ts - this.lastTime; this.lastTime = ts;
-        dt /= parseFloat(document.getElementById('speedSlider').value);
+        dt /= parseFloat(document.getElementById('speedSlider').value) * 0.5;
 
         this.camera.x += (this.camera.targetX - this.camera.x) * 0.1;
         this.camera.y += (this.camera.targetY - this.camera.y) * 0.1;
@@ -681,7 +707,22 @@ const app = {
         const ctx = this.ctx;
         let fill = n.origin===1 ? COLORS.FILL1 : COLORS.FILL2;
         let stroke = n.origin===1 ? COLORS.STROKE1 : COLORS.STROKE2;
-        if(n.highlight === 'compare') { fill = COLORS.COMPARE_FILL; stroke = COLORS.COMPARE_STROKE; }
+        
+        let textColor = COLORS.TEXT_VAL; 
+
+        if(n.highlight === 'compare') { 
+            fill = COLORS.COMPARE_FILL; 
+            stroke = COLORS.COMPARE_STROKE; 
+        }
+        else if(n.highlight === 'minimum') { 
+            fill = COLORS.MINIMUM; 
+            stroke = COLORS.MINIMUM; 
+        }
+        else if(n.highlight === 'delete-target') {
+            fill = COLORS.DELETE; 
+            stroke = COLORS.DELETE; 
+            textColor = '#FFFFFF'; 
+        }
 
         ctx.beginPath(); ctx.arc(cx, cy, this.nodeRadius, 0, 2*Math.PI);
         ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke();
@@ -690,8 +731,8 @@ const app = {
              this.drawRotationArrow(cx, cy);
         }
 
-        // Ensure text is black/dark red on top
-        ctx.fillStyle = COLORS.TEXT_VAL; 
+        // Usamos la variable textColor definida arriba
+        ctx.fillStyle = textColor; 
         ctx.font = '22px Arial';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
         ctx.fillText(n.val, cx, cy+1);
