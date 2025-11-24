@@ -1,0 +1,1014 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linear Probing Hash Table</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --panel-bg: #f5f5f5;
+            --border-color: #ddd;
+            
+            /* UI Colors */
+            --btn-insert: #2E7D32; 
+            --btn-delete: #c62828; 
+            --btn-search: #1668BD; 
+            --btn-undo: #6A1B9A;   
+            --btn-gray: #546E7A;
+            --btn-random: #EF6C00;
+        }
+
+        body {
+            margin: 0; padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            display: flex; flex-direction: column; 
+            height: 100vh; height: 100dvh; 
+            overflow: hidden; user-select: none;
+        }
+
+        header {
+            padding: 10px 20px; background-color: var(--panel-bg);
+            display: flex; flex-direction: column; gap: 10px;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            flex-shrink: 0;
+        }
+
+        .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .gui { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        
+        h1 { margin: 0; font-size: 1.2rem; color: #222; }
+        
+        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .sub-controls { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; color: #555; vertical-align: middle;}
+
+        /* Modified: Allow any text, bold, centered */
+        input[type="text"] {
+            padding: 6px; border-radius: 4px; border: 1px solid #999;
+            background: #fff; color: #000; width: 60px; text-align: center; font-weight: bold;
+        }
+        input[type="range"] { width: 100px; cursor: pointer; }
+
+        button {
+            padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer;
+            font-weight: 600; color: white; transition: filter 0.2s, transform 0.1s;
+            font-size: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+        button:active { transform: scale(0.95); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+        .btn-insert { background-color: var(--btn-insert); }
+        .btn-delete { background-color: var(--btn-delete); }
+        .btn-search { background-color: var(--btn-search); }
+        .btn-undo { background-color: var(--btn-undo); }
+        .btn-clear { background-color: var(--btn-gray); }
+        .btn-random { background-color: var(--btn-random); }
+        .btn-pause { background-color: #455A64; width: 80px;}
+        .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
+
+        #canvas-container {
+            flex-grow: 1; position: relative; overflow: hidden;
+            background-color: var(--bg-color);
+            cursor: crosshair;
+            min-height: 0;
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        #legend {
+            position: absolute; top: 20px; left: 20px;
+            background: rgba(255,255,255,0.95); padding: 10px;
+            border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem;
+            pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
+        .square { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #999; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #1668BD; display:inline-block; }
+        .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
+
+        #status-bar {
+            padding: 8px 2px 0px 0px; background-color: var(--panel-bg);
+            font-size: 0.85rem; border-top: 1px solid var(--border-color);
+            display: flex; justify-content: space-between; color: #555;
+            flex-shrink: 0;
+        }
+        #status-text { font-weight: bold; color: #222; }
+
+        #author { 
+            width: 100%;
+            background: #f4f7f6; 
+            font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
+        }
+
+        /* Modal */
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        h2 { color: #2E7D32; margin-top:0; }
+        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
+        .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-top">
+        <h1>Linear Probing Hash Table</h1>
+        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
+    </div>
+    <div class="gui">
+        <div class="controls">
+            <input type="text" id="inputValue" title="Enter any character" placeholder="#" maxlength="1" onkeydown="if(event.key==='Enter') app.handleInsert()">
+            <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
+            <button class="btn-delete" title="Delete a value" onclick="app.handleDelete()">Delete</button>
+            <button class="btn-search" title="Search for a value" onclick="app.handleSearch()">Search</button>
+            
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+            
+            <button class="btn-random" title="Fill with random characters" onclick="app.handleRandomFill()">Random Fill</button>
+            
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
+            <button class="btn-undo" title="Undo last operation" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
+            <button class="btn-clear" title="Clear the table" onclick="app.handleClear()">Clear</button>
+        </div>
+        <div class="sub-controls">
+            <label for="speedSlider">Slowdown:</label>
+            <label title="Slide right to slow down the animation">
+                <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
+            </label>
+            <button class="btn-pause" title="Pause or Resume" onclick="app.togglePause()" id="btnPause">Pause</button>
+        </div>
+    </div>
+    <div id="status-bar">
+        <span id="status-text">Ready.</span>
+    </div>
+</header>
+
+<div id="canvas-container">
+    <canvas id="htCanvas"></canvas>
+    <div id="legend">
+        <div class="legend-item"><div class="square" style="background:#99FFFF;"></div>&nbsp; Cell</div>
+        <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div>&nbsp; Data</div>
+        <div class="legend-item"><div class="dot" style="background:#1668BD;"></div>&nbsp; Null Pointer</div>
+        <div class="legend-item"><div class="arrow-icon" style="color:#1668BD;">&#8595;</div>&nbsp; Reference</div>
+        <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8631;</div>&nbsp; Probe</div>
+        <div class="legend-item"><div class="square" style="background:#D32F2F; border: 2px solid #FF0000; width:12px; height:12px;"></div>&nbsp; Search Miss</div>
+        <div class="legend-item"><div class="square" style="background:#CC99FF; width:30px; text-align:center; font-size:10px;">Hash</div>&nbsp; Calculation</div>
+    </div>
+</div>
+
+<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>Linear Probing Hash Table</h2>
+        
+        <h3>Concept</h3>
+        <p>An open addressing strategy where collisions are resolved by placing the item in the next open slot in the array. To maintain performance, the <strong>Load Factor</strong> (size/capacity) should generally stay below 0.5.</p>
+
+        <h3>Operations & Complexity</h3>
+        <ul>
+            <li>
+                <strong>Insert</strong> <span class="complexity">O(1) avg</span><br>
+                Computes <code>hash(key)</code>. If the cell is occupied (Collision), it probes linearly (<code>index + 1</code>) until a free cell is found.
+                <br><em>Note: If Load Factor > 0.5, <strong>Rehashing</strong> occurs (table doubles size to nearest prime, all keys re-inserted), taking <span class="complexity">O(n)</span>.</em>
+            </li>
+            <li>
+                <strong>Search</strong> <span class="complexity">O(1) avg</span><br>
+                Starts at <code>hash(key)</code>. Probes linearly until the key is found (<strong>Hit</strong>) or an empty cell is encountered (<strong>Miss</strong>).
+            </li>
+            <li>
+                <strong>Delete</strong> <span class="complexity">O(1) avg</span><br>
+                Finds and removes the key. Then, it scans the rest of the <strong>cluster</strong> (contiguous block of occupied cells). Any subsequent keys in the cluster must be <strong>re-inserted</strong> to ensure they remain reachable from their original hash index.
+            </li>
+        </ul>
+    </div>
+</div>
+
+<script>
+const COLORS = {
+    // Structural
+    STRUCT_KEYS_BG: '#99FFFF',  
+    STRUCT_STATS_BG: '#B0F9B0', 
+    
+    // Array
+    CELL_BG: '#99FFFF',     
+    CELL_STROKE: '#FFFFFF', 
+    
+    // Elements
+    DOT: '#1668BD',         
+    ARROW_REF: '#1668BD',   
+    DATA_BG: '#B0F9B0',     
+    TEXT_RED: '#CC0000',    
+    
+    // Action Colors
+    ARROW_PROBE: '#7F00FF', // Purple probe arrows
+    MISS_RING: '#D32F2F',   // Red circle for miss
+    MISS_CELL_BG: '#D32F2F', // Light Red for miss background
+    HIT_CELL: '#00FF00',    // Intense Green for hit
+    
+    HASH_BOX_BG: '#CC99FF'
+};
+
+function isPrime(num) {
+    if (num <= 1) return false;
+    if (num <= 3) return true;
+    if (num % 2 === 0 || num % 3 === 0) return false;
+    for (let i = 5; i * i <= num; i += 6) {
+        if (num % i === 0 || num % (i + 2) === 0) return false;
+    }
+    return true;
+}
+
+function nextPrime(num) {
+    if (num <= 1) return 2;
+    let prime = num;
+    let found = false;
+    while (!found) {
+        prime++;
+        if (isPrime(prime)) found = true;
+    }
+    return prime;
+}
+
+class LinearProbingHashTable {
+    constructor(capacity = 17) { 
+        this.capacity = capacity;
+        this.table = new Array(capacity).fill(null);
+        this.size = 0;
+        this.maxLoadFactor = 0.5;
+        this.history = [];
+        this.probePath = [];
+    }
+
+    saveToHistory() {
+        const state = {
+            table: [...this.table],
+            size: this.size,
+            capacity: this.capacity,
+            maxLoadFactor: this.maxLoadFactor
+        };
+        this.history.push(state);
+        if (this.history.length > 20) this.history.shift();
+    }
+
+    restoreFromHistory() {
+        if (this.history.length === 0) return null;
+        const state = this.history.pop();
+        this.table = state.table;
+        this.size = state.size;
+        this.capacity = state.capacity;
+        this.maxLoadFactor = state.maxLoadFactor;
+        return this;
+    }
+
+    hash(key) {
+        // Accepts any character
+        const code = key.charCodeAt(0);
+        return code % this.capacity;
+    }
+
+    getSnapshotData() {
+        return {
+            table: [...this.table],
+            size: this.size,
+            capacity: this.capacity,
+            maxLoadFactor: this.maxLoadFactor
+        };
+    }
+
+    resetProbePath() { this.probePath = []; }
+
+    performInsertLogic(key, recordSnapshot) {
+        let idx = this.hash(key);
+        let startIdx = idx;
+        let initialIdx = idx; 
+        
+        // 1. Hash Calc
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Hash: '${key}' -> ${idx}`,
+            hashCalc: { key: key, hash: idx },
+            probeArrows: [...this.probePath],
+            startProbeIdx: initialIdx
+        });
+
+        // 2. Probing
+        while (this.table[idx] !== null) {
+            if (this.table[idx] === key) {
+                recordSnapshot(this.getSnapshotData(), { 
+                    text: `Key '${key}' exists.`, 
+                    highlightIdx: idx, 
+                    hit: true,
+                    hashCalc: { key: key, hash: initialIdx },
+                    probeArrows: [...this.probePath],
+                    startProbeIdx: initialIdx
+                });
+                return;
+            }
+            
+            const nextIdx = (idx + 1) % this.capacity;
+            this.probePath.push({ from: idx, to: nextIdx });
+
+            recordSnapshot(this.getSnapshotData(), { 
+                text: `Collision at ${idx}. Probing...`, 
+                highlightIdx: idx, 
+                // Just visual probing, not a miss yet
+                hashCalc: { key: key, hash: initialIdx },
+                probeArrows: [...this.probePath],
+                startProbeIdx: initialIdx
+            });
+            
+            idx = nextIdx;
+            if (idx === startIdx) return; 
+        }
+
+        // 3. Insert
+        this.table[idx] = key;
+        this.size++;
+        
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Inserted '${key}' at ${idx}.`, 
+            highlightIdx: idx,
+            hit: true,
+            hashCalc: { key: key, hash: initialIdx },
+            probeArrows: [...this.probePath],
+            startProbeIdx: initialIdx
+        });
+    }
+
+    insert(key, recordSnapshot) {
+        if ((this.size) / this.capacity > this.maxLoadFactor) {
+            this.rehash(recordSnapshot);
+        }
+
+        this.saveToHistory();
+        this.resetProbePath();
+        this.performInsertLogic(key, recordSnapshot);
+        this.cleanUp(recordSnapshot);
+    }
+
+    rehash(recordSnapshot) {
+        recordSnapshot(this.getSnapshotData(), { text: `Load Factor > ${this.maxLoadFactor}. Rehashing...`, pause: true });
+        
+        let oldTable = this.table;
+        this.capacity = nextPrime(this.capacity * 2);
+        this.table = new Array(this.capacity).fill(null);
+        this.size = 0;
+        
+        recordSnapshot(this.getSnapshotData(), { text: `New table size: ${this.capacity}. Re-inserting keys...` });
+
+        for (let key of oldTable) {
+            if (key !== null) {
+                this.resetProbePath(); 
+                this.performInsertLogic(key, recordSnapshot);
+            }
+        }
+        this.resetProbePath();
+        recordSnapshot(this.getSnapshotData(), { text: `Rehashing complete.` });
+    }
+
+    search(key, recordSnapshot) {
+        this.resetProbePath();
+        let idx = this.hash(key);
+        let initialIdx = idx;
+        let steps = 0;
+
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Searching '${key}'. Hash: ${idx}`, 
+            hashCalc: { key: key, hash: idx },
+            probeArrows: [],
+            startProbeIdx: initialIdx
+        });
+
+        while (this.table[idx] !== null) {
+            if (this.table[idx] === key) {
+                recordSnapshot(this.getSnapshotData(), { 
+                    text: `Found '${key}' at ${idx}.`, 
+                    highlightIdx: idx, 
+                    hit: true, 
+                    hashCalc: { key: key, hash: initialIdx },
+                    probeArrows: [...this.probePath],
+                    startProbeIdx: initialIdx
+                });
+                this.cleanUp(recordSnapshot);
+                return;
+            }
+            
+            const nextIdx = (idx + 1) % this.capacity;
+            this.probePath.push({ from: idx, to: nextIdx });
+
+            recordSnapshot(this.getSnapshotData(), { 
+                text: `Probing...`, 
+                highlightIdx: idx,
+                hashCalc: { key: key, hash: initialIdx },
+                probeArrows: [...this.probePath],
+                startProbeIdx: initialIdx
+            });
+
+            idx = nextIdx;
+            steps++;
+            if (steps >= this.capacity) break;
+        }
+
+        // MISS - Red background and ring
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Index ${idx} is empty. Key '${key}' NOT found.`, 
+            highlightIdx: idx, 
+            miss: true, 
+            hashCalc: { key: key, hash: initialIdx },
+            probeArrows: [...this.probePath],
+            startProbeIdx: initialIdx
+        });
+        this.cleanUp(recordSnapshot);
+    }
+
+    delete(key, recordSnapshot) {
+        this.saveToHistory();
+        this.resetProbePath();
+        let idx = this.hash(key);
+        let initialIdx = idx;
+        let steps = 0;
+
+        // Find
+        let foundIndex = -1;
+        while (this.table[idx] !== null) {
+            if (this.table[idx] === key) {
+                foundIndex = idx;
+                break;
+            }
+            const nextIdx = (idx + 1) % this.capacity;
+            this.probePath.push({ from: idx, to: nextIdx });
+            idx = nextIdx;
+            steps++;
+            if (steps >= this.capacity) break;
+        }
+
+        if (foundIndex === -1) {
+            recordSnapshot(this.getSnapshotData(), { 
+                text: `Key '${key}' not found.`, highlightIdx: idx, miss: true, 
+                hashCalc: { key: key, hash: initialIdx },
+                probeArrows: [...this.probePath],
+                startProbeIdx: initialIdx
+            });
+            this.cleanUp(recordSnapshot);
+            return;
+        }
+
+        // Delete
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Found '${key}'. Removing...`, highlightIdx: foundIndex, hit: true, 
+            hashCalc: { key: key, hash: initialIdx },
+            probeArrows: [...this.probePath],
+            startProbeIdx: initialIdx
+        });
+        
+        this.table[foundIndex] = null;
+        this.size--;
+        this.resetProbePath(); 
+
+        // Reinsert Cluster
+        idx = (foundIndex + 1) % this.capacity;
+        while (this.table[idx] !== null) {
+            let keyToReinsert = this.table[idx];
+            this.table[idx] = null;
+            this.size--; 
+            
+            let rehashIdx = this.hash(keyToReinsert);
+            
+            // Show Hash Box for item being moved
+            recordSnapshot(this.getSnapshotData(), { 
+                text: `Re-inserting '${keyToReinsert}' (was at ${idx}). New start: ${rehashIdx}`, 
+                highlightIdx: idx,
+                hashCalc: { key: keyToReinsert, hash: rehashIdx },
+                startProbeIdx: rehashIdx 
+            });
+
+            let curr = rehashIdx;
+            let path = [];
+            while (this.table[curr] !== null) {
+                let next = (curr + 1) % this.capacity;
+                path.push({from: curr, to: next});
+                curr = next;
+            }
+            this.table[curr] = keyToReinsert;
+            this.size++;
+            
+            recordSnapshot(this.getSnapshotData(), { 
+                text: `Moved '${keyToReinsert}' to ${curr}.`, 
+                highlightIdx: curr, 
+                hit: true,
+                hashCalc: { key: keyToReinsert, hash: rehashIdx },
+                probeArrows: path,
+                startProbeIdx: rehashIdx
+            });
+
+            idx = (idx + 1) % this.capacity;
+        }
+
+        recordSnapshot(this.getSnapshotData(), { text: "Deletion complete." });
+        this.cleanUp(recordSnapshot);
+    }
+
+    cleanUp(recordSnapshot) {
+        recordSnapshot(this.getSnapshotData(), { text: 'Ready.', probeArrows: [] });
+    }
+}
+
+class Visualizer {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.boxSize = 40;
+        
+        this.snapshots = [];
+        this.currentSnapshotIndex = -1;
+        this.state = 'IDLE';
+        this.isPaused = false;
+        this.morphProgress = 0;
+        this.baseSpeed = 0.05;
+        this.currentSpeedFactor = 1;
+        this.pauseTimer = 0;
+        
+        // Viewport tracking
+        this.lastScale = 1;
+        this.lastOffsetX = 0;
+        this.lastOffsetY = 0;
+        this.lastArrayX = 0;
+        this.lastArrayY = 0;
+        
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
+
+        requestAnimationFrame(t => this.loop(t));
+    }
+
+    resize() {
+        const container = document.getElementById('canvas-container');
+        this.canvas.width = container.offsetWidth;
+        this.canvas.height = container.offsetHeight;
+        if (this.snapshots.length > 0 && this.currentSnapshotIndex >= 0) {
+            this.draw();
+        }
+    }
+
+    setSpeed(val) { this.currentSpeedFactor = 1 / val; }
+    togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
+
+    enqueueOperation(snapshots) {
+        this.snapshots.push(...snapshots);
+        if (this.state === 'IDLE' && this.snapshots.length > 0) {
+            if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
+            this.state = 'MORPH';
+        }
+    }
+
+    loop(timestamp) {
+        if (!this.isPaused) this.update();
+        this.draw();
+        requestAnimationFrame(t => this.loop(t));
+    }
+
+    update() {
+        if (this.state === 'MORPH') {
+            this.morphProgress += this.baseSpeed * this.currentSpeedFactor;
+            if (this.morphProgress >= 1) {
+                this.morphProgress = 1;
+                this.state = 'WAITING';
+                this.pauseTimer = 30 / this.currentSpeedFactor;
+            }
+        } else if (this.state === 'WAITING') {
+            this.pauseTimer--;
+            if (this.pauseTimer <= 0) {
+                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                    this.currentSnapshotIndex++;
+                    this.morphProgress = 0;
+                    this.state = 'MORPH';
+                    const snap = this.snapshots[this.currentSnapshotIndex];
+                    if (snap.meta && snap.meta.text) document.getElementById('status-text').innerText = snap.meta.text;
+                    if (snap.meta && snap.meta.pause) this.pauseTimer = 60; 
+                } else {
+                    this.state = 'IDLE';
+                    document.getElementById('status-text').innerText = "Ready.";
+                }
+            }
+        }
+    }
+
+    handleClick(e) {
+        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return;
+        const snap = this.snapshots[this.currentSnapshotIndex];
+        const data = snap.tableData;
+        
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        const lx = (mx - this.lastOffsetX) / this.lastScale;
+        const ly = (my - this.lastOffsetY) / this.lastScale;
+
+        const cellSize = this.boxSize;
+        const boxW = 30;
+        const boxH = 30;
+        const dataYStart = this.lastArrayY + cellSize/2 + 60;
+
+        for (let i = 0; i < data.capacity; i++) {
+            if (data.table[i] !== null) {
+                const cellCenterX = this.lastArrayX + i * cellSize + cellSize/2;
+                const boxX = cellCenterX - boxW/2;
+                const boxY = dataYStart;
+                
+                if (lx >= boxX && lx <= boxX + boxW && ly >= boxY && ly <= boxY + boxH) {
+                    document.getElementById('inputValue').value = data.table[i];
+                    document.getElementById('inputValue').focus();
+                    return;
+                }
+            }
+        }
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        if (this.snapshots.length === 0) return;
+
+        const idx = Math.max(0, this.currentSnapshotIndex);
+        const snap = this.snapshots[idx];
+        const meta = snap.meta || {};
+
+        const capacity = snap.tableData.capacity;
+        const padding = 50;
+        const leftPanelW = 130; 
+        const gap = 0; 
+        const arrayW = capacity * this.boxSize;
+        const logicalWidth = leftPanelW + gap + arrayW + padding * 1.5;
+        const logicalHeight = 400; 
+
+        const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight) * 0.95;
+        const offsetX = (this.canvas.width - logicalWidth * scale) / 2;
+        const offsetY = (this.canvas.height - logicalHeight * scale) / 2;
+
+        this.lastScale = scale;
+        this.lastOffsetX = offsetX;
+        this.lastOffsetY = offsetY;
+
+        this.ctx.save();
+        this.ctx.translate(offsetX, offsetY);
+        this.ctx.scale(scale, scale);
+
+        this.drawScene(snap.tableData, meta, leftPanelW + gap + padding);
+        this.ctx.restore();
+    }
+
+    drawScene(data, meta, arrayStartX) {
+        const cellSize = this.boxSize;
+        const baseY = 200;
+
+        this.lastArrayX = arrayStartX;
+        this.lastArrayY = baseY;
+
+        this.drawStruct(85, baseY, 50, data, arrayStartX);
+        this.drawArray(arrayStartX, baseY, cellSize, data, meta);
+
+        if (meta.hashCalc) {
+            const arrayCenterX = arrayStartX + (data.capacity * cellSize) / 2;
+            this.drawHashBox(arrayCenterX, 30, meta.hashCalc);
+        }
+    }
+
+    drawStruct(x, y, w, data, arrowDestX) {
+        const ctx = this.ctx;
+        const h = 35; 
+
+        // Row 1: Keys
+        ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000';
+        ctx.fillText('keys', x - 5, y + 23);
+        
+        ctx.fillStyle = COLORS.STRUCT_KEYS_BG;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(x, y, w, h);
+        
+        const dotX = x + w/2; const dotY = y + h/2;
+        ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
+        ctx.fillStyle = COLORS.DOT; ctx.fill();
+        
+        const arrowTargetY = dotY; 
+        this.drawArrow(dotX, dotY, arrowDestX, arrowTargetY, COLORS.ARROW_REF, 10);
+
+        // Row 2: Size
+        ctx.textAlign = 'right'; ctx.fillStyle = '#000';
+        ctx.fillText('size', x - 5, y + h + 23);
+        
+        ctx.fillStyle = COLORS.STRUCT_STATS_BG;
+        ctx.fillRect(x, y + h, w, h);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(x, y + h, w, h);
+        
+        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial';
+        ctx.fillText(data.size, x + w/2, y + h + 24);
+
+        // Row 3: MaxLoadFactor
+        ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000';
+        ctx.fillText('maxLoadFactor', x - 5, y + h*2 + 23);
+        
+        ctx.fillStyle = COLORS.STRUCT_STATS_BG;
+        ctx.fillRect(x, y + h*2, w, h);
+        ctx.strokeStyle = '#fff';
+        ctx.strokeRect(x, y + h*2, w, h);
+        
+        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '18px Arial';
+        ctx.fillText(data.maxLoadFactor, x + w/2, y + h*2 + 24);
+    }
+
+    drawArray(x, y, size, data, meta) {
+        const ctx = this.ctx;
+        const table = data.table;
+
+        for(let i = 0; i < data.capacity; i++) {
+            const cx = x + i * size;
+            const cy = y;
+
+            // Index
+            ctx.fillStyle = '#000'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
+            ctx.fillText(i, cx + size/2, cy - 8);
+
+            // Cell
+            ctx.fillStyle = COLORS.CELL_BG;
+            
+            // Red background for MISS, Green for HIT
+            if (meta.highlightIdx === i) {
+                if (meta.hit) ctx.fillStyle = COLORS.HIT_CELL;
+                if (meta.miss) ctx.fillStyle = COLORS.MISS_CELL_BG;
+            }
+
+            ctx.fillRect(cx, cy, size, size);
+            ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1;
+            ctx.strokeRect(cx, cy, size, size);
+
+            // Dot (Pointer)
+            const dotX = cx + size/2;
+            const dotY = cy + size/2;
+            const occupied = table[i] !== null;
+
+            ctx.beginPath();
+            ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
+            ctx.fillStyle = COLORS.DOT; ctx.fill();
+
+            if (occupied) {
+                // Arrow down
+                this.drawArrow(dotX, dotY, dotX, dotY + 60, COLORS.ARROW_REF, 10);
+                
+                // Data Box
+                const boxY = dotY + 60;
+                const boxW = 30; const boxH = 30;
+                ctx.fillStyle = COLORS.DATA_BG;
+                ctx.fillRect(dotX - boxW/2, boxY, boxW, boxH);
+                
+                ctx.fillStyle = COLORS.TEXT_RED;
+                ctx.font = '20px Arial';
+                ctx.fillText(table[i], dotX, boxY + 22);
+            } else {
+                ctx.strokeStyle = COLORS.DOT;
+                ctx.lineWidth = 2;
+                ctx.stroke(); 
+            }
+
+            // Red Ring for Search Miss
+            if (meta.highlightIdx === i && meta.miss) {
+                ctx.beginPath(); ctx.arc(dotX, dotY, 12, 0, Math.PI*2);
+                ctx.strokeStyle = COLORS.MISS_RING; ctx.lineWidth = 3; ctx.stroke();
+            }
+        }
+
+        // Probing Visuals
+        const arrowY = y - 25; 
+        
+        // 1. Vertical Arrow for First Probe / Hash Index
+        if (meta.startProbeIdx !== undefined) {
+             const ax = x + meta.startProbeIdx * size + size/2;
+             this.drawArrow(ax, arrowY - 30, ax, arrowY, COLORS.ARROW_PROBE, 10);
+        }
+
+        // 2. Arcs for Jumps
+        if (meta.probeArrows) {
+            meta.probeArrows.forEach(arrow => {
+                const idx1 = arrow.from;
+                const idx2 = arrow.to;
+                const x1 = x + idx1 * size + 2*size/3;
+                const x2 = x + idx2 * size + size/2;
+                
+                ctx.strokeStyle = COLORS.ARROW_PROBE;
+                ctx.lineWidth = 3;
+                ctx.beginPath();
+                ctx.moveTo(x1, arrowY);
+                
+                let midX, cpY;
+
+                // Logic for arc
+                if (Math.abs(idx2 - idx1) > 1 && idx2 < idx1) {
+                    // Wrap around visual: Curve out to right, curve in from left
+                    // Curve OUT
+                    ctx.quadraticCurveTo(x1 + 30, arrowY - 60, x1 + 60, arrowY - 10);
+                    ctx.stroke();
+                    // Arrowhead fade out indicator (optional, keep simple)
+                    
+                    // Curve IN
+                    ctx.beginPath();
+                    ctx.moveTo(x2 - 30, arrowY - 10);
+                    // Calculate Control Point for IN curve to calculate angle
+                    const cpInX = x2 - 15; const cpInY = arrowY - 40;
+                    ctx.quadraticCurveTo(cpInX, cpInY, x2 - 1, arrowY - 3);
+                    ctx.stroke();
+                    
+                    // Draw head based on IN curve vector
+                    const angle = Math.atan2(arrowY - cpInY, x2 - cpInX);
+                    this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
+
+                } else {
+                    // Normal Jump
+                    midX = (x1 + x2) / 2;
+                    cpY = arrowY - 50;
+                    ctx.quadraticCurveTo(midX, cpY, x2 - 1, arrowY - 3);
+                    ctx.stroke();
+                    
+                    // Calculate Tangent Angle at x2
+                    // Bezier Derivative at t=1 is proportional to P2 - P1 (Target - Control)
+                    // P2 = (x2, arrowY), P1 = (midX, cpY)
+                    const angle = Math.atan2(arrowY - cpY, x2 - midX);
+                    this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
+                }
+            });
+        }
+    }
+
+    drawArrow(x1, y1, x2, y2, color, headSize=5) {
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3;
+        ctx.beginPath(); 
+        if (x1 == x2) {
+            ctx.moveTo(x1, y1); ctx.lineTo(x2, y2-3); 
+        } else {
+            ctx.moveTo(x1, y1); ctx.lineTo(x2 - headSize, y2);
+        }
+        ctx.stroke();
+        
+        const angle = Math.atan2(y2-y1, x2-x1);
+        this.drawArrowHead(x2, y2, angle, color, headSize);
+    }
+
+    // Accurate rotation arrowhead
+    drawArrowHead(x, y, angle, color, size) {
+        const ctx = this.ctx;
+        ctx.fillStyle = color;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        // Arrowhead shape pointing right (angle 0)
+        ctx.lineTo(-size, -size/2);
+        ctx.lineTo(-size, size/2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    drawHashBox(x, y, info) {
+        const ctx = this.ctx;
+        const w = 100; const h = 40;
+        const boxX = x - w/2; const boxY = y;
+
+        // Input key
+        ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '24px Arial'; ctx.textAlign = 'right';
+        ctx.fillText(info.key, boxX - 40, boxY + 26);
+        this.drawArrow(boxX - 35, boxY + 18, boxX - 1, boxY + 18, COLORS.ARROW_PROBE, 10);
+
+        // Box
+        ctx.fillStyle = COLORS.HASH_BOX_BG;
+        ctx.fillRect(boxX, boxY, w, h);
+        ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('hash', boxX + w/2, boxY + 26);
+
+        // Output
+        this.drawArrow(boxX + w + 1, boxY + 18, boxX + w + 40, boxY + 18, COLORS.ARROW_PROBE, 10);
+        ctx.fillStyle = '#000'; ctx.font = '24px Arial'; ctx.textAlign = 'left';
+        ctx.fillText(info.hash, boxX + w + 45, boxY + 26);
+    }
+}
+
+const app = {
+    ht: new LinearProbingHashTable(17),
+    viz: null,
+    
+    init: function() { 
+        this.viz = new Visualizer('htCanvas'); 
+        this.viz.snapshots = [{ 
+            tableData: this.ht.getSnapshotData(), 
+            meta: { text: "Ready." } 
+        }];
+        this.viz.currentSnapshotIndex = 0;
+        this.viz.draw();
+        this.updateUI(); 
+    },
+    
+    updateSpeed: function() { 
+        this.viz.setSpeed(parseFloat(document.getElementById('speedSlider').value)); 
+    },
+    
+    togglePause: function() {
+        const isPaused = this.viz.togglePause();
+        document.getElementById('btnPause').innerText = isPaused ? "Resume" : "Pause";
+    },
+
+    updateUI: function() {
+        document.getElementById('btnUndo').disabled = (this.ht.history.length === 0);
+    },
+
+    runOp: function(fn) {
+        if(this.viz.isPaused) this.togglePause();
+        const snaps = [];
+        snaps.push({ tableData: this.ht.getSnapshotData(), meta: {} });
+        fn((tableData, metaData) => { snaps.push({ tableData: tableData, meta: metaData }); });
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+
+    handleInsert: function() {
+        const el = document.getElementById('inputValue');
+        const val = el.value.charAt(0); // Any char
+        if (val.length > 0) {
+            this.runOp(record => this.ht.insert(val, record));
+            el.value = ''; el.focus();
+        }
+    },
+
+    handleDelete: function() {
+        const el = document.getElementById('inputValue');
+        const val = el.value.charAt(0);
+        if (val.length > 0) {
+            this.runOp(record => this.ht.delete(val, record));
+            el.value = '';
+        }
+    },
+
+    handleSearch: function() {
+        const el = document.getElementById('inputValue');
+        const val = el.value.charAt(0);
+        if (val.length > 0) {
+            this.runOp(record => this.ht.search(val, record));
+        }
+    },
+
+    handleUndo: function() {
+        const oldTable = this.ht.restoreFromHistory();
+        if (oldTable) {
+            this.viz.enqueueOperation([{ tableData: this.ht.getSnapshotData(), meta: { text: "Undo successful." } }]);
+            this.updateUI();
+        }
+    },
+
+    handleClear: function() {
+        this.ht = new LinearProbingHashTable(17);
+        this.viz.snapshots = [{ tableData: this.ht.getSnapshotData(), meta: { text: "Table cleared." } }];
+        this.viz.currentSnapshotIndex = 0;
+        this.viz.state = 'IDLE';
+        this.viz.draw(); 
+        
+        this.updateUI();
+    },
+
+    handleRandomFill: function() {
+        this.handleClear();
+        const count = 8; 
+        const snaps = [];
+        const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
+        snaps.push({ tableData: this.ht.getSnapshotData(), meta: { text: "Starting Random Fill..." } });
+        
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        for(let i=0; i<count; i++) {
+            const char = chars.charAt(Math.floor(Math.random() * chars.length));
+            this.ht.insert(char, batchRecord);
+        }
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+
+    toggleModal: function() {
+        const m = document.getElementById('helpModal');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+    }
+};
+
+window.onload = () => app.init();
+
+</script>
+</body>
+</html>
