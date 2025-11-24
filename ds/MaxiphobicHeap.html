@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Maxiphobic Heap Visualizer v38: Fixed Recursion Visibility</title>
+    <title>Maxiphobic Min-Heap Visualizer</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -13,11 +13,12 @@
             /* UI Colors */
             --btn-insert: #2E7D32; 
             --btn-delete: #c62828; 
-            --btn-search: #1565C0; 
+            --btn-search: #1668BD; 
             --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
             --btn-merge: #EF6C00;
-            --btn-build: #7B1FA2;
+            --btn-build: #7B1FA2; 
+            --btn-merges: #00838F; 
         }
 
         body {
@@ -26,7 +27,7 @@
             background-color: var(--bg-color);
             display: flex; flex-direction: column; 
             height: 100vh; 
-            height: 100dvh; /* Mobile fix */
+            height: 100dvh; 
             overflow: hidden; user-select: none;
         }
 
@@ -67,6 +68,7 @@
         .btn-clear { background-color: var(--btn-gray); }
         .btn-merge { background-color: var(--btn-merge); }
         .btn-build { background-color: var(--btn-build); }
+        .btn-merges { background-color: var(--btn-merges); }
         .btn-pause { background-color: #455A64; width: 80px;}
         .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
@@ -87,7 +89,6 @@
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
         .dot { width: 14px; height: 14px; border-radius: 50%; }
         .line-icon { width: 15px; height: 3px; border-radius: 2px; }
-        .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
 
         #status-bar {
             padding: 8px 2px 0px 0px; background-color: var(--panel-bg);
@@ -102,7 +103,7 @@
             background: #f4f7f6; 
             font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
             border-top: 1px solid #ddd;
-            flex-shrink: 0; 
+            flex-shrink: 0;
         }
 
         /* Modal */
@@ -111,33 +112,45 @@
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
         .close:hover { color: black; }
         h2 { color: #2E7D32; margin-top:0; }
-        h3 { color: #1565C0; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
         p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
         .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+        .node-sample {
+            display: inline-block; width: 30px; height: 30px; border-radius: 50%;
+            background: #B0F9B0; border: 1px solid #B0F9B0;
+            text-align: center; line-height: 30px; position: relative;
+            font-family: Arial, sans-serif; font-weight: bold;
+        }    
+        .node-val { color: #D50000; font-size: 12px; }
+        .node-weight { 
+            position: absolute; bottom: -2px; right: -2px; 
+            font-size: 10px; color: #1565C0; background: rgba(255,255,255,0.8); 
+            border-radius: 50%; padding: 1px 3px;
+        }
     </style>
 </head>
 <body>
 
 <header>
     <div class="header-top">
-        <h1>Maxiphobic Heap Visualizer</h1>
+        <h1>Maxiphobic Min-Heap Visualizer</h1>
         <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
     </div>
     <div class="gui">
         <div class="controls">
             <input type="number" id="inputValue" title="Enter a number" placeholder="#" onkeydown="if(event.key==='Enter') app.handleInsert()">
             <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-delete" title="Delete Minimum" onclick="app.handleDeleteMin()">Delete Min</button>
-            <button class="btn-search" title="Show Minimum" onclick="app.handleGetMin()">Get Min</button>
+            <button class="btn-delete" title="Delete the minimum element (Root)" onclick="app.handleDeleteMin()">Delete Minimum</button>
+            <button class="btn-search" title="Show minimum element" onclick="app.handleGetMin()">Minimum</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
-            <button class="btn-merge" title="Merge two random trees" onclick="app.handleMergeScenario()">Merge Demo</button>
+            <button class="btn-merge" title="Merge two random Maxiphobic heaps" onclick="app.handleMergeScenario()">Merge</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
-            <button class="btn-build" title="Sequential Insertion (O(N log N))" onclick="app.handleRandomBuild()">Build Rand</button>
-            <button class="btn-build" title="Pairwise Merge (O(N))" onclick="app.handleBottomUpBuild()">Build Bottom-Up</button>
+            <button class="btn-build" title="Sequential Insertion (O(n log n))" onclick="app.handleRandomBuild()">Build Random</button>
+            <button class="btn-merges" title="Pairwise Merge (O(n))" onclick="app.handleBottomUpBuild()">Build Bottom-Up</button>
 
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
@@ -154,18 +167,20 @@
     </div>
     <div id="status-bar">
         <span id="status-text">Ready.</span>
-        <span id="queue-info">Queue: 0</span>
     </div>
 </header>
 
 <div id="canvas-container">
     <canvas id="treeCanvas"></canvas>
     <div id="legend">
-        <div class="legend-item"><div class="dot" style="background:#C8E6C9; border:2px solid #C8E6C9"></div>&nbsp; Tree 1 (Left)</div>
-        <div class="legend-item"><div class="dot" style="background:#D1C4E9; border:2px solid #D1C4E9"></div>&nbsp; Tree 2 (Right)</div>
-        <div class="legend-item"><div class="dot" style="background:#FFCC80; border:2px solid #E65100"></div>&nbsp; Comparing</div>
-        <div class="legend-item"><div class="line-icon" style="background:#1565C0;"></div>&nbsp; Null Link</div>
-        <div class="legend-item"><div style="border:1px solid #1565C0; border-radius:50%; width:16px; height:16px; text-align:center; font-size:9px; color:#1565C0; font-weight:bold; line-height:16px;">s</div>&nbsp; Weight</div>
+        <div class="legend-item">
+            <div class="node-sample"><span class="node-val">V</span><span class="node-weight">w</span></div>&nbsp; Value / Weight
+        </div>
+        <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:2px solid #B0F9B0"></div>&nbsp; Tree 1 (Left)</div>
+        <div class="legend-item"><div class="dot" style="background:#99FFFF; border:2px solid #99FFFF"></div>&nbsp; Tree 2 (Right)</div>
+        <div class="legend-item"><div class="dot" style="background:#CC99FF; border:2px solid #CC99FF"></div>&nbsp; Comparing/Selected</div>
+        <div class="legend-item"><div class="dot" style="width:10px; height:10px; background:#F44336; border:1px solid #F44336"></div>&nbsp; Max Weight (Winner)</div>
+        <div class="legend-item"><div class="line-icon" style="background:#1668BD;"></div>&nbsp; Null Link</div>
     </div>
 </div>
 
@@ -175,40 +190,53 @@
 <div id="helpModal" class="modal">
     <div class="modal-content">
         <span class="close" onclick="app.toggleModal()">&times;</span>
-        <h2>Maxiphobic Heap Details</h2>
+        <h2>Algorithm Details</h2>
         
-        <h3>Definition</h3>
-        <p>A <strong>Maxiphobic Heap</strong> is a variant of a leftist heap designed to minimize the path length during merges. The name comes from its strategy of "fearing the maximum" weight subtree.</p>
+        <h3>Maxiphobic Heap</h3>
+        <p>A <strong>Maxiphobic Heap</strong> is a kind of heap designed to minimize the path length during merges by avoiding the "heavy" side. It maintains the usual Min-Heap property but determines structure based on subtree weights.</p>
         
-        <h3>Merge Operation</h3>
-        <p>To merge two heaps $H_1$ and $H_2$:
+        <h3>Operations</h3>
+
+        <p><strong>Minimum:</strong> <span class="complexity">O(1)</span><br>
+        The minimum element is always at the root of the tree.</p>
+
+        <p><strong>Insert:</strong> <span class="complexity">O(log n)</span><br>
+        Creates a new single-node heap with the value and merges it with the existing heap.</p>
+
+        <p><strong>Delete Minimum:</strong> <span class="complexity">O(log n)</span><br>
+        Removes the root node. The left and right subtrees of the root are then merged to form the new heap.</p>
+
+        <p><strong>Merge:</strong> <span class="complexity">O(log n)</span><br>
+        Merges two heaps <b>H<sub>1</sub></b> and <b>H<sub>2</sub></b> recursively:
         <ol>
-            <li>Assume $root(H_1) \le root(H_2)$. If not, swap them. $H_1$ becomes the new root.</li>
-            <li>Consider the three available subtrees: $H_1.left$, $H_1.right$, and the entire tree $H_2$.</li>
-            <li>Select the subtree with the <strong>largest weight</strong> (most nodes).</li>
-            <li>This largest subtree becomes the <strong>Left Child</strong> of $H_1$.</li>
-            <li>The other two smaller subtrees are merged recursively to become the <strong>Right Child</strong>.</li>
+            <li>Compare roots. The smaller root stays as the parent.</li>
+            <li>Consider three candidates: <b>H<sub>1</sub>.left</b>, <b>H<sub>1</sub>.right</b>, and <b>H<sub>2</sub></b>.</li>
+            <li><strong>Maxiphobic Rule:</strong> The candidate with the <strong>largest weight</strong> (most nodes) becomes the Left Child.</li>
+            <li>The other two smaller candidates are merged recursively to form the Right Child.</li>
         </ol>
         </p>
-        <ul>
-            <li>Complexity: <span class="complexity">O(log N)</span></li>
-        </ul>
-        
+
         <h3>Build Algorithms</h3>
-        <p><strong>Build Random:</strong> <span class="complexity">O(N log N)</span></p>
-        <p><strong>Build Bottom-Up:</strong> <span class="complexity">O(N)</span></p>
+        <p><strong>Build Random (Sequential):</strong> <span class="complexity">O(n log n)</span><br>
+        Inserts elements one by one into an initially empty heap.</p>
+        
+        <p><strong>Build Bottom-Up (Pairwise):</strong> <span class="complexity">O(n)</span><br>
+        Places all elements as single-node heaps in a queue. Repeatedly takes the first two heaps, merges them, and places the result at the end of the queue.</p>
     </div>
 </div>
 
 <script>
 const COLORS = {
-    FILL1: '#C8E6C9', STROKE1: '#C8E6C9', 
-    FILL2: '#D1C4E9', STROKE2: '#D1C4E9',
-    COMPARE_FILL: '#FFCC80', COMPARE_STROKE: '#E65100',
-    TEXT_VAL: '#000000',
-    EDGE: '#1565C0',
-    WEIGHT_TEXT: '#1565C0',
-    WEIGHT_STROKE: '#1565C0',
+    FILL1: '#99FFFF', STROKE1: '#99FFFF',
+    FILL2: '#B0F9B0', STROKE2: '#B0F9B0', 
+    COMPARE_FILL: '#CC99FF', COMPARE_STROKE: '#CC99FF',
+    MINIMUM: '#CC99FF',    
+    DELETE: '#D32F2F',
+    TEXT_VAL: '#CC0000',
+    EDGE: '#1668BD',
+    WEIGHT_TEXT: '#1668BD',
+    WEIGHT_STROKE: '#1668BD',
+    WEIGHT_HIGHLIGHT: '#F44336', // Red
     ARROW: '#D50000'
 };
 
@@ -222,12 +250,14 @@ class Node {
         this.origin = origin;
         this.x = 0; this.y = 0;
         this.highlight = false;
+        this.highlightWeight = false; // New property
     }
     clone() {
         const n = new Node(this.val, this.origin);
         n.id = this.id; 
         n.weight = this.weight;
         n.highlight = this.highlight;
+        n.highlightWeight = this.highlightWeight; // Important: Copy the weight highlight!
         n.x = this.x; n.y = this.y;
         if (this.left) n.left = this.left.clone();
         if (this.right) n.right = this.right.clone();
@@ -237,127 +267,14 @@ class Node {
 
 const MaxiHeap = {
     getWeight: (n) => n ? n.weight : 0,
-    updateWeight: (n) => { if (n) n.weight = 1 + MaxiHeap.getWeight(n.left) + MaxiHeap.getWeight(n.right); },
 
     recordMerge: (rootList, h1Original, h2Original) => {
         const steps = [];
         let worldRoots = rootList.map(r => r ? r.clone() : null).filter(r => r);
         
-        const snapshot = (msg, highlightIds=[]) => {
-            const frames = worldRoots.map(r => r.clone());
-            const mark = (n) => {
-                if(!n) return;
-                n.highlight = highlightIds.includes(n.id) ? 'compare' : false;
-                mark(n.left); mark(n.right);
-            };
-            frames.forEach(mark);
-            steps.push({ msg, roots: frames });
-        };
-
-        function mergeRec(t1, t2, parent) {
-            if (t1 && t2) snapshot(`Comparing roots: ${t1.val} vs ${t2.val}`, [t1.id, t2.id]);
-
-            if (!t1) {
-                if (parent) {
-                    // Base case: attach remaining tree
-                    const idx = worldRoots.findIndex(n => n.id === t2.id);
-                    if (idx !== -1) worldRoots.splice(idx, 1);
-                    parent.right = t2;
-                }
-                return t2;
-            }
-            if (!t2) return t1;
-
-            // 1. Swap roots
-            if (t1.val > t2.val) {
-                let temp = t1; t1 = t2; t2 = temp;
-                
-                // Top level logic vs Recursion logic
-                if (!parent) {
-                    const i1 = worldRoots.findIndex(n => n.id === t2.id);
-                    const i2 = worldRoots.findIndex(n => n.id === t1.id);
-                    if (i1 !== -1) worldRoots[i1] = t1;
-                    if (i2 !== -1) worldRoots[i2] = t2;
-                }
-                
-                if (!worldRoots.some(n => n.id === t2.id)) worldRoots.push(t2);
-                
-                if (parent) {
-                    // t1 became the root of this subtree, ensure it's not in worldRoots if attached
-                    const idx = worldRoots.findIndex(n => n.id === t1.id);
-                    if (idx !== -1) worldRoots.splice(idx, 1);
-                }
-
-                snapshot(`Swap: ${t1.val} < ${t2.val}. ${t1.val} becomes new root.`, [t1.id, t2.id]);
-            }
-
-            // 2. Candidates
-            let left = t1.left;
-            let right = t1.right;
-            let other = t2;
-
-            let wL = MaxiHeap.getWeight(left);
-            let wR = MaxiHeap.getWeight(right);
-            let wO = MaxiHeap.getWeight(other);
-            
-            t1.weight = t1.weight + t2.weight;
-            
-            // Detach children to visualize them floating
-            t1.left = null;
-            t1.right = null;
-            
-            const addToWorld = (n) => {
-                if (n && !worldRoots.some(r => r.id === n.id)) worldRoots.push(n);
-            };
-            addToWorld(left);
-            addToWorld(right);
-            addToWorld(other);
-            
-            let maxW = Math.max(wL, Math.max(wR, wO));
-            snapshot(`Maxiphobic Selection: L(${wL}), R(${wR}), Other(${wO}). Max: ${maxW}`, [t1.id]);
-            
-            let small1, small2;
-
-            if (wL === maxW) {
-                t1.left = left;
-                const idx = worldRoots.findIndex(n => n.id === left.id);
-                if (idx !== -1) worldRoots.splice(idx, 1); 
-                small1 = right;
-                small2 = other;
-                snapshot(`Left child (w:${wL}) is largest. Merging others.`, [t1.id]);
-            } else if (wR === maxW) {
-                t1.left = right;
-                const idx = worldRoots.findIndex(n => n.id === right.id);
-                if (idx !== -1) worldRoots.splice(idx, 1);
-                small1 = left;
-                small2 = other;
-                snapshot(`Right child (w:${wR}) is largest. Moving to Left.`, [t1.id]);
-            } else {
-                t1.left = other;
-                const idx = worldRoots.findIndex(n => n.id === other.id);
-                if (idx !== -1) worldRoots.splice(idx, 1);
-                small1 = left;
-                small2 = right;
-                snapshot(`Other tree (w:${wO}) is largest. Moving to Left.`, [t1.id]);
-            }
-            
-            // 3. Recursive Merge for Right Child
-            // CRITICAL FIX: Pass null as parent to keep small1/small2 visible in worldRoots during recursion
-            t1.right = mergeRec(small1, small2, null);
-            
-            // Attach result
-            if (t1.right) {
-                const idx = worldRoots.findIndex(n => n.id === t1.right.id);
-                if (idx !== -1) worldRoots.splice(idx, 1);
-            }
-            
-            snapshot(`Merge step complete at ${t1.val}`, [t1.id]);
-            return t1;
-        }
-
-        snapshot("Merge Start", []);
-        
+        let unrelatedQueue = [];
         let t1 = null, t2 = null;
+
         if (h1Original && h2Original) {
              t1 = worldRoots.find(n => n.id === h1Original.id);
              t2 = worldRoots.find(n => n.id === h2Original.id);
@@ -365,14 +282,130 @@ const MaxiHeap = {
         if (!t1 && worldRoots.length > 0) t1 = worldRoots[0];
         if (!t2 && worldRoots.length > 1) t2 = worldRoots[1];
 
-        const res = mergeRec(t1, t2, null);
-        
-        worldRoots = [res];
-        snapshot("Merge Complete", []);
-        return steps;
-    },
+        if (!t1 && !t2) return steps;
+        if (!t1 || !t2) {
+             let survivor = t1 || t2;
+             unrelatedQueue = worldRoots.filter(x => x && x.id !== survivor.id);
+             steps.push({ msg: "One heap is empty. No merge needed.", roots: [survivor, ...unrelatedQueue] });
+             return steps;
+        }
 
-    createRandom: (val, origin) => new Node(val, origin)
+        unrelatedQueue = worldRoots.filter(r => r.id !== t1.id && r.id !== t2.id);
+        let mainTree = t1; 
+        let floatingTree = t2;
+
+        const takeSnapshot = (msg, floatingNodes = [], highlightIds = [], weightHighlightIds = []) => {
+            let frameRoots = [mainTree, ...floatingNodes, ...unrelatedQueue].filter(x => x);
+            let frames = frameRoots.map(r => r.clone());
+            const mark = (n) => {
+                if(!n) return;
+                n.highlight = highlightIds.includes(n.id) ? 'compare' : false;
+                if(weightHighlightIds.includes(n.id)) n.highlightWeight = true;
+                mark(n.left); mark(n.right);
+            };
+            frames.forEach(mark);
+            steps.push({ msg, roots: frames });
+        };
+
+        // Snapshot 0: Initial state side-by-side
+        takeSnapshot(`Merging trees ${t1.val} and ${t2.val}`, [floatingTree]);
+
+        function mergeRec(t1, t2, parent) {
+            if (!t1 && !t2) return null;
+            
+            // Base case: t1 ended, attach t2
+            if (!t1) {
+                if (parent) {
+                    parent.right = t2;
+                    takeSnapshot(`Attaching ${t2.val}`, [], [t2.id]);
+                }
+                return t2;
+            }
+            if (!t2) {
+                takeSnapshot(`Attaching ${t1.val}`, [], [t1.id]);
+                return t1;
+            }
+
+            // 1. Determine actual Winner and Floater BEFORE attaching
+            let winnerNode = (t1.val <= t2.val) ? t1 : t2;
+            let floaterNode = (t1.val <= t2.val) ? t2 : t1;
+        
+            // 2. Structural Attachment
+            if (parent) {
+                parent.right = winnerNode;
+            } else {
+                mainTree = winnerNode;
+            }
+
+            // 3. Snapshot: Winner is attached, Floater is separate.
+            takeSnapshot(`Comparing roots: ${t1.val} vs ${t2.val}`, [floaterNode], [t1.id, t2.id]);
+
+            // 4. Normalize variables
+            t1 = winnerNode;
+            t2 = floaterNode;
+
+            // Update Weight
+            t1.weight = t1.weight + t2.weight;
+
+            // 5. Candidates
+            let left = t1.left;
+            let right = t1.right;
+            let other = t2;
+
+            t1.left = null;
+            t1.right = null;
+            
+            let wL = MaxiHeap.getWeight(left);
+            let wR = MaxiHeap.getWeight(right);
+            let wO = MaxiHeap.getWeight(other);
+            let maxW = Math.max(wL, Math.max(wR, wO));
+
+            // Selection Logic
+            let winner, loser1, loser2;
+            let choiceMsg = "";
+
+            if (wL === maxW) {
+                winner = left; loser1 = right; loser2 = other;
+                choiceMsg = `Left child (weight ${wL}) is heaviest.`;
+            } else if (wR === maxW) {
+                winner = right; loser1 = left; loser2 = other;
+                choiceMsg = `Right child (weight ${wR}) is heaviest. Moves to Left.`;
+            } else {
+                winner = other; loser1 = left; loser2 = right;
+                choiceMsg = `Other tree (weight ${wO}) is heaviest. Moves to Left.`;
+            }
+
+
+            // VISUAL 2: Show candidates floating (Highlight ON)
+            let floats = [left, right, other].filter(x=>x);
+            takeSnapshot(`Candidates: L(weight ${wL}), R(weight ${wR}), Other(weight ${wO})`, floats, [t1.id]);
+
+            // Weight Highlighting
+            let weightHighs = winner ? [winner.id] : [];
+
+            takeSnapshot(`${choiceMsg}`, floats, [t1.id], weightHighs);
+
+            // Attach Winner
+            t1.left = winner;
+            
+            // VISUAL 3: Winner attached (Highlight ON), losers float
+            let nextFloats = [loser1, loser2].filter(x=>x);
+            takeSnapshot(`${choiceMsg} Recurse with remaining two.`, nextFloats, [t1.id], weightHighs);
+
+            takeSnapshot(`${choiceMsg} Recurse with remaining two.`, nextFloats, [], []);
+
+
+            // 7. Recurse (Highlight OFF for next level setup)
+            t1.right = loser1;
+            t1.right = mergeRec(loser1, loser2, t1);
+            
+            return t1;
+        }
+
+        mergeRec(mainTree, floatingTree, null);
+        takeSnapshot("Merge Complete.", []);
+        return steps;
+    }
 };
 
 const app = {
@@ -428,7 +461,7 @@ const app = {
         const val = parseInt(document.getElementById('inputValue').value);
         if (isNaN(val)) return;
         this.saveState();
-        const newNode = new Node(val, 2);
+        const newNode = new Node(val, 2); 
         const h1 = this.mainTree ? this.mainTree.clone() : null;
         const h2 = newNode.clone();
         this.steps = MaxiHeap.recordMerge([h1, h2].filter(x=>x), h1, h2);
@@ -440,45 +473,65 @@ const app = {
     handleDeleteMin: function() {
         if (!this.mainTree) return;
         this.saveState();
-        const left = this.mainTree.left; const right = this.mainTree.right;
+
+        const rootToDelete = this.mainTree.clone();
+        rootToDelete.highlight = 'delete-target'; 
+
+        const left = this.mainTree.left; 
+        const right = this.mainTree.right;
         const h1 = left ? left.clone() : null;
         const h2 = right ? right.clone() : null;
-        const roots = [h1, h2].filter(x=>x);
-        if(roots.length === 0) { this.steps = [{msg: "Heap empty", roots: []}]; this.mainTree = null; }
-        else if (roots.length === 1) { this.steps = [{msg: "Root removed", roots: roots}]; this.mainTree = roots[0]; }
-        else {
-            this.steps = MaxiHeap.recordMerge(roots, h1, h2);
-            this.mainTree = this.performMerge(this.mainTree.left, this.mainTree.right);
+        const childrenRoots = [h1, h2].filter(x => x);
+        let mergeSteps = [];
+        let finalTree = null;
+
+        if (childrenRoots.length === 0) {
+            mergeSteps = [{msg: "Heap empty", roots: []}];
+            finalTree = null;
+        } else if (childrenRoots.length === 1) {
+            mergeSteps = [{msg: "Root removed. Single child remains.", roots: [childrenRoots[0]]}];
+            finalTree = childrenRoots[0];
+        } else {
+            mergeSteps = MaxiHeap.recordMerge(childrenRoots, h1, h2);
+            finalTree = this.performMerge(this.mainTree.left, this.mainTree.right);
         }
+        this.steps = [
+            { msg: "Selected Minimum for Deletion", roots: [rootToDelete] }, 
+            { msg: "Removing root...", roots: childrenRoots },
+            ...mergeSteps 
+        ];
+        this.mainTree = finalTree;
         this.startAnimation();
     },
 
     handleGetMin: function() {
         if (!this.mainTree) return;
-        const root = this.mainTree.clone(); root.highlight = 'compare';
+        const root = this.mainTree.clone(); root.highlight = 'minimum';
         this.steps = [{ msg: `Minimum: ${root.val}`, roots: [root] }, { msg: "Ready", roots: [this.mainTree.clone()] }];
         this.startAnimation();
     },
 
     handleMergeScenario: function() {
         this.saveState();
-        const h1 = this.createRandomTree(5, 1);
-        const h2 = this.createRandomTree(4, 2);
+        // Increased size for better visualization of depth and weight comparison
+        const h1 = this.createRandomTree(8, 1);
+        const h2 = this.createRandomTree(6, 2);
         this.steps = MaxiHeap.recordMerge([h1, h2], h1, h2);
         this.mainTree = this.performMerge(h1.clone(), h2.clone()); 
         this.startAnimation();
     },
-
+    
     handleRandomBuild: function() {
         this.handleClear();
         const vals = Array.from({length: 8}, () => Math.floor(Math.random()*99)+1);
         let tempTree = null;
-        let allSteps = [{ msg: "Start Random Build", roots: [] }];
+        let allSteps = [{ msg: "Start Random Build (O(n log n))", roots: [] }];
         for(let val of vals) {
             const newNode = new Node(val, 2);
             const h1 = tempTree ? tempTree.clone() : null;
             const h2 = newNode.clone();
-            const mergeSteps = MaxiHeap.recordMerge([h1, h2].filter(x=>x), h1, h2);
+            let contextRoots = [h1, h2].filter(x=>x);
+            const mergeSteps = MaxiHeap.recordMerge(contextRoots, h1, h2);
             mergeSteps.forEach(s => s.msg = `Insert ${val}: ${s.msg}`);
             allSteps.push(...mergeSteps);
             tempTree = this.performMerge(tempTree, newNode);
@@ -487,12 +540,13 @@ const app = {
         this.mainTree = tempTree;
         this.startAnimation();
     },
-
+    
     handleBottomUpBuild: function() {
         this.handleClear();
         const count = 12;
         let queue = Array.from({length: count}, (_, i) => new Node(Math.floor(Math.random()*99)+1, (i%2)+1));
-        let allSteps = [{ msg: "Initial Queue of Trees", roots: queue.map(r=>r.clone()) }];
+        let allSteps = [{ msg: "Initial Queue of Trees (O(n))", roots: queue.map(r=>r.clone()) }];
+        
         while(queue.length > 1) {
             const h1 = queue.shift();
             const h2 = queue.shift();
@@ -502,7 +556,7 @@ const app = {
             allSteps.push(...mergeSteps);
             const merged = this.performMerge(h1, h2);
             queue.push(merged);
-            allSteps.push({ msg: "Pair merged, added to queue", roots: queue.map(r => r.clone()) });
+            allSteps.push({ msg: "Pair merged. Moved to end of queue.", roots: queue.map(r => r.clone()) });
         }
         this.mainTree = queue[0];
         this.steps = allSteps;
@@ -538,6 +592,8 @@ const app = {
         if (!h1) return h2;
         if (!h2) return h1;
         if (h1.val > h2.val) { let temp = h1; h1 = h2; h2 = temp; }
+        
+        let w1 = h1.weight; let w2 = h2.weight;
         let left = h1.left;
         let right = h1.right;
         let other = h2;
@@ -545,8 +601,9 @@ const app = {
         let wR = MaxiHeap.getWeight(right);
         let wO = MaxiHeap.getWeight(other);
         let maxW = Math.max(wL, Math.max(wR, wO));
-        
+
         if (wL === maxW) {
+            h1.left = left;
             h1.right = this.performMerge(right, other);
         } else if (wR === maxW) {
             h1.left = right;
@@ -555,32 +612,27 @@ const app = {
             h1.left = other;
             h1.right = this.performMerge(left, right);
         }
-        MaxiHeap.updateWeight(h1);
+        h1.weight = w1 + w2; 
         return h1;
     },
 
     startAnimation: function() {
         this.currentStep = 0; this.transition = 0; this.isPlaying = true; this.updateUI();
     },
-
     updateUI: function() {
         document.getElementById('status-text').innerText = this.steps[this.currentStep]?.msg || "Ready.";
-        document.getElementById('queue-info').innerText = `Step: ${this.steps.length>0 ? this.currentStep+1 : 0} / ${this.steps.length}`;
         document.getElementById('btnUndo').disabled = this.history.length === 0;
         document.getElementById('btnPause').innerText = (this.currentStep === this.steps.length - 1 && !this.isPlaying && this.steps.length > 1) ? "Restart" : (this.isPlaying ? "Pause" : "Resume");
     },
-
     togglePause: function() {
         if (this.currentStep === this.steps.length - 1) { this.currentStep = 0; this.transition = 0; }
         this.isPlaying = !this.isPlaying; this.updateUI();
     },
-
     updateSpeed: function() {},
-
     loop: function(ts) {
         if (!this.lastTime) this.lastTime = ts;
         let dt = ts - this.lastTime; this.lastTime = ts;
-        dt /= parseFloat(document.getElementById('speedSlider').value);
+        dt /= parseFloat(document.getElementById('speedSlider').value) * 0.5;
 
         this.camera.x += (this.camera.targetX - this.camera.x) * 0.1;
         this.camera.y += (this.camera.targetY - this.camera.y) * 0.1;
@@ -612,7 +664,7 @@ const app = {
         this.fitCamera([...this.flatten(layoutCur), ...this.flatten(layoutPrev)], w, h);
 
         let t = Math.min(Math.max(this.transition, 0), 1);
-        const easeT = t < .5 ? 2*t*t : -1+(4-2*t)*t;
+        const easeT = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
         const prevMap = new Map();
         this.flatten(layoutPrev).forEach(n => prevMap.set(n.id, {x:n.x, y:n.y}));
 
@@ -689,23 +741,45 @@ const app = {
         const ctx = this.ctx;
         let fill = n.origin===1 ? COLORS.FILL1 : COLORS.FILL2;
         let stroke = n.origin===1 ? COLORS.STROKE1 : COLORS.STROKE2;
-        if(n.highlight === 'compare') { fill = COLORS.COMPARE_FILL; stroke = COLORS.COMPARE_STROKE; }
+        
+        let textColor = COLORS.TEXT_VAL; 
+
+        if(n.highlight === 'compare') { 
+            fill = COLORS.COMPARE_FILL; 
+            stroke = COLORS.COMPARE_STROKE; 
+        }
+        else if(n.highlight === 'minimum') { 
+            fill = COLORS.MINIMUM; 
+            stroke = COLORS.MINIMUM; 
+        }
+        else if(n.highlight === 'delete-target') {
+            fill = COLORS.DELETE; 
+            stroke = COLORS.DELETE; 
+            textColor = '#FFFFFF'; 
+        } 
+
+        
 
         ctx.beginPath(); ctx.arc(cx, cy, this.nodeRadius, 0, 2*Math.PI);
         ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke();
         
-        ctx.fillStyle = COLORS.TEXT_VAL; ctx.font = 'bold 18px Arial';
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(n.val, cx, cy+1);
+        // Value Text
+        ctx.fillStyle = textColor; 
+        ctx.font = '22px Arial';
+        ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
+        ctx.fillText(n.val, cx, cy+1);
 
+        // Weight badge
         const bx = cx+this.nodeRadius-5; const by = cy-this.nodeRadius+5;
         ctx.beginPath(); ctx.arc(bx, by, 10, 0, 2*Math.PI);
-        ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = COLORS.WEIGHT_STROKE; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = COLORS.WEIGHT_TEXT; ctx.font = 'bold 11px Arial'; ctx.fillText(n.weight, bx, by+1);
+        ctx.fillStyle = n.highlightWeight ? COLORS.WEIGHT_HIGHLIGHT : '#ffffff'; 
+        ctx.fill(); ctx.strokeStyle = n.highlightWeight ? COLORS.WEIGHT_HIGHLIGHT : COLORS.WEIGHT_STROKE; ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = n.highlightWeight ? '#ffffff' : COLORS.WEIGHT_TEXT; ctx.font = 'bold 11px Arial'; ctx.fillText(n.weight, bx, by+1);
 
         ctx.globalAlpha = 1;
         this.drawNodesRec(n.left, prevMap, t); this.drawNodesRec(n.right, prevMap, t);
     },
-
+    
     flatten: function(roots) {
         let list = [];
         const t = (n) => { if(!n)return; list.push(n); t(n.left); t(n.right); };

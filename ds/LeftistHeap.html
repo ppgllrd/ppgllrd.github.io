@@ -181,7 +181,8 @@
         </div>
         <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:2px solid #B0F9B0"></div>&nbsp; Tree 1 (Left)</div>
         <div class="legend-item"><div class="dot" style="background:#99FFFF; border:2px solid #99FFFF"></div>&nbsp; Tree 2 (Right)</div>
-        <div class="legend-item"><div class="dot" style="background:#FFFF66; border:2px solid #E65100"></div>&nbsp; Comparing</div>
+        <div class="legend-item"><div class="dot" style="background:#CC99FF; border:2px solid #CC99FF"></div>&nbsp; Comparing/Selected</div>
+        <div class="legend-item"><div class="dot" style="width:10px; height:10px; background:#F44336; border:1px solid #F44336"></div>&nbsp; Max Weight (Left)</div>
         <div class="legend-item"><div class="line-icon" style="background:#1668BD;"></div>&nbsp; Null Link</div>
     </div>
 </div>
@@ -222,13 +223,14 @@ const COLORS = {
     // Colors
     FILL1: '#99FFFF', STROKE1: '#99FFFF',
     FILL2: '#B0F9B0', STROKE2: '#B0F9B0', 
-    COMPARE_FILL: '#FFFF66', COMPARE_STROKE: '#E65100',
+    COMPARE_FILL: '#CC99FF', COMPARE_STROKE: '#CC99FF',
     MINIMUM: '#CC99FF',    
     DELETE: '#D32F2F',
-    TEXT_VAL: '#CC0000', // red
+    TEXT_VAL: '#CC0000', // Red
     EDGE: '#1668BD',
     WEIGHT_TEXT: '#1668BD',
     WEIGHT_STROKE: '#1668BD',
+    WEIGHT_HIGHLIGHT: '#F44336', // Red
     ARROW: '#D50000'
 };
 
@@ -242,12 +244,14 @@ class Node {
         this.origin = origin;
         this.x = 0; this.y = 0;
         this.highlight = false;
+        this.highlightWeights = false;
     }
     clone() {
         const n = new Node(this.val, this.origin);
         n.id = this.id; 
         n.weight = this.weight;
         n.highlight = this.highlight;
+        n.highlightWeights = this.highlightWeights;
         n.x = this.x; n.y = this.y;
         if (this.left) n.left = this.left.clone();
         if (this.right) n.right = this.right.clone();
@@ -264,11 +268,12 @@ const WBLT = {
         // WorldRoots is the list of trees currently visible as independent structures
         let worldRoots = rootList.map(r => r ? r.clone() : null).filter(r => r);
         
-        const snapshot = (msg, highlightIds=[]) => {
+        const snapshot = (msg, highlightIds=[], highlightWeights=[]) => {
             const frames = worldRoots.map(r => r.clone());
             const mark = (n) => {
                 if(!n) return;
                 n.highlight = highlightIds.includes(n.id) ? 'compare' : false;
+                n.highlightWeights = highlightWeights.includes(n.id);
                 mark(n.left); mark(n.right);
             };
             frames.forEach(mark);
@@ -326,9 +331,11 @@ const WBLT = {
             let wR = WBLT.getWeight(t1.right);
 
             if (wL < wR) {
-                snapshot(`Leftist Violation (${wL} < ${wR}). Swapping children.`, [t1.id]);
+
+                let highlightWeights = t1.right ? [t1.right.id] : [];
+                snapshot(`Leftist Violation (${wL} < ${wR}). Swapping children.`, [t1.id], highlightWeights);
                 let temp = t1.left; t1.left = t1.right; t1.right = temp;
-                snapshot(`Children swapped at ${t1.val}.`, [t1.id]);
+                snapshot(`Children swapped at ${t1.val}.`, [t1.id], highlightWeights);
             }
 
             return t1;
@@ -482,8 +489,8 @@ const app = {
 
     handleMergeScenario: function() {
         this.saveState();
-        const h1 = this.createRandomTree(5, 1);
-        const h2 = this.createRandomTree(4, 2);
+        const h1 = this.createRandomTree(6, 1);
+        const h2 = this.createRandomTree(5, 2);
         this.steps = WBLT.recordMerge([h1, h2], h1, h2);
         this.mainTree = this.performMerge(h1.clone(), h2.clone()); 
         this.startAnimation();
@@ -731,7 +738,6 @@ const app = {
              this.drawRotationArrow(cx, cy);
         }
 
-        // Usamos la variable textColor definida arriba
         ctx.fillStyle = textColor; 
         ctx.font = '22px Arial';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
@@ -739,8 +745,12 @@ const app = {
 
         const bx = cx+this.nodeRadius-5; const by = cy-this.nodeRadius+5;
         ctx.beginPath(); ctx.arc(bx, by, 10, 0, 2*Math.PI);
-        ctx.fillStyle = '#ffffff'; ctx.fill(); ctx.strokeStyle = COLORS.WEIGHT_STROKE; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = COLORS.WEIGHT_TEXT; ctx.font = 'bold 11px Arial'; ctx.fillText(n.weight, bx, by+1);
+        ctx.fillStyle = n.highlightWeights ? COLORS.WEIGHT_HIGHLIGHT : '#ffffff'; 
+        ctx.fill(); 
+        ctx.strokeStyle = n.highlightWeights ? COLORS.WEIGHT_HIGHLIGHT : COLORS.WEIGHT_STROKE; 
+        ctx.lineWidth = 1; ctx.stroke();
+        ctx.fillStyle = n.highlightWeights ? '#ffffff' : COLORS.WEIGHT_TEXT; 
+        ctx.font = 'bold 11px Arial'; ctx.fillText(n.weight, bx, by+1);
 
         ctx.globalAlpha = 1;
         this.drawNodesRec(n.left, prevMap, t); this.drawNodesRec(n.right, prevMap, t);
