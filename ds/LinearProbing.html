@@ -44,7 +44,6 @@
         .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
         .sub-controls { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; color: #555; vertical-align: middle;}
 
-        /* Modified: Allow any text, bold, centered */
         input[type="text"] {
             padding: 6px; border-radius: 4px; border: 1px solid #999;
             background: #fff; color: #000; width: 60px; text-align: center; font-weight: bold;
@@ -103,6 +102,22 @@
             flex-shrink: 0;
         }
 
+        /* Tooltip Style */
+        #tooltip {
+            position: fixed;
+            display: none;
+            background: rgba(26, 26, 26, 0.85);
+            color: #fff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+        }
+        .tooltip-item { font-weight: bold; color: #ff6b6b; }
+        .tooltip-hash { font-weight: bold; color: #4fc3f7; }
+
         /* Modal */
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
         .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
@@ -112,6 +127,7 @@
         h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
         p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
         .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+
     </style>
 </head>
 <body>
@@ -155,12 +171,14 @@
     <div id="legend">
         <div class="legend-item"><div class="square" style="background:#99FFFF;"></div>&nbsp; Cell</div>
         <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div>&nbsp; Data</div>
-        <div class="legend-item"><div class="dot" style="background:#1668BD;"></div>&nbsp; Null Pointer</div>
-        <div class="legend-item"><div class="arrow-icon" style="color:#1668BD;">&#8595;</div>&nbsp; Reference</div>
-        <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8631;</div>&nbsp; Probe</div>
+        <div class="legend-item"><div class="square" style="background:#E1BEE7;"></div>&nbsp; Probe Check</div>
+        <div class="legend-item"><div class="square" style="background:#00FF00;"></div>&nbsp; Match/Hit</div>
         <div class="legend-item"><div class="square" style="background:#D32F2F; border: 2px solid #FF0000; width:12px; height:12px;"></div>&nbsp; Search Miss</div>
-        <div class="legend-item"><div class="square" style="background:#CC99FF; width:30px; text-align:center; font-size:10px;">Hash</div>&nbsp; Calculation</div>
+        <div class="legend-item"><div class="dot" style="background:#1668BD;"></div>&nbsp; Null Pointer</div>
+        <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8631;</div>&nbsp; Probe Path</div>
+
     </div>
+    <div id="tooltip"></div>
 </div>
 
 <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
@@ -209,10 +227,11 @@ const COLORS = {
     TEXT_RED: '#CC0000',    
     
     // Action Colors
-    ARROW_PROBE: '#7F00FF', // Purple probe arrows
-    MISS_RING: '#D32F2F',   // Red circle for miss
-    MISS_CELL_BG: '#D32F2F', // Light Red for miss background
-    HIT_CELL: '#00FF00',    // Intense Green for hit
+    ARROW_PROBE: '#7F00FF', 
+    MISS_RING: '#D32F2F',   
+    MISS_CELL_BG: '#D32F2F', 
+    HIT_CELL: '#00FF00',    
+    PROBE_CHECK_BG: '#E1BEE7', // Light Violet for checking valid cells
     
     HASH_BOX_BG: '#CC99FF'
 };
@@ -270,7 +289,6 @@ class LinearProbingHashTable {
     }
 
     hash(key) {
-        // Accepts any character
         const code = key.charCodeAt(0);
         return code % this.capacity;
     }
@@ -313,17 +331,18 @@ class LinearProbingHashTable {
                 return;
             }
             
-            const nextIdx = (idx + 1) % this.capacity;
-            this.probePath.push({ from: idx, to: nextIdx });
-
+            // Checking occupied cell (Probe Check)
             recordSnapshot(this.getSnapshotData(), { 
                 text: `Collision at ${idx}. Probing...`, 
                 highlightIdx: idx, 
-                // Just visual probing, not a miss yet
+                probeCheck: true, // Mark as purple
                 hashCalc: { key: key, hash: initialIdx },
                 probeArrows: [...this.probePath],
                 startProbeIdx: initialIdx
             });
+
+            const nextIdx = (idx + 1) % this.capacity;
+            this.probePath.push({ from: idx, to: nextIdx });
             
             idx = nextIdx;
             if (idx === startIdx) return; 
@@ -401,23 +420,25 @@ class LinearProbingHashTable {
                 return;
             }
             
-            const nextIdx = (idx + 1) % this.capacity;
-            this.probePath.push({ from: idx, to: nextIdx });
-
+            // Check mismatch (Probe Check)
             recordSnapshot(this.getSnapshotData(), { 
-                text: `Probing...`, 
+                text: `Probing... (checking ${idx})`, 
                 highlightIdx: idx,
+                probeCheck: true, // Violet
                 hashCalc: { key: key, hash: initialIdx },
                 probeArrows: [...this.probePath],
                 startProbeIdx: initialIdx
             });
+
+            const nextIdx = (idx + 1) % this.capacity;
+            this.probePath.push({ from: idx, to: nextIdx });
 
             idx = nextIdx;
             steps++;
             if (steps >= this.capacity) break;
         }
 
-        // MISS - Red background and ring
+        // MISS
         recordSnapshot(this.getSnapshotData(), { 
             text: `Index ${idx} is empty. Key '${key}' NOT found.`, 
             highlightIdx: idx, 
@@ -443,6 +464,16 @@ class LinearProbingHashTable {
                 foundIndex = idx;
                 break;
             }
+            
+            recordSnapshot(this.getSnapshotData(), { 
+                text: `Checking ${idx}...`, 
+                highlightIdx: idx,
+                probeCheck: true, 
+                hashCalc: { key: key, hash: initialIdx },
+                probeArrows: [...this.probePath],
+                startProbeIdx: initialIdx
+            });
+
             const nextIdx = (idx + 1) % this.capacity;
             this.probePath.push({ from: idx, to: nextIdx });
             idx = nextIdx;
@@ -482,7 +513,6 @@ class LinearProbingHashTable {
             
             let rehashIdx = this.hash(keyToReinsert);
             
-            // Show Hash Box for item being moved
             recordSnapshot(this.getSnapshotData(), { 
                 text: `Re-inserting '${keyToReinsert}' (was at ${idx}). New start: ${rehashIdx}`, 
                 highlightIdx: idx,
@@ -546,6 +576,7 @@ class Visualizer {
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
 
         requestAnimationFrame(t => this.loop(t));
@@ -603,8 +634,8 @@ class Visualizer {
         }
     }
 
-    handleClick(e) {
-        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return;
+    getMouseInTable(e) {
+        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
         const snap = this.snapshots[this.currentSnapshotIndex];
         const data = snap.tableData;
         
@@ -627,11 +658,33 @@ class Visualizer {
                 const boxY = dataYStart;
                 
                 if (lx >= boxX && lx <= boxX + boxW && ly >= boxY && ly <= boxY + boxH) {
-                    document.getElementById('inputValue').value = data.table[i];
-                    document.getElementById('inputValue').focus();
-                    return;
+                    return { index: i, value: data.table[i] };
                 }
             }
+        }
+        return null;
+    }
+
+    handleClick(e) {
+        const item = this.getMouseInTable(e);
+        if (item) {
+            document.getElementById('inputValue').value = item.value;
+            document.getElementById('inputValue').focus();
+        }
+    }
+
+    handleMouseMove(e) {
+        const item = this.getMouseInTable(e);
+        const tooltip = document.getElementById('tooltip');
+        
+        if (item) {
+            const hash = item.value.charCodeAt(0) % app.ht.capacity; // Calculate hash for tooltip
+            tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.value}</span> is <span class="tooltip-hash">${hash}</span>`;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX - 15) + 'px';
+            tooltip.style.top = (e.clientY + 10) + 'px';
+        } else {
+            tooltip.style.display = 'none';
         }
     }
 
@@ -740,15 +793,16 @@ class Visualizer {
             ctx.fillStyle = '#000'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
             ctx.fillText(i, cx + size/2, cy - 8);
 
-            // Cell
-            ctx.fillStyle = COLORS.CELL_BG;
+            // Cell Background
+            let cellColor = COLORS.CELL_BG;
             
-            // Red background for MISS, Green for HIT
             if (meta.highlightIdx === i) {
-                if (meta.hit) ctx.fillStyle = COLORS.HIT_CELL;
-                if (meta.miss) ctx.fillStyle = COLORS.MISS_CELL_BG;
+                if (meta.hit) cellColor = COLORS.HIT_CELL;
+                else if (meta.miss) cellColor = COLORS.MISS_CELL_BG;
+                else if (meta.probeCheck) cellColor = COLORS.PROBE_CHECK_BG;
             }
 
+            ctx.fillStyle = cellColor;
             ctx.fillRect(cx, cy, size, size);
             ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1;
             ctx.strokeRect(cx, cy, size, size);
@@ -769,7 +823,15 @@ class Visualizer {
                 // Data Box
                 const boxY = dotY + 60;
                 const boxW = 30; const boxH = 30;
-                ctx.fillStyle = COLORS.DATA_BG;
+                
+                // Set Data Box color. Default is Light Green. 
+                // If cell is Hit or Probe Check, match the cell color for emphasis.
+                let dataColor = COLORS.DATA_BG;
+                if (meta.highlightIdx === i && (meta.hit || meta.probeCheck)) {
+                    dataColor = cellColor;
+                }
+
+                ctx.fillStyle = dataColor;
                 ctx.fillRect(dotX - boxW/2, boxY, boxW, boxH);
                 
                 ctx.fillStyle = COLORS.TEXT_RED;
@@ -814,34 +876,24 @@ class Visualizer {
 
                 // Logic for arc
                 if (Math.abs(idx2 - idx1) > 1 && idx2 < idx1) {
-                    // Wrap around visual: Curve out to right, curve in from left
-                    // Curve OUT
                     ctx.quadraticCurveTo(x1 + 30, arrowY - 60, x1 + 60, arrowY - 10);
                     ctx.stroke();
-                    // Arrowhead fade out indicator (optional, keep simple)
                     
-                    // Curve IN
                     ctx.beginPath();
                     ctx.moveTo(x2 - 30, arrowY - 10);
-                    // Calculate Control Point for IN curve to calculate angle
                     const cpInX = x2 - 15; const cpInY = arrowY - 40;
                     ctx.quadraticCurveTo(cpInX, cpInY, x2 - 1, arrowY - 3);
                     ctx.stroke();
                     
-                    // Draw head based on IN curve vector
                     const angle = Math.atan2(arrowY - cpInY, x2 - cpInX);
                     this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
 
                 } else {
-                    // Normal Jump
                     midX = (x1 + x2) / 2;
                     cpY = arrowY - 50;
                     ctx.quadraticCurveTo(midX, cpY, x2 - 1, arrowY - 3);
                     ctx.stroke();
                     
-                    // Calculate Tangent Angle at x2
-                    // Bezier Derivative at t=1 is proportional to P2 - P1 (Target - Control)
-                    // P2 = (x2, arrowY), P1 = (midX, cpY)
                     const angle = Math.atan2(arrowY - cpY, x2 - midX);
                     this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
                 }
@@ -865,7 +917,6 @@ class Visualizer {
         this.drawArrowHead(x2, y2, angle, color, headSize);
     }
 
-    // Accurate rotation arrowhead
     drawArrowHead(x, y, angle, color, size) {
         const ctx = this.ctx;
         ctx.fillStyle = color;
@@ -874,7 +925,6 @@ class Visualizer {
         ctx.rotate(angle);
         ctx.beginPath();
         ctx.moveTo(0, 0);
-        // Arrowhead shape pointing right (angle 0)
         ctx.lineTo(-size, -size/2);
         ctx.lineTo(-size, size/2);
         ctx.fill();
@@ -943,10 +993,11 @@ const app = {
 
     handleInsert: function() {
         const el = document.getElementById('inputValue');
-        const val = el.value.charAt(0); // Any char
+        const val = el.value.charAt(0); 
         if (val.length > 0) {
             this.runOp(record => this.ht.insert(val, record));
-            el.value = ''; el.focus();
+            el.value = ''; 
+            // el.focus(); REMOVED to prevent virtual keyboard popup
         }
     },
 
