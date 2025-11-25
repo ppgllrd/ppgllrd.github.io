@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Separate Chaining Hash Table</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --panel-bg: #f5f5f5;
+            --border-color: #ddd;
+            --btn-insert: #2E7D32; 
+            --btn-delete: #c62828; 
+            --btn-search: #1668BD; 
+            --btn-undo: #6A1B9A;   
+            --btn-gray: #546E7A;
+            --btn-random: #EF6C00;
+        }
+
+        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; user-select: none; }
+        header { padding: 10px 20px; background-color: var(--panel-bg); display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-shrink: 0; }
+        .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        .gui { display: flex; justify-content: space-between; align-items: center; width: 100%; }
+        h1 { margin: 0; font-size: 1.2rem; color: #222; }
+        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+        .sub-controls { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; color: #555; vertical-align: middle;}
+        input[type="text"] { padding: 6px; border-radius: 4px; border: 1px solid #999; background: #fff; color: #000; width: 60px; text-align: center; font-weight: bold; }
+        input[type="range"] { width: 100px; cursor: pointer; }
+        button { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; color: white; transition: filter 0.2s, transform 0.1s; font-size: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
+        button:active { transform: scale(0.95); }
+        button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+        .btn-insert { background-color: var(--btn-insert); } .btn-delete { background-color: var(--btn-delete); }
+        .btn-search { background-color: var(--btn-search); } .btn-undo { background-color: var(--btn-undo); }
+        .btn-clear { background-color: var(--btn-gray); } .btn-random { background-color: var(--btn-random); }
+        .btn-pause { background-color: #455A64; width: 80px;} .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
+        #canvas-container { flex-grow: 1; position: relative; overflow: hidden; background-color: var(--bg-color); cursor: crosshair; min-height: 0; }
+        canvas { display: block; width: 100%; height: 100%; }
+        #legend { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
+        .square { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #999; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: #1668BD; display:inline-block; }
+        .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
+        #status-bar { padding: 8px 2px 0px 0px; background-color: var(--panel-bg); font-size: 0.85rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; color: #555; flex-shrink: 0; }
+        #status-text { font-weight: bold; color: #222; }
+        #author { width: 100%; background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2.5; border-top: 1px solid #ddd; flex-shrink: 0; }
+        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
+        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
+        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
+        .close:hover { color: black; }
+        h2 { color: #2E7D32; margin-top:0; }
+        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
+        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
+    </style>
+</head>
+<body>
+
+<header>
+    <div class="header-top">
+        <h1>Separate Chaining Hash Table</h1>
+        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
+    </div>
+    <div class="gui">
+        <div class="controls">
+            <input type="text" id="inputValue" title="Enter any character" placeholder="#" maxlength="1" onkeydown="if(event.key==='Enter') app.handleInsert()">
+            <button class="btn-insert" title="Insert" onclick="app.handleInsert()">Insert</button>
+            <button class="btn-delete" title="Delete" onclick="app.handleDelete()">Delete</button>
+            <button class="btn-search" title="Search" onclick="app.handleSearch()">Search</button>
+            
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+            
+            <button class="btn-random" title="Fill with random characters" onclick="app.handleRandomFill()">Random Fill</button>
+            
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+
+            <button class="btn-undo" title="Undo last operation" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
+            <button class="btn-clear" title="Clear the table" onclick="app.handleClear()">Clear</button>
+        </div>
+        <div class="sub-controls">
+            <label for="speedSlider">Slowdown:</label>
+            <label title="Slide right to slow down the animation">
+                <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
+            </label>
+            <button class="btn-pause" title="Pause or Resume" onclick="app.togglePause()" id="btnPause">Pause</button>
+        </div>
+    </div>
+    <div id="status-bar">
+        <span id="status-text">Ready.</span>
+    </div>
+</header>
+
+<div id="canvas-container">
+    <canvas id="htCanvas"></canvas>
+    <div id="legend">
+        <div class="legend-item"><div class="square" style="background:#99FFFF;"></div>&nbsp; Pointer Cell</div>
+        <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div>&nbsp; Data</div>
+        <div class="legend-item"><div class="square" style="background:#CC99FF;"></div>&nbsp; Examining</div>
+        <div class="legend-item"><div class="square" style="background:#00E676;"></div>&nbsp; Hit (Green)</div>
+        <div class="legend-item"><div class="square" style="background:#D32F2F; border:1px solid #D32F2F;"></div>&nbsp; Miss (Red Box)</div>
+        <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8595;</div>&nbsp; Hash Index</div>
+        <div class="legend-item"><div class="square" style="background:#CC99FF; width:30px; text-align:center; font-size:10px;">Hash</div>&nbsp; Calculation</div>
+    </div>
+</div>
+
+<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>Separate Chaining Hash Table</h2>
+        
+        <h3>Algorithms</h3>
+        <p><strong>Hash Function:</strong> Maps key to array index.</p>
+        
+        <h4>Insert(key)</h4>
+        <ol>
+            <li>Calculate index.</li>
+            <li><strong>Search:</strong> Traverse list to check for duplicates. (Violet = Comparing, Green = Found).</li>
+            <li>If not found (Miss), <strong>Insert at Head</strong>. The existing list slides down to make room.</li>
+        </ol>
+
+        <h4>Delete(key)</h4>
+        <ol>
+            <li>Calculate index.</li>
+            <li><strong>Search:</strong> Traverse list. If found (Green), remove it.</li>
+            <li><strong>Slide Up:</strong> Nodes below the removed key slide up to fill the gap.</li>
+        </ol>
+
+        <h4>Search(key)</h4>
+        <ol>
+            <li>Calculate index.</li>
+            <li>Traverse list comparing keys.</li>
+            <li>If found -> <strong>Green</strong> (Hit).</li>
+            <li>If array cell empty or end of list reached -> <strong>Red</strong> (Miss).</li>
+        </ol>
+    </div>
+</div>
+
+<script>
+const COLORS = {
+    STRUCT_KEYS_BG: '#99FFFF',  
+    STRUCT_STATS_BG: '#B0F9B0', 
+    CELL_BG: '#99FFFF',     
+    CELL_STROKE: '#FFFFFF', 
+    DATA_BG: '#B0F9B0',     
+    TEXT_RED: '#CC0000',    
+    DOT: '#1668BD',         
+    ARROW_REF: '#1668BD',   
+    ARROW_PROBE: '#7F00FF', 
+    EXAMINE_BG: '#CC99FF',  
+    MISS_BG: '#D32F2F',     
+    HIT_BG: '#00E676',      
+    MISS_STROKE: '#D32F2F', 
+    HASH_BOX_BG: '#CC99FF'
+};
+
+function isPrime(num) {
+    if (num <= 1) return false;
+    if (num <= 3) return true;
+    if (num % 2 === 0 || num % 3 === 0) return false;
+    for (let i = 5; i * i <= num; i += 6) {
+        if (num % i === 0 || num % (i + 2) === 0) return false;
+    }
+    return true;
+}
+
+function nextPrime(num) {
+    if (num <= 1) return 2;
+    let prime = num;
+    let found = false;
+    while (!found) {
+        prime++;
+        if (isPrime(prime)) found = true;
+    }
+    return prime;
+}
+
+class Node {
+    constructor(key, next = null) {
+        this.key = key;
+        this.next = next;
+        this.id = Math.random(); 
+    }
+}
+
+class SeparateChainingHashTable {
+    constructor(capacity = 5) { 
+        this.capacity = capacity;
+        this.table = new Array(capacity).fill(null);
+        this.size = 0;
+        this.maxLoadFactor = 2.0; 
+        this.history = [];
+    }
+
+    cloneTable(table) {
+        const newTable = new Array(table.length).fill(null);
+        for(let i = 0; i < table.length; i++) {
+            if (table[i]) {
+                let curr = table[i];
+                let newHead = new Node(curr.key);
+                newHead.id = curr.id;
+                let newCurr = newHead;
+                curr = curr.next;
+                while(curr) {
+                    newCurr.next = new Node(curr.key);
+                    newCurr.next.id = curr.id;
+                    newCurr = newCurr.next;
+                    curr = curr.next;
+                }
+                newTable[i] = newHead;
+            }
+        }
+        return newTable;
+    }
+
+    saveToHistory() {
+        const state = {
+            table: this.cloneTable(this.table),
+            size: this.size,
+            capacity: this.capacity,
+            maxLoadFactor: this.maxLoadFactor
+        };
+        this.history.push(state);
+        if (this.history.length > 20) this.history.shift();
+    }
+
+    restoreFromHistory() {
+        if (this.history.length === 0) return null;
+        const state = this.history.pop();
+        this.table = state.table;
+        this.size = state.size;
+        this.capacity = state.capacity;
+        this.maxLoadFactor = state.maxLoadFactor;
+        return this;
+    }
+
+    hash(key) {
+        const code = key.charCodeAt(0);
+        return code % this.capacity;
+    }
+
+    getSnapshotData() {
+        const serializedTable = this.table.map(head => {
+            const list = [];
+            let curr = head;
+            while(curr) {
+                list.push({ key: curr.key, id: curr.id });
+                curr = curr.next;
+            }
+            return list;
+        });
+
+        return {
+            table: serializedTable,
+            size: this.size,
+            capacity: this.capacity,
+            maxLoadFactor: this.maxLoadFactor,
+            // Calculate max depth for camera logic
+            maxDepth: serializedTable.reduce((max, list) => Math.max(max, list.length), 0)
+        };
+    }
+
+    // --- Logic ---
+
+    performSearchLogic(key, recordSnapshot) {
+        let idx = this.hash(key);
+        
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Hash: '${key}' -> ${idx}`,
+            hashCalc: { key: key, hash: idx },
+            targetIndex: idx
+        });
+
+        if (this.table[idx] === null) {
+            recordSnapshot(this.getSnapshotData(), { 
+                text: `Index ${idx} is empty (Miss).`,
+                hashCalc: { key: key, hash: idx },
+                targetIndex: idx,
+                missIndex: idx 
+            });
+            return { found: false, depth: 0, idx };
+        }
+
+        let curr = this.table[idx];
+        let depth = 0;
+
+        while (curr) {
+            if (curr.key === key) {
+                recordSnapshot(this.getSnapshotData(), { 
+                    text: `Found '${key}' (Hit).`, 
+                    hashCalc: { key: key, hash: idx },
+                    targetIndex: idx,
+                    highlightNode: { col: idx, depth: depth, type: 'HIT' }
+                });
+                return { found: true, depth, idx };
+            } else {
+                recordSnapshot(this.getSnapshotData(), { 
+                    text: `Comparing with '${curr.key}'...`,
+                    hashCalc: { key: key, hash: idx },
+                    targetIndex: idx,
+                    highlightNode: { col: idx, depth: depth, type: 'EXAMINE' }
+                });
+            }
+
+            if (!curr.next) {
+                recordSnapshot(this.getSnapshotData(), { 
+                    text: `End of list. Key '${key}' NOT found (Miss).`, 
+                    hashCalc: { key: key, hash: idx },
+                    targetIndex: idx,
+                    highlightNode: { col: idx, depth: depth, type: 'MISS_PTR' }
+                });
+                return { found: false, depth, idx };
+            }
+
+            curr = curr.next;
+            depth++;
+        }
+    }
+
+    insert(key, recordSnapshot) {
+        if ((this.size + 1) / this.capacity > this.maxLoadFactor) {
+            this.rehash(recordSnapshot);
+        }
+
+        this.saveToHistory();
+        
+        const result = this.performSearchLogic(key, recordSnapshot);
+        
+        if (result.found) {
+            this.cleanUp(recordSnapshot);
+            return; 
+        }
+
+        let idx = result.idx;
+        
+        // Data op
+        const newNode = new Node(key, this.table[idx]);
+        this.table[idx] = newNode;
+        this.size++;
+        
+        // Animation Snapshot: USING NEW DATA
+        // slideDown adds visual height, so we mark it
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Inserting '${key}' at head...`, 
+            hashCalc: { key: key, hash: idx },
+            targetIndex: idx,
+            animation: 'slideDown',
+            animationCol: idx,
+            highlightNode: { col: idx, depth: 0, type: 'HIT' }
+        });
+
+        this.cleanUp(recordSnapshot);
+    }
+
+    search(key, recordSnapshot) {
+        this.performSearchLogic(key, recordSnapshot);
+        this.cleanUp(recordSnapshot);
+    }
+
+    delete(key, recordSnapshot) {
+        this.saveToHistory();
+        
+        const result = this.performSearchLogic(key, recordSnapshot);
+        
+        if (!result.found) {
+            this.cleanUp(recordSnapshot);
+            return;
+        }
+
+        let idx = result.idx;
+        
+        // Animation Snapshot: MUST use OLD data state for Slide Up
+        const oldData = this.getSnapshotData();
+        
+        recordSnapshot(oldData, {
+            text: `Removing '${key}'. Sliding up...`,
+            hashCalc: { key: key, hash: idx },
+            targetIndex: idx,
+            animation: 'slideUp',
+            animationCol: idx,
+            animationDepth: result.depth 
+        });
+
+        // Internal Op
+        let curr = this.table[idx];
+        let prev = null;
+        while(curr && curr.key !== key) {
+            prev = curr;
+            curr = curr.next;
+        }
+        if (prev) {
+            prev.next = curr.next;
+        } else {
+            this.table[idx] = curr.next;
+        }
+        this.size--;
+
+        // Final State
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Deleted '${key}'.`, 
+            hashCalc: { key: key, hash: idx }
+        });
+        
+        this.cleanUp(recordSnapshot);
+    }
+
+    rehash(recordSnapshot) {
+        recordSnapshot(this.getSnapshotData(), { text: `Load Factor > ${this.maxLoadFactor}. Rehashing...`, pause: true });
+        
+        let oldTable = this.table;
+        this.capacity = nextPrime(this.capacity * 2);
+        this.table = new Array(this.capacity).fill(null);
+        this.size = 0; 
+        
+        recordSnapshot(this.getSnapshotData(), { text: `New capacity: ${this.capacity}. Re-inserting keys...` });
+
+        let allKeys = [];
+        for(let i = 0; i < oldTable.length; i++) {
+            let curr = oldTable[i];
+            while(curr) {
+                allKeys.push(curr.key);
+                curr = curr.next;
+            }
+        }
+
+        for (let key of allKeys) {
+            let idx = this.hash(key);
+            const newNode = new Node(key, this.table[idx]);
+            this.table[idx] = newNode;
+            this.size++;
+            
+            recordSnapshot(this.getSnapshotData(), {
+                text: `Re-inserting '${key}'...`,
+                hashCalc: { key: key, hash: idx },
+                targetIndex: idx,
+                animation: 'slideDown',
+                animationCol: idx
+            });
+        }
+
+        recordSnapshot(this.getSnapshotData(), { text: `Rehashing complete.` });
+        this.cleanUp(recordSnapshot);
+    }
+
+    cleanUp(recordSnapshot) {
+        recordSnapshot(this.getSnapshotData(), { text: 'Ready.', isCleanup: true });
+    }
+}
+
+class Visualizer {
+    constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.boxSize = 40;
+        
+        this.snapshots = [];
+        this.currentSnapshotIndex = -1;
+        this.state = 'IDLE';
+        this.isPaused = false;
+        this.morphProgress = 0;
+        this.baseSpeed = 0.05;
+        this.currentSpeedFactor = 1;
+        this.pauseTimer = 0;
+        
+        this.camera = { scale: 1, offsetX: 0, offsetY: 0, targetScale: 1, targetOffsetX: 0, targetOffsetY: 0 };
+        
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
+
+        requestAnimationFrame(t => this.loop(t));
+    }
+
+    resize() {
+        const container = document.getElementById('canvas-container');
+        this.canvas.width = container.offsetWidth;
+        this.canvas.height = container.offsetHeight;
+
+        if (this.snapshots.length > 0 && this.currentSnapshotIndex >= 0) {
+            const snap = this.snapshots[this.currentSnapshotIndex];
+            
+            const view = this.calculateView(snap.tableData, snap.meta || {});
+            
+            this.camera.scale = view.scale;
+            this.camera.offsetX = view.offsetX;
+            this.camera.offsetY = view.offsetY;
+            this.camera.targetScale = view.scale;
+            this.camera.targetOffsetX = view.offsetX;
+            this.camera.targetOffsetY = view.offsetY;
+            this.draw();
+        }
+    }
+
+    setSpeed(val) { this.currentSpeedFactor = 1 / val; }
+    togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
+
+    calculateView(data, meta) {
+        const capacity = data.capacity;
+        const minLogicalHeight = 400; // Ensure decent initial view
+        
+        let maxDepth = data.maxDepth;
+        
+        // Look ahead logic for slideDown
+        if (meta.animation === 'slideDown') {
+            // If sliding down, visual height is effectively depth + 1
+            // Check if this column becomes the new max
+            const colLen = (data.table[meta.animationCol] ? data.table[meta.animationCol].length : 0);
+            if (colLen > maxDepth) {
+                // Already captured in maxDepth if we passed NEW data?
+                // Yes, if Insert passed new data, maxDepth reflects it. 
+                // But visual height during anim is roughly similar.
+            }
+        }
+        
+        const padding = 50;
+        const leftPanelW = 140; 
+        const gap = 50; 
+        const arrayW = capacity * this.boxSize;
+        const listH = (maxDepth + 2) * 70; 
+        
+        const logicalWidth = leftPanelW + gap + arrayW + padding * 2;
+        const logicalHeight = Math.max(minLogicalHeight, 250 + listH);
+
+        const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight) * 0.95;
+        const effectiveScale = Math.min(1.5, scale); 
+        
+        const offsetX = (this.canvas.width - logicalWidth * effectiveScale) / 2;
+        const offsetY = 50 * effectiveScale; 
+        
+        return { scale: effectiveScale, offsetX, offsetY };
+    }
+
+    enqueueOperation(snapshots) {
+        this.snapshots.push(...snapshots);
+        if (this.state === 'IDLE' && this.snapshots.length > 0) {
+            if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
+            this.startNextStep();
+        }
+    }
+
+    startNextStep() {
+        const snap = this.snapshots[this.currentSnapshotIndex];
+        const meta = snap.meta || {};
+        
+        // Calculate View
+        const targetView = this.calculateView(snap.tableData, meta);
+        
+        // Smart Zoom Logic:
+        // 1. If we need to ZOOM OUT (scale decreasing), do it BEFORE (PRE_ZOOM).
+        // 2. If we need to ZOOM IN (scale increasing), do it AFTER (POST_ZOOM drift).
+        // 3. During 'slideUp', we want to hold the camera steady (don't zoom in yet).
+        
+        let lockCamera = false;
+        if (meta.animation === 'slideUp') lockCamera = true;
+
+        const zoomingOut = targetView.scale < (this.camera.scale - 0.01);
+        
+        if (!lockCamera) {
+            this.camera.targetScale = targetView.scale;
+            this.camera.targetOffsetX = targetView.offsetX;
+            this.camera.targetOffsetY = targetView.offsetY;
+        }
+
+        if (zoomingOut && !lockCamera) {
+            this.state = 'PRE_ZOOM';
+        } else {
+            this.state = 'MORPH';
+        }
+        
+        this.morphProgress = 0;
+        if (meta.text) document.getElementById('status-text').innerText = meta.text;
+    }
+
+    loop(timestamp) {
+        if (!this.isPaused) this.update();
+        this.draw();
+        requestAnimationFrame(t => this.loop(t));
+    }
+
+    update() {
+        // Camera Smooth Follow
+        const camSpeed = 0.1;
+        this.camera.scale += (this.camera.targetScale - this.camera.scale) * camSpeed;
+        this.camera.offsetX += (this.camera.targetOffsetX - this.camera.offsetX) * camSpeed;
+        this.camera.offsetY += (this.camera.targetOffsetY - this.camera.offsetY) * camSpeed;
+
+        if (this.state === 'PRE_ZOOM') {
+            if (Math.abs(this.camera.scale - this.camera.targetScale) < 0.01) {
+                this.state = 'MORPH';
+            }
+        } 
+        else if (this.state === 'MORPH') {
+            this.morphProgress += this.baseSpeed * this.currentSpeedFactor;
+            if (this.morphProgress >= 1) {
+                this.morphProgress = 1;
+                this.state = 'WAITING';
+                this.pauseTimer = 30 / this.currentSpeedFactor;
+                
+                const snap = this.snapshots[this.currentSnapshotIndex];
+                if (snap.meta && snap.meta.pause) this.pauseTimer = 60;
+                if (snap.meta && snap.meta.isCleanup) this.pauseTimer = 20;
+            }
+        } 
+        else if (this.state === 'WAITING') {
+            this.pauseTimer--;
+            if (this.pauseTimer <= 0) {
+                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                    this.currentSnapshotIndex++;
+                    this.startNextStep();
+                } else {
+                    this.state = 'IDLE';
+                    // Final check to ensure camera fits final state (e.g. after delete zoom in)
+                    const finalSnap = this.snapshots[this.currentSnapshotIndex];
+                    const finalView = this.calculateView(finalSnap.tableData, {});
+                    this.camera.targetScale = finalView.scale;
+                    this.camera.targetOffsetX = finalView.offsetX;
+                    this.camera.targetOffsetY = finalView.offsetY;
+                    document.getElementById('status-text').innerText = "Ready.";
+                }
+            }
+        }
+    }
+
+    handleClick(e) {
+        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return;
+        const snap = this.snapshots[this.currentSnapshotIndex];
+        const data = snap.tableData;
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+        const lx = (mx - this.camera.offsetX) / this.camera.scale;
+        const ly = (my - this.camera.offsetY) / this.camera.scale;
+
+        const cellSize = this.boxSize;
+        const padding = 50;
+        const leftPanelW = 140; 
+        const gap = 50; 
+        const arrayStartX = leftPanelW + gap + padding;
+        const baseY = 100;
+        const listTop = baseY + cellSize + 20;
+        const nodeTotalH = 60; 
+
+        for (let i = 0; i < data.capacity; i++) {
+            const list = data.table[i];
+            if (list && list.length > 0) {
+                const cx = arrayStartX + i * cellSize + cellSize/2;
+                let cy = listTop;
+                for(let k = 0; k < list.length; k++) {
+                    if (lx >= cx - 15 && lx <= cx + 15 && ly >= cy && ly <= cy + 30) {
+                        document.getElementById('inputValue').value = list[k].key;
+                        document.getElementById('inputValue').focus();
+                        return;
+                    }
+                    cy += nodeTotalH; 
+                }
+            }
+        }
+    }
+
+    draw() {
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+        if (this.snapshots.length === 0) return;
+
+        const snap = this.snapshots[this.currentSnapshotIndex];
+        const meta = snap.meta || {};
+
+        this.ctx.save();
+        this.ctx.translate(this.camera.offsetX, this.camera.offsetY);
+        this.ctx.scale(this.camera.scale, this.camera.scale);
+
+        const padding = 50;
+        const leftPanelW = 140; 
+        const gap = 50; 
+        const arrayStartX = leftPanelW + gap + padding;
+
+        this.drawScene(snap.tableData, meta, arrayStartX);
+        this.ctx.restore();
+    }
+
+    drawScene(data, meta, arrayStartX) {
+        const cellSize = this.boxSize;
+        const baseY = 100; 
+
+        this.drawStruct(50, baseY, 40, data, arrayStartX);
+        this.drawArrayAndLists(arrayStartX, baseY, cellSize, data, meta);
+
+        if (meta.hashCalc) {
+            const fade = meta.isCleanup ? (1 - this.morphProgress) : 1;
+            if (fade > 0) {
+                this.ctx.globalAlpha = fade;
+                const arrayCenterX = arrayStartX + (data.capacity * cellSize) / 2;
+                this.drawHashBox(arrayCenterX, -10, meta.hashCalc);
+                this.ctx.globalAlpha = 1;
+            }
+        }
+    }
+
+    drawStruct(x, y, w, data, arrowDestX) {
+        const ctx = this.ctx;
+        const h = 35; 
+
+        ctx.textAlign = 'right'; ctx.font = '16px Arial'; ctx.fillStyle = '#000';
+        ctx.fillText('table', x - 5, y + 23);
+        ctx.fillStyle = COLORS.STRUCT_KEYS_BG;
+        ctx.fillRect(x, y, w, h);
+        ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, w, h);
+        
+        const dotX = x + w/2; const dotY = y + h/2;
+        ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
+        ctx.fillStyle = COLORS.DOT; ctx.fill();
+        this.drawArrow(dotX, dotY, arrowDestX, dotY, COLORS.ARROW_REF, 10);
+
+        ctx.textAlign = 'right'; ctx.fillStyle = '#000';
+        ctx.fillText('size', x - 5, y + h + 23);
+        ctx.fillStyle = COLORS.STRUCT_STATS_BG;
+        ctx.fillRect(x, y + h, w, h);
+        ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y + h, w, h);
+        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '22px Arial';
+        ctx.fillText(data.size, x + w/2, y + h + 24);
+
+        ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000';
+        ctx.fillText('maxLoadFactor', x - 5, y + h*2 + 23);
+        ctx.fillStyle = COLORS.STRUCT_STATS_BG;
+        ctx.fillRect(x, y + h*2, w, h);
+        ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y + h*2, w, h);
+        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '22px Arial';
+        ctx.fillText(data.maxLoadFactor, x + w/2, y + h*2 + 24);
+    }
+
+    drawArrayAndLists(x, y, size, data, meta) {
+        const ctx = this.ctx;
+        const table = data.table;
+        const listStartY = y + size + 20;
+
+        const isAnimating = (this.state !== 'IDLE'); 
+
+        for(let i = 0; i < data.capacity; i++) {
+            const cx = x + i * size;
+            const cy = y;
+
+            // Index
+            ctx.fillStyle = '#000'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
+            ctx.fillText(i, cx + size/2, cy - 8);
+
+            // Cell
+            ctx.fillStyle = COLORS.CELL_BG;
+            if (meta.missIndex === i && !meta.isCleanup) ctx.fillStyle = COLORS.MISS_BG;
+
+            ctx.fillRect(cx, cy, size, size);
+            ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1;
+            ctx.strokeRect(cx, cy, size, size);
+
+            const dotX = cx + size/2;
+            const dotY = cy + size/2;
+            ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
+            ctx.fillStyle = (meta.missIndex === i && !meta.isCleanup) ? '#fff' : COLORS.DOT; 
+            ctx.strokeStyle = ctx.fillStyle;
+            ctx.fill();
+
+            /*
+            if (meta.missIndex === i && !meta.isCleanup) {
+                 ctx.beginPath(); ctx.arc(dotX, dotY, 12, 0, Math.PI*2);
+                 ctx.strokeStyle = COLORS.MISS_STROKE; ctx.lineWidth = 3; ctx.stroke();
+            }
+                 */
+
+            const list = table[i] || [];
+            const hasList = list.length > 0;
+            
+            let showGhostInsert = (meta.animation === 'slideDown' && meta.animationCol === i && isAnimating);
+
+            if (hasList) {
+                this.drawArrow(dotX, dotY, dotX, listStartY, COLORS.ARROW_REF, 8);
+                this.drawLinkedListNodes(dotX, listStartY, list, i, meta, isAnimating, this.morphProgress);
+            } else {
+                if (showGhostInsert) {
+                    this.drawArrow(dotX, dotY, dotX, listStartY, COLORS.ARROW_REF, 8);
+                    
+                    const splitTime = 0.7;
+                    let ghostAlpha = 0;
+                    if (this.morphProgress > splitTime) {
+                        ghostAlpha = (this.morphProgress - splitTime) / (1 - splitTime);
+                    }
+                    
+                    if (ghostAlpha > 0) {
+                        ctx.globalAlpha = ghostAlpha;
+                        this.drawSingleNode(dotX, listStartY, meta.animationKey, COLORS.HIT_BG, COLORS.CELL_BG);
+                        ctx.globalAlpha = 1;
+                    }
+                } else {
+                    ctx.strokeStyle = (meta.missIndex === i && !meta.isCleanup) ? '#fff' : COLORS.DOT; 
+                    ctx.lineWidth = 2; ctx.stroke();
+                }
+            }
+
+            if (meta.targetIndex === i && !meta.isCleanup) {
+                 this.drawArrow(dotX, dotY - 70, dotX, dotY - 42, COLORS.ARROW_PROBE, 8);
+            }
+        }
+    }
+
+    drawLinkedListNodes(centerX, startY, list, colIndex, meta, isAnimating, progress) {
+        const ctx = this.ctx;
+        const boxSize = 30; 
+        const nodeTotalH = 60; 
+
+        const getVisualProps = (k) => {
+            let y = startY + k * nodeTotalH;
+            let alpha = 1;
+            
+            if (isAnimating && meta.animationCol === colIndex) {
+                
+                if (meta.animation === 'slideDown') {
+                    const splitTime = 0.7;
+                    
+                    if (k === 0) {
+                        y = startY; 
+                        if (progress < splitTime) {
+                            alpha = 0; 
+                        } else {
+                            alpha = (progress - splitTime) / (1 - splitTime);
+                        }
+                    } else {
+                        const slideProgress = Math.min(progress / splitTime, 1); // Se satura en 1 al llegar al 70%
+                        y = startY + (k - 1 + slideProgress) * nodeTotalH;
+                    }
+                } 
+                else if (meta.animation === 'slideUp') {
+                    if (k === meta.animationDepth) {
+                        alpha = 1 - progress; 
+                    } else if (k > meta.animationDepth) {
+                        y = startY + (k - progress) * nodeTotalH;
+                    }
+                }
+            }
+            return { y, alpha };
+        };
+
+        for(let k = 0; k < list.length; k++) {
+            const node = list[k];
+            const props = getVisualProps(k);
+            
+            if (props.alpha <= 0.01) continue; 
+
+            ctx.globalAlpha = props.alpha;
+
+            let bg = COLORS.DATA_BG;
+            let ptrBg = COLORS.CELL_BG;
+            let fgPtr = COLORS.DOT;
+            let ptrBorder = '#fff';
+            let ptrWidth = 1;
+
+            if (!meta.isCleanup && meta.highlightNode && meta.highlightNode.col === colIndex && meta.highlightNode.depth === k) {
+                const type = meta.highlightNode.type;
+                if (type === 'HIT') bg = COLORS.HIT_BG;
+                if (type === 'EXAMINE') bg = COLORS.EXAMINE_BG;
+                if (type === 'MISS_PTR') {
+                    ptrBg = COLORS.MISS_BG; 
+                    fgPtr = '#fff';
+                    // ptrBorder = COLORS.MISS_STROKE;
+                    ptrWidth = 2;
+                }
+            }
+            if (node.highlight === 'HIT') bg = COLORS.HIT_BG;
+
+            this.drawSingleNode(centerX, props.y, node.key, bg, ptrBg, ptrBorder, ptrWidth, fgPtr);
+
+            if (k < list.length - 1) {
+                const nextProps = getVisualProps(k+1);
+                const dotY = props.y + 30 + 10;
+                
+                ctx.globalAlpha = Math.min(props.alpha, nextProps.alpha);
+                
+                let targetY = nextProps.y;
+                
+                if (isAnimating && meta.animation === 'slideUp' && k === meta.animationDepth - 1 && k+2 < list.length) {
+                     const sliderProps = getVisualProps(k+2);
+                     targetY = sliderProps.y;
+                     ctx.globalAlpha = 1;
+                }
+
+                if (ctx.globalAlpha > 0.05) {
+                    this.drawArrow(centerX, dotY, centerX, targetY, COLORS.ARROW_REF, 6);
+                }
+            } 
+            
+            ctx.globalAlpha = 1;
+        }
+    }
+
+    drawSingleNode(centerX, y, val, bgData, bgPtr, ptrBorder='#fff', ptrWidth=1, fgPtr = COLORS.DOT) {
+        const ctx = this.ctx;
+        const boxSize = 30;
+        const boxH = 30; 
+        const ptrH = 20;
+
+        ctx.fillStyle = bgData;
+        ctx.fillRect(centerX - boxSize/2, y, boxSize, boxH);
+        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
+        ctx.strokeRect(centerX - boxSize/2, y, boxSize, boxH);
+        ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.textAlign = 'center';
+        ctx.fillText(val, centerX, y + 22);
+
+        const ptrY = y + boxH;
+        ctx.fillStyle = bgPtr;
+        ctx.fillRect(centerX - boxSize/2, ptrY, boxSize, ptrH);
+        ctx.strokeStyle = ptrBorder; ctx.lineWidth = ptrWidth;
+        ctx.strokeRect(centerX - boxSize/2, ptrY, boxSize, ptrH);
+        
+        const dotY = ptrY + ptrH/2;
+        ctx.beginPath(); ctx.arc(centerX, dotY, 4, 0, Math.PI*2);
+        ctx.fillStyle = fgPtr; ctx.fill();
+    }
+
+    drawArrow(x1, y1, x2, y2, color, headSize=5) {
+        const ctx = this.ctx;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 2;
+        ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2); ctx.stroke();
+        const angle = Math.atan2(y2-y1, x2-x1);
+        this.drawArrowHead(x2, y2, angle, color, headSize);
+    }
+
+    drawArrowHead(x, y, angle, color, size) {
+        const ctx = this.ctx;
+        ctx.fillStyle = color;
+        ctx.save();
+        ctx.translate(x, y);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-size, -size/2);
+        ctx.lineTo(-size, size/2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    drawHashBox(x, y, info) {
+        const ctx = this.ctx;
+        const w = 100; const h = 40;
+        const boxX = x - w/2; const boxY = y;
+
+        ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '24px Arial'; ctx.textAlign = 'right';
+        ctx.fillText(info.key, boxX - 40, boxY + 26);
+        this.drawArrow(boxX - 35, boxY + 18, boxX - 1, boxY + 18, COLORS.ARROW_PROBE, 8);
+
+        ctx.fillStyle = COLORS.HASH_BOX_BG;
+        ctx.fillRect(boxX, boxY, w, h);
+        ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center';
+        ctx.fillText('hash', boxX + w/2, boxY + 26);
+
+        this.drawArrow(boxX + w + 1, boxY + 18, boxX + w + 40, boxY + 18, COLORS.ARROW_PROBE, 8);
+        ctx.fillStyle = '#000'; ctx.font = '24px Arial'; ctx.textAlign = 'left';
+        ctx.fillText(info.hash, boxX + w + 45, boxY + 26);
+    }
+}
+
+const app = {
+    ht: new SeparateChainingHashTable(5),
+    viz: null,
+
+    init: function() { 
+        this.viz = new Visualizer('htCanvas'); 
+        
+        const initialData = this.ht.getSnapshotData();
+        
+        this.viz.snapshots = [{ 
+            tableData: initialData, 
+            meta: { text: "Ready." } 
+        }];
+        this.viz.currentSnapshotIndex = 0;
+
+        const view = this.viz.calculateView(initialData, {});
+        this.viz.camera = {
+            scale: view.scale,
+            offsetX: view.offsetX,
+            offsetY: view.offsetY,
+            targetScale: view.scale,
+            targetOffsetX: view.offsetX,
+            targetOffsetY: view.offsetY
+        };
+        // -------------------------------------------------------
+
+        this.viz.draw();
+        this.updateUI(); 
+    },
+    
+    updateSpeed: function() { 
+        this.viz.setSpeed(parseFloat(document.getElementById('speedSlider').value)); 
+    },
+    
+    togglePause: function() {
+        const isPaused = this.viz.togglePause();
+        document.getElementById('btnPause').innerText = isPaused ? "Resume" : "Pause";
+    },
+
+    updateUI: function() {
+        document.getElementById('btnUndo').disabled = (this.ht.history.length === 0);
+    },
+
+    runOp: function(fn) {
+        if(this.viz.isPaused) this.togglePause();
+        const snaps = [];
+        snaps.push({ tableData: this.ht.getSnapshotData(), meta: {} });
+        fn((tableData, metaData) => { snaps.push({ tableData: tableData, meta: metaData }); });
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+
+    handleInsert: function() {
+        const el = document.getElementById('inputValue');
+        const val = el.value.charAt(0); 
+        if (val.length > 0) {
+            this.runOp(record => this.ht.insert(val, record));
+            el.value = ''; el.focus();
+        }
+    },
+
+    handleDelete: function() {
+        const el = document.getElementById('inputValue');
+        const val = el.value.charAt(0);
+        if (val.length > 0) {
+            this.runOp(record => this.ht.delete(val, record));
+            el.value = '';
+        }
+    },
+
+    handleSearch: function() {
+        const el = document.getElementById('inputValue');
+        const val = el.value.charAt(0);
+        if (val.length > 0) {
+            this.runOp(record => this.ht.search(val, record));
+        }
+    },
+
+    handleUndo: function() {
+        const oldTable = this.ht.restoreFromHistory();
+        if (oldTable) {
+            this.viz.enqueueOperation([{ tableData: this.ht.getSnapshotData(), meta: { text: "Undo successful." } }]);
+            this.updateUI();
+        }
+    },
+
+    handleClear: function() {
+        this.ht = new SeparateChainingHashTable(5);
+        this.viz.snapshots = [{ tableData: this.ht.getSnapshotData(), meta: { text: "Table cleared." } }];
+        this.viz.currentSnapshotIndex = 0;
+        this.viz.draw(); 
+        this.updateUI();
+    },
+
+    handleRandomFill: function() {
+        this.handleClear();
+        const count = 8; 
+        const snaps = [];
+        const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
+        snaps.push({ tableData: this.ht.getSnapshotData(), meta: { text: "Starting Random Fill..." } });
+        
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        for(let i=0; i<count; i++) {
+            const char = chars.charAt(Math.floor(Math.random() * chars.length));
+            this.ht.insert(char, batchRecord);
+        }
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+
+    toggleModal: function() {
+        const m = document.getElementById('helpModal');
+        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
+    }
+};
+
+window.onload = () => app.init();
+
+</script>
+</body>
+</html>
