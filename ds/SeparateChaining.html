@@ -43,6 +43,24 @@
         #status-bar { padding: 8px 2px 0px 0px; background-color: var(--panel-bg); font-size: 0.85rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; color: #555; flex-shrink: 0; }
         #status-text { font-weight: bold; color: #222; }
         #author { width: 100%; background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2.5; border-top: 1px solid #ddd; flex-shrink: 0; }
+        
+        /* Tooltip Styles */
+        #tooltip {
+            position: fixed;
+            display: none;
+            background: #1a1a1a;
+            color: #ffffff;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 16px;
+            pointer-events: none;
+            z-index: 1000;
+            white-space: nowrap;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+        }
+        .tooltip-item { font-weight: bold; color: #ff6b6b; }
+        .tooltip-hash { font-weight: bold; color: #4fc3f7; }
+
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
         .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
         .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
@@ -99,6 +117,7 @@
         <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8595;</div>&nbsp; Hash Index</div>
         <div class="legend-item"><div class="square" style="background:#CC99FF; width:30px; text-align:center; font-size:10px;">Hash</div>&nbsp; Calculation</div>
     </div>
+    <div id="tooltip"></div>
 </div>
 
 <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
@@ -108,30 +127,31 @@
         <span class="close" onclick="app.toggleModal()">&times;</span>
         <h2>Separate Chaining Hash Table</h2>
         
-        <h3>Algorithms</h3>
-        <p><strong>Hash Function:</strong> Maps key to array index.</p>
+        <h3>Concept</h3>
+        <p><strong>Separate Chaining</strong> resolves collisions by maintaining a linked list of records for each index in the array. If multiple keys hash to the same index, they are simply added to that index's list.</p>
+
+        <h3>Operations & Complexity</h3>
+        <!-- Estilo inline para las etiquetas de complejidad -->
+        <style>.complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; font-size: 0.85rem; font-weight: bold; }</style>
         
-        <h4>Insert(key)</h4>
-        <ol>
-            <li>Calculate index.</li>
-            <li><strong>Search:</strong> Traverse list to check for duplicates. (Violet = Comparing, Green = Found).</li>
-            <li>If not found (Miss), <strong>Insert at Head</strong>. The existing list slides down to make room.</li>
-        </ol>
+        <ul>
+            <li>
+                <strong>Insert</strong> <span class="complexity">O(1) avg</span><br>
+                Computes <code>hash(key)</code>. It traverses the list to ensure the key doesn't exist (duplicate check). If not found, it inserts the new node at the <strong>head</strong>.
+            </li>
+            <li>
+                <strong>Search</strong> <span class="complexity">O(1) avg</span><br>
+                Calculates the index and traverses the linked list. The time depends on the list length (Load Factor α).
+            </li>
+            <li>
+                <strong>Delete</strong> <span class="complexity">O(1) avg</span><br>
+                Finds the node in the list and removes it by updating the pointers (sliding the list up/re-linking).
+            </li>
+        </ul>
 
-        <h4>Delete(key)</h4>
-        <ol>
-            <li>Calculate index.</li>
-            <li><strong>Search:</strong> Traverse list. If found (Green), remove it.</li>
-            <li><strong>Slide Up:</strong> Nodes below the removed key slide up to fill the gap.</li>
-        </ol>
-
-        <h4>Search(key)</h4>
-        <ol>
-            <li>Calculate index.</li>
-            <li>Traverse list comparing keys.</li>
-            <li>If found -> <strong>Green</strong> (Hit).</li>
-            <li>If array cell empty or end of list reached -> <strong>Red</strong> (Miss).</li>
-        </ol>
+        <p style="font-size: 0.9rem; color: #555; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
+            <em><strong>Worst Case:</strong> <span class="complexity">O(n)</span> for all operations if the hash function is poor and all keys end up in the same list.</em>
+        </p>
     </div>
 </div>
 
@@ -317,7 +337,7 @@ class SeparateChainingHashTable {
     }
 
     insert(key, recordSnapshot) {
-        if (this.size / this.capacity > this.maxLoadFactor) {
+        if ((this.size + 1) / this.capacity > this.maxLoadFactor) {
             this.rehash(recordSnapshot);
         }
 
@@ -466,6 +486,7 @@ class Visualizer {
         this.resize();
         window.addEventListener('resize', () => this.resize());
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
 
         requestAnimationFrame(t => this.loop(t));
@@ -496,32 +517,26 @@ class Visualizer {
 
     calculateView(data, meta) {
         const capacity = data.capacity;
-        const minLogicalHeight = 400; // Ensure decent initial view
+        const minLogicalHeight = 400; 
         
         let maxDepth = data.maxDepth;
         
-        // Look ahead logic for slideDown
         if (meta.animation === 'slideDown') {
-            // If sliding down, visual height is effectively depth + 1
-            // Check if this column becomes the new max
             const colLen = (data.table[meta.animationCol] ? data.table[meta.animationCol].length : 0);
             if (colLen > maxDepth) {
-                // Already captured in maxDepth if we passed NEW data?
-                // Yes, if Insert passed new data, maxDepth reflects it. 
-                // But visual height during anim is roughly similar.
             }
         }
         
-        const padding = 50;
+        const padding = 0;
         const leftPanelW = 140; 
-        const gap = 50; 
+        const gap = 0; 
         const arrayW = capacity * this.boxSize;
-        const listH = (maxDepth + 2) * 70; 
+        const listH = (maxDepth) * 70; 
         
         const logicalWidth = leftPanelW + gap + arrayW + padding * 2;
         const logicalHeight = Math.max(minLogicalHeight, 250 + listH);
 
-        const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight) * 0.95;
+        const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight * 1.15);
         const effectiveScale = Math.min(1.5, scale); 
         
         const offsetX = (this.canvas.width - logicalWidth * effectiveScale) / 2;
@@ -542,13 +557,7 @@ class Visualizer {
         const snap = this.snapshots[this.currentSnapshotIndex];
         const meta = snap.meta || {};
         
-        // Calculate View
         const targetView = this.calculateView(snap.tableData, meta);
-        
-        // Smart Zoom Logic:
-        // 1. If we need to ZOOM OUT (scale decreasing), do it BEFORE (PRE_ZOOM).
-        // 2. If we need to ZOOM IN (scale increasing), do it AFTER (POST_ZOOM drift).
-        // 3. During 'slideUp', we want to hold the camera steady (don't zoom in yet).
         
         let lockCamera = false;
         if (meta.animation === 'slideUp') lockCamera = true;
@@ -578,7 +587,6 @@ class Visualizer {
     }
 
     update() {
-        // Camera Smooth Follow
         const camSpeed = 0.1;
         this.camera.scale += (this.camera.targetScale - this.camera.scale) * camSpeed;
         this.camera.offsetX += (this.camera.targetOffsetX - this.camera.offsetX) * camSpeed;
@@ -609,7 +617,6 @@ class Visualizer {
                     this.startNextStep();
                 } else {
                     this.state = 'IDLE';
-                    // Final check to ensure camera fits final state (e.g. after delete zoom in)
                     const finalSnap = this.snapshots[this.currentSnapshotIndex];
                     const finalView = this.calculateView(finalSnap.tableData, {});
                     this.camera.targetScale = finalView.scale;
@@ -621,10 +628,11 @@ class Visualizer {
         }
     }
 
-    handleClick(e) {
-        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return;
+    getMouseInTable(e) {
+        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
         const snap = this.snapshots[this.currentSnapshotIndex];
         const data = snap.tableData;
+        
         const rect = this.canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
@@ -632,9 +640,9 @@ class Visualizer {
         const ly = (my - this.camera.offsetY) / this.camera.scale;
 
         const cellSize = this.boxSize;
-        const padding = 50;
+        const padding = 0;
         const leftPanelW = 140; 
-        const gap = 50; 
+        const gap = 0; 
         const arrayStartX = leftPanelW + gap + padding;
         const baseY = 100;
         const listTop = baseY + cellSize + 20;
@@ -647,13 +655,34 @@ class Visualizer {
                 let cy = listTop;
                 for(let k = 0; k < list.length; k++) {
                     if (lx >= cx - 15 && lx <= cx + 15 && ly >= cy && ly <= cy + 30) {
-                        document.getElementById('inputValue').value = list[k].key;
-                        document.getElementById('inputValue').focus();
-                        return;
+                        return { key: list[k].key, hash: app.ht.hash(list[k].key) };
                     }
                     cy += nodeTotalH; 
                 }
             }
+        }
+        return null;
+    }
+
+    handleClick(e) {
+        const item = this.getMouseInTable(e);
+        if (item) {
+            document.getElementById('inputValue').value = item.key;
+            document.getElementById('inputValue').focus();
+        }
+    }
+
+    handleMouseMove(e) {
+        const item = this.getMouseInTable(e);
+        const tooltip = document.getElementById('tooltip');
+        
+        if (item) {
+            tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.key}</span> is <span class="tooltip-hash">${item.hash}</span>`;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 10) + 'px';
+            tooltip.style.top = (e.clientY + 10) + 'px';
+        } else {
+            tooltip.style.display = 'none';
         }
     }
 
@@ -668,9 +697,9 @@ class Visualizer {
         this.ctx.translate(this.camera.offsetX, this.camera.offsetY);
         this.ctx.scale(this.camera.scale, this.camera.scale);
 
-        const padding = 50;
+        const padding = 0;
         const leftPanelW = 140; 
-        const gap = 50; 
+        const gap = 0; 
         const arrayStartX = leftPanelW + gap + padding;
 
         this.drawScene(snap.tableData, meta, arrayStartX);
@@ -757,13 +786,6 @@ class Visualizer {
             ctx.strokeStyle = ctx.fillStyle;
             ctx.fill();
 
-            /*
-            if (meta.missIndex === i && !meta.isCleanup) {
-                 ctx.beginPath(); ctx.arc(dotX, dotY, 12, 0, Math.PI*2);
-                 ctx.strokeStyle = COLORS.MISS_STROKE; ctx.lineWidth = 3; ctx.stroke();
-            }
-                 */
-
             const list = table[i] || [];
             const hasList = list.length > 0;
             
@@ -821,7 +843,7 @@ class Visualizer {
                             alpha = (progress - splitTime) / (1 - splitTime);
                         }
                     } else {
-                        const slideProgress = Math.min(progress / splitTime, 1); // Se satura en 1 al llegar al 70%
+                        const slideProgress = Math.min(progress / splitTime, 1); 
                         y = startY + (k - 1 + slideProgress) * nodeTotalH;
                     }
                 } 
@@ -857,7 +879,6 @@ class Visualizer {
                 if (type === 'MISS_PTR') {
                     ptrBg = COLORS.MISS_BG; 
                     fgPtr = '#fff';
-                    // ptrBorder = COLORS.MISS_STROKE;
                     ptrWidth = 2;
                 }
             }
@@ -979,7 +1000,6 @@ const app = {
             targetOffsetX: view.offsetX,
             targetOffsetY: view.offsetY
         };
-        // -------------------------------------------------------
 
         this.viz.draw();
         this.updateUI(); 
@@ -1012,7 +1032,8 @@ const app = {
         const val = el.value.charAt(0); 
         if (val.length > 0) {
             this.runOp(record => this.ht.insert(val, record));
-            el.value = ''; el.focus();
+            el.value = ''; 
+            // el.focus(); REMOVED to prevent keyboard popup
         }
     },
 
