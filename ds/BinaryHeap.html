@@ -18,6 +18,7 @@
             --btn-gray: #546E7A;
             --btn-random: #EF6C00;
             --btn-heapify: #00838F; 
+            --btn-mapping: #D84315; 
         }
 
         body {
@@ -66,6 +67,7 @@
         .btn-clear { background-color: var(--btn-gray); }
         .btn-random { background-color: var(--btn-random); }
         .btn-heapify { background-color: var(--btn-heapify); }
+        .btn-mapping { background-color: var(--btn-mapping); } 
         .btn-pause { background-color: #455A64; width: 80px;}
         .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
 
@@ -135,13 +137,16 @@
         <div class="controls">
             <input type="number" id="inputValue" title="Enter a number" placeholder="#" onkeydown="if(event.key==='Enter') app.handleInsert()">
             <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-delete" title="Delete the minimum element (Root)" onclick="app.handleExtractMin()">Delete Minimum</button>
+            <button class="btn-delete" title="Delete the minimum element (Root)" onclick="app.handleExtractMin()">Delete Min</button>
             <button class="btn-search" title="Show minimum element" onclick="app.handleMinimum()">Minimum</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
-            <button class="btn-random" title="Sequential Insertion O(n log n)" onclick="app.handleRandomHeap()">Build Random</button>
-            <button class="btn-heapify" title="Floyd's Algorithm O(n)" onclick="app.handleBuildHeap()">Build from Array</button>
+            <button class="btn-random" title="Sequential Insertion O(n log n)" onclick="app.handleRandomHeap()">Random</button>
+            <button class="btn-heapify" title="Floyd's Algorithm O(n)" onclick="app.handleBuildHeap()">Build Heap</button>
+
+            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
+            <button class="btn-mapping" title="Show how tree maps to array" onclick="app.handleShowMapping()">Array Mapping</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
@@ -149,7 +154,7 @@
             <button class="btn-clear" title="Clear the heap" onclick="app.handleClear()">Clear</button>
         </div>
         <div class="sub-controls">
-            <label for="speedSlider">Slowdown:</label>
+            <label for="speedSlider">Speed:</label>
             <label title="Slide right to slow down the animation">
                 <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
             </label>
@@ -194,6 +199,19 @@
             <li><strong>Delete Minimum:</strong> Remove root, move last element to root, and "bubble down" (swap with smallest child). <span class="complexity">O(log n)</span></li>
             <li><strong>Get Minimum:</strong> Minimum element is at the root. <span class="complexity">O(1)</span></li>
         </ul>
+        
+        <h3>Array Mapping</h3>
+        <p>The heap is stored in an array level-by-level:</p>
+        <ul>
+            <li>Root is at index <code>0</code>.</li>
+            <li>For any node at index <code>i</code>:
+                <ul>
+                    <li>Left Child: <code>2*i + 1</code></li>
+                    <li>Right Child: <code>2*i + 2</code></li>
+                    <li>Parent: <code>⌊(i-1)/2⌋</code></li>
+                </ul>
+            </li>
+        </ul>
 
         <h3>Build Algorithms</h3>
         <p><strong>Random Heap (Sequential):</strong> Inserts n elements one by one.<br>
@@ -209,7 +227,6 @@ const COLORS = {
     DEFAULT: '#B0F9B0',    // Green
     STROKE: '#B0F9B0',     
   
-
     TEXT: '#CC0000',       // Red Text
     EDGE: '#1668BD',       // Blue Edges
     
@@ -222,7 +239,18 @@ const COLORS = {
     
     ARROW: '#D50000',          // Red Arrow
     ARRAY_BG: '#FAFAFA',
-    ARRAY_BORDER: '#1668BD'    
+    ARRAY_BORDER: '#1668BD',
+    
+    // Level Colors for mapping visualization
+    LEVELS: [
+        '#FFCC80', // Level 0 (Orange)
+        '#F8BBD0', // Level 1 (Pink)
+        '#BBDEFB', // Level 2 (Blue)
+        '#E1BEE7', // Level 3 (Purple)
+        '#B2DFDB', // Level 4 (Teal)
+        '#F0F4C3', // Level 5 (Lime)
+        '#CFD8DC'  // Level 6 (Gray)
+    ]
 };
 
 class MinHeap {
@@ -464,6 +492,44 @@ class MinHeap {
                 break;
             }
         }
+    }
+
+    // Nueva función para visualizar el mapeo de array
+    visualizeArrayMapping(recordSnapshot) {
+        if (this.heap.length === 0) {
+            recordSnapshot([], { text: "Heap empty." });
+            return;
+        }
+
+        const levelColorsMap = {}; // Map index -> color
+        const depth = Math.floor(Math.log2(this.heap.length));
+
+        // Estado inicial
+        recordSnapshot([...this.heap], { text: "Starting Array Mapping visualization..." });
+
+        for (let level = 0; level <= depth; level++) {
+            const color = COLORS.LEVELS[level % COLORS.LEVELS.length];
+            const startIdx = Math.pow(2, level) - 1;
+            const endIdx = Math.pow(2, level + 1) - 2;
+
+            // Marcar índices de este nivel
+            for (let i = startIdx; i <= endIdx && i < this.heap.length; i++) {
+                levelColorsMap[i] = color;
+            }
+
+            // Snapshot para mostrar el progreso de este nivel
+            recordSnapshot([...this.heap], {
+                text: `Mapping Level ${level} (Indices ${startIdx} to ${Math.min(endIdx, this.heap.length-1)})`,
+                levelColors: {...levelColorsMap},
+                pause: true
+            });
+        }
+
+        // Estado final
+        recordSnapshot([...this.heap], {
+            text: "Mapping complete. Tree levels correspond to contiguous array segments.",
+            levelColors: {...levelColorsMap}
+        });
     }
 }
 
@@ -746,15 +812,20 @@ class Visualizer {
             const nA = mapA.get(id); const nB = mapB.get(id);
             let x, y, val, color = COLORS.DEFAULT;
             
-            if (meta && meta.heapifiedSet) {
-                const refHeap = (t > 0.5 && this.snapshots[this.currentSnapshotIndex+1]) ? this.snapshots[this.currentSnapshotIndex+1].heapData : this.snapshots[this.currentSnapshotIndex].heapData;
-                const currentIdx = refHeap.findIndex(h => h.id === id);
-                if (currentIdx !== -1 && meta.heapifiedSet.has(currentIdx)) color = COLORS.HEAPIFIED;
+            const refHeap = (t > 0.5 && this.snapshots[this.currentSnapshotIndex+1]) ? this.snapshots[this.currentSnapshotIndex+1].heapData : this.snapshots[this.currentSnapshotIndex].heapData;
+            const currentIdx = refHeap.findIndex(h => h.id === id);
+
+            // Priority 1: Level Mapping Color
+            if (meta && meta.levelColors && meta.levelColors[currentIdx]) {
+                color = meta.levelColors[currentIdx];
+            }
+            // Priority 2: Heapified Set (only if no level color)
+            else if (meta && meta.heapifiedSet && meta.heapifiedSet.has(currentIdx)) {
+                color = COLORS.HEAPIFIED;
             }
 
+            // Priority 3: Highlights (overrides all)
             if (meta && meta.highlights) {
-                const refHeap = (t > 0.5 && this.snapshots[this.currentSnapshotIndex+1]) ? this.snapshots[this.currentSnapshotIndex+1].heapData : this.snapshots[this.currentSnapshotIndex].heapData;
-                const currentIdx = refHeap.findIndex(h => h.id === id);
                 const hl = meta.highlights.find(h => h.idx === currentIdx);
                 if (hl) color = hl.color;
             }
@@ -819,10 +890,16 @@ class Visualizer {
             let textColor = COLORS.TEXT;
             const refIdx = Math.round(curIdx);
             
-            if (meta && meta.heapifiedSet && meta.heapifiedSet.has(refIdx)) {
+            // Priority 1: Level Mapping Color
+            if (meta && meta.levelColors && meta.levelColors[refIdx]) {
+                color = meta.levelColors[refIdx];
+            }
+            // Priority 2: Heapified
+            else if (meta && meta.heapifiedSet && meta.heapifiedSet.has(refIdx)) {
                 color = COLORS.HEAPIFIED;
             }
             
+            // Priority 3: Highlights
             if (meta && meta.highlights) {
                 const hl = meta.highlights.find(h => h.idx === refIdx);
                 if (hl) {
@@ -976,6 +1053,19 @@ const app = {
         const input = [];
         for(let i=0; i<13; i++) input.push(this.createItem(Math.floor(Math.random() * 100) + 1));
         this.runOp(rec => this.heap.buildHeap(input, rec));
+    },
+    handleShowMapping: function() {
+        // Si el heap está vacío, construimos uno aleatorio instantáneamente
+        if (this.heap.heap.length === 0) {
+            const count = 15; 
+            for(let i=0; i<count; i++) {
+                const item = this.createItem(Math.floor(Math.random() * 100) + 1);
+                // Pasamos una función vacía como callback para que NO registre snapshots
+                // De esta forma la inserción es interna e instantánea.
+                this.heap.insert(item, () => {});
+            }
+        }
+        this.runOp(rec => this.heap.visualizeArrayMapping(rec));
     },
     toggleModal: function() {
         const m = document.getElementById('helpModal');
