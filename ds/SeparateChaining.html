@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Separate Chaining Hash Table</title>
+    <title>Separate Chaining Hash Table - Rehash Visualizer</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -115,7 +115,7 @@
         <div class="legend-item"><div class="square" style="background:#00E676;"></div>&nbsp; Hit (Green)</div>
         <div class="legend-item"><div class="square" style="background:#D32F2F; border:1px solid #D32F2F;"></div>&nbsp; Miss (Red Box)</div>
         <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8595;</div>&nbsp; Hash Index</div>
-        <div class="legend-item"><div class="square" style="background:#CC99FF; width:30px; text-align:center; font-size:10px;">Hash</div>&nbsp; Calculation</div>
+        <div class="legend-item"><div class="square" style="background:#FFD700;"></div>&nbsp; Rehash Flight</div>
     </div>
     <div id="tooltip"></div>
 </div>
@@ -131,27 +131,26 @@
         <p><strong>Separate Chaining</strong> resolves collisions by maintaining a linked list of records for each index in the array. If multiple keys hash to the same index, they are simply added to that index's list.</p>
 
         <h3>Operations & Complexity</h3>
-        <!-- Estilo inline para las etiquetas de complejidad -->
         <style>.complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; font-size: 0.85rem; font-weight: bold; }</style>
         
         <ul>
             <li>
                 <strong>Insert</strong> <span class="complexity">O(1) avg</span><br>
-                Computes <code>hash(key)</code>. It traverses the list to ensure the key doesn't exist (duplicate check). If not found, it inserts the new node at the <strong>head</strong>.
+                Computes <code>hash(key)</code>. Traverses the list to check duplicates. If not found, inserts at the <strong>head</strong>.
             </li>
             <li>
                 <strong>Search</strong> <span class="complexity">O(1) avg</span><br>
-                Calculates the index and traverses the linked list. The time depends on the list length (Load Factor α).
+                Calculates index and traverses the linked list. Time depends on Load Factor α.
             </li>
             <li>
                 <strong>Delete</strong> <span class="complexity">O(1) avg</span><br>
-                Finds the node in the list and removes it by updating the pointers (sliding the list up/re-linking).
+                Finds the node and updates pointers to remove it.
+            </li>
+            <li>
+                <strong>Rehash</strong> <span class="complexity">O(n)</span><br>
+                Occurs when Load Factor > maxLoadFactor. A new table (double size) is created and all existing nodes are re-inserted into the new table.
             </li>
         </ul>
-
-        <p style="font-size: 0.9rem; color: #555; margin-top: 15px; border-top: 1px solid #eee; padding-top: 10px;">
-            <em><strong>Worst Case:</strong> <span class="complexity">O(n)</span> for all operations if the hash function is poor and all keys end up in the same list.</em>
-        </p>
     </div>
 </div>
 
@@ -232,6 +231,19 @@ class SeparateChainingHashTable {
         return newTable;
     }
 
+    // Helper for visualizer snapshots
+    serializeTable(table) {
+        return table.map(head => {
+            const list = [];
+            let curr = head;
+            while(curr) {
+                list.push({ key: curr.key, id: curr.id });
+                curr = curr.next;
+            }
+            return list;
+        });
+    }
+
     saveToHistory() {
         const state = {
             table: this.cloneTable(this.table),
@@ -259,23 +271,17 @@ class SeparateChainingHashTable {
     }
 
     getSnapshotData() {
-        const serializedTable = this.table.map(head => {
-            const list = [];
-            let curr = head;
-            while(curr) {
-                list.push({ key: curr.key, id: curr.id });
-                curr = curr.next;
-            }
-            return list;
-        });
-
         return {
-            table: serializedTable,
+            table: this.serializeTable(this.table),
             size: this.size,
             capacity: this.capacity,
             maxLoadFactor: this.maxLoadFactor,
-            // Calculate max depth for camera logic
-            maxDepth: serializedTable.reduce((max, list) => Math.max(max, list.length), 0)
+            maxDepth: this.table.reduce((max, list) => {
+                let d = 0;
+                let curr = list;
+                while(curr) { d++; curr = curr.next; }
+                return Math.max(max, d);
+            }, 0)
         };
     }
 
@@ -337,12 +343,12 @@ class SeparateChainingHashTable {
     }
 
     insert(key, recordSnapshot) {
+        this.saveToHistory();
+
         if ((this.size + 1) / this.capacity > this.maxLoadFactor) {
             this.rehash(recordSnapshot);
         }
 
-        this.saveToHistory();
-        
         const result = this.performSearchLogic(key, recordSnapshot);
         
         if (result.found) {
@@ -352,13 +358,10 @@ class SeparateChainingHashTable {
 
         let idx = result.idx;
         
-        // Data op
         const newNode = new Node(key, this.table[idx]);
         this.table[idx] = newNode;
         this.size++;
         
-        // Animation Snapshot: USING NEW DATA
-        // slideDown adds visual height, so we mark it
         recordSnapshot(this.getSnapshotData(), { 
             text: `Inserting '${key}' at head...`, 
             hashCalc: { key: key, hash: idx },
@@ -388,7 +391,6 @@ class SeparateChainingHashTable {
 
         let idx = result.idx;
         
-        // Animation Snapshot: MUST use OLD data state for Slide Up
         const oldData = this.getSnapshotData();
         
         recordSnapshot(oldData, {
@@ -400,7 +402,6 @@ class SeparateChainingHashTable {
             animationDepth: result.depth 
         });
 
-        // Internal Op
         let curr = this.table[idx];
         let prev = null;
         while(curr && curr.key !== key) {
@@ -414,7 +415,6 @@ class SeparateChainingHashTable {
         }
         this.size--;
 
-        // Final State
         recordSnapshot(this.getSnapshotData(), { 
             text: `Deleted '${key}'.`, 
             hashCalc: { key: key, hash: idx }
@@ -424,41 +424,76 @@ class SeparateChainingHashTable {
     }
 
     rehash(recordSnapshot) {
-        recordSnapshot(this.getSnapshotData(), { text: `Load Factor > ${this.maxLoadFactor}. Rehashing...`, pause: true });
+        // 1. Guardar estado de la tabla ANTIGUA
+        const oldCapacity = this.capacity;
+        const oldTableRef = this.cloneTable(this.table); // Copia física
+        const oldSerialized = this.serializeTable(oldTableRef); // Copia visual
         
-        let oldTable = this.table;
+        // 2. Preparar NUEVA tabla
         this.capacity = nextPrime(this.capacity * 2);
         this.table = new Array(this.capacity).fill(null);
-        this.size = 0; 
+        this.size = 0;
         
-        recordSnapshot(this.getSnapshotData(), { text: `New capacity: ${this.capacity}. Re-inserting keys...` });
+        // Snapshot inicial Rehash
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Load Factor > ${this.maxLoadFactor}. Rehashing ${oldCapacity} -> ${this.capacity}...`,
+            rehashMode: true,
+            phase: 'SETUP',
+            oldTable: oldSerialized,
+            oldCapacity: oldCapacity,
+            processedIds: [] 
+        });
 
-        let allKeys = [];
-        for(let i = 0; i < oldTable.length; i++) {
-            let curr = oldTable[i];
+        // 3. Recolectar nodos antiguos para mover
+        let allNodes = [];
+        for(let i = 0; i < oldTableRef.length; i++) {
+            let curr = oldTableRef[i];
+            let depth = 0;
             while(curr) {
-                allKeys.push(curr.key);
+                allNodes.push({ key: curr.key, id: curr.id, oldIdx: i, oldDepth: depth });
                 curr = curr.next;
+                depth++;
             }
         }
 
-        for (let key of allKeys) {
-            let idx = this.hash(key);
-            const newNode = new Node(key, this.table[idx]);
-            this.table[idx] = newNode;
-            this.size++;
+        // 4. Mover y Animar uno a uno
+        const processedIds = [];
+
+        for (let nodeInfo of allNodes) {
+            let key = nodeInfo.key;
+            let newIdx = this.hash(key);
             
+            // Inserción Lógica
+            const newNode = new Node(key, this.table[newIdx]);
+            newNode.id = nodeInfo.id; 
+            this.table[newIdx] = newNode;
+            this.size++;
+
+            // Snapshot: Animación "Vuelo"
             recordSnapshot(this.getSnapshotData(), {
-                text: `Re-inserting '${key}'...`,
-                hashCalc: { key: key, hash: idx },
-                targetIndex: idx,
-                animation: 'slideDown',
-                animationCol: idx
+                text: `Moving '${key}'... (Index ${nodeInfo.oldIdx} -> ${newIdx})`,
+                rehashMode: true,
+                phase: 'FLYING',
+                oldTable: oldSerialized,
+                oldCapacity: oldCapacity,
+                processedIds: [...processedIds], 
+                flyingNode: { 
+                    key: key, 
+                    id: nodeInfo.id,
+                    fromIdx: nodeInfo.oldIdx, 
+                    fromDepth: nodeInfo.oldDepth,
+                    toIdx: newIdx
+                }
             });
+
+            processedIds.push(nodeInfo.id);
         }
 
-        recordSnapshot(this.getSnapshotData(), { text: `Rehashing complete.` });
-        this.cleanUp(recordSnapshot);
+        // Snapshot Final
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Rehashing complete. New capacity: ${this.capacity}.`,
+            isCleanup: true 
+        });
     }
 
     cleanUp(recordSnapshot) {
@@ -516,24 +551,43 @@ class Visualizer {
     togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
 
     calculateView(data, meta) {
-        const capacity = data.capacity;
         const minLogicalHeight = 400; 
-        
-        let maxDepth = data.maxDepth;
-        
-        if (meta.animation === 'slideDown') {
-            const colLen = (data.table[meta.animationCol] ? data.table[meta.animationCol].length : 0);
-            if (colLen > maxDepth) {
-            }
+        const maxDepth = data.maxDepth;
+        const cellS = this.boxSize;
+        const leftPanelW = 140; 
+        const padding = 20;
+
+        // --- LÓGICA REHASH ---
+        if (meta.rehashMode) {
+            const oldW = meta.oldCapacity * cellS;
+            const newW = data.capacity * cellS;
+            const gapBetweenTables = 150;
+            
+            const logicalWidth = leftPanelW + oldW + gapBetweenTables + newW + padding * 2;
+            
+            const maxOldDepth = meta.oldTable.reduce((m, l) => Math.max(m, l.length), 0);
+            const totalMaxDepth = Math.max(maxDepth, maxOldDepth);
+            const listH = (totalMaxDepth + 1) * 70;
+            const logicalHeight = Math.max(minLogicalHeight, 200 + listH);
+            
+            const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight * 1.1);
+            const effectiveScale = Math.min(1.2, scale);
+            
+            const offsetX = (this.canvas.width - logicalWidth * effectiveScale) / 2;
+            const offsetY = 50 * effectiveScale;
+            
+            return { scale: effectiveScale, offsetX, offsetY };
         }
         
-        const padding = 0;
-        const leftPanelW = 140; 
-        const gap = 0; 
-        const arrayW = capacity * this.boxSize;
+        // --- VISTA NORMAL ---
+        if (meta.animation === 'slideDown') {
+            // small adjustments for smoother zoom
+        }
+        
+        const arrayW = data.capacity * cellS;
         const listH = (maxDepth) * 70; 
         
-        const logicalWidth = leftPanelW + gap + arrayW + padding * 2;
+        const logicalWidth = leftPanelW + arrayW + padding * 2;
         const logicalHeight = Math.max(minLogicalHeight, 250 + listH);
 
         const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight * 1.15);
@@ -607,6 +661,7 @@ class Visualizer {
                 const snap = this.snapshots[this.currentSnapshotIndex];
                 if (snap.meta && snap.meta.pause) this.pauseTimer = 60;
                 if (snap.meta && snap.meta.isCleanup) this.pauseTimer = 20;
+                if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') this.pauseTimer = 5 / this.currentSpeedFactor; // faster flying
             }
         } 
         else if (this.state === 'WAITING') {
@@ -647,6 +702,9 @@ class Visualizer {
         const baseY = 100;
         const listTop = baseY + cellSize + 20;
         const nodeTotalH = 60; 
+
+        // Not interactive during Rehash mode for simplicity
+        if(snap.meta && snap.meta.rehashMode) return null;
 
         for (let i = 0; i < data.capacity; i++) {
             const list = data.table[i];
@@ -710,6 +768,11 @@ class Visualizer {
         const cellSize = this.boxSize;
         const baseY = 100; 
 
+        if (meta.rehashMode) {
+            this.drawRehashScene(data, meta, arrayStartX, baseY);
+            return;
+        }
+
         this.drawStruct(50, baseY, 40, data, arrayStartX);
         this.drawArrayAndLists(arrayStartX, baseY, cellSize, data, meta);
 
@@ -720,6 +783,81 @@ class Visualizer {
                 const arrayCenterX = arrayStartX + (data.capacity * cellSize) / 2;
                 this.drawHashBox(arrayCenterX, -10, meta.hashCalc);
                 this.ctx.globalAlpha = 1;
+            }
+        }
+    }
+
+    drawRehashScene(data, meta, startX, baseY) {
+        const ctx = this.ctx;
+        const cellSize = this.boxSize;
+        
+        const oldTableX = startX;
+        const gap = 150;
+        const newTableX = startX + (meta.oldCapacity * cellSize) + gap;
+
+        // 1. OLD TABLE
+        ctx.fillStyle = '#777'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+        ctx.fillText("OLD TABLE", oldTableX + (meta.oldCapacity * cellSize)/2, baseY - 30);
+
+        const filteredOldTable = meta.oldTable.map(list => 
+            list.filter(item => !meta.processedIds.includes(item.id) && (meta.flyingNode ? meta.flyingNode.id !== item.id : true))
+        );
+        
+        const oldDataDummy = { capacity: meta.oldCapacity, table: filteredOldTable };
+        this.drawArrayAndLists(oldTableX, baseY, cellSize, oldDataDummy, { isCleanup: true });
+
+        // 2. ARROW
+        const arrowX1 = oldTableX + (meta.oldCapacity * cellSize) + 20;
+        const arrowX2 = newTableX - 20;
+        this.drawArrow(arrowX1, baseY + cellSize/2, arrowX2, baseY + cellSize/2, '#ddd', 15);
+        ctx.fillStyle = '#999'; ctx.font = '12px Arial'; ctx.textAlign = 'center';
+        ctx.fillText("Rehashing", (arrowX1+arrowX2)/2, baseY + cellSize/2 - 10);
+
+        // 3. NEW TABLE
+        ctx.fillStyle = '#2E7D32'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+        ctx.fillText("NEW TABLE", newTableX + (data.capacity * cellSize)/2, baseY - 30);
+
+        let newDataForDraw = data;
+        if (meta.phase === 'FLYING' && meta.flyingNode) {
+            newDataForDraw = {
+                ...data,
+                table: data.table.map(list => list.filter(n => n.id !== meta.flyingNode.id))
+            };
+        }
+        this.drawArrayAndLists(newTableX, baseY, cellSize, newDataForDraw, { isCleanup: true });
+
+        // 4. FLYING NODE
+        if (meta.phase === 'FLYING' && meta.flyingNode) {
+            const fNode = meta.flyingNode;
+            
+            const srcX = oldTableX + fNode.fromIdx * cellSize + cellSize/2;
+            const srcY = baseY + cellSize + 20 + fNode.fromDepth * 60;
+            
+            const destList = data.table[fNode.toIdx];
+            const destDepth = destList.findIndex(n => n.id === fNode.id); 
+            
+            const destX = newTableX + fNode.toIdx * cellSize + cellSize/2;
+            const destY = baseY + cellSize + 20 + (destDepth >= 0 ? destDepth : 0) * 60;
+
+            const t = this.morphProgress; 
+            const ease = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            
+            const currX = srcX + (destX - srcX) * ease;
+            const currY = srcY + (destY - srcY) * ease;
+            
+            this.ctx.globalAlpha = 1;
+            this.drawSingleNode(currX, currY, fNode.key, '#FFD700', '#FFD700', '#000', 2); 
+            
+            if (t > 0.1) {
+                ctx.save();
+                ctx.globalAlpha = 0.3;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(srcX, srcY + 15);
+                ctx.lineTo(currX, currY + 15);
+                ctx.strokeStyle = '#FFD700';
+                ctx.stroke();
+                ctx.restore();
             }
         }
     }
@@ -834,7 +972,6 @@ class Visualizer {
                 
                 if (meta.animation === 'slideDown') {
                     const splitTime = 0.7;
-                    
                     if (k === 0) {
                         y = startY; 
                         if (progress < splitTime) {
@@ -1033,7 +1170,6 @@ const app = {
         if (val.length > 0) {
             this.runOp(record => this.ht.insert(val, record));
             el.value = ''; 
-            // el.focus(); REMOVED to prevent keyboard popup
         }
     },
 
@@ -1072,7 +1208,7 @@ const app = {
 
     handleRandomFill: function() {
         this.handleClear();
-        const count = 8; 
+        const count = 9; 
         const snaps = [];
         const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
         snaps.push({ tableData: this.ht.getSnapshotData(), meta: { text: "Starting Random Fill..." } });

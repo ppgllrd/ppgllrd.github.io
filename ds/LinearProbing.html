@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Linear Probing Hash Table</title>
+    <title>Linear Probing Hash Table - Rehash Animation</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -176,7 +176,7 @@
         <div class="legend-item"><div class="square" style="background:#D32F2F; border: 2px solid #FF0000; width:12px; height:12px;"></div>&nbsp; Search Miss</div>
         <div class="legend-item"><div class="dot" style="background:#1668BD;"></div>&nbsp; Null Pointer</div>
         <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8631;</div>&nbsp; Probe Path</div>
-        <div class="legend-item"><div class="square" style="background:#CC99FF; width:30px; text-align:center; font-size:10px;">Hash</div>&nbsp; Calculation</div>
+        <div class="legend-item"><div class="square" style="background:#FFD700;"></div>&nbsp; Rehash Flight</div>
     </div>
     <div id="tooltip"></div>
 </div>
@@ -231,7 +231,7 @@ const COLORS = {
     MISS_RING: '#D32F2F',   
     MISS_CELL_BG: '#D32F2F', 
     HIT_CELL: '#00FF00',    
-    PROBE_CHECK_BG: '#E1BEE7', // Light Violet for checking valid cells
+    PROBE_CHECK_BG: '#E1BEE7', 
     
     HASH_BOX_BG: '#CC99FF'
 };
@@ -335,7 +335,7 @@ class LinearProbingHashTable {
             recordSnapshot(this.getSnapshotData(), { 
                 text: `Collision at ${idx}. Probing...`, 
                 highlightIdx: idx, 
-                probeCheck: true, // Mark as purple
+                probeCheck: true, 
                 hashCalc: { key: key, hash: initialIdx },
                 probeArrows: [...this.probePath],
                 startProbeIdx: initialIdx
@@ -363,34 +363,70 @@ class LinearProbingHashTable {
     }
 
     insert(key, recordSnapshot) {
+        this.saveToHistory();
         if ((this.size + 1) / this.capacity > this.maxLoadFactor) {
             this.rehash(recordSnapshot);
         }
 
-        this.saveToHistory();
         this.resetProbePath();
         this.performInsertLogic(key, recordSnapshot);
         this.cleanUp(recordSnapshot);
     }
 
     rehash(recordSnapshot) {
-        recordSnapshot(this.getSnapshotData(), { text: `Load Factor > ${this.maxLoadFactor}. Rehashing...`, pause: true });
-        
-        let oldTable = this.table;
+        // 1. Snapshot Before: Capture Old State
+        const oldTable = [...this.table];
+        const oldCapacity = this.capacity;
+
+        // 2. Prepare New Table Logic
         this.capacity = nextPrime(this.capacity * 2);
         this.table = new Array(this.capacity).fill(null);
         this.size = 0;
         
-        recordSnapshot(this.getSnapshotData(), { text: `New table size: ${this.capacity}. Re-inserting keys...` });
+        // Setup Snapshot
+        recordSnapshot(this.getSnapshotData(), { 
+            text: `Load Factor > ${this.maxLoadFactor}. Rehashing...`,
+            rehashMode: true,
+            phase: 'SETUP',
+            oldTable: oldTable,
+            oldCapacity: oldCapacity,
+            processedIndices: [] 
+        });
 
-        for (let key of oldTable) {
-            if (key !== null) {
-                this.resetProbePath(); 
-                this.performInsertLogic(key, recordSnapshot);
+        const processedIndices = [];
+
+        // 3. Move items
+        for(let i=0; i<oldCapacity; i++) {
+            if(oldTable[i] !== null) {
+                const key = oldTable[i];
+                
+                // Find destination in new table logic (simulating probes locally)
+                let newIdx = this.hash(key);
+                while(this.table[newIdx] !== null) {
+                    newIdx = (newIdx + 1) % this.capacity;
+                }
+
+                // Insert logically
+                this.table[newIdx] = key;
+                this.size++;
+
+                // Snapshot: Flying
+                recordSnapshot(this.getSnapshotData(), {
+                    text: `Moving '${key}' from index ${i} to ${newIdx}...`,
+                    rehashMode: true,
+                    phase: 'FLYING',
+                    oldTable: oldTable,
+                    oldCapacity: oldCapacity,
+                    processedIndices: [...processedIndices],
+                    flyingNode: { key: key, fromIdx: i, toIdx: newIdx }
+                });
+                
+                processedIndices.push(i);
             }
         }
+
         this.resetProbePath();
-        recordSnapshot(this.getSnapshotData(), { text: `Rehashing complete.` });
+        recordSnapshot(this.getSnapshotData(), { text: `Rehashing complete. New capacity: ${this.capacity}`, isCleanup: true });
     }
 
     search(key, recordSnapshot) {
@@ -424,7 +460,7 @@ class LinearProbingHashTable {
             recordSnapshot(this.getSnapshotData(), { 
                 text: `Probing... (checking ${idx})`, 
                 highlightIdx: idx,
-                probeCheck: true, // Violet
+                probeCheck: true, 
                 hashCalc: { key: key, hash: initialIdx },
                 probeArrows: [...this.probePath],
                 startProbeIdx: initialIdx
@@ -547,7 +583,7 @@ class LinearProbingHashTable {
     }
 
     cleanUp(recordSnapshot) {
-        recordSnapshot(this.getSnapshotData(), { text: 'Ready.', probeArrows: [] });
+        recordSnapshot(this.getSnapshotData(), { text: 'Ready.', probeArrows: [], isCleanup: true });
     }
 }
 
@@ -615,6 +651,11 @@ class Visualizer {
                 this.morphProgress = 1;
                 this.state = 'WAITING';
                 this.pauseTimer = 30 / this.currentSpeedFactor;
+                
+                const snap = this.snapshots[this.currentSnapshotIndex];
+                if (snap.meta && snap.meta.pause) this.pauseTimer = 60; 
+                // Acelerar fase de vuelo para que el rehash no sea eterno
+                if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') this.pauseTimer = 5 / this.currentSpeedFactor; 
             }
         } else if (this.state === 'WAITING') {
             this.pauseTimer--;
@@ -625,7 +666,6 @@ class Visualizer {
                     this.state = 'MORPH';
                     const snap = this.snapshots[this.currentSnapshotIndex];
                     if (snap.meta && snap.meta.text) document.getElementById('status-text').innerText = snap.meta.text;
-                    if (snap.meta && snap.meta.pause) this.pauseTimer = 60; 
                 } else {
                     this.state = 'IDLE';
                     document.getElementById('status-text').innerText = "Ready.";
@@ -638,7 +678,10 @@ class Visualizer {
         if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
         const snap = this.snapshots[this.currentSnapshotIndex];
         const data = snap.tableData;
-        
+        const meta = snap.meta || {};
+
+        if(meta.rehashMode) return null; // Disable interactions during rehash
+
         const rect = this.canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left;
         const my = e.clientY - rect.top;
@@ -678,7 +721,7 @@ class Visualizer {
         const tooltip = document.getElementById('tooltip');
         
         if (item) {
-            const hash = item.value.charCodeAt(0) % app.ht.capacity; // Calculate hash for tooltip
+            const hash = item.value.charCodeAt(0) % app.ht.capacity; 
             tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.value}</span> is <span class="tooltip-hash">${hash}</span>`;
             tooltip.style.display = 'block';
             tooltip.style.left = (e.clientX - 15) + 'px';
@@ -696,13 +739,29 @@ class Visualizer {
         const snap = this.snapshots[idx];
         const meta = snap.meta || {};
 
+        // Calculate layout
         const capacity = snap.tableData.capacity;
         const padding = 50;
         const leftPanelW = 130; 
         const gap = 0; 
-        const arrayW = capacity * this.boxSize;
-        const logicalWidth = leftPanelW + gap + arrayW + padding * 1.5;
-        const logicalHeight = 400; 
+        
+        let logicalWidth, logicalHeight;
+        
+        // REHASH LAYOUT
+        if (meta.rehashMode) {
+            // Arrays side-by-side (Old | New)
+            const oldW = meta.oldCapacity * this.boxSize;
+            const newW = capacity * this.boxSize;
+            const gapBetween = 100;
+            
+            logicalWidth = leftPanelW + oldW + gapBetween + newW + padding * 2;
+            logicalHeight = 400;
+        } else {
+            // NORMAL LAYOUT
+            const arrayW = capacity * this.boxSize;
+            logicalWidth = leftPanelW + gap + arrayW + padding * 1.5;
+            logicalHeight = 400; 
+        }
 
         const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight) * 0.95;
         const offsetX = (this.canvas.width - logicalWidth * scale) / 2;
@@ -720,19 +779,106 @@ class Visualizer {
         this.ctx.restore();
     }
 
-    drawScene(data, meta, arrayStartX) {
-        const cellSize = this.boxSize;
+    drawScene(data, meta, startX) {
         const baseY = 200;
+        
+        if (meta.rehashMode) {
+            this.drawRehashScene(data, meta, startX, baseY);
+            return;
+        }
 
-        this.lastArrayX = arrayStartX;
+        this.lastArrayX = startX;
         this.lastArrayY = baseY;
 
-        this.drawStruct(85, baseY, 50, data, arrayStartX);
-        this.drawArray(arrayStartX, baseY, cellSize, data, meta);
+        this.drawStruct(85, baseY, 50, data, startX);
+        this.drawArray(startX, baseY, this.boxSize, data, meta);
 
         if (meta.hashCalc) {
-            const arrayCenterX = arrayStartX + (data.capacity * cellSize) / 2;
+            const arrayCenterX = startX + (data.capacity * this.boxSize) / 2;
             this.drawHashBox(arrayCenterX, 30, meta.hashCalc);
+        }
+    }
+
+    drawRehashScene(data, meta, startX, baseY) {
+        const ctx = this.ctx;
+        const cellSize = this.boxSize;
+        
+        // Coords
+        const oldTableX = startX;
+        const oldW = meta.oldCapacity * cellSize;
+        const gap = 150;
+        const newTableX = oldTableX + oldW + gap;
+
+        // 1. OLD TABLE
+        ctx.fillStyle = '#777'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+        ctx.fillText("OLD TABLE", oldTableX + oldW/2, baseY - 30);
+        
+        // Prepare dummy data for old table, hiding moved items
+        const oldTableDisplay = [...meta.oldTable];
+        meta.processedIndices.forEach(idx => oldTableDisplay[idx] = null);
+        
+        // If flying, hide the source item in old table immediately
+        if (meta.phase === 'FLYING' && meta.flyingNode) {
+            oldTableDisplay[meta.flyingNode.fromIdx] = null;
+        }
+
+        const dummyOldData = { capacity: meta.oldCapacity, table: oldTableDisplay };
+        this.drawArray(oldTableX, baseY, cellSize, dummyOldData, { isCleanup: true });
+
+        // 2. ARROW
+        const arrowX1 = oldTableX + oldW + 20;
+        const arrowX2 = newTableX - 20;
+        this.drawArrow(arrowX1, baseY + cellSize/2, arrowX2, baseY + cellSize/2, '#ddd', 15);
+        ctx.fillStyle = '#999'; ctx.font = '12px Arial'; ctx.textAlign = 'center';
+        ctx.fillText("Rehashing", (arrowX1+arrowX2)/2, baseY + cellSize/2 - 10);
+
+        // 3. NEW TABLE
+        ctx.fillStyle = '#2E7D32'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
+        ctx.fillText("NEW TABLE", newTableX + (data.capacity * cellSize)/2, baseY - 30);
+        
+        // Hide incoming item from destination until animation finishes
+        let newTableDisplay = [...data.table];
+        if (meta.phase === 'FLYING' && meta.flyingNode) {
+             // Logic in LinearProbing is tricky because of probes. 
+             // We can just rely on data.table having the *final* state.
+             // We hide the flying value from newTableDisplay[toIdx] temporarily
+             if (newTableDisplay[meta.flyingNode.toIdx] === meta.flyingNode.key) {
+                 newTableDisplay[meta.flyingNode.toIdx] = null;
+             }
+        }
+        
+        const dummyNewData = { capacity: data.capacity, table: newTableDisplay };
+        this.drawArray(newTableX, baseY, cellSize, dummyNewData, { isCleanup: true });
+
+        // 4. FLYING ANIMATION
+        if (meta.phase === 'FLYING' && meta.flyingNode) {
+            const fNode = meta.flyingNode;
+            
+            // Calc Source
+            const srcX = oldTableX + fNode.fromIdx * cellSize + cellSize/2;
+            const srcY = baseY + cellSize/2 + 60; // Start from data box position
+            
+            // Calc Dest
+            const destX = newTableX + fNode.toIdx * cellSize + cellSize/2;
+            const destY = baseY + cellSize/2 + 60;
+
+            // Interpolation
+            const t = this.morphProgress;
+            const ease = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+
+            const currX = srcX + (destX - srcX) * ease;
+            const currY = srcY + (destY - srcY) * ease - (Math.sin(t * Math.PI) * 50); // Little arc jump
+
+            // Draw Flying Node (Box style)
+            const boxW = 30; const boxH = 30;
+            ctx.fillStyle = '#FFD700'; // Gold
+            ctx.fillRect(currX - boxW/2, currY, boxW, boxH);
+            ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
+            ctx.strokeRect(currX - boxW/2, currY, boxW, boxH);
+            
+            ctx.fillStyle = '#000';
+            ctx.font = '20px Arial'; ctx.textAlign = 'center';
+            ctx.fillText(fNode.key, currX, currY + 22);
         }
     }
 
@@ -850,54 +996,53 @@ class Visualizer {
             }
         }
 
-        // Probing Visuals
-        const arrowY = y - 25; 
-        
-        // 1. Vertical Arrow for First Probe / Hash Index
-        if (meta.startProbeIdx !== undefined) {
-             const ax = x + meta.startProbeIdx * size + size/2;
-             this.drawArrow(ax, arrowY - 30, ax, arrowY, COLORS.ARROW_PROBE, 10);
-        }
+        // Probing Visuals (Only in normal mode)
+        if (!meta.rehashMode) {
+            const arrowY = y - 25; 
+            
+            if (meta.startProbeIdx !== undefined) {
+                 const ax = x + meta.startProbeIdx * size + size/2;
+                 this.drawArrow(ax, arrowY - 30, ax, arrowY, COLORS.ARROW_PROBE, 10);
+            }
 
-        // 2. Arcs for Jumps
-        if (meta.probeArrows) {
-            meta.probeArrows.forEach(arrow => {
-                const idx1 = arrow.from;
-                const idx2 = arrow.to;
-                const x1 = x + idx1 * size + 2*size/3;
-                const x2 = x + idx2 * size + size/2;
-                
-                ctx.strokeStyle = COLORS.ARROW_PROBE;
-                ctx.lineWidth = 3;
-                ctx.beginPath();
-                ctx.moveTo(x1, arrowY);
-                
-                let midX, cpY;
-
-                // Logic for arc
-                if (Math.abs(idx2 - idx1) > 1 && idx2 < idx1) {
-                    ctx.quadraticCurveTo(x1 + 30, arrowY - 60, x1 + 60, arrowY - 10);
-                    ctx.stroke();
+            if (meta.probeArrows) {
+                meta.probeArrows.forEach(arrow => {
+                    const idx1 = arrow.from;
+                    const idx2 = arrow.to;
+                    const x1 = x + idx1 * size + 2*size/3;
+                    const x2 = x + idx2 * size + size/2;
                     
+                    ctx.strokeStyle = COLORS.ARROW_PROBE;
+                    ctx.lineWidth = 3;
                     ctx.beginPath();
-                    ctx.moveTo(x2 - 30, arrowY - 10);
-                    const cpInX = x2 - 15; const cpInY = arrowY - 40;
-                    ctx.quadraticCurveTo(cpInX, cpInY, x2 - 1, arrowY - 3);
-                    ctx.stroke();
+                    ctx.moveTo(x1, arrowY);
                     
-                    const angle = Math.atan2(arrowY - cpInY, x2 - cpInX);
-                    this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
+                    let midX, cpY;
 
-                } else {
-                    midX = (x1 + x2) / 2;
-                    cpY = arrowY - 50;
-                    ctx.quadraticCurveTo(midX, cpY, x2 - 1, arrowY - 3);
-                    ctx.stroke();
-                    
-                    const angle = Math.atan2(arrowY - cpY, x2 - midX);
-                    this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
-                }
-            });
+                    if (Math.abs(idx2 - idx1) > 1 && idx2 < idx1) {
+                        ctx.quadraticCurveTo(x1 + 30, arrowY - 60, x1 + 60, arrowY - 10);
+                        ctx.stroke();
+                        
+                        ctx.beginPath();
+                        ctx.moveTo(x2 - 30, arrowY - 10);
+                        const cpInX = x2 - 15; const cpInY = arrowY - 40;
+                        ctx.quadraticCurveTo(cpInX, cpInY, x2 - 1, arrowY - 3);
+                        ctx.stroke();
+                        
+                        const angle = Math.atan2(arrowY - cpInY, x2 - cpInX);
+                        this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
+
+                    } else {
+                        midX = (x1 + x2) / 2;
+                        cpY = arrowY - 50;
+                        ctx.quadraticCurveTo(midX, cpY, x2 - 1, arrowY - 3);
+                        ctx.stroke();
+                        
+                        const angle = Math.atan2(arrowY - cpY, x2 - midX);
+                        this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
+                    }
+                });
+            }
         }
     }
 
@@ -997,7 +1142,6 @@ const app = {
         if (val.length > 0) {
             this.runOp(record => this.ht.insert(val, record));
             el.value = ''; 
-            // el.focus(); REMOVED to prevent virtual keyboard popup
         }
     },
 
@@ -1038,7 +1182,7 @@ const app = {
 
     handleRandomFill: function() {
         this.handleClear();
-        const count = 8; 
+        const count = 7; 
         const snaps = [];
         const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
         snaps.push({ tableData: this.ht.getSnapshotData(), meta: { text: "Starting Random Fill..." } });
