@@ -144,8 +144,10 @@
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
-            <button class="btn-demo" title="Demo: Simple Rotation (Line)" onclick="app.handleDemoSimple()">Simple Rot</button>
-            <button class="btn-demo" title="Demo: Double Rotation (Zig-Zag)" onclick="app.handleDemoDouble()">Double Rot</button>
+            <button class="btn-demo" title="Demo: Right Rotation (Line)" onclick="app.handleDemoSimpleRight()">Right</button>
+            <button class="btn-demo" title="Demo: Double Left Right Rotation (Zig-Zag)" onclick="app.handleDemoDoubleLeftRight()">Left Right</button>
+            <button class="btn-demo" title="Demo: Left Rotation (Line)" onclick="app.handleDemoSimpleLeft()">Left</button>
+            <button class="btn-demo" title="Demo: Double Right Left Rotation (Zig-Zag)" onclick="app.handleDemoDoubleRightLeft()">Right Left</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
@@ -911,7 +913,7 @@ const app = {
         this.viz.enqueueOperation(snaps);
         this.updateUI();
     },
-    handleDemoSimple: function() {
+    handleDemoSimpleRight: function() {
         this.handleClear();
         const snaps = []; snaps.push({ root: null });
         
@@ -931,7 +933,27 @@ const app = {
         this.viz.enqueueOperation(snaps);
         this.updateUI();
     },
-    handleDemoDouble: function() {
+    handleDemoSimpleLeft: function() {
+        this.handleClear();
+        const snaps = []; snaps.push({ root: null });
+        
+        // Step 1: Build initial unbalanced state (10 -> 20)
+        // We simulate insertion without animation for the setup
+        const silentRecorder = (root, floating, meta) => {}; 
+        this.tree.insert(10, silentRecorder);
+        this.tree.insert(20, silentRecorder);
+        
+        // Snapshot of the setup
+        snaps.push({ root: this.tree.root.clone(), meta: { text: "Setup: 10 -> 20. Next: Insert 30 (Causes Left Rotation)" } });
+        
+        // Step 2: Record the rotation
+        const activeRecorder = (root, floating, meta) => { snaps.push({ root: root ? root.clone() : null, floating, meta }); };
+        this.tree.insert(30, activeRecorder);
+        
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+    handleDemoDoubleLeftRight: function() {
         this.handleClear();
         const snaps = []; snaps.push({ root: null });
         
@@ -942,6 +964,25 @@ const app = {
         
         // Snapshot of the setup
         snaps.push({ root: this.tree.root.clone(), meta: { text: "Setup: 30 -> 10. Next: Insert 20 (Causes Double Rotation)" } });
+        
+        // Step 2: Record the rotation
+        const activeRecorder = (root, floating, meta) => { snaps.push({ root: root ? root.clone() : null, floating, meta }); };
+        this.tree.insert(20, activeRecorder);
+        
+        this.viz.enqueueOperation(snaps);
+        this.updateUI();
+    },
+    handleDemoDoubleRightLeft: function() {
+        this.handleClear();
+        const snaps = []; snaps.push({ root: null });
+        
+        // Step 1: Build initial zigzag state (10 -> 30)
+        const silentRecorder = (root, floating, meta) => {}; 
+        this.tree.insert(10, silentRecorder);
+        this.tree.insert(30, silentRecorder);
+        
+        // Snapshot of the setup
+        snaps.push({ root: this.tree.root.clone(), meta: { text: "Setup: 10 -> 30. Next: Insert 20 (Causes Double Rotation)" } });
         
         // Step 2: Record the rotation
         const activeRecorder = (root, floating, meta) => { snaps.push({ root: root ? root.clone() : null, floating, meta }); };
