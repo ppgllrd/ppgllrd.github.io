@@ -10,14 +10,14 @@
             --panel-bg: #f5f5f5;
             --border-color: #ddd;
             
-            /* UI Colors - Matching LeftistHeap */
+            /* UI Colors */
             --btn-insert: #2E7D32; 
             --btn-delete: #c62828; 
             --btn-search: #1668BD; 
             --btn-undo: #6A1B9A;   
             --btn-gray: #546E7A;
             --btn-random: #EF6C00;
-            --btn-demo: #7B1FA2; /* Deep Purple for Demos */
+            --btn-demo: #7B1FA2; 
         }
 
         body {
@@ -145,9 +145,9 @@
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
             <button class="btn-demo" title="Demo: Right Rotation (Line)" onclick="app.handleDemoSimpleRight()">Right</button>
-            <button class="btn-demo" title="Demo: Double Left Right Rotation (Zig-Zag)" onclick="app.handleDemoDoubleLeftRight()">Left Right</button>
+            <button class="btn-demo" title="Demo: Double Left-Right Rotation (Zig-Zag)" onclick="app.handleDemoDoubleLeftRight()">Left-Right</button>
             <button class="btn-demo" title="Demo: Left Rotation (Line)" onclick="app.handleDemoSimpleLeft()">Left</button>
-            <button class="btn-demo" title="Demo: Double Right Left Rotation (Zig-Zag)" onclick="app.handleDemoDoubleRightLeft()">Right Left</button>
+            <button class="btn-demo" title="Demo: Double Right-Left Rotation (Zig-Zag)" onclick="app.handleDemoDoubleRightLeft()">Right-Left</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
 
@@ -178,6 +178,7 @@
             <div class="node-sample"><span class="node-val">V</span><span class="node-weight">H</span></div>&nbsp; Value / Height
         </div>
         <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:2px solid #B0F9B0"></div>&nbsp; Balanced Node</div>
+        <div class="legend-item"><div class="dot" style="background:#CC99FF; border:1px solid #fff"></div>&nbsp; Checking Balance</div>
         <div class="legend-item"><div class="dot" style="background:#4CAF50; border:1px solid #fff"></div>&nbsp; New Node</div>
         <div class="legend-item"><div class="dot" style="background:#FF5722; border:1px solid #fff"></div>&nbsp; Pivot (Orange)</div>
         <div class="legend-item"><div class="dot" style="background:#FFC107; border:1px solid #fff"></div>&nbsp; Child (Yellow)</div>
@@ -230,7 +231,9 @@ const COLORS = {
     FOUND: '#00E676',      
     DELETE: '#F44336',     
     NULL_LINK: '#1668BD',  
-    ARROW: '#D50000'       
+    ARROW: '#D50000',
+    PATH_HIGHLIGHT: '#AA00FF', // Violet for balance checking
+    CHECK: '#CC99FF' // Violet for balance checking
 };
 
 class Node {
@@ -284,7 +287,7 @@ class AVLTree {
         y.color = COLORS.PIVOT; x.color = COLORS.CHILD;
         record(this.root, null, { 
             pause: true, 
-            text: `Right Rotation: ${y.value} moves down, ${x.value} moves up. Order Preserved.`,
+            text: `Right Rotation: ${y.value} moves down, ${x.value} moves up.`,
             rotation: { id: y.id, dir: 'CW' } 
         });
         x.right = y; y.left = T2;
@@ -298,7 +301,7 @@ class AVLTree {
         x.color = COLORS.PIVOT; y.color = COLORS.CHILD;
         record(this.root, null, { 
             pause: true, 
-            text: `Left Rotation: ${x.value} moves down, ${y.value} moves up. Order Preserved.`,
+            text: `Left Rotation: ${x.value} moves down, ${y.value} moves up.`,
             rotation: { id: x.id, dir: 'CCW' }
         });
         y.left = x; x.right = T2;
@@ -318,13 +321,35 @@ class AVLTree {
                 if (!node.right) recordSnapshot(this.root, null, { text: `Reached null link (Right of ${node.value})`, activeNull: { nodeId: node.id, side: 'R', color: COLORS.VISIT } });
                 node.right = _insert(node.right);
             } else return node;
+
             this.updateHeight(node);
-            recordSnapshot(this.root, null, { text: `Updating height of ${node.value} (H: ${node.height})` });
             const balance = this.getBalance(node);
-            if (balance > 1 && value < node.left.value) return this.rightRotate(node, recordSnapshot);
-            if (balance < -1 && value > node.right.value) return this.leftRotate(node, recordSnapshot);
-            if (balance > 1 && value > node.left.value) { node.left = this.leftRotate(node.left, recordSnapshot); return this.rightRotate(node, recordSnapshot); }
-            if (balance < -1 && value < node.right.value) { node.right = this.rightRotate(node.right, recordSnapshot); return this.leftRotate(node, recordSnapshot); }
+            
+            // --- Highlight Check Phase ---
+            const prevColor = node.color;
+            node.color = COLORS.CHECK;
+            recordSnapshot(this.root, null, { text: `Backtracking: Checking balance of ${node.value} (BF: ${balance})` });
+            node.color = prevColor;
+            // -----------------------------
+
+            if (balance > 1 && value < node.left.value) {
+                recordSnapshot(this.root, null, { text: "Unbalanced: Left-Left Case (Straight Line)", path: [node.id, node.left.id, node.left.left.id] });
+                return this.rightRotate(node, recordSnapshot);
+            }
+            if (balance < -1 && value > node.right.value) {
+                recordSnapshot(this.root, null, { text: "Unbalanced: Right-Right Case (Straight Line)", path: [node.id, node.right.id, node.right.right.id] });
+                return this.leftRotate(node, recordSnapshot);
+            }
+            if (balance > 1 && value > node.left.value) {
+                recordSnapshot(this.root, null, { text: "Unbalanced: Left-Right Case (Zig-Zag)", path: [node.id, node.left.id, node.left.right.id] });
+                node.left = this.leftRotate(node.left, recordSnapshot);
+                return this.rightRotate(node, recordSnapshot);
+            }
+            if (balance < -1 && value < node.right.value) {
+                recordSnapshot(this.root, null, { text: "Unbalanced: Right-Left Case (Zig-Zag)", path: [node.id, node.right.id, node.right.left.id] });
+                node.right = this.rightRotate(node.right, recordSnapshot);
+                return this.leftRotate(node, recordSnapshot);
+            }
             return node;
         };
         this.root = _insert(this.root);
@@ -373,13 +398,41 @@ class AVLTree {
                 }
             }
             if (!node) return node;
+            
             this.updateHeight(node);
-            recordSnapshot(this.root, null, { text: `Updating height of ${node.value} (H: ${node.height})` });
             const balance = this.getBalance(node);
-            if (balance > 1 && this.getBalance(node.left) >= 0) return this.rightRotate(node, recordSnapshot);
-            if (balance > 1 && this.getBalance(node.left) < 0) { node.left = this.leftRotate(node.left, recordSnapshot); return this.rightRotate(node, recordSnapshot); }
-            if (balance < -1 && this.getBalance(node.right) <= 0) return this.leftRotate(node, recordSnapshot);
-            if (balance < -1 && this.getBalance(node.right) > 0) { node.right = this.rightRotate(node.right, recordSnapshot); return this.leftRotate(node, recordSnapshot); }
+
+            // --- Highlight Check Phase ---
+            const prevColor = node.color;
+            node.color = COLORS.CHECK;
+            recordSnapshot(this.root, null, { text: `Backtracking: Checking balance of ${node.value} (BF: ${balance})` });
+            node.color = prevColor;
+            // -----------------------------
+
+            if (balance > 1 && this.getBalance(node.left) >= 0) {
+                 // Left Left Case
+                 const grandchild = node.left.left ? node.left.left : node.left.right; // Visual fallback
+                 recordSnapshot(this.root, null, { text: "Unbalanced: Left-Left Case (Straight Line)", path: [node.id, node.left.id, grandchild ? grandchild.id : node.left.id] });
+                 return this.rightRotate(node, recordSnapshot);
+            }
+            if (balance > 1 && this.getBalance(node.left) < 0) {
+                 // Left Right Case
+                 recordSnapshot(this.root, null, { text: "Unbalanced: Left-Right Case (Zig-Zag)", path: [node.id, node.left.id, node.left.right.id] });
+                 node.left = this.leftRotate(node.left, recordSnapshot);
+                 return this.rightRotate(node, recordSnapshot);
+            }
+            if (balance < -1 && this.getBalance(node.right) <= 0) {
+                 // Right Right Case
+                 const grandchild = node.right.right ? node.right.right : node.right.left; // Visual fallback
+                 recordSnapshot(this.root, null, { text: "Unbalanced: Right-Right Case (Straight Line)", path: [node.id, node.right.id, grandchild ? grandchild.id : node.right.id] });
+                 return this.leftRotate(node, recordSnapshot);
+            }
+            if (balance < -1 && this.getBalance(node.right) > 0) {
+                 // Right Left Case
+                 recordSnapshot(this.root, null, { text: "Unbalanced: Right-Left Case (Zig-Zag)", path: [node.id, node.right.id, node.right.left.id] });
+                 node.right = this.rightRotate(node.right, recordSnapshot);
+                 return this.leftRotate(node, recordSnapshot);
+            }
             return node;
         };
         this.root = _delete(this.root, value);
@@ -418,6 +471,7 @@ class Visualizer {
         this.snapshots = [];
         this.currentSnapshotIndex = -1;
         this.lastDrawnNodes = [];
+        this.hoveredNode = null; 
         this.state = 'IDLE';
         this.isPaused = false;
         this.morphProgress = 0;
@@ -425,6 +479,7 @@ class Visualizer {
         this.currentSpeedFactor = 1;
         this.pauseTimer = 0;
         this.resize();
+        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
         window.addEventListener('resize', () => this.resize());
         this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
         
@@ -500,6 +555,24 @@ class Visualizer {
                 return;
             }
         }
+    }
+    handleMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left; 
+        const my = e.clientY - rect.top;
+
+        let found = null;
+        for (let n of this.lastDrawnNodes) {
+            const sx = (n.x * this.camera.scale) + this.camera.x;
+            const sy = (n.y * this.camera.scale) + this.camera.y;
+            const r = this.nodeRadius * this.camera.scale;
+            
+            if (Math.hypot(mx - sx, my - sy) < r) {
+                found = n;
+                break;
+            }
+        }
+        this.hoveredNode = found;
     }
     calculateLayout(root) {
         if (!root) return;
@@ -630,6 +703,7 @@ class Visualizer {
         if (currentMeta && currentMeta.activeNull) activeNull = currentMeta.activeNull;
         this.lastDrawnNodes = nodesToDraw; 
 
+        // 1. Edges
         this.ctx.beginPath(); 
         this.ctx.strokeStyle = COLORS.EDGE; 
         this.ctx.lineWidth = 3;
@@ -638,6 +712,23 @@ class Visualizer {
         });
         this.ctx.stroke();
 
+        // 2. Rotation Path Line (Straight or Zig-Zag)
+        if (currentMeta && currentMeta.path && currentMeta.path.length > 1) {
+            this.ctx.beginPath();
+            this.ctx.strokeStyle = COLORS.PATH_HIGHLIGHT;
+            this.ctx.lineWidth = 8;
+            let first = true;
+            for(let id of currentMeta.path) {
+                const n = nodesToDraw.find(node => node.id === id);
+                if (n) {
+                    if (first) { this.ctx.moveTo(n.x, n.y); first = false; }
+                    else { this.ctx.lineTo(n.x, n.y); }
+                }
+            }
+            this.ctx.stroke();
+        }
+
+        // 3. Null Links
         nodesToDraw.forEach(n => {
             if (!n.hasLeft) {
                 const isActive = (activeNull && activeNull.nodeId === n.id && activeNull.side === 'L');
@@ -651,8 +742,10 @@ class Visualizer {
             }
         });
 
+        // 4. Nodes
         nodesToDraw.forEach(n => this.drawNodeCircle(n.x, n.y, n.value, n.color || COLORS.DEFAULT, false, n.height));
 
+        // 5. Rotation Arrows
         if (currentMeta && currentMeta.rotation) {
             const pivotNode = nodesToDraw.find(n => n.color === COLORS.PIVOT);
             const childNode = nodesToDraw.find(n => n.color === COLORS.CHILD);
@@ -662,6 +755,7 @@ class Visualizer {
             }
         }
 
+        // 6. Generic Arrows
         if (arrowsToDraw.length > 0) {
             this.ctx.strokeStyle = COLORS.ARROW; this.ctx.fillStyle = COLORS.ARROW; this.ctx.lineWidth = 3;
             arrowsToDraw.forEach(arr => {
@@ -670,10 +764,86 @@ class Visualizer {
                 if (n1 && n2) this.drawStraightArrow(n1.x, n1.y, n2.x, n2.y);
             });
         }
+        
+        // 7. Floating Node
         if (floatingNode) {
             this.ctx.shadowBlur = 10; this.ctx.shadowColor = COLORS.NEW;
             this.drawNodeCircle(floatingNode.x, floatingNode.y, floatingNode.value, COLORS.NEW, true);
             this.ctx.shadowBlur = 0;
+        }
+
+        // 8. Tooltip for Balance Factor
+        if (this.hoveredNode) {
+            const snap = this.snapshots[this.currentSnapshotIndex >= 0 ? this.currentSnapshotIndex : 0];
+            const realNode = this.findNode(snap.root, this.hoveredNode.id);
+            
+            if (realNode) {
+                const hL = realNode.left ? realNode.left.height : 0;
+                const hR = realNode.right ? realNode.right.height : 0;
+                const bf = hL - hR;
+
+                let labelText = "Perfectly Balanced";
+                let labelColor = '#00AA00';
+
+                if (bf > 0) {
+                    if (bf > 1) {
+                        labelText = `Left Heavy (+${bf}) - Unbalanced`;
+                        labelColor = "#CC0000";
+                    } else {
+                        labelText = `Left Heavy (+${bf})`;
+                        labelColor = "#EF6C00";
+                    }
+                } else if (bf < 0) {
+                    if (bf < -1) {
+                        labelText = `Right Heavy (${bf}) - Unbalanced`;
+                        labelColor = "#CC0000";
+                    } else {
+                        labelText = `Right Heavy (${bf})`;
+                        labelColor = "#EF6C00";
+                    }
+                }
+
+                const tx = this.hoveredNode.x;
+                const ty = this.hoveredNode.y - this.nodeRadius - 12;
+
+                this.ctx.save();
+                this.ctx.translate(tx, ty);
+                this.ctx.scale(1/this.camera.scale, 1/this.camera.scale);
+
+                this.ctx.font = "19px Arial";
+                const metrics = this.ctx.measureText(labelText);
+                const paddingX = 8;
+                const paddingY = 6;
+                const w = metrics.width + paddingX * 2;
+                const h = 26;
+
+                this.ctx.shadowColor = "rgba(0,0,0,0.3)";
+                this.ctx.shadowBlur = 4;
+                this.ctx.shadowOffsetY = 2;
+
+                this.ctx.fillStyle = "#ffffff";
+                this.ctx.beginPath();
+                this.ctx.roundRect(-w/2, -h, w, h, 4);
+                this.ctx.fill();
+
+                this.ctx.beginPath();
+                this.ctx.moveTo(-5, 0);
+                this.ctx.lineTo(5, 0);
+                this.ctx.lineTo(0, 5);
+                this.ctx.fillStyle = "#ffffff";
+                this.ctx.fill();
+
+                this.ctx.shadowColor = "rgba(0,0,0,0)";
+                this.ctx.shadowBlur = 0;
+                this.shadowOffsetY = 0; 
+
+                this.ctx.fillStyle = labelColor;
+                this.ctx.textAlign = "center";
+                this.ctx.textBaseline = "middle";
+                this.ctx.fillText(labelText, 0, -h/2);
+
+                this.ctx.restore();
+            }
         }
         this.ctx.restore();
     }
@@ -750,8 +920,8 @@ class Visualizer {
         this.ctx.fillStyle = color; 
         this.ctx.fill();
 
-        if (color === COLORS.DEFAULT || color === COLORS.STROKE) {
-            this.ctx.strokeStyle = COLORS.STROKE; 
+        if (color === COLORS.DEFAULT || color === COLORS.STROKE || color === COLORS.CHECK) {
+            this.ctx.strokeStyle = color === COLORS.CHECK ? COLORS.CHECK : COLORS.STROKE; 
             this.ctx.fillStyle = COLORS.TEXT; 
         } else {
             this.ctx.strokeStyle = '#fff';
@@ -918,7 +1088,6 @@ const app = {
         const snaps = []; snaps.push({ root: null });
         
         // Step 1: Build initial unbalanced state (30 -> 20)
-        // We simulate insertion without animation for the setup
         const silentRecorder = (root, floating, meta) => {}; 
         this.tree.insert(30, silentRecorder);
         this.tree.insert(20, silentRecorder);
@@ -938,7 +1107,6 @@ const app = {
         const snaps = []; snaps.push({ root: null });
         
         // Step 1: Build initial unbalanced state (10 -> 20)
-        // We simulate insertion without animation for the setup
         const silentRecorder = (root, floating, meta) => {}; 
         this.tree.insert(10, silentRecorder);
         this.tree.insert(20, silentRecorder);
