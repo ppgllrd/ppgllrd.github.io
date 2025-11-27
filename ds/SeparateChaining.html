@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Separate Chaining Hash Table - Rehash Visualizer</title>
+    <title>Separate Chaining Hash Table Visualizer</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -33,7 +33,7 @@
         .btn-search { background-color: var(--btn-search); } .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); } .btn-random { background-color: var(--btn-random); }
         .btn-pause { background-color: #455A64; width: 80px;} .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
-        #canvas-container { flex-grow: 1; position: relative; overflow: hidden; background-color: var(--bg-color); cursor: crosshair; min-height: 0; }
+        #canvas-container { flex-grow: 1; position: relative; overflow: hidden; background-color: var(--bg-color); cursor: default; min-height: 0; }
         canvas { display: block; width: 100%; height: 100%; }
         #legend { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
@@ -48,7 +48,7 @@
         #tooltip {
             position: fixed;
             display: none;
-            background: #1a1a1a;
+            background: rgba(26, 26, 26, 0.85);
             color: #ffffff;
             padding: 6px 12px;
             border-radius: 4px;
@@ -74,7 +74,7 @@
 
 <header>
     <div class="header-top">
-        <h1>Separate Chaining Hash Table</h1>
+        <h1>Separate Chaining Hash Table Visualizer</h1>
         <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
     </div>
     <div class="gui">
@@ -102,7 +102,7 @@
         </div>
     </div>
     <div id="status-bar">
-        <span id="status-text">Ready.</span>
+        <span id="status-text">Ready. Use Mouse/Touch to Pan & Zoom.</span>
     </div>
 </header>
 
@@ -112,10 +112,10 @@
         <div class="legend-item"><div class="square" style="background:#99FFFF;"></div>&nbsp; Pointer Cell</div>
         <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div>&nbsp; Data</div>
         <div class="legend-item"><div class="square" style="background:#CC99FF;"></div>&nbsp; Examining</div>
-        <div class="legend-item"><div class="square" style="background:#00E676;"></div>&nbsp; Hit (Green)</div>
-        <div class="legend-item"><div class="square" style="background:#D32F2F; border:1px solid #D32F2F;"></div>&nbsp; Miss (Red Box)</div>
+        <div class="legend-item"><div class="square" style="background:#00E676;"></div>&nbsp; Match/Hit</div>
+        <div class="legend-item"><div class="square" style="background:#D32F2F; border:1px solid #D32F2F;"></div>&nbsp; Search Miss</div>
         <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8595;</div>&nbsp; Hash Index</div>
-        <div class="legend-item"><div class="square" style="background:#FFD700;"></div>&nbsp; Rehash Flight</div>
+        <div class="legend-item"><div class="square" style="background:#FFD700;"></div>&nbsp; Rehash</div>
     </div>
     <div id="tooltip"></div>
 </div>
@@ -231,7 +231,6 @@ class SeparateChainingHashTable {
         return newTable;
     }
 
-    // Helper for visualizer snapshots
     serializeTable(table) {
         return table.map(head => {
             const list = [];
@@ -424,17 +423,14 @@ class SeparateChainingHashTable {
     }
 
     rehash(recordSnapshot) {
-        // 1. Guardar estado de la tabla ANTIGUA
         const oldCapacity = this.capacity;
-        const oldTableRef = this.cloneTable(this.table); // Copia física
-        const oldSerialized = this.serializeTable(oldTableRef); // Copia visual
+        const oldTableRef = this.cloneTable(this.table); 
+        const oldSerialized = this.serializeTable(oldTableRef); 
         
-        // 2. Preparar NUEVA tabla
         this.capacity = nextPrime(this.capacity * 2);
         this.table = new Array(this.capacity).fill(null);
         this.size = 0;
         
-        // Snapshot inicial Rehash
         recordSnapshot(this.getSnapshotData(), { 
             text: `Load Factor > ${this.maxLoadFactor}. Rehashing ${oldCapacity} -> ${this.capacity}...`,
             rehashMode: true,
@@ -444,7 +440,6 @@ class SeparateChainingHashTable {
             processedIds: [] 
         });
 
-        // 3. Recolectar nodos antiguos para mover
         let allNodes = [];
         for(let i = 0; i < oldTableRef.length; i++) {
             let curr = oldTableRef[i];
@@ -456,20 +451,17 @@ class SeparateChainingHashTable {
             }
         }
 
-        // 4. Mover y Animar uno a uno
         const processedIds = [];
 
         for (let nodeInfo of allNodes) {
             let key = nodeInfo.key;
             let newIdx = this.hash(key);
             
-            // Inserción Lógica
             const newNode = new Node(key, this.table[newIdx]);
             newNode.id = nodeInfo.id; 
             this.table[newIdx] = newNode;
             this.size++;
 
-            // Snapshot: Animación "Vuelo"
             recordSnapshot(this.getSnapshotData(), {
                 text: `Moving '${key}'... (Index ${nodeInfo.oldIdx} -> ${newIdx})`,
                 rehashMode: true,
@@ -489,7 +481,6 @@ class SeparateChainingHashTable {
             processedIds.push(nodeInfo.id);
         }
 
-        // Snapshot Final
         recordSnapshot(this.getSnapshotData(), { 
             text: `Rehashing complete. New capacity: ${this.capacity}.`,
             isCleanup: true 
@@ -512,18 +503,33 @@ class Visualizer {
         this.state = 'IDLE';
         this.isPaused = false;
         this.morphProgress = 0;
-        this.baseSpeed = 0.05;
+        this.baseSpeed = 0.075;
         this.currentSpeedFactor = 1;
         this.pauseTimer = 0;
         
-        this.camera = { scale: 1, offsetX: 0, offsetY: 0, targetScale: 1, targetOffsetX: 0, targetOffsetY: 0 };
+        // Camera System (Unified with Linear Probing style)
+        this.camera = { x: 0, y: 0, scale: 1, targetX: 0, targetY: 0, targetScale: 1 };
+        this.isDragging = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.initialCamera = { x: 0, y: 0 };
+        this.initialPinchDist = 0;
+        this.initialScale = 1;
         
+        // Events
         this.resize();
         window.addEventListener('resize', () => this.resize());
-        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
-        this.canvas.addEventListener('mousemove', (e) => this.handleMouseMove(e));
-        window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
+        
+        this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+        this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+        this.canvas.addEventListener('mouseup', e => this.onMouseUp(e));
+        this.canvas.addEventListener('mouseleave', e => this.onMouseUp(e));
+        this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+        this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
 
+        window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
+        this.lastTime = 0;
         requestAnimationFrame(t => this.loop(t));
     }
 
@@ -533,178 +539,40 @@ class Visualizer {
         this.canvas.height = container.offsetHeight;
 
         if (this.snapshots.length > 0 && this.currentSnapshotIndex >= 0) {
-            const snap = this.snapshots[this.currentSnapshotIndex];
-            
-            const view = this.calculateView(snap.tableData, snap.meta || {});
-            
-            this.camera.scale = view.scale;
-            this.camera.offsetX = view.offsetX;
-            this.camera.offsetY = view.offsetY;
-            this.camera.targetScale = view.scale;
-            this.camera.targetOffsetX = view.offsetX;
-            this.camera.targetOffsetY = view.offsetY;
-            this.draw();
+            this.fitCameraToSnapshot(this.snapshots[this.currentSnapshotIndex]);
         }
     }
 
     setSpeed(val) { this.currentSpeedFactor = 1 / val; }
     togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
 
-    calculateView(data, meta) {
-        const minLogicalHeight = 400; 
-        const maxDepth = data.maxDepth;
-        const cellS = this.boxSize;
-        const leftPanelW = 140; 
-        const padding = 20;
+    // --- Camera & Interaction System ---
 
-        // --- LÓGICA REHASH ---
-        if (meta.rehashMode) {
-            const oldW = meta.oldCapacity * cellS;
-            const newW = data.capacity * cellS;
-            const gapBetweenTables = 150;
-            
-            const logicalWidth = leftPanelW + oldW + gapBetweenTables + newW + padding * 2;
-            
-            const maxOldDepth = meta.oldTable.reduce((m, l) => Math.max(m, l.length), 0);
-            const totalMaxDepth = Math.max(maxDepth, maxOldDepth);
-            const listH = (totalMaxDepth + 1) * 70;
-            const logicalHeight = Math.max(minLogicalHeight, 200 + listH);
-            
-            const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight * 1.1);
-            const effectiveScale = Math.min(1.2, scale);
-            
-            const offsetX = (this.canvas.width - logicalWidth * effectiveScale) / 2;
-            const offsetY = 50 * effectiveScale;
-            
-            return { scale: effectiveScale, offsetX, offsetY };
-        }
-        
-        // --- VISTA NORMAL ---
-        if (meta.animation === 'slideDown') {
-            // small adjustments for smoother zoom
-        }
-        
-        const arrayW = data.capacity * cellS;
-        const listH = (maxDepth) * 70; 
-        
-        const logicalWidth = leftPanelW + arrayW + padding * 2;
-        const logicalHeight = Math.max(minLogicalHeight, 250 + listH);
-
-        const scale = Math.min(this.canvas.width / logicalWidth, this.canvas.height / logicalHeight * 1.15);
-        const effectiveScale = Math.min(1.5, scale); 
-        
-        const offsetX = (this.canvas.width - logicalWidth * effectiveScale) / 2;
-        const offsetY = 50 * effectiveScale; 
-        
-        return { scale: effectiveScale, offsetX, offsetY };
+    screenToWorld(mx, my) {
+        const w = this.canvas.width, h = this.canvas.height;
+        return {
+            x: this.camera.x + (mx - w/2) / this.camera.scale,
+            y: this.camera.y + (my - h/2) / this.camera.scale
+        };
     }
 
-    enqueueOperation(snapshots) {
-        this.snapshots.push(...snapshots);
-        if (this.state === 'IDLE' && this.snapshots.length > 0) {
-            if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
-            this.startNextStep();
-        }
-    }
-
-    startNextStep() {
-        const snap = this.snapshots[this.currentSnapshotIndex];
-        const meta = snap.meta || {};
-        
-        const targetView = this.calculateView(snap.tableData, meta);
-        
-        let lockCamera = false;
-        if (meta.animation === 'slideUp') lockCamera = true;
-
-        const zoomingOut = targetView.scale < (this.camera.scale - 0.01);
-        
-        if (!lockCamera) {
-            this.camera.targetScale = targetView.scale;
-            this.camera.targetOffsetX = targetView.offsetX;
-            this.camera.targetOffsetY = targetView.offsetY;
-        }
-
-        if (zoomingOut && !lockCamera) {
-            this.state = 'PRE_ZOOM';
-        } else {
-            this.state = 'MORPH';
-        }
-        
-        this.morphProgress = 0;
-        if (meta.text) document.getElementById('status-text').innerText = meta.text;
-    }
-
-    loop(timestamp) {
-        if (!this.isPaused) this.update();
-        this.draw();
-        requestAnimationFrame(t => this.loop(t));
-    }
-
-    update() {
-        const camSpeed = 0.1;
-        this.camera.scale += (this.camera.targetScale - this.camera.scale) * camSpeed;
-        this.camera.offsetX += (this.camera.targetOffsetX - this.camera.offsetX) * camSpeed;
-        this.camera.offsetY += (this.camera.targetOffsetY - this.camera.offsetY) * camSpeed;
-
-        if (this.state === 'PRE_ZOOM') {
-            if (Math.abs(this.camera.scale - this.camera.targetScale) < 0.01) {
-                this.state = 'MORPH';
-            }
-        } 
-        else if (this.state === 'MORPH') {
-            this.morphProgress += this.baseSpeed * this.currentSpeedFactor;
-            if (this.morphProgress >= 1) {
-                this.morphProgress = 1;
-                this.state = 'WAITING';
-                this.pauseTimer = 30 / this.currentSpeedFactor;
-                
-                const snap = this.snapshots[this.currentSnapshotIndex];
-                if (snap.meta && snap.meta.pause) this.pauseTimer = 60;
-                if (snap.meta && snap.meta.isCleanup) this.pauseTimer = 20;
-                if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') this.pauseTimer = 5 / this.currentSpeedFactor; // faster flying
-            }
-        } 
-        else if (this.state === 'WAITING') {
-            this.pauseTimer--;
-            if (this.pauseTimer <= 0) {
-                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
-                    this.currentSnapshotIndex++;
-                    this.startNextStep();
-                } else {
-                    this.state = 'IDLE';
-                    const finalSnap = this.snapshots[this.currentSnapshotIndex];
-                    const finalView = this.calculateView(finalSnap.tableData, {});
-                    this.camera.targetScale = finalView.scale;
-                    this.camera.targetOffsetX = finalView.offsetX;
-                    this.camera.targetOffsetY = finalView.offsetY;
-                    document.getElementById('status-text').innerText = "Ready.";
-                }
-            }
-        }
-    }
-
-    getMouseInTable(e) {
+    checkHit(mx, my) {
         if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
         const snap = this.snapshots[this.currentSnapshotIndex];
         const data = snap.tableData;
-        
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const my = e.clientY - rect.top;
-        const lx = (mx - this.camera.offsetX) / this.camera.scale;
-        const ly = (my - this.camera.offsetY) / this.camera.scale;
+        const meta = snap.meta || {};
 
+        if(meta.rehashMode) return null; 
+
+        const world = this.screenToWorld(mx, my);
         const cellSize = this.boxSize;
-        const padding = 0;
+        
+        // Layout calculations matching draw logic
         const leftPanelW = 140; 
-        const gap = 0; 
-        const arrayStartX = leftPanelW + gap + padding;
-        const baseY = 100;
+        const arrayStartX = -((leftPanelW + data.capacity * cellSize)/2) + leftPanelW;
+        const baseY = -100; // Shifted due to new centering logic
         const listTop = baseY + cellSize + 20;
-        const nodeTotalH = 60; 
-
-        // Not interactive during Rehash mode for simplicity
-        if(snap.meta && snap.meta.rehashMode) return null;
+        const nodeTotalH = 60;
 
         for (let i = 0; i < data.capacity; i++) {
             const list = data.table[i];
@@ -712,7 +580,8 @@ class Visualizer {
                 const cx = arrayStartX + i * cellSize + cellSize/2;
                 let cy = listTop;
                 for(let k = 0; k < list.length; k++) {
-                    if (lx >= cx - 15 && lx <= cx + 15 && ly >= cy && ly <= cy + 30) {
+                    // Check box hit
+                    if (world.x >= cx - 15 && world.x <= cx + 15 && world.y >= cy && world.y <= cy + 30) {
                         return { key: list[k].key, hash: app.ht.hash(list[k].key) };
                     }
                     cy += nodeTotalH; 
@@ -722,25 +591,268 @@ class Visualizer {
         return null;
     }
 
-    handleClick(e) {
-        const item = this.getMouseInTable(e);
+    onMouseDown(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        
+        const item = this.checkHit(mx, my);
         if (item) {
             document.getElementById('inputValue').value = item.key;
             document.getElementById('inputValue').focus();
+            return;
+        }
+
+        this.isDragging = true;
+        this.dragStart = { x: mx, y: my };
+        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+        this.canvas.style.cursor = 'grabbing';
+    }
+
+    onMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+        // Tooltip
+        const item = this.checkHit(mx, my);
+        const tooltip = document.getElementById('tooltip');
+        if (item) {
+            this.canvas.style.cursor = 'pointer';
+            tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.key}</span> is <span class="tooltip-hash">${item.hash}</span>`;
+            tooltip.style.display = 'block';
+            tooltip.style.left = (e.clientX + 15) + 'px';
+            tooltip.style.top = (e.clientY + 15) + 'px';
+        } else {
+            if(!this.isDragging) this.canvas.style.cursor = 'default';
+            tooltip.style.display = 'none';
+        }
+
+        if (this.isDragging) {
+            const dx = mx - this.dragStart.x;
+            const dy = my - this.dragStart.y;
+            this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
+            this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
         }
     }
 
-    handleMouseMove(e) {
-        const item = this.getMouseInTable(e);
-        const tooltip = document.getElementById('tooltip');
+    onMouseUp(e) {
+        this.isDragging = false;
+        this.canvas.style.cursor = 'default';
+    }
+
+    onWheel(e) {
+        e.preventDefault();
+        const zoomIntensity = 0.001;
+        const scroll = e.deltaY;
+        let newScale = this.camera.targetScale * (1 - scroll * zoomIntensity);
+        newScale = Math.min(Math.max(0.1, newScale), 5);
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+        const w = this.canvas.width, h = this.canvas.height;
+
+        const worldX = this.camera.targetX + (mx - w / 2) / this.camera.targetScale;
+        const worldY = this.camera.targetY + (my - h / 2) / this.camera.targetScale;
+
+        this.camera.targetScale = newScale;
+        this.camera.targetX = worldX - (mx - w / 2) / newScale;
+        this.camera.targetY = worldY - (my - h / 2) / newScale;
+    }
+
+    getTouchDist(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
+
+    onTouchStart(e) {
+        if (e.touches.length === 1) {
+            const t = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+            const item = this.checkHit(mx, my);
+            if (item) {
+                document.getElementById('inputValue').value = item.key;
+                document.getElementById('inputValue').focus();
+                return;
+            }
+            this.isDragging = true;
+            this.dragStart = { x: mx, y: my };
+            this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+        } else if (e.touches.length === 2) {
+            this.isDragging = false;
+            this.initialPinchDist = this.getTouchDist(e.touches);
+            this.initialScale = this.camera.targetScale;
+        }
+    }
+
+    onTouchMove(e) {
+        e.preventDefault();
+        if (e.touches.length === 1 && this.isDragging) {
+            const t = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+            const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
+            this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
+            this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
+        } else if (e.touches.length === 2) {
+            const dist = this.getTouchDist(e.touches);
+            if (this.initialPinchDist > 0) {
+                const scaleFactor = dist / this.initialPinchDist;
+                this.camera.targetScale = Math.min(Math.max(0.1, this.initialScale * scaleFactor), 5);
+            }
+        }
+    }
+
+    onTouchEnd(e) { this.isDragging = false; this.initialPinchDist = 0; }
+
+    fitCameraToSnapshot(snap, batchMaxDepth = null) {
+        const meta = snap.meta || {};
+        const data = snap.tableData;
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        const cellSize = this.boxSize;
         
-        if (item) {
-            tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.key}</span> is <span class="tooltip-hash">${item.hash}</span>`;
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 10) + 'px';
-            tooltip.style.top = (e.clientY + 10) + 'px';
+        const baseY = -100; 
+
+        const effectiveDepth = (batchMaxDepth !== null) ? batchMaxDepth : data.maxDepth;
+
+        let minX, maxX, minY, maxY;
+
+        if (meta.rehashMode) {
+            const oldW = meta.oldCapacity * cellSize;
+            const newW = data.capacity * cellSize;
+            const gap = 150;
+            const totalRehashW = oldW + gap + newW;
+
+            minX = -totalRehashW / 2;
+            maxX = totalRehashW / 2;
+
+            const maxOldDepth = meta.oldTable.reduce((m, l) => Math.max(m, l ? l.length : 0), 0);
+            const globalMaxDepth = Math.max(effectiveDepth, maxOldDepth);
+
+            minY = baseY - 110; 
+            maxY = baseY + cellSize + 20 + (globalMaxDepth * 60);
+
         } else {
-            tooltip.style.display = 'none';
+            const leftPanelW = 140;
+            const arrayW = data.capacity * cellSize;
+            const totalW = leftPanelW + arrayW;
+
+            minX = -(totalW / 2) - 110;
+            maxX = (totalW / 2) + 20;  
+
+            minY = baseY - 160;
+
+            const visibleDepth = Math.max(3, effectiveDepth); 
+            maxY = baseY + cellSize + 20 + (visibleDepth * 60);
+        }
+
+        const contentW = maxX - minX;
+        const contentH = maxY - minY;
+        const centerX = (minX + maxX) / 2;
+        const centerY = (minY + maxY) / 2;
+
+        const paddingX = 40;
+        const paddingY = 60;
+
+        const scale = Math.min(
+            w / (contentW + paddingX),
+            h / (contentH + paddingY),
+            5
+        );
+        
+        this.camera.targetScale = scale;
+        this.camera.targetX = centerX;
+        this.camera.targetY = centerY;
+
+        if (Math.abs(this.camera.x) < 0.001 && this.camera.scale === 1) {
+            this.camera.x = centerX;
+            this.camera.y = centerY;
+            this.camera.scale = scale;
+        }
+    }
+
+    enqueueOperation(snapshots) {
+        this.snapshots.push(...snapshots);
+        
+        if (this.state === 'IDLE' && this.snapshots.length > 0) {
+            if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
+            this.state = 'MORPH';
+            
+            const nextSnap = this.snapshots[this.currentSnapshotIndex];
+            if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
+            
+            let maxBatchDepth = 0;
+            for(let i = this.currentSnapshotIndex; i < this.snapshots.length; i++) {
+                const s = this.snapshots[i];
+                if (s.tableData && typeof s.tableData.maxDepth === 'number') {
+                    maxBatchDepth = Math.max(maxBatchDepth, s.tableData.maxDepth);
+                }
+            }
+
+            this.fitCameraToSnapshot(nextSnap, maxBatchDepth);
+        }
+    }
+
+    loop(timestamp) {
+        if (!this.lastTime) this.lastTime = timestamp;
+        const dt = (timestamp - this.lastTime) / 1000;
+        this.lastTime = timestamp;
+
+        // Inertia Camera Logic
+        const camFactor = 1 - Math.exp(-10 * dt);
+        this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
+        this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
+        this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
+
+        if (!this.isPaused) this.update();
+        this.draw();
+        requestAnimationFrame(t => this.loop(t));
+    }
+
+    update() {
+        if (this.state === 'MORPH') {
+            const snap = this.snapshots[this.currentSnapshotIndex];
+            let moveSpeedModifier = 1.0;
+
+            if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') {
+                moveSpeedModifier = 0.35; 
+            }
+
+            this.morphProgress += this.baseSpeed * this.currentSpeedFactor * moveSpeedModifier;
+
+            if (this.morphProgress >= 1) {
+                this.morphProgress = 1;
+                this.state = 'WAITING';
+                
+                this.pauseTimer = 30 / this.currentSpeedFactor;
+                if (snap.meta && snap.meta.pause) this.pauseTimer = 60;
+                if (snap.meta && snap.meta.isCleanup) this.pauseTimer = 20;
+                if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') {
+                    this.pauseTimer = 5 / this.currentSpeedFactor; 
+                }
+            }
+        } 
+        else if (this.state === 'WAITING') {
+            this.pauseTimer--;
+            if (this.pauseTimer <= 0) {
+                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                    const prevSnap = this.snapshots[this.currentSnapshotIndex];
+                    
+                    this.currentSnapshotIndex++;
+                    const nextSnap = this.snapshots[this.currentSnapshotIndex];
+                    
+                    this.morphProgress = 0;
+                    this.state = 'MORPH';
+                    if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
+                    
+                    const isRehashPrev = prevSnap.meta && prevSnap.meta.rehashMode;
+                    const isRehashNext = nextSnap.meta && nextSnap.meta.rehashMode;
+                    
+                    if (isRehashNext !== isRehashPrev) {
+                        this.fitCameraToSnapshot(nextSnap);
+                    }
+                } else {
+                    this.state = 'IDLE';
+                    document.getElementById('status-text').innerText = "Ready.";
+                }
+            }
         }
     }
 
@@ -748,40 +860,51 @@ class Visualizer {
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
         if (this.snapshots.length === 0) return;
 
-        const snap = this.snapshots[this.currentSnapshotIndex];
+        const idx = Math.max(0, this.currentSnapshotIndex);
+        const snap = this.snapshots[idx];
         const meta = snap.meta || {};
 
         this.ctx.save();
-        this.ctx.translate(this.camera.offsetX, this.camera.offsetY);
+        // Camera Transform: Center World 0,0
+        this.ctx.translate(this.canvas.width/2, this.canvas.height/2);
         this.ctx.scale(this.camera.scale, this.camera.scale);
+        this.ctx.translate(-this.camera.x, -this.camera.y);
 
-        const padding = 0;
-        const leftPanelW = 140; 
-        const gap = 0; 
-        const arrayStartX = leftPanelW + gap + padding;
-
-        this.drawScene(snap.tableData, meta, arrayStartX);
+        this.drawScene(snap.tableData, meta);
         this.ctx.restore();
     }
 
-    drawScene(data, meta, arrayStartX) {
+    drawScene(data, meta) {
         const cellSize = this.boxSize;
-        const baseY = 100; 
+        const leftPanelW = 140; 
+        
+        // World Coordinates Calculation: Center everything around (0,0)
+        // Standard View: Table + Panel centered
+        const totalW = leftPanelW + data.capacity * cellSize;
+        const startX = -totalW / 2 + leftPanelW;
+        const baseY = -100; // Arbitrary vertical centering shift
 
         if (meta.rehashMode) {
-            this.drawRehashScene(data, meta, arrayStartX, baseY);
+            // Rehash View: Old + Gap + New centered
+            const oldW = meta.oldCapacity * cellSize;
+            const newW = data.capacity * cellSize;
+            const gap = 150;
+            const rehashTotalW = oldW + gap + newW;
+            const rehashStartX = -rehashTotalW / 2;
+            
+            this.drawRehashScene(data, meta, rehashStartX, baseY);
             return;
         }
 
-        this.drawStruct(50, baseY, 40, data, arrayStartX);
-        this.drawArrayAndLists(arrayStartX, baseY, cellSize, data, meta);
+        this.drawStruct(startX - leftPanelW + 10, baseY, 40, data, startX);
+        this.drawArrayAndLists(startX, baseY, cellSize, data, meta);
 
         if (meta.hashCalc) {
             const fade = meta.isCleanup ? (1 - this.morphProgress) : 1;
             if (fade > 0) {
                 this.ctx.globalAlpha = fade;
-                const arrayCenterX = arrayStartX + (data.capacity * cellSize) / 2;
-                this.drawHashBox(arrayCenterX, -10, meta.hashCalc);
+                const arrayCenterX = startX + (data.capacity * cellSize) / 2;
+                this.drawHashBox(arrayCenterX, baseY - 110, meta.hashCalc);
                 this.ctx.globalAlpha = 1;
             }
         }
@@ -1127,17 +1250,8 @@ const app = {
             meta: { text: "Ready." } 
         }];
         this.viz.currentSnapshotIndex = 0;
-
-        const view = this.viz.calculateView(initialData, {});
-        this.viz.camera = {
-            scale: view.scale,
-            offsetX: view.offsetX,
-            offsetY: view.offsetY,
-            targetScale: view.scale,
-            targetOffsetX: view.offsetX,
-            targetOffsetY: view.offsetY
-        };
-
+        this.viz.resize(); 
+        this.viz.fitCameraToSnapshot(this.viz.snapshots[0]);
         this.viz.draw();
         this.updateUI(); 
     },
@@ -1202,6 +1316,7 @@ const app = {
         this.ht = new SeparateChainingHashTable(5);
         this.viz.snapshots = [{ tableData: this.ht.getSnapshotData(), meta: { text: "Table cleared." } }];
         this.viz.currentSnapshotIndex = 0;
+        this.viz.fitCameraToSnapshot(this.viz.snapshots[0]);
         this.viz.draw(); 
         this.updateUI();
     },
@@ -1213,11 +1328,17 @@ const app = {
         const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
         snaps.push({ tableData: this.ht.getSnapshotData(), meta: { text: "Starting Random Fill..." } });
         
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
-        for(let i=0; i<count; i++) {
-            const char = chars.charAt(Math.floor(Math.random() * chars.length));
-            this.ht.insert(char, batchRecord);
+        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split('');
+
+        for (let i = chars.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [chars[i], chars[j]] = [chars[j], chars[i]];
         }
+
+        for(let i=0; i<count; i++) {
+            this.ht.insert(chars[i], batchRecord);
+        }
+        
         this.viz.enqueueOperation(snaps);
         this.updateUI();
     },

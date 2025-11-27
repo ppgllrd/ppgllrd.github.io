@@ -75,7 +75,7 @@
         #canvas-container {
             flex-grow: 1; position: relative; overflow: hidden;
             background-color: var(--bg-color);
-            cursor: crosshair;
+            cursor: default;
             min-height: 0;
         }
         canvas { display: block; width: 100%; height: 100%; }
@@ -159,14 +159,14 @@
         </div>
         <div class="sub-controls">
             <label for="speedSlider">Slowdown:</label>
-            <label title="Slide right to slow down animation">
+            <label title="Slide right to slow down the animation">
                 <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
             </label>
             <button class="btn-pause" title="Pause/Resume" onclick="app.togglePause()" id="btnPause">Pause</button>
         </div>
     </div>
     <div id="status-bar">
-        <span id="status-text">Ready.</span>
+        <span id="status-text">Ready. Use Mouse/Touch to Pan & Zoom.</span>
     </div>
 </header>
 
@@ -250,14 +250,14 @@ class Node {
         this.origin = origin;
         this.x = 0; this.y = 0;
         this.highlight = false;
-        this.highlightWeight = false; // New property
+        this.highlightWeight = false; 
     }
     clone() {
         const n = new Node(this.val, this.origin);
         n.id = this.id; 
         n.weight = this.weight;
         n.highlight = this.highlight;
-        n.highlightWeight = this.highlightWeight; // Important: Copy the weight highlight!
+        n.highlightWeight = this.highlightWeight;
         n.x = this.x; n.y = this.y;
         if (this.left) n.left = this.left.clone();
         if (this.right) n.right = this.right.clone();
@@ -307,13 +307,11 @@ const MaxiHeap = {
             steps.push({ msg, roots: frames });
         };
 
-        // Snapshot 0: Initial state side-by-side
         takeSnapshot(`Merging trees ${t1.val} and ${t2.val}`, [floatingTree]);
 
         function mergeRec(t1, t2, parent) {
             if (!t1 && !t2) return null;
             
-            // Base case: t1 ended, attach t2
             if (!t1) {
                 if (parent) {
                     parent.right = t2;
@@ -326,28 +324,22 @@ const MaxiHeap = {
                 return t1;
             }
 
-            // 1. Determine actual Winner and Floater BEFORE attaching
             let winnerNode = (t1.val <= t2.val) ? t1 : t2;
             let floaterNode = (t1.val <= t2.val) ? t2 : t1;
         
-            // 2. Structural Attachment
             if (parent) {
                 parent.right = winnerNode;
             } else {
                 mainTree = winnerNode;
             }
 
-            // 3. Snapshot: Winner is attached, Floater is separate.
             takeSnapshot(`Comparing roots: ${t1.val} vs ${t2.val}`, [floaterNode], [t1.id, t2.id]);
 
-            // 4. Normalize variables
             t1 = winnerNode;
             t2 = floaterNode;
 
-            // Update Weight
             t1.weight = t1.weight + t2.weight;
 
-            // 5. Candidates
             let left = t1.left;
             let right = t1.right;
             let other = t2;
@@ -360,7 +352,6 @@ const MaxiHeap = {
             let wO = MaxiHeap.getWeight(other);
             let maxW = Math.max(wL, Math.max(wR, wO));
 
-            // Selection Logic
             let winner, loser1, loser2;
             let choiceMsg = "";
 
@@ -375,27 +366,20 @@ const MaxiHeap = {
                 choiceMsg = `Other tree (weight ${wO}) is heaviest. Moves to Left.`;
             }
 
-
-            // VISUAL 2: Show candidates floating (Highlight ON)
             let floats = [left, right, other].filter(x=>x);
             takeSnapshot(`Candidates: L(weight ${wL}), R(weight ${wR}), Other(weight ${wO})`, floats, [t1.id]);
 
-            // Weight Highlighting
             let weightHighs = winner ? [winner.id] : [];
 
             takeSnapshot(`${choiceMsg}`, floats, [t1.id], weightHighs);
 
-            // Attach Winner
             t1.left = winner;
             
-            // VISUAL 3: Winner attached (Highlight ON), losers float
             let nextFloats = [loser1, loser2].filter(x=>x);
             takeSnapshot(`${choiceMsg} Recurse with remaining two.`, nextFloats, [t1.id], weightHighs);
 
             takeSnapshot(`${choiceMsg} Recurse with remaining two.`, nextFloats, [], []);
 
-
-            // 7. Recurse (Highlight OFF for next level setup)
             t1.right = loser1;
             t1.right = mergeRec(loser1, loser2, t1);
             
@@ -410,7 +394,19 @@ const MaxiHeap = {
 
 const app = {
     mainTree: null, history: [], steps: [], currentStep: 0, isPlaying: false, transition: 1,
-    canvas: null, ctx: null, camera: { scale: 1, x: 0, y: 0, targetScale: 1, targetX: 0, targetY: 0 },
+    canvas: null, ctx: null, 
+    
+    // Camera & Navigation
+    currentSpeedFactor: 1.0,
+    baseMorphSpeed: 3.0, 
+    camera: { scale: 1, x: 0, y: 0, targetScale: 1, targetX: 0, targetY: 0 },
+    isDragging: false,
+    dragStart: { x: 0, y: 0 },
+    initialCamera: { x: 0, y: 0 },
+    initialPinchDist: 0,
+    initialScale: 1,
+    hoveredNode: null,
+
     nodeRadius: 28, levelGap: 70,
 
     init: function() {
@@ -418,9 +414,21 @@ const app = {
         this.ctx = this.canvas.getContext('2d');
         this.resize();
         window.addEventListener('resize', () => this.resize());
-        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        
+        // Unified Events
+        this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+        this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+        this.canvas.addEventListener('mouseup', e => this.onMouseUp(e));
+        this.canvas.addEventListener('mouseleave', e => this.onMouseUp(e));
+        this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+        this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
+
         window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
-        this.updateUI(); this.loop();
+        this.updateUI(); 
+        this.lastTime = 0;
+        requestAnimationFrame(t => this.loop(t));
     },
 
     resize: function() {
@@ -440,22 +448,131 @@ const app = {
         this.updateUI();
     },
 
-    handleClick: function(e) {
+    // --- INPUT HANDLING ---
+
+    checkNodeHit: function (mx, my) {
+        if (!this.vizNodes) return null;
+        const w = this.canvas.width; const h = this.canvas.height;
+        for (let n of this.vizNodes) {
+            const sx = w / 2 + (n.x - this.camera.x) * this.camera.scale;
+            const sy = h / 2 + (n.y - this.camera.y) * this.camera.scale;
+            const r = this.nodeRadius * this.camera.scale;
+            if (Math.hypot(mx - sx, my - sy) < r) return n;
+        }
+        return null;
+    },
+
+    onMouseDown: function (e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+
+        const node = this.checkNodeHit(mx, my);
+        if (node) {
+            document.getElementById('inputValue').value = node.val;
+            document.getElementById('inputValue').focus();
+            return;
+        }
+
+        this.isDragging = true;
+        this.dragStart = { x: mx, y: my };
+        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+        this.canvas.style.cursor = 'grabbing';
+    },
+
+    onMouseMove: function (e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
+
+        this.hoveredNode = this.checkNodeHit(mx, my);
+        if (this.isDragging) this.canvas.style.cursor = 'grabbing';
+        else if (this.hoveredNode) this.canvas.style.cursor = 'pointer';
+        else this.canvas.style.cursor = 'default';
+
+        if (!this.isDragging) return;
+
+        const dx = mx - this.dragStart.x;
+        const dy = my - this.dragStart.y;
+
+        this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
+        this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
+    },
+
+    onMouseUp: function () {
+        this.isDragging = false;
+        this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
+    },
+
+    onWheel: function (e) {
+        e.preventDefault();
+        const zoomIntensity = 0.001;
+        const scroll = e.deltaY;
+        let newScale = this.camera.targetScale * (1 - scroll * zoomIntensity);
+        newScale = Math.min(Math.max(0.2, newScale), 5);
+
         const rect = this.canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
         const w = this.canvas.width; const h = this.canvas.height;
-        if (!this.vizNodes) return;
-        for (let n of this.vizNodes) {
-            const sx = w/2 + (n.x - this.camera.x) * this.camera.scale;
-            const sy = h/2 + (n.y - this.camera.y) * this.camera.scale;
-            const r = this.nodeRadius * this.camera.scale;
-            if (Math.hypot(mx - sx, my - sy) < r) {
-                document.getElementById('inputValue').value = n.val;
+
+        // World coordinates under mouse
+        const worldX = this.camera.targetX + (mx - w / 2) / this.camera.targetScale;
+        const worldY = this.camera.targetY + (my - h / 2) / this.camera.targetScale;
+
+        this.camera.targetScale = newScale;
+        // Adjust translation to keep world point under mouse
+        this.camera.targetX = worldX - (mx - w / 2) / newScale;
+        this.camera.targetY = worldY - (my - h / 2) / newScale;
+    },
+
+    getTouchDist: function (touches) {
+        return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+    },
+
+    onTouchStart: function (e) {
+        if (e.touches.length === 1) {
+            const t = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const mx = t.clientX - rect.left; const my = t.clientY - rect.top;
+
+            const node = this.checkNodeHit(mx, my);
+            if (node) {
+                document.getElementById('inputValue').value = node.val;
                 document.getElementById('inputValue').focus();
                 return;
             }
+            this.isDragging = true;
+            this.dragStart = { x: mx, y: my };
+            this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+        } else if (e.touches.length === 2) {
+            this.isDragging = false;
+            this.initialPinchDist = this.getTouchDist(e.touches);
+            this.initialScale = this.camera.targetScale;
         }
     },
+
+    onTouchMove: function (e) {
+        e.preventDefault();
+        if (e.touches.length === 1 && this.isDragging) {
+            const t = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const mx = t.clientX - rect.left; const my = t.clientY - rect.top;
+            const dx = mx - this.dragStart.x; const dy = my - this.dragStart.y;
+            this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
+            this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
+        } else if (e.touches.length === 2) {
+            const dist = this.getTouchDist(e.touches);
+            if (this.initialPinchDist > 0) {
+                const scaleFactor = dist / this.initialPinchDist;
+                this.camera.targetScale = Math.min(Math.max(0.2, this.initialScale * scaleFactor), 5);
+            }
+        }
+    },
+
+    onTouchEnd: function () {
+        this.isDragging = false;
+        this.initialPinchDist = 0;
+    },
+
+    // --- ACTIONS ---
 
     handleInsert: function() {
         const val = parseInt(document.getElementById('inputValue').value);
@@ -513,7 +630,6 @@ const app = {
 
     handleMergeScenario: function() {
         this.saveState();
-        // Increased size for better visualization of depth and weight comparison
         const h1 = this.createRandomTree(8, 1);
         const h2 = this.createRandomTree(6, 2);
         this.steps = MaxiHeap.recordMerge([h1, h2], h1, h2);
@@ -618,7 +734,38 @@ const app = {
 
     startAnimation: function() {
         this.currentStep = 0; this.transition = 0; this.isPlaying = true; this.updateUI();
+        this.fitToAllSteps();
     },
+
+    fitToAllSteps: function () {
+        if (this.steps.length === 0) return;
+        const frames = [this.steps[0]];
+        if (this.steps.length > 1) frames.push(this.steps[this.steps.length - 1]);
+
+        let allNodes = [];
+        frames.forEach(frame => {
+            const layout = this.layoutInOrder(frame.roots);
+            allNodes.push(...this.flatten(layout));
+        });
+
+        const w = this.canvas.width; const h = this.canvas.height;
+        if (allNodes.length === 0) {
+            this.camera.targetScale = 1; this.camera.targetX = 0; this.camera.targetY = 0;
+            return;
+        }
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        allNodes.forEach(n => {
+            minX = Math.min(minX, n.x - 40); maxX = Math.max(maxX, n.x + 40);
+            minY = Math.min(minY, n.y - 40); maxY = Math.max(maxY, n.y + 40);
+        });
+
+        const sc = Math.min(w / (maxX - minX + 100), h / (maxY - minY + 150), 1.1);
+        this.camera.targetScale = sc;
+        this.camera.targetX = (minX + maxX) / 2;
+        this.camera.targetY = minY + (maxY - minY) / 2;
+    },
+
     updateUI: function() {
         document.getElementById('status-text').innerText = this.steps[this.currentStep]?.msg || "Ready.";
         document.getElementById('btnUndo').disabled = this.history.length === 0;
@@ -628,25 +775,30 @@ const app = {
         if (this.currentStep === this.steps.length - 1) { this.currentStep = 0; this.transition = 0; }
         this.isPlaying = !this.isPlaying; this.updateUI();
     },
-    updateSpeed: function() {},
+    updateSpeed: function() { 
+        this.currentSpeedFactor = 1.0 / parseFloat(document.getElementById('speedSlider').value);
+    },
+
     loop: function(ts) {
         if (!this.lastTime) this.lastTime = ts;
-        let dt = ts - this.lastTime; this.lastTime = ts;
-        dt /= parseFloat(document.getElementById('speedSlider').value) * 0.5;
+        let dt = (ts - this.lastTime) / 1000;
+        dt = Math.min(dt, 0.1);
+        this.lastTime = ts;
 
-        this.camera.x += (this.camera.targetX - this.camera.x) * 0.1;
-        this.camera.y += (this.camera.targetY - this.camera.y) * 0.1;
-        this.camera.scale += (this.camera.targetScale - this.camera.scale) * 0.1;
+        const camFactor = 1 - Math.exp(-10 * dt);
+        this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
+        this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
+        this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
 
         if (this.isPlaying) {
-            this.transition += dt * 0.0015; 
+            this.transition += dt * this.currentSpeedFactor * this.baseMorphSpeed; 
             if (this.transition >= 1.3) { 
                 this.transition = 0;
                 if (this.currentStep < this.steps.length - 1) { this.currentStep++; this.updateUI(); }
                 else { this.isPlaying = false; this.transition = 1; this.updateUI(); }
             }
         } else {
-            if (this.transition < 1) this.transition += dt * 0.005; else this.transition = 1;
+            if (this.transition < 1) this.transition += dt * this.currentSpeedFactor * this.baseMorphSpeed * 2; else this.transition = 1;
         }
         this.draw(); requestAnimationFrame((t) => this.loop(t));
     },
@@ -661,8 +813,6 @@ const app = {
         const layoutCur = this.layoutInOrder(curSnap.roots);
         const layoutPrev = this.layoutInOrder(prevSnap.roots);
         
-        this.fitCamera([...this.flatten(layoutCur), ...this.flatten(layoutPrev)], w, h);
-
         let t = Math.min(Math.max(this.transition, 0), 1);
         const easeT = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
         const prevMap = new Map();
@@ -689,18 +839,6 @@ const app = {
         };
         clones.forEach(root => { traverse(root, 0); counter += 1; });
         return clones;
-    },
-    
-    fitCamera: function(nodes, w, h) {
-        if (nodes.length === 0) return;
-        let minX=Infinity, maxX=-Infinity, minY=Infinity, maxY=-Infinity;
-        nodes.forEach(n => {
-            minX = Math.min(minX, n.x - 40); maxX = Math.max(maxX, n.x + 40);
-            minY = Math.min(minY, n.y - 40); maxY = Math.max(maxY, n.y + 40);
-        });
-        const sc = Math.min(w/(maxX-minX+100), h/(maxY-minY+150), 1.1);
-        this.camera.targetScale = sc;
-        this.camera.targetX = (minX+maxX)/2; this.camera.targetY = minY + (maxY-minY)/2;
     },
 
     drawLinksRec: function(node, prevMap, t) {
@@ -734,7 +872,7 @@ const app = {
         if(!n) return;
         let cx = n.x, cy = n.y;
         const p = prevMap.get(n.id);
-        if(p) { cx = p.x + (n.x-p.x)*t; cy = p.y + (n.y-p.y)*t; } else this.ctx.globalAlpha = t;
+        if(p) { cx = p.x + (n.x-p.x)*t; cy = p.y + (n.y-p.y)*t; } /* else this.ctx.globalAlpha = t; */
         
         this.vizNodes.push({x:cx, y:cy, val:n.val});
 
@@ -757,8 +895,6 @@ const app = {
             stroke = COLORS.DELETE; 
             textColor = '#FFFFFF'; 
         } 
-
-        
 
         ctx.beginPath(); ctx.arc(cx, cy, this.nodeRadius, 0, 2*Math.PI);
         ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke();
