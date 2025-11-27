@@ -72,7 +72,7 @@
         #canvas-container {
             flex-grow: 1; position: relative; overflow: hidden;
             background-color: var(--bg-color);
-            cursor: crosshair;
+            cursor: default; /* CHANGED: Default cursor to handle hover states via JS */
             min-height: 0;
         }
         canvas { display: block; width: 100%; height: 100%; }
@@ -161,7 +161,7 @@
         </div>
     </div>
     <div id="status-bar">
-        <span id="status-text">Ready.</span>
+        <span id="status-text">Ready. Use Mouse/Touch to Pan & Zoom.</span>
     </div>
 </header>
 
@@ -449,20 +449,44 @@ class Visualizer {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
         this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
-        this.nodeRadius = 28; // Matched to others
+        this.nodeRadius = 28; 
         this.levelHeight = 70; 
         this.snapshots = [];
         this.currentSnapshotIndex = -1;
         this.lastDrawnNodes = [];
+        this.hoveredNode = null;
         this.state = 'IDLE';
         this.isPaused = false;
+        
+        // --- Delta Time & Animation Settings ---
         this.morphProgress = 0;
-        this.baseMorphSpeed = 0.05;
+        this.baseMorphSpeed = 3.0; // 3.0 units/second (~0.05 per frame at 60fps)
         this.currentSpeedFactor = 1;
         this.pauseTimer = 0;
+        
+        // --- Navigation State (Mouse & Touch) ---
+        this.isDragging = false;
+        this.dragStart = { x: 0, y: 0 };
+        this.initialCamera = { x: 0, y: 0 };
+        this.initialPinchDist = 0;
+        this.initialScale = 1;
+
         this.resize();
+        
+        // --- Listeners ---
         window.addEventListener('resize', () => this.resize());
-        this.canvas.addEventListener('mousedown', (e) => this.handleClick(e));
+        
+        // Unified Mouse Events
+        this.canvas.addEventListener('mousedown', (e) => this.onMouseDown(e));
+        this.canvas.addEventListener('mousemove', (e) => this.onMouseMove(e));
+        this.canvas.addEventListener('mouseup', () => this.onMouseUp());
+        this.canvas.addEventListener('mouseleave', () => this.onMouseLeave());
+        this.canvas.addEventListener('wheel', (e) => this.onWheel(e), { passive: false });
+        
+        // Unified Touch Events
+        this.canvas.addEventListener('touchstart', (e) => this.onTouchStart(e), { passive: false });
+        this.canvas.addEventListener('touchmove', (e) => this.onTouchMove(e), { passive: false });
+        this.canvas.addEventListener('touchend', (e) => this.onTouchEnd(e));
         
         // Modal close
         window.onclick = (e) => {
@@ -472,6 +496,179 @@ class Visualizer {
         this.lastTime = 0;
         requestAnimationFrame(t => this.loop(t));
     }
+
+    // --- Input Handling Methods ---
+
+    onMouseDown(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        // 1. Check if user clicked on a node
+        for (let n of this.lastDrawnNodes) {
+            const sx = (n.x * this.camera.scale) + this.camera.x;
+            const sy = (n.y * this.camera.scale) + this.camera.y;
+            const r = this.nodeRadius * this.camera.scale;
+            if (Math.hypot(mx - sx, my - sy) < r) {
+                document.getElementById('inputValue').value = n.value;
+                document.getElementById('inputValue').focus();
+                return;
+            }
+        }
+
+        // 2. Start Pan
+        this.isDragging = true;
+        this.dragStart = { x: mx, y: my };
+        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+        this.canvas.style.cursor = 'grabbing';
+    }
+
+    onMouseMove(e) {
+        const rect = this.canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const my = e.clientY - rect.top;
+
+        this.checkNodeHover(mx, my);
+
+        if (this.isDragging) {
+            this.canvas.style.cursor = 'grabbing';
+        } else if (this.hoveredNode) {
+            this.canvas.style.cursor = 'pointer';
+        } else {
+            this.canvas.style.cursor = 'default';
+        }
+
+        if (!this.isDragging) return;
+
+        const dx = mx - this.dragStart.x;
+        const dy = my - this.dragStart.y;
+
+        this.camera.targetX = this.initialCamera.x + dx;
+        this.camera.targetY = this.initialCamera.y + dy;
+    }
+
+    onMouseUp() {
+        this.isDragging = false;
+        this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
+    }
+
+    onMouseLeave() {
+        this.isDragging = false;
+        this.canvas.style.cursor = 'default';
+    }
+
+    onWheel(e) {
+        e.preventDefault(); 
+        const zoomIntensity = 0.001;
+        const scroll = e.deltaY;
+        let newScale = this.camera.targetScale * (1 - scroll * zoomIntensity);
+        newScale = Math.min(Math.max(0.2, newScale), 5);
+
+        const rect = this.canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const worldX = (mouseX - this.camera.targetX) / this.camera.targetScale;
+        const worldY = (mouseY - this.camera.targetY) / this.camera.targetScale;
+
+        this.camera.targetScale = newScale;
+        this.camera.targetX = mouseX - worldX * newScale;
+        this.camera.targetY = mouseY - worldY * newScale;
+    }
+
+    getTouchDistance(touches) {
+        return Math.hypot(
+            touches[0].clientX - touches[1].clientX,
+            touches[0].clientY - touches[1].clientY
+        );
+    }
+
+    onTouchStart(e) {
+        if (e.touches.length === 1) {
+            const touch = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const mx = touch.clientX - rect.left;
+            const my = touch.clientY - rect.top;
+
+            for (let n of this.lastDrawnNodes) {
+                const sx = (n.x * this.camera.scale) + this.camera.x;
+                const sy = (n.y * this.camera.scale) + this.camera.y;
+                const r = this.nodeRadius * this.camera.scale;
+                if (Math.hypot(mx - sx, my - sy) < r) {
+                    document.getElementById('inputValue').value = n.value;
+                    document.getElementById('inputValue').focus();
+                    return;
+                }
+            }
+
+            this.isDragging = true;
+            this.dragStart = { x: mx, y: my };
+            this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+
+        } else if (e.touches.length === 2) {
+            this.isDragging = false;
+            this.initialPinchDist = this.getTouchDistance(e.touches);
+            this.initialScale = this.camera.targetScale;
+        }
+    }
+
+    onTouchMove(e) {
+        e.preventDefault();
+
+        if (e.touches.length === 1 && this.isDragging) {
+            const touch = e.touches[0];
+            const rect = this.canvas.getBoundingClientRect();
+            const mx = touch.clientX - rect.left;
+            const my = touch.clientY - rect.top;
+
+            const dx = mx - this.dragStart.x;
+            const dy = my - this.dragStart.y;
+
+            this.camera.targetX = this.initialCamera.x + dx;
+            this.camera.targetY = this.initialCamera.y + dy;
+
+        } else if (e.touches.length === 2) {
+            const currentDist = this.getTouchDistance(e.touches);
+            
+            if (this.initialPinchDist > 0) {
+                const scaleFactor = currentDist / this.initialPinchDist;
+                let newScale = this.initialScale * scaleFactor;
+                newScale = Math.min(Math.max(0.2, newScale), 5);
+
+                const rect = this.canvas.getBoundingClientRect();
+                const centerX = rect.width / 2;
+                const centerY = rect.height / 2;
+                
+                const worldCenterX = (centerX - this.camera.targetX) / this.camera.targetScale;
+                const worldCenterY = (centerY - this.camera.targetY) / this.camera.targetScale;
+                
+                this.camera.targetScale = newScale;
+                this.camera.targetX = centerX - worldCenterX * newScale;
+                this.camera.targetY = centerY - worldCenterY * newScale;
+            }
+        }
+    }
+
+    onTouchEnd(e) {
+        this.isDragging = false;
+        this.initialPinchDist = 0;
+    }
+
+    checkNodeHover(mx, my) {
+        let found = null;
+        for (let n of this.lastDrawnNodes) {
+            const sx = (n.x * this.camera.scale) + this.camera.x;
+            const sy = (n.y * this.camera.scale) + this.camera.y;
+            const r = this.nodeRadius * this.camera.scale;
+
+            if (Math.hypot(mx - sx, my - sy) < r) {
+                found = n;
+                break;
+            }
+        }
+        this.hoveredNode = found;
+    }
+
+    // --- Core Visualization Methods ---
 
     resize() {
         this.canvas.width = document.getElementById('canvas-container').offsetWidth;
@@ -524,20 +721,6 @@ class Visualizer {
     setSpeed(val) { this.currentSpeedFactor = 1 / val; }
     togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
 
-    handleClick(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left; const my = e.clientY - rect.top;
-        for (let n of this.lastDrawnNodes) {
-            const sx = (n.x * this.camera.scale) + this.camera.x;
-            const sy = (n.y * this.camera.scale) + this.camera.y;
-            const r = this.nodeRadius * this.camera.scale;
-            if (Math.hypot(mx - sx, my - sy) < r) {
-                document.getElementById('inputValue').value = n.value;
-                document.getElementById('inputValue').focus();
-                return;
-            }
-        }
-    }
     calculateLayout(root) {
         if (!root) return;
         let order = 0;
@@ -575,31 +758,43 @@ class Visualizer {
         }
         if (snapshots.length > 0) { this.pendingSnapshots = snapshots; this.state = 'CAMERA'; }
     }
-    loop(timestamp) { if (!this.isPaused) this.update(); this.draw(); requestAnimationFrame(t => this.loop(t)); }
+    
+    loop(timestamp) { 
+        if (!this.lastTime) this.lastTime = timestamp;
+        const dt = (timestamp - this.lastTime) / 1000;
+        this.lastTime = timestamp;
+        
+        if (!this.isPaused) this.update(Math.min(dt, 0.1)); 
+        this.draw(); 
+        requestAnimationFrame(t => this.loop(t)); 
+    }
 
-    update() {
-        const camSpeed = 0.1;
-        this.camera.scale += (this.camera.targetScale - this.camera.scale) * camSpeed;
-        this.camera.x += (this.camera.targetX - this.camera.x) * camSpeed;
-        this.camera.y += (this.camera.targetY - this.camera.y) * camSpeed;
+    update(dt) {
+        const camSpeed = 10.0;
+        const factor = 1 - Math.exp(-camSpeed * dt);
+        
+        this.camera.scale += (this.camera.targetScale - this.camera.scale) * factor;
+        this.camera.x += (this.camera.targetX - this.camera.x) * factor;
+        this.camera.y += (this.camera.targetY - this.camera.y) * factor;
         
         if (this.state === 'CAMERA') {
              const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
-             if (dist < 10 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.05) {
+             if (dist < 5 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.01) {
                  if (this.pendingSnapshots.length > 0) this.loadNextSnapshot();
                  else this.state = 'IDLE';
              }
         } else if (this.state === 'MORPH') {
-            this.morphProgress += this.baseMorphSpeed * this.currentSpeedFactor;
+            this.morphProgress += this.baseMorphSpeed * this.currentSpeedFactor * dt;
             if (this.morphProgress >= 1) {
                 this.morphProgress = 1;
                 if (this.pauseAfterMorph) {
                     this.state = 'WAITING';
-                    this.pauseTimer = 50 / this.currentSpeedFactor;
+                    this.pauseTimer = 0.8 / this.currentSpeedFactor; // Pause time in seconds
                 } else { this.finalizeStep(); }
             }
         } else if (this.state === 'WAITING') {
-            this.pauseTimer--; if (this.pauseTimer <= 0) this.finalizeStep();
+            this.pauseTimer -= dt; 
+            if (this.pauseTimer <= 0) this.finalizeStep();
         }
     }
 
