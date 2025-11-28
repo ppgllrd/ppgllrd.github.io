@@ -565,27 +565,31 @@
                     const prevColor = node.color;
                     node.color = COLORS.CHECK;
                     recordSnapshot(this.root, null, { text: `Backtracking: Checking balance of ${node.value} (BF: ${balance})` });
-                    node.color = prevColor;
                     // -----------------------------
 
                     if (balance > 1 && value < node.left.value) {
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Left-Left Case (Straight Line)", path: [node.id, node.left.id, node.left.left.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Left-Left Case (Straight Line)", path: [node.id, node.left.id, node.left.left.id] });
+                        node.color = prevColor;
                         return this.rightRotate(node, recordSnapshot);
                     }
                     if (balance < -1 && value > node.right.value) {
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Right-Right Case (Straight Line)", path: [node.id, node.right.id, node.right.right.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Right-Right Case (Straight Line)", path: [node.id, node.right.id, node.right.right.id] });
+                        node.color = prevColor;
                         return this.leftRotate(node, recordSnapshot);
                     }
                     if (balance > 1 && value > node.left.value) {
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Left-Right Case (Zig-Zag)", path: [node.id, node.left.id, node.left.right.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Left-Right Case (Zig-Zag)", path: [node.id, node.left.id, node.left.right.id] });
+                        node.color = prevColor;
                         node.left = this.leftRotate(node.left, recordSnapshot);
                         return this.rightRotate(node, recordSnapshot);
                     }
                     if (balance < -1 && value < node.right.value) {
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Right-Left Case (Zig-Zag)", path: [node.id, node.right.id, node.right.left.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Right-Left Case (Zig-Zag)", path: [node.id, node.right.id, node.right.left.id] });
+                        node.color = prevColor;
                         node.right = this.rightRotate(node.right, recordSnapshot);
                         return this.leftRotate(node, recordSnapshot);
                     }
+                    node.color = prevColor;
                     return node;
                 };
                 this.root = _insert(this.root);
@@ -642,33 +646,37 @@
                     const prevColor = node.color;
                     node.color = COLORS.CHECK;
                     recordSnapshot(this.root, null, { text: `Backtracking: Checking balance of ${node.value} (BF: ${balance})` });
-                    node.color = prevColor;
                     // -----------------------------
 
                     if (balance > 1 && this.getBalance(node.left) >= 0) {
                         // Left Left Case
                         const grandchild = node.left.left ? node.left.left : node.left.right; // Visual fallback
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Left-Left Case (Straight Line)", path: [node.id, node.left.id, grandchild ? grandchild.id : node.left.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Left-Left Case (Straight Line)", path: [node.id, node.left.id, grandchild ? grandchild.id : node.left.id] });
+                        node.color = prevColor;
                         return this.rightRotate(node, recordSnapshot);
                     }
                     if (balance > 1 && this.getBalance(node.left) < 0) {
                         // Left Right Case
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Left-Right Case (Zig-Zag)", path: [node.id, node.left.id, node.left.right.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Left-Right Case (Zig-Zag)", path: [node.id, node.left.id, node.left.right.id] });
                         node.left = this.leftRotate(node.left, recordSnapshot);
+                        node.color = prevColor;
                         return this.rightRotate(node, recordSnapshot);
                     }
                     if (balance < -1 && this.getBalance(node.right) <= 0) {
                         // Right Right Case
                         const grandchild = node.right.right ? node.right.right : node.right.left; // Visual fallback
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Right-Right Case (Straight Line)", path: [node.id, node.right.id, grandchild ? grandchild.id : node.right.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Right-Right Case (Straight Line)", path: [node.id, node.right.id, grandchild ? grandchild.id : node.right.id] });
+                        node.color = prevColor;
                         return this.leftRotate(node, recordSnapshot);
                     }
                     if (balance < -1 && this.getBalance(node.right) > 0) {
                         // Right Left Case
-                        recordSnapshot(this.root, null, { text: "Unbalanced: Right-Left Case (Zig-Zag)", path: [node.id, node.right.id, node.right.left.id] });
+                        recordSnapshot(this.root, null, { pause: true, text: "Unbalanced: Right-Left Case (Zig-Zag)", path: [node.id, node.right.id, node.right.left.id] });
                         node.right = this.rightRotate(node.right, recordSnapshot);
+                        node.color = prevColor;
                         return this.leftRotate(node, recordSnapshot);
                     }
+                    node.color = prevColor;
                     return node;
                 };
                 this.root = _delete(this.root, value);
@@ -759,7 +767,7 @@
                     const r = this.nodeRadius * this.camera.scale;
                     if (Math.hypot(mx - sx, my - sy) < r) {
                         document.getElementById('inputValue').value = n.value;
-                        document.getElementById('inputValue').focus();
+                        // document.getElementById('inputValue').focus();
                         return;
                     }
                 }
@@ -845,7 +853,7 @@
                         const r = this.nodeRadius * this.camera.scale;
                         if (Math.hypot(mx - sx, my - sy) < r) {
                             document.getElementById('inputValue').value = n.value;
-                            document.getElementById('inputValue').focus();
+                            // document.getElementById('inputValue').focus();
                             return;
                         }
                     }
@@ -1133,7 +1141,7 @@
                 if (currentMeta && currentMeta.path && currentMeta.path.length > 1) {
                     this.ctx.beginPath();
                     this.ctx.strokeStyle = COLORS.PATH_HIGHLIGHT;
-                    this.ctx.lineWidth = 8;
+                    this.ctx.lineWidth = 6;
                     let first = true;
                     for (let id of currentMeta.path) {
                         const n = nodesToDraw.find(node => node.id === id);
