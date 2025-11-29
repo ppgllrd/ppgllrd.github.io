@@ -9,20 +9,24 @@
     <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
     <style>
         :root {
-            --bg-dark: #121212;
-            --panel-bg: #1e1e1e;
-            --border: #333;
-            --text-main: #e0e0e0;
-            --text-muted: #a0a0a0;
-            --primary: #2196f3;
-            --accent: #ff9800;
-            --danger: #f44336; 
-            --success: #4caf50;
+            /* Light Theme Variables */
+            --bg-body: #ffffff;
+            --bg-panel: #f9f9f9;
+            --border: #e0e0e0;
+            --text-main: #333333;
+            --text-muted: #666666;
+            
+            /* Accents (Adjusted for white background contrast) */
+            --primary: #1976D2;   /* Blue */
+            --accent: #F57C00;    /* Orange */
+            --danger: #D32F2F;    /* Red */
+            --success: #388E3C;   /* Green */
+            --highlight: rgba(0, 0, 0, 0.1); /* Hover highlight */
         }
 
         body {
             font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-dark);
+            background-color: var(--bg-body);
             color: var(--text-main);
             margin: 0;
             display: flex;
@@ -33,7 +37,7 @@
         /* SIDEBAR */
         aside {
             width: 340px;
-            background-color: var(--panel-bg);
+            background-color: var(--bg-panel);
             border-right: 1px solid var(--border);
             display: flex;
             flex-direction: column;
@@ -41,73 +45,100 @@
             box-sizing: border-box;
             flex-shrink: 0;
             overflow-y: auto;
+            box-shadow: 2px 0 5px rgba(0,0,0,0.05);
         }
 
         h2 { margin-top: 0; font-size: 1.1rem; color: var(--text-main); border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; }
         h3 { font-size: 0.85rem; color: var(--text-muted); margin-top: 25px; text-transform: uppercase; letter-spacing: 1px; }
 
         .control-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 600; }
+        label { display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 600; color: var(--text-main); }
         
         select, input {
-            width: 100%; padding: 10px; background: #2c2c2c; border: 1px solid #444;
-            color: white; border-radius: 4px; font-size: 0.9rem; margin-bottom: 5px; box-sizing: border-box;
+            width: 100%; padding: 10px; 
+            background: #ffffff; 
+            border: 1px solid #ccc;
+            color: var(--text-main); 
+            border-radius: 4px; font-size: 0.9rem; margin-bottom: 5px; box-sizing: border-box;
+            transition: border-color 0.2s;
         }
         select:focus, input:focus { border-color: var(--primary); outline: none; }
 
         .btn-row { display: flex; gap: 10px; margin-top: 25px; }
         button {
             flex: 1; padding: 12px; border: none; border-radius: 4px; cursor: pointer;
-            font-weight: bold; font-size: 0.9rem; transition: background 0.2s;
+            font-weight: bold; font-size: 0.9rem; transition: background 0.2s, transform 0.1s;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        button:active { transform: translateY(1px); }
         .btn-run { background-color: var(--success); color: white; }
-        .btn-run:hover { background-color: #43a047; }
-        .btn-reset { background-color: #d32f2f; color: white; }
-        .btn-reset:hover { background-color: #b71c1c; }
+        .btn-run:hover { background-color: #2e7d32; }
+        .btn-reset { background-color: var(--danger); color: white; }
+        .btn-reset:hover { background-color: #c62828; }
 
-        .note { font-size: 0.8rem; color: #888; margin-top: 5px; line-height: 1.4; }
+        .note { font-size: 0.8rem; color: var(--text-muted); margin-top: 5px; line-height: 1.4; font-style: italic; }
 
         /* MAIN LAYOUT */
         main { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
 
         /* TAB BAR */
-        .tabs { display: flex; background: #111; border-bottom: 1px solid var(--border); }
+        .tabs { display: flex; background: var(--bg-panel); border-bottom: 1px solid var(--border); }
         .tab { 
-            padding: 15px 30px; cursor: pointer; color: #888; 
+            padding: 15px 30px; cursor: pointer; color: var(--text-muted); 
             border-bottom: 3px solid transparent; font-weight: bold; transition: 0.2s;
+            background: #eaeaea; margin-right: 1px;
         }
-        .tab:hover { color: #ccc; }
-        .tab.active { color: white; border-bottom-color: var(--primary); background: var(--panel-bg); }
+        .tab:hover { background: #e0e0e0; color: var(--text-main); }
+        .tab.active { color: var(--primary); border-bottom-color: var(--primary); background: var(--bg-body); }
 
         /* HEADER & FORMULA */
         .header-content {
-            padding: 15px 20px; background: var(--panel-bg); border-bottom: 1px solid var(--border);
-            display: flex; justify-content: center; align-items: center; height: 60px;
+            padding: 10px 20px; background: var(--bg-body); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: center; align-items: center; height: 70px;
         }
         .formula { font-size: 1.6rem; color: var(--text-main); }
 
         /* CANVAS */
         #canvas-container {
             flex-grow: 1; position: relative; width: 100%; height: 100%;
-            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+            /* Light gradient */
+            background: radial-gradient(circle at center, #ffffff 0%, #f0f0f0 100%);
+            cursor: crosshair;
         }
         canvas { display: block; width: 100%; height: 100%; }
 
         /* STATS OVERLAY */
         .stats-overlay {
             position: absolute; top: 20px; right: 20px; width: 260px;
-            background: rgba(30, 30, 30, 0.95); border: 1px solid #444;
+            background: rgba(255, 255, 255, 0.95); border: 1px solid #ccc;
             border-radius: 6px; padding: 15px; pointer-events: none;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            color: var(--text-main);
         }
         .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
-        .stat-val { font-weight: bold; font-family: monospace; font-size: 1rem; color: white; }
-        .stat-separator { border-top: 1px solid #555; margin: 10px 0; }
+        .stat-val { font-weight: bold; font-family: monospace; font-size: 1rem; color: var(--primary); }
+        .stat-separator { border-top: 1px solid #eee; margin: 10px 0; }
+
+        /* TOOLTIP */
+        #tooltip {
+            position: absolute; 
+            display: none; 
+            background: rgba(0, 0, 0, 0.85); 
+            color: white; 
+            padding: 8px 12px; 
+            border-radius: 4px; 
+            font-size: 0.85rem; 
+            pointer-events: none;
+            z-index: 10;
+            transform: translate(-50%, -100%);
+            margin-top: -10px;
+            white-space: nowrap;
+        }
 
         /* LEGEND */
-        .legend { margin-top: auto; border-top: 1px solid #333; padding-top: 15px; }
-        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; margin-top: 6px; color: #aaa; }
-        .color-box { width: 12px; height: 12px; border-radius: 2px; }
+        .legend { margin-top: auto; border-top: 1px solid var(--border); padding-top: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; margin-top: 6px; color: var(--text-main); }
+        .color-box { width: 12px; height: 12px; border-radius: 2px; border: 1px solid rgba(0,0,0,0.1); }
 
     </style>
 </head>
@@ -134,16 +165,16 @@
         <div class="legend">
             <label>Legend:</label>
             <div class="legend-item">
-                <div class="color-box" style="background:var(--danger); height:3px;"></div> Expected Value ($N/M$)
+                <div class="color-box" style="background: #AA00FF; height:3px;"></div> Expected Value ($N/M$)
             </div>
             <div class="legend-item">
-                <div class="color-box" style="background:var(--success);"></div> Uniform Distribution
+                <div class="color-box" style="background: var(--success);"></div> Uniform Distribution
             </div>
             <div class="legend-item">
-                <div class="color-box" style="background:var(--accent);"></div> Slight Deviation
+                <div class="color-box" style="background: var(--accent);"></div> Slight Deviation
             </div>
             <div class="legend-item">
-                <div class="color-box" style="background:var(--danger);"></div> High Clustering
+                <div class="color-box" style="background: var(--danger);"></div> High Clustering
             </div>
         </div>
     </aside>
@@ -161,6 +192,7 @@
 
         <div id="canvas-container">
             <canvas id="mainCanvas"></canvas>
+            <div id="tooltip"></div>
             
             <div class="stats-overlay">
                 <div class="stat-row"><span>Table Size ($M$):</span> <span class="stat-val" id="st-m">0</span></div>
@@ -183,14 +215,44 @@
                 this.M = 0;
                 this.N = 0;
                 this.processed = 0;
-                this.batchSize = 1000;
+                this.batchSize = 2500; // Increased for smoother filling
                 this.animId = null;
                 
                 // Data Source
-                this.keyGenerator = null; // Function that returns key at index i
-                this.hashFunction = null; // Function that maps key to index
+                this.keyGenerator = null;
+                this.hashFunction = null;
                 
-                window.addEventListener('resize', () => this.draw());
+                // Hover State
+                this.mouseX = -1;
+                this.mouseY = -1;
+                this.hoverIndex = -1;
+
+                this.bindEvents();
+            }
+
+            bindEvents() {
+                window.addEventListener('resize', () => {
+                    this.draw(); // Redraw on resize
+                });
+
+                this.canvas.addEventListener('mousemove', (e) => {
+                    const rect = this.canvas.getBoundingClientRect();
+                    this.mouseX = e.clientX - rect.left;
+                    this.mouseY = e.clientY - rect.top;
+                    this.checkHover();
+                    // Force redraw if not animating to show hover effect
+                    if (this.processed >= this.N) {
+                        this.draw();
+                    }
+                });
+
+                this.canvas.addEventListener('mouseleave', () => {
+                    this.mouseX = -1;
+                    this.mouseY = -1;
+                    this.hoverIndex = -1;
+                    document.getElementById('tooltip').style.display = 'none';
+                    if (this.processed >= this.N) this.draw();
+                });
             }
 
             init(M, N, keyGenFn, hashFn) {
@@ -217,7 +279,6 @@
                     for (let i = this.processed; i < limit; i++) {
                         const key = this.keyGenerator(i);
                         const idx = this.hashFunction(key, this.M);
-                        // Safety check for negative hashes if custom logic used
                         const safeIdx = ((idx % this.M) + this.M) % this.M; 
                         this.buckets[safeIdx]++;
                     }
@@ -230,6 +291,36 @@
                 if (this.processed < this.N) {
                     this.animId = requestAnimationFrame(() => this.loop());
                 }
+            }
+
+            checkHover() {
+                if (this.M === 0) return;
+                const w = this.canvas.width;
+                const h = this.canvas.height;
+                const margin = {top: 50, bottom: 30, left: 10, right: 10};
+                const drawW = w - margin.left - margin.right;
+                const barW = drawW / this.M;
+
+                if (this.mouseX >= margin.left && this.mouseX <= w - margin.right && 
+                    this.mouseY >= margin.top && this.mouseY <= h - margin.bottom) {
+                    
+                    const idx = Math.floor((this.mouseX - margin.left) / barW);
+                    if (idx >= 0 && idx < this.M) {
+                        this.hoverIndex = idx;
+                        this.updateTooltip(idx, this.buckets[idx]);
+                        return;
+                    }
+                }
+                this.hoverIndex = -1;
+                document.getElementById('tooltip').style.display = 'none';
+            }
+
+            updateTooltip(idx, count) {
+                const tooltip = document.getElementById('tooltip');
+                tooltip.style.display = 'block';
+                tooltip.style.left = (this.mouseX) + 'px';
+                tooltip.style.top = (this.mouseY) + 'px';
+                tooltip.innerHTML = `<strong>Index:</strong> ${idx}<br><strong>Count:</strong> ${count}`;
             }
 
             draw() {
@@ -250,48 +341,60 @@
 
                 const expected = this.processed / this.M;
                 
-                // Determine Y Scale. 
-                // If clustering is massive, we don't want the red line (expected) to be flattened to 0.
-                // We ensure the visual range captures the 'expected' line at roughly 1/3 or 1/2 height if data is uniform,
-                // but if there's a huge spike, we scale to fit the spike.
                 let maxVal = 0;
                 for(let val of this.buckets) if(val > maxVal) maxVal = val;
                 
-                // Ensure at least enough height to show expected line clearly
+                // Y-Scale with some headroom
                 const yMax = Math.max(maxVal, expected * 2, 10);
 
                 // 1. Bars
                 for(let i=0; i<this.M; i++) {
                     const count = this.buckets[i];
-                    if(count === 0) continue;
-
-                    const barH = (count / yMax) * drawH;
+                    
+                    // Calculate bar positions
                     const x = margin.left + i * barW;
-                    const y = h - margin.bottom - barH;
+                    const yBase = h - margin.bottom;
+                    
+                    // Even if count is 0, we draw an empty space (or highlight logic)
+                    if(count > 0) {
+                        const barH = (count / yMax) * drawH;
+                        const y = yBase - barH;
 
-                    // Color Deviation
-                    const dev = Math.abs(count - expected) / (expected || 1);
-                    let fill = '#4caf50'; // Good
-                    if(dev > 0.5) fill = '#ff9800'; // Warning
-                    if(dev > 1.0) fill = '#f44336'; // Bad
+                        // Color Deviation
+                        const dev = Math.abs(count - expected) / (expected || 1);
+                        let fill = '#388E3C'; // Success Green (Darker for white bg)
+                        if(dev > 0.5) fill = '#F57C00'; // Orange
+                        if(dev > 1.0) fill = '#D32F2F'; // Red
 
-                    ctx.fillStyle = fill;
-                    ctx.fillRect(x, y, Math.max(barW, 1), barH);
+                        ctx.fillStyle = fill;
+                        // Use max(barW, 1) to ensure visibility on large M
+                        ctx.fillRect(x, y, Math.max(barW, 0.5), barH);
+                    }
+
+                    // 2. Hover Highlight
+                    if (i === this.hoverIndex) {
+                        ctx.fillStyle = 'rgba(0, 0, 0, 0.1)'; // Light gray overlay
+                        ctx.fillRect(x, margin.top, barW, drawH);
+                        // Optional border for highlight
+                        ctx.strokeStyle = '#666';
+                        ctx.lineWidth = 1;
+                        ctx.strokeRect(x, margin.top, barW, drawH);
+                    }
                 }
 
-                // 2. Expected Value Line
+                // 3. Expected Value Line
                 const lineY = h - margin.bottom - (expected / yMax) * drawH;
-                ctx.strokeStyle = '#f44336';
-                ctx.lineWidth = 2;
-                ctx.setLineDash([5, 5]);
+                ctx.strokeStyle = '#AA00FF'; // Purple
+                ctx.lineWidth = 5;
+                ctx.setLineDash([10, 5]);
                 ctx.beginPath();
                 ctx.moveTo(margin.left, lineY);
                 ctx.lineTo(w - margin.right, lineY);
                 ctx.stroke();
 
-                // Text
-                ctx.fillStyle = '#f44336';
-                ctx.font = 'bold 12px sans-serif';
+                // Text for Expected
+                ctx.fillStyle = '#000000';
+                ctx.font = '20px Arial';
                 ctx.fillText(`Expected: ${expected.toFixed(1)}`, margin.left + 5, lineY - 5);
             }
 
@@ -303,7 +406,6 @@
                 for(let i=0; i<this.M; i++) {
                     const diff = this.buckets[i] - mean;
                     sumSq += diff * diff;
-                    // Strict collision definition: If bucket has > 1 item, (count-1) are collisions.
                     if(this.buckets[i] > 1) collisions += (this.buckets[i] - 1);
                 }
                 
@@ -316,7 +418,10 @@
                 
                 const stdEl = document.getElementById('st-std');
                 stdEl.innerText = stdDev.toFixed(2);
-                stdEl.style.color = stdDev > mean ? '#f44336' : (stdDev > mean/2 ? '#ff9800' : '#4caf50');
+                
+                // Colors based on deviation
+                const color = stdDev > mean ? '#D32F2F' : (stdDev > mean/2 ? '#F57C00' : '#388E3C');
+                stdEl.style.color = color;
             }
         }
 
@@ -324,19 +429,18 @@
         const app = {
             activeTab: 'MODULAR',
             engine: new HashEngine('mainCanvas'),
-            wordList: [], // For Poly hashing
+            wordList: [], 
 
             init: function() {
-                this.generateWords(50000); // Pre-generate Quixote words
+                this.generateWords(50000); 
                 this.switchTab('MODULAR');
             },
 
-            // Generate "Don Quixote" style words
             generateWords: function(n) {
                 const syllables = ["la", "de", "que", "el", "en", "un", "ser", "se", "no", "por", "con", "su", "pa", "ra", "qui", "xo", "te", "man", "cha", "san", "cho", "pan", "za", "dul", "ci", "ne", "a", "ca", "ba", "lle", "ro", "an", "dan", "te"];
                 this.wordList = [];
                 for(let i=0; i<n; i++) {
-                    const len = 2 + Math.floor(Math.random() * 4); // 2 to 5 syllables
+                    const len = 2 + Math.floor(Math.random() * 4); 
                     let word = "";
                     for(let j=0; j<len; j++) {
                         word += syllables[Math.floor(Math.random() * syllables.length)];
@@ -349,7 +453,6 @@
                 this.activeTab = tab;
                 document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
                 
-                // Highlighting active tab
                 const tabs = {'MODULAR': 0, 'MAD': 1, 'POLY': 2};
                 document.querySelectorAll('.tab')[tabs[tab]].classList.add('active');
 
@@ -357,7 +460,7 @@
                 this.updateFormula();
                 this.engine.stop();
                 this.engine.ctx.clearRect(0,0,this.engine.canvas.width, this.engine.canvas.height);
-                // Reset stats
+                
                 document.getElementById('st-m').innerText = 0;
                 document.getElementById('st-n').innerText = 0;
             },
@@ -389,10 +492,9 @@
                         <div id="patDesc" class="note"></div>`;
                     container.appendChild(grp2);
                     
-                    this.updatePatternList(); // Populate initial patterns
+                    this.updatePatternList();
                 }
                 else if (this.activeTab === 'MAD') {
-                    // Fixed Size Info
                     const grp1 = document.createElement('div');
                     grp1.className = 'control-group';
                     grp1.innerHTML = `
@@ -401,7 +503,6 @@
                         <div class="note">MAD is used to fix bad distributions in non-prime tables.</div>`;
                     container.appendChild(grp1);
 
-                    // MAD Constants
                     const grpConst = document.createElement('div');
                     grpConst.className = 'control-group';
                     grpConst.innerHTML = `
@@ -413,7 +514,6 @@
                          </div>`;
                     container.appendChild(grpConst);
 
-                    // Patterns (Same as Non-Prime 70)
                     const grp2 = document.createElement('div');
                     grp2.className = 'control-group';
                     grp2.innerHTML = `
@@ -432,7 +532,6 @@
                     container.appendChild(grp2);
                 }
                 else if (this.activeTab === 'POLY') {
-                    // Configuration Selector
                     const grp1 = document.createElement('div');
                     grp1.className = 'control-group';
                     grp1.innerHTML = `
@@ -445,8 +544,10 @@
                     container.appendChild(grp1);
                 }
 
-                // Refresh MathJax
-                if(window.MathJax) MathJax.typeset();
+                // Force MathJax to render the new labels
+                if(window.MathJax) {
+                    MathJax.typesetPromise([container]).catch((err) => console.log(err));
+                }
             },
 
             updatePatternList: function() {
@@ -462,12 +563,12 @@
                 sel.add(optR);
 
                 if (size === '101') {
-                    // Prime Patterns
+                    // Prime Patterns - Using unicode dot for visual clarity in select option
                     const optBad = document.createElement('option');
-                    optBad.value = '101'; optBad.text = 'Pattern: i * 101 + q';
+                    optBad.value = '101'; optBad.text = 'Pattern: i · 101 + q';
                     sel.add(optBad);
                 } else {
-                    // Non-Prime (70) Patterns [2, 5, 7]
+                    // Non-Prime (70) Patterns
                     const factors = [[2, '2'], [5, '5'], [7, '7'], [10, '2 · 5'], [14, '2 · 7'], [35, '5 · 7'], [70, '2 · 5 · 7']];
                     factors.forEach(([f, t]) => {   
                         const opt = document.createElement('option');
@@ -491,13 +592,12 @@
                     else
                         div.innerHTML = `$$ h(s) = \\sum s[i] \\cdot 20^{n-1-i} \\pmod{100} $$`;
                 }
-                if(window.MathJax) MathJax.typesetPromise();
+                if(window.MathJax) MathJax.typesetPromise([div]).catch(err => console.log(err));
             },
 
             run: function() {
                 const N = parseInt(document.getElementById('inputN').value);
                 
-                // 1. Modular Tab Logic
                 if (this.activeTab === 'MODULAR') {
                     const M = parseInt(document.getElementById('sizeMod').value);
                     const pat = document.getElementById('patMod').value;
@@ -507,17 +607,13 @@
                         keyGen = (i) => Math.floor(Math.random() * N * 100);
                     } else {
                         const f = parseInt(pat);
-                        // q is a random value from [0, 10, 20 ... up to 90] to add slight variation.                        
                         keyGen = (i) => {
                             let q = Math.floor(Math.random() * 10) * 10;
                             return i * f + q; 
                         };
                     }
-
                     this.engine.init(M, N, keyGen, (k, m) => k % m);
                 }
-
-                // 2. MAD Tab Logic
                 else if (this.activeTab === 'MAD') {
                     const M = 70;
                     const pat = document.getElementById('patMAD').value;
@@ -532,40 +628,26 @@
                             return i * f + q; 
                         };
                     }
-
-                    // MAD Function: ((59*k + 17) % 1009) % 70
                     const hashFn = (k, m) => {
-                        const p = 1009;
-                        const a = 59;
-                        const b = 17;
-                        // Use BigInt to prevent overflow on a*k
+                        const p = 1009; const a = 59; const b = 17;
                         const term = (BigInt(a) * BigInt(k) + BigInt(b)) % BigInt(p);
                         return Number(term % BigInt(m));
                     };
-
                     this.engine.init(M, N, keyGen, hashFn);
                 }
-
-                // 3. Polynomial Tab Logic
                 else if (this.activeTab === 'POLY') {
                     const type = document.getElementById('configPoly').value;
                     const M = (type === 'good') ? 97 : 100;
                     const p = (type === 'good') ? 31 : 20;
-
-                    // Ensure word list is ready
                     if(this.wordList.length < N) this.generateWords(N);
-
-                    const keyGen = (i) => this.wordList[i]; // Return string
-
+                    const keyGen = (i) => this.wordList[i]; 
                     const hashFn = (str, m) => {
                         let h = 0;
-                        // Horner's Method
                         for(let i = 0; i < str.length; i++) {
                             h = (h * p + str.charCodeAt(i)) % m;
                         }
                         return h;
                     };
-
                     this.engine.init(M, N, keyGen, hashFn);
                 }
             },
@@ -580,7 +662,6 @@
             }
         };
 
-        // Init App
         window.onload = () => app.init();
 
     </script>
