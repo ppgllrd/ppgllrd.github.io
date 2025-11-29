@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Hash Functions Lab</title>
+    <!-- MathJax for formulas -->
+    <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --panel-bg: #1e1e1e;
+            --border: #333;
+            --text-main: #e0e0e0;
+            --text-muted: #a0a0a0;
+            --primary: #2196f3;
+            --accent: #ff9800;
+            --danger: #f44336; 
+            --success: #4caf50;
+        }
+
+        body {
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* SIDEBAR */
+        aside {
+            width: 340px;
+            background-color: var(--panel-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            padding: 20px;
+            box-sizing: border-box;
+            flex-shrink: 0;
+            overflow-y: auto;
+        }
+
+        h2 { margin-top: 0; font-size: 1.1rem; color: var(--text-main); border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-bottom: 20px; }
+        h3 { font-size: 0.85rem; color: var(--text-muted); margin-top: 25px; text-transform: uppercase; letter-spacing: 1px; }
+
+        .control-group { margin-bottom: 15px; }
+        label { display: block; margin-bottom: 6px; font-size: 0.9rem; font-weight: 600; }
+        
+        select, input {
+            width: 100%; padding: 10px; background: #2c2c2c; border: 1px solid #444;
+            color: white; border-radius: 4px; font-size: 0.9rem; margin-bottom: 5px; box-sizing: border-box;
+        }
+        select:focus, input:focus { border-color: var(--primary); outline: none; }
+
+        .btn-row { display: flex; gap: 10px; margin-top: 25px; }
+        button {
+            flex: 1; padding: 12px; border: none; border-radius: 4px; cursor: pointer;
+            font-weight: bold; font-size: 0.9rem; transition: background 0.2s;
+        }
+        .btn-run { background-color: var(--success); color: white; }
+        .btn-run:hover { background-color: #43a047; }
+        .btn-reset { background-color: #d32f2f; color: white; }
+        .btn-reset:hover { background-color: #b71c1c; }
+
+        .note { font-size: 0.8rem; color: #888; margin-top: 5px; line-height: 1.4; }
+
+        /* MAIN LAYOUT */
+        main { flex-grow: 1; display: flex; flex-direction: column; position: relative; }
+
+        /* TAB BAR */
+        .tabs { display: flex; background: #111; border-bottom: 1px solid var(--border); }
+        .tab { 
+            padding: 15px 30px; cursor: pointer; color: #888; 
+            border-bottom: 3px solid transparent; font-weight: bold; transition: 0.2s;
+        }
+        .tab:hover { color: #ccc; }
+        .tab.active { color: white; border-bottom-color: var(--primary); background: var(--panel-bg); }
+
+        /* HEADER & FORMULA */
+        .header-content {
+            padding: 15px 20px; background: var(--panel-bg); border-bottom: 1px solid var(--border);
+            display: flex; justify-content: center; align-items: center; height: 60px;
+        }
+        .formula { font-size: 1.6rem; color: var(--text-main); }
+
+        /* CANVAS */
+        #canvas-container {
+            flex-grow: 1; position: relative; width: 100%; height: 100%;
+            background: radial-gradient(circle at center, #1a1a1a 0%, #000 100%);
+        }
+        canvas { display: block; width: 100%; height: 100%; }
+
+        /* STATS OVERLAY */
+        .stats-overlay {
+            position: absolute; top: 20px; right: 20px; width: 260px;
+            background: rgba(30, 30, 30, 0.95); border: 1px solid #444;
+            border-radius: 6px; padding: 15px; pointer-events: none;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.6);
+        }
+        .stat-row { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; }
+        .stat-val { font-weight: bold; font-family: monospace; font-size: 1rem; color: white; }
+        .stat-separator { border-top: 1px solid #555; margin: 10px 0; }
+
+        /* LEGEND */
+        .legend { margin-top: auto; border-top: 1px solid #333; padding-top: 15px; }
+        .legend-item { display: flex; align-items: center; gap: 10px; font-size: 0.8rem; margin-top: 6px; color: #aaa; }
+        .color-box { width: 12px; height: 12px; border-radius: 2px; }
+
+    </style>
+</head>
+<body>
+
+    <aside>
+        <h2>Configuration</h2>
+
+        <!-- DYNAMIC CONTROLS CONTAINER -->
+        <div id="controls-container">
+            <!-- Will be populated by JS based on Active Tab -->
+        </div>
+
+        <div class="control-group">
+            <label>Input Size ($N$)</label>
+            <input type="number" id="inputN" value="50000" step="1000">
+        </div>
+
+        <div class="btn-row">
+            <button class="btn-run" onclick="app.run()">▶ Run</button>
+            <button class="btn-reset" onclick="app.reset()">⏹ Reset</button>
+        </div>
+
+        <div class="legend">
+            <label>Legend:</label>
+            <div class="legend-item">
+                <div class="color-box" style="background:var(--danger); height:3px;"></div> Expected Value ($N/M$)
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background:var(--success);"></div> Uniform Distribution
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background:var(--accent);"></div> Slight Deviation
+            </div>
+            <div class="legend-item">
+                <div class="color-box" style="background:var(--danger);"></div> High Clustering
+            </div>
+        </div>
+    </aside>
+
+    <main>
+        <div class="tabs">
+            <div class="tab active" onclick="app.switchTab('MODULAR')">1. Modular Hashing</div>
+            <div class="tab" onclick="app.switchTab('MAD')">2. MAD Hashing</div>
+            <div class="tab" onclick="app.switchTab('POLY')">3. Polynomial (Strings)</div>
+        </div>
+        
+        <div class="header-content">
+            <div id="formula-display" class="formula"></div>
+        </div>
+
+        <div id="canvas-container">
+            <canvas id="mainCanvas"></canvas>
+            
+            <div class="stats-overlay">
+                <div class="stat-row"><span>Table Size ($M$):</span> <span class="stat-val" id="st-m">0</span></div>
+                <div class="stat-row"><span>Keys ($N$):</span> <span class="stat-val" id="st-n">0</span></div>
+                <div class="stat-row"><span>Load Factor ($\alpha$):</span> <span class="stat-val" id="st-load">0.00</span></div>
+                <div class="stat-separator"></div>
+                <div class="stat-row"><span>Collisions:</span> <span class="stat-val" id="st-coll">0</span></div>
+                <div class="stat-row"><span>Std Deviation:</span> <span class="stat-val" id="st-std">0.00</span></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        // --- SIMULATION ENGINE ---
+        class HashEngine {
+            constructor(canvasId) {
+                this.canvas = document.getElementById(canvasId);
+                this.ctx = this.canvas.getContext('2d');
+                this.buckets = [];
+                this.M = 0;
+                this.N = 0;
+                this.processed = 0;
+                this.batchSize = 1000;
+                this.animId = null;
+                
+                // Data Source
+                this.keyGenerator = null; // Function that returns key at index i
+                this.hashFunction = null; // Function that maps key to index
+                
+                window.addEventListener('resize', () => this.draw());
+            }
+
+            init(M, N, keyGenFn, hashFn) {
+                this.stop();
+                this.M = M;
+                this.N = N;
+                this.keyGenerator = keyGenFn;
+                this.hashFunction = hashFn;
+                this.processed = 0;
+                this.buckets = new Float32Array(M).fill(0);
+                
+                this.loop();
+            }
+
+            stop() {
+                if(this.animId) cancelAnimationFrame(this.animId);
+            }
+
+            loop() {
+                if (this.processed < this.N) {
+                    const limit = Math.min(this.processed + this.batchSize, this.N);
+                    
+                    // Batch Processing
+                    for (let i = this.processed; i < limit; i++) {
+                        const key = this.keyGenerator(i);
+                        const idx = this.hashFunction(key, this.M);
+                        // Safety check for negative hashes if custom logic used
+                        const safeIdx = ((idx % this.M) + this.M) % this.M; 
+                        this.buckets[safeIdx]++;
+                    }
+                    this.processed = limit;
+                }
+
+                this.draw();
+                this.updateStats();
+
+                if (this.processed < this.N) {
+                    this.animId = requestAnimationFrame(() => this.loop());
+                }
+            }
+
+            draw() {
+                const w = this.canvas.parentElement.offsetWidth;
+                const h = this.canvas.parentElement.offsetHeight;
+                this.canvas.width = w;
+                this.canvas.height = h;
+
+                const ctx = this.ctx;
+                ctx.clearRect(0,0,w,h);
+
+                if(this.M === 0) return;
+
+                const margin = {top: 50, bottom: 30, left: 10, right: 10};
+                const drawW = w - margin.left - margin.right;
+                const drawH = h - margin.top - margin.bottom;
+                const barW = drawW / this.M;
+
+                const expected = this.processed / this.M;
+                
+                // Determine Y Scale. 
+                // If clustering is massive, we don't want the red line (expected) to be flattened to 0.
+                // We ensure the visual range captures the 'expected' line at roughly 1/3 or 1/2 height if data is uniform,
+                // but if there's a huge spike, we scale to fit the spike.
+                let maxVal = 0;
+                for(let val of this.buckets) if(val > maxVal) maxVal = val;
+                
+                // Ensure at least enough height to show expected line clearly
+                const yMax = Math.max(maxVal, expected * 2, 10);
+
+                // 1. Bars
+                for(let i=0; i<this.M; i++) {
+                    const count = this.buckets[i];
+                    if(count === 0) continue;
+
+                    const barH = (count / yMax) * drawH;
+                    const x = margin.left + i * barW;
+                    const y = h - margin.bottom - barH;
+
+                    // Color Deviation
+                    const dev = Math.abs(count - expected) / (expected || 1);
+                    let fill = '#4caf50'; // Good
+                    if(dev > 0.5) fill = '#ff9800'; // Warning
+                    if(dev > 1.0) fill = '#f44336'; // Bad
+
+                    ctx.fillStyle = fill;
+                    ctx.fillRect(x, y, Math.max(barW, 1), barH);
+                }
+
+                // 2. Expected Value Line
+                const lineY = h - margin.bottom - (expected / yMax) * drawH;
+                ctx.strokeStyle = '#f44336';
+                ctx.lineWidth = 2;
+                ctx.setLineDash([5, 5]);
+                ctx.beginPath();
+                ctx.moveTo(margin.left, lineY);
+                ctx.lineTo(w - margin.right, lineY);
+                ctx.stroke();
+
+                // Text
+                ctx.fillStyle = '#f44336';
+                ctx.font = 'bold 12px sans-serif';
+                ctx.fillText(`Expected: ${expected.toFixed(1)}`, margin.left + 5, lineY - 5);
+            }
+
+            updateStats() {
+                let sumSq = 0;
+                const mean = this.processed / this.M;
+                let collisions = 0;
+
+                for(let i=0; i<this.M; i++) {
+                    const diff = this.buckets[i] - mean;
+                    sumSq += diff * diff;
+                    // Strict collision definition: If bucket has > 1 item, (count-1) are collisions.
+                    if(this.buckets[i] > 1) collisions += (this.buckets[i] - 1);
+                }
+                
+                const stdDev = Math.sqrt(sumSq / this.M);
+
+                document.getElementById('st-m').innerText = this.M;
+                document.getElementById('st-n').innerText = this.processed;
+                document.getElementById('st-load').innerText = (mean).toFixed(2);
+                document.getElementById('st-coll').innerText = collisions;
+                
+                const stdEl = document.getElementById('st-std');
+                stdEl.innerText = stdDev.toFixed(2);
+                stdEl.style.color = stdDev > mean ? '#f44336' : (stdDev > mean/2 ? '#ff9800' : '#4caf50');
+            }
+        }
+
+        // --- APP CONTROLLER ---
+        const app = {
+            activeTab: 'MODULAR',
+            engine: new HashEngine('mainCanvas'),
+            wordList: [], // For Poly hashing
+
+            init: function() {
+                this.generateWords(50000); // Pre-generate Quixote words
+                this.switchTab('MODULAR');
+            },
+
+            // Generate "Don Quixote" style words
+            generateWords: function(n) {
+                const syllables = ["la", "de", "que", "el", "en", "un", "ser", "se", "no", "por", "con", "su", "pa", "ra", "qui", "xo", "te", "man", "cha", "san", "cho", "pan", "za", "dul", "ci", "ne", "a", "ca", "ba", "lle", "ro", "an", "dan", "te"];
+                this.wordList = [];
+                for(let i=0; i<n; i++) {
+                    const len = 2 + Math.floor(Math.random() * 4); // 2 to 5 syllables
+                    let word = "";
+                    for(let j=0; j<len; j++) {
+                        word += syllables[Math.floor(Math.random() * syllables.length)];
+                    }
+                    this.wordList.push(word); 
+                }
+            },
+
+            switchTab: function(tab) {
+                this.activeTab = tab;
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                
+                // Highlighting active tab
+                const tabs = {'MODULAR': 0, 'MAD': 1, 'POLY': 2};
+                document.querySelectorAll('.tab')[tabs[tab]].classList.add('active');
+
+                this.renderControls();
+                this.updateFormula();
+                this.engine.stop();
+                this.engine.ctx.clearRect(0,0,this.engine.canvas.width, this.engine.canvas.height);
+                // Reset stats
+                document.getElementById('st-m').innerText = 0;
+                document.getElementById('st-n').innerText = 0;
+            },
+
+            renderControls: function() {
+                const container = document.getElementById('controls-container');
+                container.innerHTML = '';
+
+                if (this.activeTab === 'MODULAR') {
+                    // Size Selector
+                    const grp1 = document.createElement('div');
+                    grp1.className = 'control-group';
+                    grp1.innerHTML = `
+                        <label>Table Size ($M$)</label>
+                        <select id="sizeMod" onchange="app.updatePatternList()">
+                            <option value="101">101 (Prime)</option>
+                            <option value="70">70 (Non-Prime)</option>
+                        </select>`;
+                    container.appendChild(grp1);
+
+                    // Pattern Selector
+                    const grp2 = document.createElement('div');
+                    grp2.className = 'control-group';
+                    grp2.innerHTML = `
+                        <label>Key Pattern ($k$)</label>
+                        <select id="patMod">
+                            <!-- Populated by JS -->
+                        </select>
+                        <div id="patDesc" class="note"></div>`;
+                    container.appendChild(grp2);
+                    
+                    this.updatePatternList(); // Populate initial patterns
+                }
+                else if (this.activeTab === 'MAD') {
+                    // Fixed Size Info
+                    const grp1 = document.createElement('div');
+                    grp1.className = 'control-group';
+                    grp1.innerHTML = `
+                        <label>Table Size ($M$)</label>
+                        <input type="text" value="70 (Non-Prime)" disabled>
+                        <div class="note">MAD is used to fix bad distributions in non-prime tables.</div>`;
+                    container.appendChild(grp1);
+
+                    // MAD Constants
+                    const grpConst = document.createElement('div');
+                    grpConst.className = 'control-group';
+                    grpConst.innerHTML = `
+                         <label>MAD Constants</label>
+                         <div style="display:flex; gap:5px; margin-bottom:5px;">
+                             <input type="text" value="p=1009" disabled title="Prime > M">
+                             <input type="text" value="a=59" disabled title="Scale">
+                             <input type="text" value="b=17" disabled title="Shift">
+                         </div>`;
+                    container.appendChild(grpConst);
+
+                    // Patterns (Same as Non-Prime 70)
+                    const grp2 = document.createElement('div');
+                    grp2.className = 'control-group';
+                    grp2.innerHTML = `
+                        <label>Key Pattern ($k$)</label>
+                        <select id="patMAD">
+                            <option value="random">Random Uniform</option>
+                            <option value="2">Pattern: i · 2 + q</option>
+                            <option value="5">Pattern: i · 5 + q</option>
+                            <option value="7">Pattern: i · 7 + q</option>
+                            <option value="10">Pattern: i · 2 · 5 + q</option>
+                            <option value="14">Pattern: i · 2 · 7 + q</option>
+                            <option value="35">Pattern: i · 5 · 7 + q</option>
+                            <option value="70">Pattern: i · 2 · 5 · 7 + q</option>
+                        </select>
+                        <div class="note">Testing bad patterns against MAD.</div>`;
+                    container.appendChild(grp2);
+                }
+                else if (this.activeTab === 'POLY') {
+                    // Configuration Selector
+                    const grp1 = document.createElement('div');
+                    grp1.className = 'control-group';
+                    grp1.innerHTML = `
+                        <label>Configuration ($p, M$)</label>
+                        <select id="configPoly" onchange="app.updateFormula()">
+                            <option value="good">p = 31, M = 97 (Good)</option>
+                            <option value="bad">p = 20, M = 100 (Bad)</option>
+                        </select>
+                        <div class="note">Hashes "Don Quixote"-like words.</div>`;
+                    container.appendChild(grp1);
+                }
+
+                // Refresh MathJax
+                if(window.MathJax) MathJax.typeset();
+            },
+
+            updatePatternList: function() {
+                if(this.activeTab !== 'MODULAR') return;
+                
+                const size = document.getElementById('sizeMod').value;
+                const sel = document.getElementById('patMod');
+                sel.innerHTML = '';
+
+                // Common Option
+                const optR = document.createElement('option');
+                optR.value = 'random'; optR.text = 'Random Uniform';
+                sel.add(optR);
+
+                if (size === '101') {
+                    // Prime Patterns
+                    const optBad = document.createElement('option');
+                    optBad.value = '101'; optBad.text = 'Pattern: i * 101 + q';
+                    sel.add(optBad);
+                } else {
+                    // Non-Prime (70) Patterns [2, 5, 7]
+                    const factors = [[2, '2'], [5, '5'], [7, '7'], [10, '2 · 5'], [14, '2 · 7'], [35, '5 · 7'], [70, '2 · 5 · 7']];
+                    factors.forEach(([f, t]) => {   
+                        const opt = document.createElement('option');
+                        opt.value = f;
+                        opt.text = `Pattern: i · ${t} + q`;
+                        sel.add(opt);
+                    });
+                }
+            },
+
+            updateFormula: function() {
+                const div = document.getElementById('formula-display');
+                if (this.activeTab === 'MODULAR') {
+                    div.innerHTML = `$$ h(k) = k \\pmod M $$`;
+                } else if (this.activeTab === 'MAD') {
+                    div.innerHTML = `$$ h(k) = ((59k + 17) \\pmod{1009}) \\pmod{70} $$`;
+                } else if (this.activeTab === 'POLY') {
+                    const cfg = document.getElementById('configPoly') ? document.getElementById('configPoly').value : 'good';
+                    if (cfg === 'good')
+                        div.innerHTML = `$$ h(s) = \\sum s[i] \\cdot 31^{n-1-i} \\pmod{97} $$`;
+                    else
+                        div.innerHTML = `$$ h(s) = \\sum s[i] \\cdot 20^{n-1-i} \\pmod{100} $$`;
+                }
+                if(window.MathJax) MathJax.typesetPromise();
+            },
+
+            run: function() {
+                const N = parseInt(document.getElementById('inputN').value);
+                
+                // 1. Modular Tab Logic
+                if (this.activeTab === 'MODULAR') {
+                    const M = parseInt(document.getElementById('sizeMod').value);
+                    const pat = document.getElementById('patMod').value;
+                    let keyGen;
+                    
+                    if (pat === 'random') {
+                        keyGen = (i) => Math.floor(Math.random() * N * 100);
+                    } else {
+                        const f = parseInt(pat);
+                        // q is a random value from [0, 10, 20 ... up to 90] to add slight variation.                        
+                        keyGen = (i) => {
+                            let q = Math.floor(Math.random() * 10) * 10;
+                            return i * f + q; 
+                        };
+                    }
+
+                    this.engine.init(M, N, keyGen, (k, m) => k % m);
+                }
+
+                // 2. MAD Tab Logic
+                else if (this.activeTab === 'MAD') {
+                    const M = 70;
+                    const pat = document.getElementById('patMAD').value;
+                    let keyGen;
+                    
+                    if (pat === 'random') {
+                        keyGen = (i) => Math.floor(Math.random() * N * 100);
+                    } else {
+                        const f = parseInt(pat);
+                        keyGen = (i) => {
+                            let q = Math.floor(Math.random() * 10) * 10;
+                            return i * f + q; 
+                        };
+                    }
+
+                    // MAD Function: ((59*k + 17) % 1009) % 70
+                    const hashFn = (k, m) => {
+                        const p = 1009;
+                        const a = 59;
+                        const b = 17;
+                        // Use BigInt to prevent overflow on a*k
+                        const term = (BigInt(a) * BigInt(k) + BigInt(b)) % BigInt(p);
+                        return Number(term % BigInt(m));
+                    };
+
+                    this.engine.init(M, N, keyGen, hashFn);
+                }
+
+                // 3. Polynomial Tab Logic
+                else if (this.activeTab === 'POLY') {
+                    const type = document.getElementById('configPoly').value;
+                    const M = (type === 'good') ? 97 : 100;
+                    const p = (type === 'good') ? 31 : 20;
+
+                    // Ensure word list is ready
+                    if(this.wordList.length < N) this.generateWords(N);
+
+                    const keyGen = (i) => this.wordList[i]; // Return string
+
+                    const hashFn = (str, m) => {
+                        let h = 0;
+                        // Horner's Method
+                        for(let i = 0; i < str.length; i++) {
+                            h = (h * p + str.charCodeAt(i)) % m;
+                        }
+                        return h;
+                    };
+
+                    this.engine.init(M, N, keyGen, hashFn);
+                }
+            },
+
+            reset: function() {
+                this.engine.stop();
+                this.engine.ctx.clearRect(0,0,this.engine.canvas.width, this.engine.canvas.height);
+                document.getElementById('st-n').innerText = 0;
+                document.getElementById('st-load').innerText = "0.00";
+                document.getElementById('st-coll').innerText = 0;
+                document.getElementById('st-std').innerText = "0.00";
+            }
+        };
+
+        // Init App
+        window.onload = () => app.init();
+
+    </script>
+</body>
+</html>
