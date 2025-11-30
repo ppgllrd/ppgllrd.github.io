@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Separate Chaining Hash Table Visualizer</title>
+    <title>Separate Chaining Visualizer (Final)</title>
     <style>
         :root {
             --bg-color: #ffffff;
@@ -35,7 +35,7 @@
         .btn-pause { background-color: #455A64; width: 80px;} .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
         #canvas-container { flex-grow: 1; position: relative; overflow: hidden; background-color: var(--bg-color); cursor: default; min-height: 0; }
         canvas { display: block; width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; }
-        #legend { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.95); padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        #legend { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.75); padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
         .square { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #999; }
         .dot { width: 10px; height: 10px; border-radius: 50%; background: #1668BD; display:inline-block; }
@@ -48,18 +48,19 @@
         #tooltip {
             position: fixed;
             display: none;
-            background: rgba(26, 26, 26, 0.85);
+            background: rgba(26, 26, 26, 0.9);
             color: #ffffff;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 16px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 15px;
             pointer-events: none;
             z-index: 1000;
             white-space: nowrap;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+            backdrop-filter: blur(4px);
         }
-        .tooltip-item { font-weight: bold; color: #ff6b6b; }
-        .tooltip-hash { font-weight: bold; color: #4fc3f7; }
+        .tooltip-item { font-weight: bold; color: #ff8a80; }
+        .tooltip-hash { font-weight: bold; color: #80d8ff; }
 
         .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
         .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
@@ -80,9 +81,9 @@
     <div class="gui">
         <div class="controls">
             <input type="text" id="inputValue" title="Enter any character" placeholder="#" maxlength="1" onkeydown="if(event.key==='Enter') app.handleInsert()">
-            <button class="btn-insert" title="Insert" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-delete" title="Delete" onclick="app.handleDelete()">Delete</button>
-            <button class="btn-search" title="Search" onclick="app.handleSearch()">Search</button>
+            <button class="btn-insert" title="Insert a character" onclick="app.handleInsert()">Insert</button>
+            <button class="btn-delete" title="Delete a character" onclick="app.handleDelete()">Delete</button>
+            <button class="btn-search" title="Search a character" onclick="app.handleSearch()">Search</button>
             
             <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
             
@@ -495,7 +496,18 @@ class Visualizer {
     constructor(canvasId) {
         this.canvas = document.getElementById(canvasId);
         this.ctx = this.canvas.getContext('2d');
-        this.boxSize = 40;
+        
+        // Centralized Dimensions Configuration
+        this.layout = {
+            arrayCellSize: 40,
+            nodeWidth: 30,
+            nodeBoxH: 30,
+            nodePtrH: 20,
+            nodeVerticalStep: 60, // nodeBoxH + nodePtrH + gap
+            leftPanelW: 140,
+            rehashGap: 180,
+            baseY: -100
+        };
         
         this.snapshots = [];
         this.currentSnapshotIndex = -1;
@@ -506,7 +518,7 @@ class Visualizer {
         this.currentSpeedFactor = 1;
         this.pauseTimer = 0;
         
-        // Camera System (Unified with Linear Probing style)
+        // Camera System
         this.camera = { x: 0, y: 0, scale: 1, targetX: 0, targetY: 0, targetScale: 1 };
         this.isDragging = false;
         this.dragStart = { x: 0, y: 0 };
@@ -514,7 +526,6 @@ class Visualizer {
         this.initialPinchDist = 0;
         this.initialScale = 1;
         
-        // Events
         this.resize();
         window.addEventListener('resize', () => this.resize());
         
@@ -536,16 +547,127 @@ class Visualizer {
         const container = document.getElementById('canvas-container');
         this.canvas.width = container.offsetWidth;
         this.canvas.height = container.offsetHeight;
-
         if (this.snapshots.length > 0 && this.currentSnapshotIndex >= 0) {
-            this.fitCameraToSnapshot(this.snapshots[this.currentSnapshotIndex]);
+            const bounds = this.getSnapshotBounds(this.snapshots[this.currentSnapshotIndex]);
+            this.fitBoundsToScreen(bounds);
+            this.camera.x = this.camera.targetX;
+            this.camera.y = this.camera.targetY;
+            this.camera.scale = this.camera.targetScale;
         }
     }
 
     setSpeed(val) { this.currentSpeedFactor = 1 / val; }
     togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
 
-    // --- Camera & Interaction System ---
+    // --- Core Layout & Bounds Logic (Auto-Fit) ---
+
+    getSnapshotBounds(snap) {
+        const meta = snap.meta || {};
+        const data = snap.tableData;
+        const L = this.layout;
+        
+        let minX, maxX, minY, maxY;
+
+        if (meta.rehashMode) {
+            // Rehash Layout
+            const oldW = meta.oldCapacity * L.arrayCellSize;
+            const newW = data.capacity * L.arrayCellSize;
+            const totalRehashW = oldW + L.rehashGap + newW;
+            const startX = -totalRehashW / 2;
+
+            minX = startX - 20; 
+            maxX = startX + totalRehashW + 20;
+
+            // Determine max depth to calculate height
+            const oldMaxDepth = meta.oldTable.reduce((m, l) => Math.max(m, l ? l.length : 0), 0);
+            const globalMaxDepth = Math.max(data.maxDepth, oldMaxDepth);
+
+            minY = L.baseY - 110; 
+            maxY = L.baseY + L.arrayCellSize + 20 + (globalMaxDepth * L.nodeVerticalStep) + 120;
+
+        } else {
+            // Standard Layout
+            const arrayW = data.capacity * L.arrayCellSize;
+            const totalW = L.leftPanelW + arrayW;
+            const startX = -totalW / 2 + L.leftPanelW;
+
+            // MinX covers the structure panel on the left
+            minX = startX - L.leftPanelW - 80;
+            maxX = startX + arrayW + 20;
+
+            minY = L.baseY - 160; 
+            
+            // Tighten bottom margin: maxDepth + 1 for potential pointers
+            const visibleDepth = Math.max(0, data.maxDepth); 
+            maxY = L.baseY + Math.max(110, L.arrayCellSize + 0 + (visibleDepth * L.nodeVerticalStep));
+        }
+        
+        return { minX, maxX, minY, maxY };
+    }
+
+    fitBoundsToScreen(bounds) {
+        const w = this.canvas.width;
+        const h = this.canvas.height;
+        
+        const contentW = bounds.maxX - bounds.minX;
+        const contentH = bounds.maxY - bounds.minY;
+        const centerX = (bounds.minX + bounds.maxX) / 2;
+        const centerY = (bounds.minY + bounds.maxY) / 2;
+
+        const paddingX = 40;
+        const paddingY = 40;
+
+        const scale = Math.min(
+            w / (contentW + paddingX),
+            h / (contentH + paddingY),
+            5 // Max zoom
+        );
+        
+        this.camera.targetScale = scale;
+        this.camera.targetX = centerX;
+        this.camera.targetY = centerY;
+    }
+
+    enqueueOperation(snapshots) {
+        if (snapshots.length === 0) return;
+
+        // Progressive Zoom: Fit to union of Current + Next only
+        let gMinX = Infinity, gMaxX = -Infinity, gMinY = Infinity, gMaxY = -Infinity;
+        
+        // 1. Current State
+        if (this.currentSnapshotIndex >= 0 && this.currentSnapshotIndex < this.snapshots.length) {
+            const b = this.getSnapshotBounds(this.snapshots[this.currentSnapshotIndex]);
+            gMinX = Math.min(gMinX, b.minX); gMaxX = Math.max(gMaxX, b.maxX);
+            gMinY = Math.min(gMinY, b.minY); gMaxY = Math.max(gMaxY, b.maxY);
+        }
+
+        // 2. First New Snapshot
+        if (snapshots.length > 0) {
+            const b = this.getSnapshotBounds(snapshots[0]);
+            gMinX = Math.min(gMinX, b.minX); gMaxX = Math.max(gMaxX, b.maxX);
+            gMinY = Math.min(gMinY, b.minY); gMaxY = Math.max(gMaxY, b.maxY);
+        }
+
+        if (gMinX === Infinity) {
+             const b = this.getSnapshotBounds(snapshots[0]);
+             gMinX = b.minX; gMaxX = b.maxX; gMinY = b.minY; gMaxY = b.maxY;
+        }
+
+        this.fitBoundsToScreen({ minX: gMinX, maxX: gMaxX, minY: gMinY, maxY: gMaxY });
+        
+        // 3. Queue Snapshots
+        this.snapshots.push(...snapshots);
+        if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
+
+        // 4. Activate Camera
+        if (this.state === 'IDLE' || this.state === 'WAITING' || this.state === 'MORPH') {
+             this.state = 'CAMERA';
+             const nextSnap = this.snapshots[this.currentSnapshotIndex];
+             if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
+        }
+    }
+
+    // --- Interaction ---
 
     screenToWorld(mx, my) {
         const w = this.canvas.width, h = this.canvas.height;
@@ -560,30 +682,30 @@ class Visualizer {
         const snap = this.snapshots[this.currentSnapshotIndex];
         const data = snap.tableData;
         const meta = snap.meta || {};
+        const L = this.layout;
 
         if(meta.rehashMode) return null; 
 
         const world = this.screenToWorld(mx, my);
-        const cellSize = this.boxSize;
         
-        // Layout calculations matching draw logic
-        const leftPanelW = 140; 
-        const arrayStartX = -((leftPanelW + data.capacity * cellSize)/2) + leftPanelW;
-        const baseY = -100; // Shifted due to new centering logic
-        const listTop = baseY + cellSize + 20;
-        const nodeTotalH = 60;
+        // Layout must match getSnapshotBounds / drawScene
+        const arrayW = data.capacity * L.arrayCellSize;
+        const totalW = L.leftPanelW + arrayW;
+        const startX = -totalW / 2 + L.leftPanelW;
+        const listTop = L.baseY + L.arrayCellSize + 20;
 
         for (let i = 0; i < data.capacity; i++) {
             const list = data.table[i];
             if (list && list.length > 0) {
-                const cx = arrayStartX + i * cellSize + cellSize/2;
+                const cx = startX + i * L.arrayCellSize + L.arrayCellSize/2;
                 let cy = listTop;
                 for(let k = 0; k < list.length; k++) {
-                    // Check box hit
-                    if (world.x >= cx - 15 && world.x <= cx + 15 && world.y >= cy && world.y <= cy + 30) {
+                    // Check intersection with the node box
+                    if (world.x >= cx - L.nodeWidth/2 && world.x <= cx + L.nodeWidth/2 && 
+                        world.y >= cy && world.y <= cy + L.nodeBoxH + L.nodePtrH) {
                         return { key: list[k].key, hash: app.ht.hash(list[k].key) };
                     }
-                    cy += nodeTotalH; 
+                    cy += L.nodeVerticalStep; 
                 }
             }
         }
@@ -597,7 +719,6 @@ class Visualizer {
         const item = this.checkHit(mx, my);
         if (item) {
             document.getElementById('inputValue').value = item.key;
-            // document.getElementById('inputValue').focus();
             return;
         }
 
@@ -611,7 +732,6 @@ class Visualizer {
         const rect = this.canvas.getBoundingClientRect();
         const mx = e.clientX - rect.left, my = e.clientY - rect.top;
 
-        // Tooltip
         const item = this.checkHit(mx, my);
         const tooltip = document.getElementById('tooltip');
         if (item) {
@@ -664,12 +784,23 @@ class Visualizer {
             const t = e.touches[0];
             const rect = this.canvas.getBoundingClientRect();
             const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+            
             const item = this.checkHit(mx, my);
+            const tooltip = document.getElementById('tooltip');
+
             if (item) {
+                // Set value and Show Tooltip on Touch
                 document.getElementById('inputValue').value = item.key;
-                // document.getElementById('inputValue').focus();
+                tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.key}</span> is <span class="tooltip-hash">${item.hash}</span>`;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (mx + 15) + 'px';
+                tooltip.style.top = (my + 15) + 'px';
                 return;
+            } else {
+                // Hide tooltip if touching empty space
+                tooltip.style.display = 'none';
             }
+
             this.isDragging = true;
             this.dragStart = { x: mx, y: my };
             this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
@@ -682,6 +813,10 @@ class Visualizer {
 
     onTouchMove(e) {
         e.preventDefault();
+        
+        // Hide tooltip immediately when moving
+        document.getElementById('tooltip').style.display = 'none';
+
         if (e.touches.length === 1 && this.isDragging) {
             const t = e.touches[0];
             const rect = this.canvas.getBoundingClientRect();
@@ -700,95 +835,6 @@ class Visualizer {
 
     onTouchEnd(e) { this.isDragging = false; this.initialPinchDist = 0; }
 
-    fitCameraToSnapshot(snap, batchMaxDepth = null) {
-        const meta = snap.meta || {};
-        const data = snap.tableData;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        const cellSize = this.boxSize;
-        
-        const baseY = -100; 
-
-        const effectiveDepth = (batchMaxDepth !== null) ? batchMaxDepth : data.maxDepth;
-
-        let minX, maxX, minY, maxY;
-
-        if (meta.rehashMode) {
-            const oldW = meta.oldCapacity * cellSize;
-            const newW = data.capacity * cellSize;
-            const gap = 150;
-            const totalRehashW = oldW + gap + newW;
-
-            minX = -totalRehashW / 2;
-            maxX = totalRehashW / 2;
-
-            const maxOldDepth = meta.oldTable.reduce((m, l) => Math.max(m, l ? l.length : 0), 0);
-            const globalMaxDepth = Math.max(effectiveDepth, maxOldDepth);
-
-            minY = baseY - 110; 
-            maxY = baseY + cellSize + 20 + (globalMaxDepth * 60);
-
-        } else {
-            const leftPanelW = 140;
-            const arrayW = data.capacity * cellSize;
-            const totalW = leftPanelW + arrayW;
-
-            minX = -(totalW / 2) - 110;
-            maxX = (totalW / 2) + 20;  
-
-            minY = baseY - 160;
-
-            const visibleDepth = Math.max(3, effectiveDepth); 
-            maxY = baseY + cellSize + 20 + (visibleDepth * 60);
-        }
-
-        const contentW = maxX - minX;
-        const contentH = maxY - minY;
-        const centerX = (minX + maxX) / 2;
-        const centerY = (minY + maxY) / 2;
-
-        const paddingX = 40;
-        const paddingY = 60;
-
-        const scale = Math.min(
-            w / (contentW + paddingX),
-            h / (contentH + paddingY),
-            5
-        );
-        
-        this.camera.targetScale = scale;
-        this.camera.targetX = centerX;
-        this.camera.targetY = centerY;
-
-        if (Math.abs(this.camera.x) < 0.001 && this.camera.scale === 1) {
-            this.camera.x = centerX;
-            this.camera.y = centerY;
-            this.camera.scale = scale;
-        }
-    }
-
-    enqueueOperation(snapshots) {
-        this.snapshots.push(...snapshots);
-        
-        if (this.state === 'IDLE' && this.snapshots.length > 0) {
-            if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
-            this.state = 'MORPH';
-            
-            const nextSnap = this.snapshots[this.currentSnapshotIndex];
-            if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
-            
-            let maxBatchDepth = 0;
-            for(let i = this.currentSnapshotIndex; i < this.snapshots.length; i++) {
-                const s = this.snapshots[i];
-                if (s.tableData && typeof s.tableData.maxDepth === 'number') {
-                    maxBatchDepth = Math.max(maxBatchDepth, s.tableData.maxDepth);
-                }
-            }
-
-            this.fitCameraToSnapshot(nextSnap, maxBatchDepth);
-        }
-    }
-
     loop(timestamp) {
         if (!this.lastTime) this.lastTime = timestamp;
         const dt = (timestamp - this.lastTime) / 1000;
@@ -800,13 +846,15 @@ class Visualizer {
         this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
         this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
 
-        if (!this.isPaused) this.update();
-        this.draw();
-        requestAnimationFrame(t => this.loop(t));
-    }
-
-    update() {
-        if (this.state === 'MORPH') {
+        // State Machine
+        if (this.state === 'CAMERA') {
+            const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
+            // If camera is close enough, start morphing
+            if (dist < 5 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.05) {
+                this.state = 'MORPH';
+            }
+        } 
+        else if (this.state === 'MORPH' && !this.isPaused) {
             const snap = this.snapshots[this.currentSnapshotIndex];
             let moveSpeedModifier = 1.0;
 
@@ -828,31 +876,31 @@ class Visualizer {
                 }
             }
         } 
-        else if (this.state === 'WAITING') {
+        else if (this.state === 'WAITING' && !this.isPaused) {
             this.pauseTimer--;
             if (this.pauseTimer <= 0) {
                 if (this.currentSnapshotIndex < this.snapshots.length - 1) {
-                    const prevSnap = this.snapshots[this.currentSnapshotIndex];
-                    
                     this.currentSnapshotIndex++;
                     const nextSnap = this.snapshots[this.currentSnapshotIndex];
                     
+                    // Progressive Zoom Update:
+                    // Check bounds of the next step and adjust camera smoothly
+                    const nextBounds = this.getSnapshotBounds(nextSnap);
+                    this.fitBoundsToScreen(nextBounds);
+
                     this.morphProgress = 0;
                     this.state = 'MORPH';
                     if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
                     
-                    const isRehashPrev = prevSnap.meta && prevSnap.meta.rehashMode;
-                    const isRehashNext = nextSnap.meta && nextSnap.meta.rehashMode;
-                    
-                    if (isRehashNext !== isRehashPrev) {
-                        this.fitCameraToSnapshot(nextSnap);
-                    }
                 } else {
                     this.state = 'IDLE';
                     document.getElementById('status-text').innerText = "Ready.";
                 }
             }
         }
+        
+        this.draw();
+        requestAnimationFrame(t => this.loop(t));
     }
 
     draw() {
@@ -874,36 +922,33 @@ class Visualizer {
     }
 
     drawScene(data, meta) {
-        const cellSize = this.boxSize;
-        const leftPanelW = 140; 
+        const L = this.layout;
         
         // World Coordinates Calculation: Center everything around (0,0)
         // Standard View: Table + Panel centered
-        const totalW = leftPanelW + data.capacity * cellSize;
-        const startX = -totalW / 2 + leftPanelW;
-        const baseY = -100; // Arbitrary vertical centering shift
-
+        const totalW = L.leftPanelW + data.capacity * L.arrayCellSize;
+        const startX = -totalW / 2 + L.leftPanelW;
+        
         if (meta.rehashMode) {
             // Rehash View: Old + Gap + New centered
-            const oldW = meta.oldCapacity * cellSize;
-            const newW = data.capacity * cellSize;
-            const gap = 150;
-            const rehashTotalW = oldW + gap + newW;
+            const oldW = meta.oldCapacity * L.arrayCellSize;
+            const newW = data.capacity * L.arrayCellSize;
+            const rehashTotalW = oldW + L.rehashGap + newW;
             const rehashStartX = -rehashTotalW / 2;
             
-            this.drawRehashScene(data, meta, rehashStartX, baseY);
+            this.drawRehashScene(data, meta, rehashStartX, L.baseY + 120);
             return;
         }
 
-        this.drawStruct(startX - leftPanelW + 10, baseY, 40, data, startX);
-        this.drawArrayAndLists(startX, baseY, cellSize, data, meta);
+        this.drawStruct(startX - L.leftPanelW + 10, L.baseY, 40, data, startX);
+        this.drawArrayAndLists(startX, L.baseY, L.arrayCellSize, data, meta);
 
         if (meta.hashCalc) {
             const fade = meta.isCleanup ? (1 - this.morphProgress) : 1;
             if (fade > 0) {
                 this.ctx.globalAlpha = fade;
-                const arrayCenterX = startX + (data.capacity * cellSize) / 2;
-                this.drawHashBox(arrayCenterX, baseY - 110, meta.hashCalc);
+                const arrayCenterX = startX + (data.capacity * L.arrayCellSize) / 2;
+                this.drawHashBox(arrayCenterX, L.baseY - 110, meta.hashCalc);
                 this.ctx.globalAlpha = 1;
             }
         }
@@ -911,33 +956,32 @@ class Visualizer {
 
     drawRehashScene(data, meta, startX, baseY) {
         const ctx = this.ctx;
-        const cellSize = this.boxSize;
+        const L = this.layout;
         
         const oldTableX = startX;
-        const gap = 150;
-        const newTableX = startX + (meta.oldCapacity * cellSize) + gap;
+        const newTableX = startX + (meta.oldCapacity * L.arrayCellSize) + L.rehashGap;
 
         // 1. OLD TABLE
         ctx.fillStyle = '#777'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("Old Table", oldTableX + (meta.oldCapacity * cellSize)/2, baseY - 30);
+        ctx.fillText("Old Table", oldTableX + (meta.oldCapacity * L.arrayCellSize)/2, baseY - 30);
 
         const filteredOldTable = meta.oldTable.map(list => 
             list.filter(item => !meta.processedIds.includes(item.id) && (meta.flyingNode ? meta.flyingNode.id !== item.id : true))
         );
         
         const oldDataDummy = { capacity: meta.oldCapacity, table: filteredOldTable };
-        this.drawArrayAndLists(oldTableX, baseY, cellSize, oldDataDummy, { isCleanup: true });
+        this.drawArrayAndLists(oldTableX, baseY, L.arrayCellSize, oldDataDummy, { isCleanup: true });
 
         // 2. ARROW
-        const arrowX1 = oldTableX + (meta.oldCapacity * cellSize) + 20;
+        const arrowX1 = oldTableX + (meta.oldCapacity * L.arrayCellSize) + 20;
         const arrowX2 = newTableX - 20;
-        this.drawArrow(arrowX1, baseY + cellSize/2, arrowX2, baseY + cellSize/2, '#555', 15);
+        this.drawArrow(arrowX1, baseY + L.arrayCellSize/2, arrowX2, baseY + L.arrayCellSize/2, '#555', 15);
         ctx.fillStyle = '#555'; ctx.font = '12px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("Rehashing", (arrowX1+arrowX2)/2, baseY + cellSize/2 - 10);
+        ctx.fillText("Rehashing", (arrowX1+arrowX2)/2, baseY + L.arrayCellSize/2 - 10);
 
         // 3. NEW TABLE
         ctx.fillStyle = '#2E7D32'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("New Table", newTableX + (data.capacity * cellSize)/2, baseY - 30);
+        ctx.fillText("New Table", newTableX + (data.capacity * L.arrayCellSize)/2, baseY - 30);
 
         let newDataForDraw = data;
         if (meta.phase === 'FLYING' && meta.flyingNode) {
@@ -946,20 +990,20 @@ class Visualizer {
                 table: data.table.map(list => list.filter(n => n.id !== meta.flyingNode.id))
             };
         }
-        this.drawArrayAndLists(newTableX, baseY, cellSize, newDataForDraw, { isCleanup: true });
+        this.drawArrayAndLists(newTableX, baseY, L.arrayCellSize, newDataForDraw, { isCleanup: true });
 
         // 4. FLYING NODE
         if (meta.phase === 'FLYING' && meta.flyingNode) {
             const fNode = meta.flyingNode;
             
-            const srcX = oldTableX + fNode.fromIdx * cellSize + cellSize/2;
-            const srcY = baseY + cellSize + 20 + fNode.fromDepth * 60;
+            const srcX = oldTableX + fNode.fromIdx * L.arrayCellSize + L.arrayCellSize/2;
+            const srcY = baseY + L.arrayCellSize + 20 + fNode.fromDepth * L.nodeVerticalStep;
             
             const destList = data.table[fNode.toIdx];
             const destDepth = destList.findIndex(n => n.id === fNode.id); 
             
-            const destX = newTableX + fNode.toIdx * cellSize + cellSize/2;
-            const destY = baseY + cellSize + 20 + (destDepth >= 0 ? destDepth : 0) * 60;
+            const destX = newTableX + fNode.toIdx * L.arrayCellSize + L.arrayCellSize/2;
+            const destY = baseY + L.arrayCellSize + 20 + (destDepth >= 0 ? destDepth : 0) * L.nodeVerticalStep;
 
             const t = this.morphProgress; 
             const ease = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
@@ -1020,6 +1064,7 @@ class Visualizer {
         const ctx = this.ctx;
         const table = data.table;
         const listStartY = y + size + 20;
+        const L = this.layout;
 
         const isAnimating = (this.state !== 'IDLE'); 
 
@@ -1083,15 +1128,13 @@ class Visualizer {
 
     drawLinkedListNodes(centerX, startY, list, colIndex, meta, isAnimating, progress) {
         const ctx = this.ctx;
-        const boxSize = 30; 
-        const nodeTotalH = 60; 
+        const L = this.layout;
 
         const getVisualProps = (k) => {
-            let y = startY + k * nodeTotalH;
+            let y = startY + k * L.nodeVerticalStep;
             let alpha = 1;
             
             if (isAnimating && meta.animationCol === colIndex) {
-                
                 if (meta.animation === 'slideDown') {
                     const splitTime = 0.7;
                     if (k === 0) {
@@ -1103,14 +1146,14 @@ class Visualizer {
                         }
                     } else {
                         const slideProgress = Math.min(progress / splitTime, 1); 
-                        y = startY + (k - 1 + slideProgress) * nodeTotalH;
+                        y = startY + (k - 1 + slideProgress) * L.nodeVerticalStep;
                     }
                 } 
                 else if (meta.animation === 'slideUp') {
                     if (k === meta.animationDepth) {
                         alpha = 1 - progress; 
                     } else if (k > meta.animationDepth) {
-                        y = startY + (k - progress) * nodeTotalH;
+                        y = startY + (k - progress) * L.nodeVerticalStep;
                     }
                 }
             }
@@ -1147,7 +1190,7 @@ class Visualizer {
 
             if (k < list.length - 1) {
                 const nextProps = getVisualProps(k+1);
-                const dotY = props.y + 30 + 10;
+                const dotY = props.y + L.nodeBoxH + L.nodePtrH/2;
                 
                 ctx.globalAlpha = Math.min(props.alpha, nextProps.alpha);
                 
@@ -1170,24 +1213,22 @@ class Visualizer {
 
     drawSingleNode(centerX, y, val, bgData, bgPtr, ptrBorder='#fff', ptrWidth=1, fgPtr = COLORS.DOT) {
         const ctx = this.ctx;
-        const boxSize = 30;
-        const boxH = 30; 
-        const ptrH = 20;
+        const L = this.layout;
 
         ctx.fillStyle = bgData;
-        ctx.fillRect(centerX - boxSize/2, y, boxSize, boxH);
+        ctx.fillRect(centerX - L.nodeWidth/2, y, L.nodeWidth, L.nodeBoxH);
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-        ctx.strokeRect(centerX - boxSize/2, y, boxSize, boxH);
+        ctx.strokeRect(centerX - L.nodeWidth/2, y, L.nodeWidth, L.nodeBoxH);
         ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.textAlign = 'center';
         ctx.fillText(val, centerX, y + 22);
 
-        const ptrY = y + boxH;
+        const ptrY = y + L.nodeBoxH;
         ctx.fillStyle = bgPtr;
-        ctx.fillRect(centerX - boxSize/2, ptrY, boxSize, ptrH);
+        ctx.fillRect(centerX - L.nodeWidth/2, ptrY, L.nodeWidth, L.nodePtrH);
         ctx.strokeStyle = ptrBorder; ctx.lineWidth = ptrWidth;
-        ctx.strokeRect(centerX - boxSize/2, ptrY, boxSize, ptrH);
+        ctx.strokeRect(centerX - L.nodeWidth/2, ptrY, L.nodeWidth, L.nodePtrH);
         
-        const dotY = ptrY + ptrH/2;
+        const dotY = ptrY + L.nodePtrH/2;
         ctx.beginPath(); ctx.arc(centerX, dotY, 4, 0, Math.PI*2);
         ctx.fillStyle = fgPtr; ctx.fill();
     }
@@ -1249,8 +1290,14 @@ const app = {
             meta: { text: "Ready." } 
         }];
         this.viz.currentSnapshotIndex = 0;
-        this.viz.resize(); 
-        this.viz.fitCameraToSnapshot(this.viz.snapshots[0]);
+        
+        // Initial Auto-Fit
+        const bounds = this.viz.getSnapshotBounds(this.viz.snapshots[0]);
+        this.viz.fitBoundsToScreen(bounds);
+        this.viz.camera.x = this.viz.camera.targetX;
+        this.viz.camera.y = this.viz.camera.targetY;
+        this.viz.camera.scale = this.viz.camera.targetScale;
+
         this.viz.draw();
         this.updateUI(); 
     },
@@ -1270,6 +1317,8 @@ const app = {
 
     runOp: function(fn) {
         if(this.viz.isPaused) this.togglePause();
+        if(this.viz.state !== 'IDLE') return;
+
         const snaps = [];
         snaps.push({ tableData: this.ht.getSnapshotData(), meta: {} });
         fn((tableData, metaData) => { snaps.push({ tableData: tableData, meta: metaData }); });
@@ -1312,16 +1361,30 @@ const app = {
     },
 
     handleClear: function() {
+        // Stop any ongoing animation immediately
+        this.viz.state = 'IDLE'; 
+        this.viz.currentSnapshotIndex = -1;
+        this.viz.snapshots = [];
+
         this.ht = new SeparateChainingHashTable(5);
-        this.viz.snapshots = [{ tableData: this.ht.getSnapshotData(), meta: { text: "Table cleared." } }];
+        const snap = { tableData: this.ht.getSnapshotData(), meta: { text: "Table cleared." } };
+        
+        // Directly push and fit, without smooth transition from broken state
+        this.viz.snapshots = [snap];
         this.viz.currentSnapshotIndex = 0;
-        this.viz.fitCameraToSnapshot(this.viz.snapshots[0]);
-        this.viz.draw(); 
+        const bounds = this.viz.getSnapshotBounds(snap);
+        this.viz.fitBoundsToScreen(bounds);
+        this.viz.draw();
+        
         this.updateUI();
     },
 
     handleRandomFill: function() {
         this.handleClear();
+        
+        // Re-enable state for random fill
+        this.viz.state = 'IDLE'; 
+        
         const count = 9; 
         const snaps = [];
         const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
