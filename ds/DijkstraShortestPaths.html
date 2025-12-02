@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Shortest Paths Algorithm Visualizer</title>
+    <style>
+        :root {
+            --primary: #0056b3;
+            --node-bg: #99FFFF;
+            --node-text: #ff0000;
+            --weight-text: #7b008b;
+            --node-opt: #98fb98;
+            --highlight: #ffc107;
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --border: #dee2e6;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .v-txt { color: var(--node-text); font-weight: bold; }
+        .c-txt { color: var(--weight-text); font-weight: bold; }
+
+        header {
+            padding: 10px 20px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            flex-shrink: 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        h1 { margin: 0; color: var(--primary); font-size: 1.4rem; }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            padding: 15px;
+            gap: 15px;
+            overflow: hidden;
+        }
+
+        /* Left Panel */
+        .graph-panel {
+            flex: 2;
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+
+        canvas {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+        }
+
+        .legend {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            background: rgba(255,255,255,0.95);
+            padding: 8px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+            font-size: 0.8rem;
+            pointer-events: none;
+        }
+        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; }
+        .dot { width: 12px; height: 12px; border-radius: 50%; border: 1px solid #ccc; }
+
+        /* Tooltip */
+        #canvasTooltip {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.95);
+            border: 1px solid #999;
+            color: #333;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            pointer-events: none;
+            display: none;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            max-width: 250px;
+        }
+
+        /* Right Panel */
+        .data-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 340px;
+            max-width: 450px;
+        }
+
+        .data-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+        }
+
+        .card-header {
+            background: #f1f3f5;
+            padding: 10px 15px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border);
+            color: #495057;
+            font-size: 0.95rem;
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 1.0rem; }
+        th, td { padding: 6px 12px; text-align: left; border-bottom: 1px solid #eee; transition: background 0.3s ease; }
+        th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 2; }
+        
+        /* Highlight for the chosen minimum */
+        .row-min { background-color: #d4edda !important; }
+        
+        /* Highlight for the row currently being sorted/animated */
+        .sorting-row {
+            background-color: #fff3cd !important; /* Yellowish */
+            border-left: 4px solid #ffc107;
+            font-weight: bold;
+        }
+
+        /* Controls */
+        .controls-bar {
+            background: white;
+            padding: 10px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-shrink: 0;
+        }
+
+        .btn-group { display: flex; gap: 8px; }
+
+        button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
+        
+        .btn-primary { background-color: var(--primary); color: white; }
+        .btn-success { background-color: #28a745; color: white; }
+        .btn-warn { background-color: #ffc107; color: #333; }
+        .btn-danger { background-color: #dc3545; color: white; }
+
+        .log-box {
+            flex: 1;
+            background: #ffffff;
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 0.95rem;
+            height: 38px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .log-prefix { color: var(--primary); font-weight: bold; margin-right: 8px; }
+
+        .arrow {
+            font-family: 'Segoe UI', sans-serif; /* Fuente normal, no de código */
+            font-size: 1.2rem;
+            vertical-align: bottom;
+            color: #555
+        }    
+
+        footer {
+            width: 100%;
+            background: #f4f7f6; 
+            font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
+            border-top: 1px solid #ddd;
+            flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dijkstra's Shortest Paths Algorithm Visualizer</h1>
+    </header>
+
+    <div class="controls-bar">
+        <label>Source: 
+            <select id="sourceNode" style="padding: 6px; font-size:18px; color:red;">
+                <option value="a">a</option>
+                <option value="b">b</option>
+                <option value="c">c</option>
+                <option value="d">d</option>
+                <option value="e">e</option>
+            </select>
+        </label>
+
+        <div class="log-box" id="logDisplay"><span class="log-prefix">></span> Ready.</div>
+
+        <div class="btn-group">
+            <button class="btn-success" onclick="initDijkstra()" title="Initialize algorithm">Start / Restart</button>
+            <button class="btn-primary" id="btnNext" onclick="userClickNext()" disabled title="Run one step">Next Step</button>
+            <button class="btn-warn" id="btnAuto" onclick="toggleAuto()" disabled title="Run automatically">Auto Play</button>
+            <button class="btn-danger" onclick="reset()" title="Reset all">Reset</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Graph Panel -->
+        <div class="graph-panel" id="canvasContainer">
+            <canvas id="graphCanvas"></canvas>
+            <div id="canvasTooltip"></div>
+            <div class="legend">
+                <div class="legend-item"><div class="dot" style="background:var(--node-bg)"></div> Unoptimized Nodes</div>
+                <div class="legend-item"><div class="dot" style="background:var(--node-opt)"></div> Optimized Nodes (verticesOpt)</div>
+                <div class="legend-item"><div class="dot" style="background:var(--highlight)"></div> Active Edge Processing</div>
+            </div>
+        </div>
+
+        <!-- Data Panel -->
+        <div class="data-panel">
+            <!-- Cost Dictionary -->
+            <div class="data-card">
+                <div class="card-header">costOpt (Dictionary)</div>
+                <div class="table-container">
+                    <table id="costTable">
+                        <thead><tr><th>Vertex</th><th>Cost</th><th>Path</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Priority Queue -->
+            <div class="data-card">
+                <div class="card-header">Priority Queue (Ordered by Cost)</div>
+                <div class="table-container">
+                    <table id="pqTable">
+                        <thead><tr><th>Source</th><th>Dest</th><th>Total Cost</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga
+    </footer>
+
+<script>
+    // --- Utils ---
+    const fmtV = (v) => `<span class="v-txt">${v}</span>`;
+    const fmtC = (c) => `<span class="c-txt">${c}</span>`;
+
+    // --- Graph Data ---
+    const nodes = {
+        'a': { x: 100, y: 50 },
+        'b': { x: 300, y: 50 },
+        'c': { x: 500, y: 50 },
+        'd': { x: 300, y: 250 },
+        'e': { x: 500, y: 250 }
+    };
+
+    const edges = [
+        { u: 'a', v: 'b', w: 3 },
+        { u: 'a', v: 'd', w: 7 },
+        { u: 'b', v: 'c', w: 4 },
+        { u: 'b', v: 'd', w: 2 },
+        { u: 'd', v: 'c', w: 5 },
+        { u: 'd', v: 'e', w: 4 },
+        { u: 'c', v: 'e', w: 6 }
+    ];
+
+    // --- State Variables ---
+    let verticesOpt = new Set();
+    let costOpt = {};
+    let extensions = []; 
+    
+    // Control variables
+    let generator = null;
+    let autoInterval = null;
+    let isAutoPlaying = false;
+    let isAnimating = false; // Prevents clicks during Bubble Up
+    
+    // Visualization State
+    let activeEdge = null; 
+    let highlightedExtension = null; // The one chosen as minimum
+    let sortingIndex = -1; // The row currently bubbling up
+
+    // --- Canvas Setup ---
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvasContainer');
+    const tooltip = document.getElementById('canvasTooltip');
+
+    function resizeCanvas() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        drawGraph();
+    }
+    window.addEventListener('resize', resizeCanvas);
+
+    // --- Tooltip Logic ---
+    canvas.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const mouseX = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const graphWidth = 600; const graphHeight = 350;
+        const offsetX = (canvas.width - graphWidth) / 2;
+        const offsetY = (canvas.height - graphHeight) / 2;
+
+        let found = false;
+        for (let id in nodes) {
+            const n = nodes[id];
+            const cx = n.x + offsetX;
+            const cy = n.y + offsetY;
+            if (Math.sqrt((mouseX - cx)**2 + (mouseY - cy)**2) < 25 && verticesOpt.has(id)) {
+                tooltip.style.left = (mouseX + 10) + 'px';
+                tooltip.style.top = (mouseY + 10) + 'px';
+                tooltip.style.display = 'block';
+                tooltip.innerHTML = `<div><strong>Vertex ${fmtV(id)}</strong></div>
+                                     <div>Optimal Cost: ${fmtC(costOpt[id].cost)}</div>
+                                     <div>Path: ${reconstructPath(id, true)}</div>`;
+                found = true;
+                break;
+            }
+        }
+        if (!found) tooltip.style.display = 'none';
+    });
+    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    // --- Drawing Logic ---
+    function drawGraph() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        const graphWidth = 600; const graphHeight = 350;
+        const offsetX = (canvas.width - graphWidth) / 2;
+        const offsetY = (canvas.height - graphHeight) / 2;
+        ctx.lineCap = "round"; ctx.lineJoin = "round";
+
+        // Draw Edges
+        edges.forEach(edge => {
+            const u = nodes[edge.u]; const v = nodes[edge.v];
+            const x1 = u.x + offsetX; const y1 = u.y + offsetY;
+            const x2 = v.x + offsetX; const y2 = v.y + offsetY;
+
+            ctx.beginPath(); ctx.moveTo(x1, y1); ctx.lineTo(x2, y2);
+            
+            if (activeEdge && ((activeEdge.u===edge.u && activeEdge.v===edge.v) || (activeEdge.u===edge.v && activeEdge.v===edge.u))) {
+                ctx.strokeStyle = "#ffc107"; ctx.lineWidth = 6; // Active Edge
+            } else if (isInOptimalPath(edge)) {
+                ctx.strokeStyle = "#FF0000"; ctx.lineWidth = 4; // Path
+            } else {
+                ctx.strokeStyle = "#0056b3"; ctx.lineWidth = 3; // Default
+            }
+            ctx.stroke();
+
+            const midX = (x1 + x2) / 2; const midY = (y1 + y2) / 2;
+            ctx.fillStyle = "white"; ctx.fillRect(midX - 10, midY - 11, 20, 22);
+            ctx.fillStyle = "#7b008b"; ctx.font = "20px Arial";
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(edge.w, midX, midY);
+        });
+
+        // Draw Nodes
+        for (let id in nodes) {
+            const n = nodes[id];
+            const cx = n.x + offsetX; const cy = n.y + offsetY;
+            ctx.beginPath(); ctx.arc(cx, cy, 25, 0, 2 * Math.PI);
+            
+            if (verticesOpt.has(id)) ctx.fillStyle = "#98fb98";
+            else if (highlightedExtension && highlightedExtension.dst === id) ctx.fillStyle = "#FFFF66";
+            else ctx.fillStyle = "#99FFFF";
+            
+            ctx.fill();
+            if (highlightedExtension && highlightedExtension.dst === id) {
+                ctx.strokeStyle = "#FF0000"; ctx.lineWidth = 3; ctx.stroke();
+            }
+            ctx.fillStyle = "#ff0000"; ctx.font = "26px Arial";
+            ctx.textAlign = "center"; ctx.textBaseline = "middle";
+            ctx.fillText(id, cx, cy);
+
+            if (costOpt[id]) {
+                ctx.fillStyle = "#000000"; ctx.font = "15px Arial";
+                ctx.fillText(`C:`, cx, cy - 35);
+                ctx.fillStyle = "#7b008b"; ctx.fillText(`${costOpt[id].cost}`, cx + 15, cy - 35);
+            }
+        }
+    }
+
+    function isInOptimalPath(edge) {
+        const uData = costOpt[edge.u]; const vData = costOpt[edge.v];
+        if (uData && uData.parent === edge.v) return true;
+        if (vData && vData.parent === edge.u) return true;
+        return false;
+    }
+
+    // --- ALGORITHM GENERATOR ---
+    function* dijkstraAlgorithm(startNode) {
+        costOpt[startNode] = { cost: 0, parent: null };
+        verticesOpt.add(startNode);
+        log(`Initialized. ${fmtV(startNode)} is in verticesOpt.`);
+        yield { type: 'INIT' };
+
+        while (true) {
+            extensions = [];
+            highlightedExtension = null;
+            sortingIndex = -1;
+
+            if (Object.keys(nodes).every(n => verticesOpt.has(n))) {
+                log("All nodes optimized.");
+                break;
+            }
+
+            log("Finding extensions...");
+            let extensionsFound = false;
+
+            for (let edge of edges) {
+                let u = null, v = null;
+                if (verticesOpt.has(edge.u) && !verticesOpt.has(edge.v)) { u = edge.u; v = edge.v; } 
+                else if (verticesOpt.has(edge.v) && !verticesOpt.has(edge.u)) { u = edge.v; v = edge.u; }
+
+                if (u && v) {
+                    extensionsFound = true;
+                    activeEdge = edge;
+                    const newCost = costOpt[u].cost + edge.w;
+                    
+                    // 1. Show the edge being checked
+                    log(`Found extension: ${fmtV(u)} <span class="arrow">&rarr;</span> ${fmtV(v)} (Total: ${fmtC(newCost)})`);
+                    yield { type: 'EDGE_FOUND' };
+
+                    // 2. Logic: Insert into list
+                    const newExt = { src: u, dst: v, cost: newCost };
+                    extensions.push(newExt);
+                    
+                    // 3. Determine if sort animation is needed
+                    let idx = extensions.length - 1;
+                    if (idx > 0 && extensions[idx].cost < extensions[idx - 1].cost) {
+                        // Animation needed
+                        log(`Inserting ${fmtV(v)}. Cost ${fmtC(newCost)} needs sorting.`);
+                        yield { type: 'INSERT_SORT', index: idx };
+                    } else {
+                        // No animation needed
+                        log(`Inserted ${fmtV(v)} at the end.`);
+                        yield { type: 'INSERT_OK' };
+                    }
+                    activeEdge = null;
+                }
+            }
+
+            if (!extensionsFound) {
+                log("No more reachable extensions.");
+                break;
+            }
+
+            log("Selection: Picking minimum extension.");
+            yield { type: 'SELECTION_PHASE' };
+
+            const minExt = extensions[0]; // Guaranteed to be at 0 after sorts
+            highlightedExtension = minExt;
+            
+            log(`Min extension: ${fmtV(minExt.src)} <span class="arrow">&rarr;</span> ${fmtV(minExt.dst)} (Total: ${fmtC(minExt.cost)})`);
+            yield { type: 'MIN_SELECTED' };
+
+            verticesOpt.add(minExt.dst);
+            costOpt[minExt.dst] = { cost: minExt.cost, parent: minExt.src };
+            log(`Optimized ${fmtV(minExt.dst)}.`);
+            yield { type: 'OPTIMIZED' };
+        }
+
+        finalize();
+        return "DONE";
+    }
+
+    // --- CONTROLLER Logic ---
+
+    function initDijkstra() {
+        stopAuto();
+        resetData();
+        const source = document.getElementById('sourceNode').value;
+        generator = dijkstraAlgorithm(source);
+        
+        document.getElementById('btnNext').disabled = false;
+        document.getElementById('btnAuto').disabled = false;
+        
+        processStep(); // Run initial step
+    }
+
+    function userClickNext() {
+        if (isAnimating) return; // Ignore clicks during animation
+        processStep();
+    }
+
+    function processStep() {
+        if (!generator) return;
+        const res = generator.next();
+
+        if (res.done || res.value === "DONE") {
+            finalize();
+            updateUI();
+            return;
+        }
+
+        const state = res.value;
+
+        // If the step requires sorting animation
+        if (state.type === 'INSERT_SORT') {
+            updateUI(); // Show it inserted at bottom first
+            startSortAnimation(state.index); // Trigger async animation
+        } else {
+            // Normal step
+            updateUI();
+        }
+    }
+
+    // --- Animation Logic (The "Single Step" with internal sub-steps) ---
+    function startSortAnimation(currentIndex) {
+        isAnimating = true;
+        setButtonsState(false); // Disable controls
+        sortingIndex = currentIndex;
+        
+        // Pause Auto Play timer if active, we will manual resume
+        if (isAutoPlaying) clearInterval(autoInterval);
+
+        runSortStep(currentIndex);
+    }
+
+    function runSortStep(idx) {
+        // Base case: Reached top or ordered correctly
+        if (idx <= 0 || extensions[idx].cost >= extensions[idx - 1].cost) {
+            endSortAnimation();
+            return;
+        }
+
+        // Swap Logic
+        const temp = extensions[idx];
+        extensions[idx] = extensions[idx - 1];
+        extensions[idx - 1] = temp;
+        
+        sortingIndex = idx - 1; // Update highlight index
+        log(`Sorting... ${fmtC(temp.cost)} < ${fmtC(extensions[idx].cost)}`);
+        
+        updateUI(); // Render the swap
+
+        // Delay for next sub-step
+        setTimeout(() => {
+            runSortStep(idx - 1);
+        }, 350); // 350ms delay per sub-step
+    }
+
+    function endSortAnimation() {
+        isAnimating = false;
+        sortingIndex = -1;
+        updateUI();
+        setButtonsState(true);
+        log("Sorted. Waiting for next step.");
+
+        // If we were in Auto mode, resume the main interval
+        if (isAutoPlaying) {
+            // Trigger next immediately or wait? 
+            // Prompt says: "En un único paso se coloca". So we are done with this step.
+            // Resume the timer for the *next* generator step.
+            autoInterval = setInterval(() => {
+                if(!isAnimating) processStep();
+            }, 1000);
+        }
+    }
+
+    function setButtonsState(enabled) {
+        document.getElementById('btnNext').disabled = !enabled;
+        // Don't enable auto button if we are already auto-playing (it becomes Pause)
+        const autoBtn = document.getElementById('btnAuto');
+        if (!isAutoPlaying) autoBtn.disabled = !enabled;
+    }
+
+    // --- Auto Play ---
+    function toggleAuto() {
+        if (isAutoPlaying) stopAuto();
+        else startAuto();
+    }
+
+    function startAuto() {
+        if (!generator) return;
+        isAutoPlaying = true;
+        const btn = document.getElementById('btnAuto');
+        btn.innerHTML = "Pause";
+        btn.classList.replace('btn-warn', 'btn-primary'); 
+        
+        if (!isAnimating) {
+            processStep(); // Do one immediately
+            autoInterval = setInterval(() => {
+                if (!isAnimating) processStep();
+            }, 1000); 
+        }
+    }
+
+    function stopAuto() {
+        isAutoPlaying = false;
+        clearInterval(autoInterval);
+        const btn = document.getElementById('btnAuto');
+        btn.innerHTML = "Auto Play";
+        btn.classList.replace('btn-primary', 'btn-warn');
+        if (!isAnimating) document.getElementById('btnNext').disabled = false;
+    }
+
+    function finalize() {
+        stopAuto();
+        document.getElementById('btnNext').disabled = true;
+        document.getElementById('btnAuto').disabled = true;
+        activeEdge = null;
+        sortingIndex = -1;
+        isAnimating = false;
+    }
+
+    function reset() {
+        stopAuto();
+        resetData();
+        document.getElementById('btnNext').disabled = true;
+        document.getElementById('btnAuto').disabled = true;
+        log("Ready. Select source.");
+        updateUI();
+    }
+
+    function resetData() {
+        verticesOpt = new Set();
+        costOpt = {};
+        extensions = [];
+        activeEdge = null;
+        highlightedExtension = null;
+        sortingIndex = -1;
+        generator = null;
+        isAnimating = false;
+    }
+
+    function log(msg) {
+        // replace space not in <> by &nbsp; to prevent collapsing
+        msg = msg.replace(/ (?![^<]*>)/g, '&nbsp;');
+        document.getElementById('logDisplay').innerHTML = `<span class="log-prefix">></span> ${msg}`;
+    }
+
+    function updateUI() {
+        drawGraph();
+        updateTables();
+    }
+
+    function updateTables() {
+        // Cost Table
+        const costTbody = document.querySelector("#costTable tbody");
+        costTbody.innerHTML = "";
+        for (let v in costOpt) {
+            const row = `<tr><td>${fmtV(v)}</td><td>${fmtC(costOpt[v].cost)}</td><td>${reconstructPath(v, true)}</td></tr>`;
+            costTbody.innerHTML += row;
+        }
+
+        // PQ Table
+        const pqTbody = document.querySelector("#pqTable tbody");
+        pqTbody.innerHTML = "";
+        
+        extensions.forEach((ext, index) => {
+            let rowClass = "";
+            // Highlight Min Selected
+            if (highlightedExtension && highlightedExtension.dst === ext.dst && highlightedExtension.src === ext.src) {
+                rowClass = "row-min";
+            }
+            // Highlight Moving Row
+            else if (index === sortingIndex) {
+                rowClass = "sorting-row";
+            }
+
+            const row = `<tr class="${rowClass}">
+                <td>${fmtV(ext.src)}</td>
+                <td>${fmtV(ext.dst)}</td>
+                <td>${fmtC(ext.cost)}</td>
+            </tr>`;
+            pqTbody.innerHTML += row;
+        });
+    }
+
+    function reconstructPath(v, format = false) {
+        if (!costOpt[v]) return "";
+        let path = [v];
+        let curr = v;
+        while(costOpt[curr] && costOpt[curr].parent) {
+            curr = costOpt[curr].parent;
+            path.unshift(curr);
+        }
+        if (format) return path.map(fmtV).join(" &rarr; ");
+        return path.join(" -> ");
+    }
+
+    resizeCanvas();
+</script>
+</body>
+</html>
