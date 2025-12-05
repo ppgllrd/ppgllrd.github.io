@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dijkstra's Shortest Paths Visualizer</title>
+    <style>
+        :root {
+            --primary: #0056b3;
+            --node-bg: #99FFFF;     
+            --node-opt: #98fb98;    
+            --highlight: #FFFF00;   
+            --node-text: #ff0000;   
+            --weight-text: #7b008b; 
+            --edge-active: #FF8C00; 
+            --bg-color: #f8f9fa;
+            --card-bg: #ffffff;
+            --border: #dee2e6;
+        }
+
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: #333;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .v-txt { color: var(--node-text); font-size: 1.15rem; }
+        .c-txt { color: var(--weight-text); font-size: 1.15rem; }
+        .arrow { color: #555; font-weight: bold; margin: 0 2px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
+
+        header {
+            padding: 12px 20px;
+            background: white;
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-shrink: 0;
+        }
+
+        h1 { margin: 0; color: var(--primary); font-size: 1.5rem; }
+
+        .main-container {
+            display: flex;
+            flex: 1;
+            padding: 15px;
+            gap: 15px;
+            overflow: hidden;
+        }
+
+        /* Graph Panel */
+        .graph-panel {
+            flex: 2;
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            min-width: 500px;
+        }
+
+        canvas {
+            flex: 1;
+            width: 100%;
+            height: 100%;
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* Tooltip Styling */
+        #tooltip {
+            position: absolute;
+            background: rgba(30, 30, 30, 0.9);
+            color: #fff;
+            padding: 8px 12px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            pointer-events: none; /* Allows mouse to pass through */
+            display: none;
+            z-index: 1000;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+            white-space: nowrap;
+        }
+
+        .legend {
+            position: absolute;
+            top: 15px; left: 15px;
+            background: rgba(255,255,255,0.95);
+            padding: 10px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+            font-size: 0.95rem;
+            pointer-events: none;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+        .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #999; }
+        .line-legend { width: 25px; height: 5px; background-color: var(--edge-active); border: none; border-radius: 0; }
+
+        /* Data Panel */
+        .data-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            min-width: 420px;
+            max-width: 550px;
+        }
+
+        .data-card {
+            background: var(--card-bg);
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            flex: 1;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+        .card-header {
+            background: #f1f3f5;
+            padding: 10px 15px;
+            font-weight: bold;
+            border-bottom: 1px solid var(--border);
+            color: #495057;
+            font-size: 1rem;
+        }
+
+        .table-container {
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
+        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; }
+        th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 2; color: #555; }
+        
+        tr { transition: background-color 0.2s; }
+        .row-popped { background-color: #ffeeba !important; border-left: 5px solid #ffc107; } 
+        .row-stale { background-color: #ffcdd2 !important; color: #b71c1c; text-decoration: line-through; opacity: 0.8; } 
+        .row-new { background-color: #d1e7dd !important; border-left: 5px solid #198754; } 
+        .row-sorting { background-color: #fff3cd !important; border-left: 5px solid #ffc107; font-weight: bold;} 
+
+        /* Controls */
+        .controls-bar {
+            background: white;
+            padding: 12px 20px;
+            border-top: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-shrink: 0;
+            flex-wrap: wrap;
+        }
+
+        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 1rem; }
+
+        .btn-group { display: flex; gap: 8px; }
+
+        button {
+            padding: 10px 16px; border: none; border-radius: 4px;
+            cursor: pointer; font-weight: 600; font-size: 0.95rem;
+            transition: all 0.2s; color: white;
+            min-width: 80px;
+            display: flex; justify-content: center; align-items: center;
+        }
+        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
+        button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
+        
+        .btn-success { background-color: #28a745; }
+        .btn-primary { background-color: #007bff; }
+        .btn-secondary { background-color: #6c757d; }
+        .btn-warn { background-color: #ffc107; color: #333; }
+        .btn-danger { background-color: #dc3545; }
+
+        .log-box {
+            flex: 1;
+            background: #ffffff; 
+            color: #333;
+            border: 1px solid #ccc;
+            padding: 10px 15px;
+            border-radius: 4px;
+            font-family: 'Consolas', monospace;
+            font-size: 1rem;
+            height: 42px;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            min-width: 250px;
+        }
+        .log-prefix { color: var(--primary); font-weight: bold; margin-right: 10px; }
+
+        footer {
+            width: 100%; background: #f4f7f6; 
+            font-size: 0.8em; color: #777; text-align: center; line-height: 2.5;
+            border-top: 1px solid #ddd; flex-shrink: 0;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>Dijkstra's Shortest Paths Visualizer</h1>
+    </header>
+
+    <div class="controls-bar">
+        <label>Graph: 
+            <select id="graphSelect" onchange="loadGraph(this.value)">
+                <option value="sample">Sample (Trace)</option>
+                <option value="dense">Dense (Octagon)</option>
+                <option value="sparse">Sparse (Chain)</option>
+                <option value="diamond">Equal Costs (Diamond)</option>
+            </select>
+        </label>
+
+        <label>Source: 
+            <select id="sourceNode" class="v-txt"></select>
+        </label>
+
+        <div class="log-box" id="logDisplay"><span class="log-prefix">></span> Ready.</div>
+
+        <div class="btn-group">
+            <button class="btn-success" onclick="init()">Start</button>
+            <button class="btn-primary" id="btnNext" onclick="nextStep()" disabled>Next</button>
+            <button class="btn-warn" id="btnAuto" onclick="toggleAuto()" disabled>Auto</button>
+            <button class="btn-secondary" id="btnUndo" onclick="undo()" disabled>Undo</button>
+            <button class="btn-danger" onclick="reset()">Reset</button>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <!-- Visualization -->
+        <div class="graph-panel" id="canvasContainer">
+            <canvas id="graphCanvas"></canvas>
+            <div id="tooltip"></div>
+            <div class="legend">
+                <div class="legend-item"><div class="dot" style="background:var(--node-bg); border-color:var(--node-bg)"></div> Unoptimized</div>
+                <div class="legend-item"><div class="dot" style="background:var(--node-opt); border-color:var(--node-opt)"></div> Optimized (verticesOpt)</div>
+                <div class="legend-item"><div class="dot" style="background:var(--highlight); border:1px solid #f00"></div> Processing Node</div>
+                <div class="legend-item"><div class="line-legend"></div> Active Edge</div>
+            </div>
+        </div>
+
+        <!-- Data Tables -->
+        <div class="data-panel">
+            <!-- PQ -->
+            <div class="data-card" style="flex: 3;">
+                <div class="card-header">Priority Queue (Extensions)</div>
+                <div class="table-container">
+                    <table id="pqTable">
+                        <thead><tr><th>Source</th><th>Dest</th><th>Total Cost</th><th>State</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+            <!-- Dictionary -->
+            <div class="data-card" style="flex: 2;">
+                <div class="card-header">costOpt (Optimal Paths)</div>
+                <div class="table-container">
+                    <table id="costTable">
+                        <thead><tr><th>Vertex</th><th>Cost</th><th>Full Path</th></tr></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. University of Málaga
+    </footer>
+
+<script>
+    // --- HELPERS ---
+    const sp = "&nbsp;";
+    const fmtV = (v) => `<span class="v-txt">${v}</span>`;
+    const fmtC = (c) => `<span class="c-txt">${c}</span>`;
+    const arrow = `${sp}<span class="arrow">&rarr;</span>${sp}`;
+
+    // --- GRAPH DATASETS ---
+    const graphData = {
+        'sample': {
+            nodes: {
+                'a': { x: 150, y: 70 }, 'b': { x: 400, y: 70 }, 'c': { x: 650, y: 70 },
+                'd': { x: 400, y: 320 }, 'e': { x: 650, y: 320 }
+            },
+            edges: [
+                { u: 'a', v: 'b', w: 3 }, { u: 'a', v: 'd', w: 7 },
+                { u: 'b', v: 'c', w: 4 }, { u: 'b', v: 'd', w: 2 },
+                { u: 'd', v: 'c', w: 5 }, { u: 'd', v: 'e', w: 4 },
+                { u: 'c', v: 'e', w: 6 }
+            ],
+            w: 800, h: 400 
+        },
+        'dense': {
+            nodes: {
+                '1': {x:250, y:60}, '2': {x:500, y:60}, 
+                '3': {x:700, y:190}, '4': {x:500, y:320}, 
+                '5': {x:250, y:320}, '6': {x:60, y:190}, 'center': {x:375, y:190}
+            },
+            edges: [
+                {u:'1', v:'2', w:2}, {u:'2', v:'3', w:3}, {u:'3', v:'4', w:1},
+                {u:'4', v:'5', w:2}, {u:'5', v:'6', w:3}, {u:'6', v:'1', w:1},
+                {u:'center', v:'1', w:4}, {u:'center', v:'2', w:3},
+                {u:'center', v:'3', w:5}, {u:'center', v:'4', w:2},
+                {u:'center', v:'5', w:4}, {u:'center', v:'6', w:3}
+            ],
+            w: 800, h: 400
+        },
+        'sparse': {
+            nodes: {
+                's': {x:50, y:190}, 'a': {x:180, y:100}, 'b': {x:180, y:280},
+                'c': {x:350, y:100}, 'd': {x:350, y:280}, 'e': {x:500, y:190},
+                't': {x:650, y:190}
+            },
+            edges: [
+                {u:'s', v:'a', w:2}, {u:'s', v:'b', w:4},
+                {u:'a', v:'c', w:3}, {u:'b', v:'d', w:1},
+                {u:'c', v:'e', w:2}, {u:'d', v:'e', w:5},
+                {u:'e', v:'t', w:1}, {u:'b', v:'a', w:1}
+            ],
+            w: 750, h: 400
+        },
+        'diamond': {
+            nodes: {
+                'start': {x:60, y:190}, 'u1': {x:240, y:60}, 'd1': {x:240, y:320},
+                'mid': {x:370, y:190}, 'u2': {x:500, y:60}, 'd2': {x:500, y:320},
+                'end': {x:680, y:190}
+            },
+            edges: [
+                {u:'start', v:'u1', w:5}, {u:'start', v:'d1', w:5},
+                {u:'u1', v:'mid', w:5}, {u:'d1', v:'mid', w:5},
+                {u:'mid', v:'u2', w:5}, {u:'mid', v:'d2', w:5},
+                {u:'u2', v:'end', w:5}, {u:'d2', v:'end', w:5}
+            ],
+            w: 750, h: 400
+        }
+    };
+
+    // --- APP STATE ---
+    let currGraph = null;
+    let timeline = []; 
+    let currentStepIndex = -1;
+    let autoTimer = null;
+    let isAuto = false;
+
+    // --- SETUP ---
+    const canvas = document.getElementById('graphCanvas');
+    const ctx = canvas.getContext('2d');
+    const container = document.getElementById('canvasContainer');
+    const tooltip = document.getElementById('tooltip');
+
+    function resize() {
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        if (currGraph) {
+            if (currentStepIndex >= 0 && currentStepIndex < timeline.length) {
+                const step = timeline[currentStepIndex];
+                draw(currGraph, step.verticesOpt, step.costOpt, step.activeNode, step.highlightEdge);
+            } else {
+                draw(currGraph, new Set(), {}, null, null);
+            }
+        }
+    }
+    
+    window.addEventListener('resize', resize);
+    setTimeout(resize, 50); 
+
+    // --- TOOLTIP LOGIC ---
+    canvas.addEventListener('mousemove', (e) => {
+        if (!currGraph) return;
+
+        const rect = canvas.getBoundingClientRect();
+        const mx = e.clientX - rect.left;
+        const mouseY = e.clientY - rect.top;
+        const offX = (canvas.width - currGraph.w)/2;
+        const offY = (canvas.height - currGraph.h)/2;
+
+        // Get current state
+        let costOpt = {};
+        if (currentStepIndex >= 0 && currentStepIndex < timeline.length) {
+            costOpt = timeline[currentStepIndex].costOpt;
+        }
+
+        let found = false;
+        for (let id in currGraph.nodes) {
+            const n = currGraph.nodes[id];
+            const cx = n.x + offX;
+            const cy = n.y + offY;
+            const dist = Math.sqrt((mx-cx)**2 + (mouseY-cy)**2);
+            
+            if (dist < 28) { // Node radius
+                found = true;
+                tooltip.style.display = 'block';
+                tooltip.style.left = (mx + 12) + 'px';
+                tooltip.style.top = (mouseY + 12) + 'px';
+                
+                if (costOpt[id]) {
+                    tooltip.innerHTML = `<strong>Node ${id}</strong><br>
+                                         Cost: ${costOpt[id].cost}<br>
+                                         Parent: ${costOpt[id].parent || 'None'}`;
+                } else {
+                    tooltip.innerHTML = `<strong>Node ${id}</strong><br>
+                                         Cost: &infin;<br>
+                                         Status: Unreached`;
+                }
+                break;
+            }
+        }
+        if (!found) tooltip.style.display = 'none';
+    });
+
+    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
+
+    // --- LOADING ---
+    function loadGraph(key) {
+        resetUI();
+        const data = graphData[key];
+        currGraph = {
+            nodes: JSON.parse(JSON.stringify(data.nodes)),
+            edges: JSON.parse(JSON.stringify(data.edges)),
+            w: data.w || 600, h: data.h || 350
+        };
+        
+        const sel = document.getElementById('sourceNode');
+        sel.innerHTML = '';
+        Object.keys(currGraph.nodes).forEach(k => {
+            let opt = document.createElement('option');
+            opt.value = k; opt.innerText = k;
+            sel.appendChild(opt);
+        });
+        
+        draw(currGraph, new Set(), {}, null, null);
+    }
+
+    // --- TIMELINE GENERATOR ---
+    function generateTimeline(startV) {
+        timeline = [];
+        
+        const snap = (msg, activeN, highE, procExt, actionType=null) => {
+            timeline.push({
+                pq: JSON.parse(JSON.stringify(pq)),
+                verticesOpt: new Set(verticesOpt),
+                costOpt: JSON.parse(JSON.stringify(costOpt)),
+                log: msg,
+                activeNode: activeN,
+                highlightEdge: highE,
+                processingExt: procExt,
+                action: actionType
+            });
+        };
+
+        let verticesOpt = new Set();
+        let costOpt = {}; 
+        let pq = []; 
+
+        // Init
+        verticesOpt.add(startV);
+        costOpt[startV] = { cost: 0, parent: null };
+        snap(`Optimized${sp}${fmtV(startV)}${sp}with cost${sp}${fmtC(0)}`, null, null, null);
+
+        // Extensions
+        let edges = getEdges(startV);
+        for(let e of edges) {
+            let n = (e.u === startV) ? e.v : e.u;
+            let total = 0 + e.w;
+            let ext = { src: startV, dst: n, cost: total };
+            pq.push(ext);
+            snap(`Adding extension${sp}${fmtV(startV)}${arrow}${fmtV(n)}${sp}(${fmtC(total)})`, startV, e, null, 'ADD');
+            pq.sort((a,b) => a.cost - b.cost);
+        }
+
+        const totalNodes = Object.keys(currGraph.nodes).length;
+        while(verticesOpt.size < totalNodes) {
+            if (pq.length === 0) break;
+
+            let minExt = pq.shift();
+            snap(`Selected min extension:${sp}${fmtV(minExt.src)}${arrow}${fmtV(minExt.dst)}${sp}(${fmtC(minExt.cost)})`, null, null, minExt, 'POP');
+
+            if (verticesOpt.has(minExt.dst)) {
+                snap(`Stale path to${sp}${fmtV(minExt.dst)}${sp}skipped (already optimized).`, null, null, minExt, 'DISCARD');
+                continue;
+            }
+
+            let v = minExt.dst;
+            let c = minExt.cost;
+            let p = minExt.src;
+            
+            verticesOpt.add(v);
+            costOpt[v] = { cost: c, parent: p };
+            snap(`Optimized${sp}${fmtV(v)}${sp}with cost${sp}${fmtC(c)}`, null, null, null, 'OPTIMIZED');
+
+            let neighbors = getEdges(v);
+            for(let e of neighbors) {
+                let n = (e.u === v) ? e.v : e.u;
+                if (!verticesOpt.has(n)) {
+                    let newCost = c + e.w;
+                    let newExt = { src: v, dst: n, cost: newCost };
+                    pq.push(newExt);
+                    snap(`Adding extension${sp}${fmtV(v)}${arrow}${fmtV(n)}${sp}(${fmtC(newCost)})`, v, e, null, 'ADD');
+                    pq.sort((a,b) => a.cost - b.cost);
+                }
+            }
+        }
+        snap("All vertices optimized. Algorithm finished.", null, null, null);
+    }
+
+    function getEdges(nodeId) {
+        return currGraph.edges.filter(e => e.u === nodeId || e.v === nodeId);
+    }
+
+    // --- CONTROLLER ---
+    function init() {
+        resetUI();
+        const src = document.getElementById('sourceNode').value;
+        if(!src) return;
+        
+        generateTimeline(src);
+        currentStepIndex = -1;
+        
+        document.getElementById('btnNext').disabled = false;
+        document.getElementById('btnUndo').disabled = true;
+        document.getElementById('btnAuto').disabled = false;
+        document.getElementById('graphSelect').disabled = true;
+        document.getElementById('sourceNode').disabled = true;
+
+        nextStep(); 
+    }
+
+    function nextStep() {
+        if (currentStepIndex >= timeline.length - 1) return;
+        currentStepIndex++;
+        const step = timeline[currentStepIndex];
+        
+        if (step.action === 'ADD') {
+            renderFrame(step, true);
+        } else {
+            renderFrame(step);
+        }
+
+        updateButtons();
+        if (isAuto) {
+            let delay = (step.action === 'POP') ? 1200 : 900;
+            autoTimer = setTimeout(nextStep, delay);
+        }
+    }
+
+    function undo() {
+        if (currentStepIndex <= 0) return;
+        stopAuto();
+        currentStepIndex--;
+        renderFrame(timeline[currentStepIndex]);
+        updateButtons();
+    }
+
+    function updateButtons() {
+        document.getElementById('btnUndo').disabled = (currentStepIndex <= 0);
+        document.getElementById('btnNext').disabled = (currentStepIndex >= timeline.length - 1);
+    }
+
+    // --- RENDERER ---
+    function renderFrame(step, animateAdd = false) {
+        const { pq, verticesOpt, costOpt, log, activeNode, highlightEdge, processingExt, action } = step;
+
+        document.getElementById('logDisplay').innerHTML = `<span class="log-prefix">></span> ${log}`;
+        draw(currGraph, verticesOpt, costOpt, activeNode, highlightEdge);
+
+        const pqBody = document.querySelector('#pqTable tbody');
+        pqBody.innerHTML = '';
+
+        if (processingExt && (action === 'POP' || action === 'DISCARD')) {
+            let cls = (action === 'DISCARD') ? 'row-stale' : 'row-popped';
+            let txt = (action === 'DISCARD') ? 'Skipped' : 'Processing...';
+            pqBody.innerHTML += `<tr class="${cls}">
+                <td>${fmtV(processingExt.src)}</td><td>${fmtV(processingExt.dst)}</td>
+                <td>${fmtC(processingExt.cost)}</td><td>${txt}</td>
+            </tr>`;
+        }
+
+        let newExtIndex = -1;
+        if (action === 'ADD' && highlightEdge) {
+            let u = (highlightEdge.u === activeNode) ? highlightEdge.u : highlightEdge.v;
+            let v = (highlightEdge.u === activeNode) ? highlightEdge.v : highlightEdge.u;
+            newExtIndex = pq.findIndex(item => item.src === u && item.dst === v);
+        }
+
+        pq.forEach((item, idx) => {
+            let cls = '';
+            if (idx === newExtIndex && animateAdd) cls = 'row-new';
+            pqBody.innerHTML += `<tr class="${cls}">
+                <td>${fmtV(item.src)}</td><td>${fmtV(item.dst)}</td>
+                <td>${fmtC(item.cost)}</td><td>Queued</td>
+            </tr>`;
+        });
+
+        const costBody = document.querySelector('#costTable tbody');
+        costBody.innerHTML = '';
+        for (let v in costOpt) {
+            let pathStr = reconstructPath(v, costOpt).map(fmtV).join(arrow);
+            costBody.innerHTML += `<tr>
+                <td>${fmtV(v)}</td>
+                <td>${fmtC(costOpt[v].cost)}</td>
+                <td>${pathStr}</td>
+            </tr>`;
+        }
+    }
+
+    function draw(graph, vOpt, cOpt, activeN, highEdge) {
+        ctx.clearRect(0,0, canvas.width, canvas.height);
+        if(!graph) return;
+
+        const offX = (canvas.width - graph.w)/2;
+        const offY = (canvas.height - graph.h)/2;
+
+        ctx.lineWidth = 2;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+
+        graph.edges.forEach(e => {
+            const u = graph.nodes[e.u];
+            const v = graph.nodes[e.v];
+            const ux = u.x + offX, uy = u.y + offY;
+            const vx = v.x + offX, vy = v.y + offY;
+
+            ctx.beginPath();
+            ctx.moveTo(ux, uy); ctx.lineTo(vx, vy);
+            
+            let color = "#0056b3"; 
+            let width = 4;
+
+            if (highEdge && ((highEdge.u===e.u && highEdge.v===e.v) || (highEdge.u===e.v && highEdge.v===e.u))) {
+                color = "#FF8C00"; width = 8; 
+            } else if (isInPath(e, cOpt)) {
+                color = "#FF0000"; width = 5; 
+            }
+
+            ctx.strokeStyle = color; ctx.lineWidth = width;
+            ctx.stroke();
+
+            const mx = (ux+vx)/2, my = (uy+vy)/2;
+            ctx.fillStyle = "white"; ctx.fillRect(mx-12, my-12, 24, 24);
+            ctx.fillStyle = "#7b008b"; 
+            ctx.font = "20px Arial"; 
+            ctx.fillText(e.w, mx, my);
+        });
+
+        for (let id in graph.nodes) {
+            const n = graph.nodes[id];
+            const x = n.x + offX, y = n.y + offY;
+
+            ctx.beginPath();
+            ctx.arc(x, y, 28, 0, Math.PI*2); 
+            
+            // Fill logic
+            if (id === activeN) ctx.fillStyle = "#FFFF00"; 
+            else if (vOpt.has(id)) ctx.fillStyle = "#98fb98"; 
+            else ctx.fillStyle = "#99FFFF"; 
+
+            ctx.fill();
+
+            // Stroke logic: Match fill unless active
+            if (id === activeN) {
+                ctx.strokeStyle = "#FF8C00";
+                ctx.lineWidth = 5;
+            } else {
+                ctx.strokeStyle = ctx.fillStyle; // Same color as fill
+                ctx.lineWidth = 2;
+            }
+            
+            ctx.stroke();
+
+            ctx.fillStyle = "#ff0000"; 
+            ctx.font = "21px Arial"; 
+            ctx.fillText(id, x, y);
+
+            if (cOpt[id]) {
+                ctx.fillStyle = "#000";
+                ctx.font = "16px Arial";
+                ctx.fillText(cOpt[id].cost, x - 12, y - 37);
+            }
+        }
+    }
+
+    function isInPath(edge, cOpt) {
+        if (cOpt[edge.u] && cOpt[edge.u].parent === edge.v) return true;
+        if (cOpt[edge.v] && cOpt[edge.v].parent === edge.u) return true;
+        return false;
+    }
+
+    function reconstructPath(v, cOpt) {
+        let path = [v];
+        let curr = v;
+        while(cOpt[curr] && cOpt[curr].parent) {
+            curr = cOpt[curr].parent;
+            path.unshift(curr);
+        }
+        return path;
+    }
+
+    // --- GLOBAL ACTIONS ---
+    function toggleAuto() {
+        isAuto = !isAuto;
+        const btn = document.getElementById('btnAuto');
+        if(isAuto) {
+            btn.innerText = "Pause";
+            btn.className = "btn-primary"; 
+            document.getElementById('btnNext').disabled = true;
+            document.getElementById('btnUndo').disabled = true;
+            if(currentStepIndex < timeline.length - 1) nextStep();
+        } else {
+            stopAuto();
+        }
+    }
+
+    function stopAuto() {
+        isAuto = false; 
+        clearTimeout(autoTimer);
+        const btn = document.getElementById('btnAuto');
+        btn.innerText = "Auto";
+        btn.className = "btn-warn"; 
+        updateButtons();
+    }
+
+    function resetUI() {
+        currentStepIndex = -1;
+        timeline = [];
+        stopAuto();
+        document.querySelector('#pqTable tbody').innerHTML = '';
+        document.querySelector('#costTable tbody').innerHTML = '';
+        document.getElementById('logDisplay').innerHTML = `<span class="log-prefix">></span> Ready.`;
+    }
+
+    function reset() {
+        resetUI();
+        document.getElementById('btnNext').disabled = true;
+        document.getElementById('btnUndo').disabled = true;
+        document.getElementById('btnAuto').disabled = true;
+        document.getElementById('graphSelect').disabled = false;
+        document.getElementById('sourceNode').disabled = false;
+        if(currGraph) draw(currGraph, new Set(), {}, null, null);
+    }
+
+    // Initialize View
+    loadGraph('sample');
+
+</script>
+</body>
+</html>
