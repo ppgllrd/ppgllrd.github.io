@@ -82,7 +82,7 @@
             padding: 8px 12px;
             border-radius: 4px;
             font-size: 0.9rem;
-            pointer-events: none; /* Allows mouse to pass through */
+            pointer-events: none;
             display: none;
             z-index: 1000;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
@@ -147,7 +147,14 @@
         .row-popped { background-color: #ffeeba !important; border-left: 5px solid #ffc107; } 
         .row-stale { background-color: #ffcdd2 !important; color: #b71c1c; text-decoration: line-through; opacity: 0.8; } 
         .row-new { background-color: #d1e7dd !important; border-left: 5px solid #198754; } 
-        .row-sorting { background-color: #fff3cd !important; border-left: 5px solid #ffc107; font-weight: bold;} 
+        
+        /* New class for the bubble animation */
+        .sorting-row { 
+            background-color: #fff3cd !important; 
+            border-left: 5px solid #ffc107; 
+            font-weight: bold;
+            transition: all 0.2s ease-in-out;
+        } 
 
         /* Controls */
         .controls-bar {
@@ -353,6 +360,7 @@
     let currentStepIndex = -1;
     let autoTimer = null;
     let isAuto = false;
+    let isAnimating = false; // Blocks interaction during sort
 
     // --- SETUP ---
     const canvas = document.getElementById('graphCanvas');
@@ -387,7 +395,6 @@
         const offX = (canvas.width - currGraph.w)/2;
         const offY = (canvas.height - currGraph.h)/2;
 
-        // Get current state
         let costOpt = {};
         if (currentStepIndex >= 0 && currentStepIndex < timeline.length) {
             costOpt = timeline[currentStepIndex].costOpt;
@@ -400,7 +407,7 @@
             const cy = n.y + offY;
             const dist = Math.sqrt((mx-cx)**2 + (mouseY-cy)**2);
             
-            if (dist < 28) { // Node radius
+            if (dist < 28) { 
                 found = true;
                 tooltip.style.display = 'block';
                 tooltip.style.left = (mx + 12) + 'px';
@@ -420,7 +427,6 @@
         }
         if (!found) tooltip.style.display = 'none';
     });
-
     canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
     // --- LOADING ---
@@ -448,16 +454,18 @@
     function generateTimeline(startV) {
         timeline = [];
         
-        const snap = (msg, activeN, highE, procExt, actionType=null) => {
+        // Helper to record state
+        const snap = (msg, activeN, highE, procExt, actionType, sortSteps=null, pqSnapshot=null) => {
             timeline.push({
-                pq: JSON.parse(JSON.stringify(pq)),
+                pq: pqSnapshot ? JSON.parse(JSON.stringify(pqSnapshot)) : JSON.parse(JSON.stringify(pq)),
                 verticesOpt: new Set(verticesOpt),
                 costOpt: JSON.parse(JSON.stringify(costOpt)),
                 log: msg,
                 activeNode: activeN,
                 highlightEdge: highE,
                 processingExt: procExt,
-                action: actionType
+                action: actionType,
+                sortData: sortSteps
             });
         };
 
@@ -470,15 +478,38 @@
         costOpt[startV] = { cost: 0, parent: null };
         snap(`Optimized${sp}${fmtV(startV)}${sp}with cost${sp}${fmtC(0)}`, null, null, null);
 
-        // Extensions
+        // Logic to push and calculate bubble-up moves
+        const pushWithAnimationData = (ext, u, e) => {
+            pq.push(ext);
+            let preSortPQ = JSON.parse(JSON.stringify(pq)); // Snapshot state BEFORE sort
+            
+            // Calculate moves needed to sort this specific insertion
+            let swaps = [];
+            let tempPQ = [...pq];
+            let k = tempPQ.length - 1;
+            
+            // Simulate bubble up
+            while(k > 0 && tempPQ[k].cost < tempPQ[k-1].cost) {
+                // Swap local
+                let t = tempPQ[k]; tempPQ[k] = tempPQ[k-1]; tempPQ[k-1] = t;
+                swaps.push(k); // Record index bubbling up
+                k--;
+            }
+            
+            // Record step. Note: we pass 'preSortPQ' so render shows item at bottom initially
+            snap(`Adding extension${sp}${fmtV(u)}${arrow}${fmtV(ext.dst)}${sp}(${fmtC(ext.cost)})`, u, e, null, 'ADD', swaps, preSortPQ);
+            
+            // Actually sort the main PQ for next steps
+            pq.sort((a,b) => a.cost - b.cost);
+        };
+
+        // Initial Extensions
         let edges = getEdges(startV);
         for(let e of edges) {
             let n = (e.u === startV) ? e.v : e.u;
             let total = 0 + e.w;
             let ext = { src: startV, dst: n, cost: total };
-            pq.push(ext);
-            snap(`Adding extension${sp}${fmtV(startV)}${arrow}${fmtV(n)}${sp}(${fmtC(total)})`, startV, e, null, 'ADD');
-            pq.sort((a,b) => a.cost - b.cost);
+            pushWithAnimationData(ext, startV, e);
         }
 
         const totalNodes = Object.keys(currGraph.nodes).length;
@@ -507,9 +538,7 @@
                 if (!verticesOpt.has(n)) {
                     let newCost = c + e.w;
                     let newExt = { src: v, dst: n, cost: newCost };
-                    pq.push(newExt);
-                    snap(`Adding extension${sp}${fmtV(v)}${arrow}${fmtV(n)}${sp}(${fmtC(newCost)})`, v, e, null, 'ADD');
-                    pq.sort((a,b) => a.cost - b.cost);
+                    pushWithAnimationData(newExt, v, e);
                 }
             }
         }
@@ -539,24 +568,66 @@
     }
 
     function nextStep() {
+        if (isAnimating) return; // Prevent clicks during animation
         if (currentStepIndex >= timeline.length - 1) return;
+        
         currentStepIndex++;
         const step = timeline[currentStepIndex];
         
-        if (step.action === 'ADD') {
-            renderFrame(step, true);
-        } else {
-            renderFrame(step);
-        }
-
+        // Render base state
+        renderFrame(step, step.action === 'ADD'); 
         updateButtons();
-        if (isAuto) {
+
+        // Check for sort animation
+        if (step.action === 'ADD' && step.sortData && step.sortData.length > 0) {
+            runSortAnimation(step.pq, step.sortData);
+        } else if (isAuto) {
+            // Normal auto step delay
             let delay = (step.action === 'POP') ? 1200 : 900;
             autoTimer = setTimeout(nextStep, delay);
         }
     }
 
+    // Logic to animate the sort automatically without user clicks
+    function runSortAnimation(initialPQ, swapIndices) {
+        isAnimating = true;
+        setControls(false); // Disable buttons
+        
+        // Local copy for animation
+        let animPQ = JSON.parse(JSON.stringify(initialPQ));
+        let swapQueue = [...swapIndices]; 
+
+        function tick() {
+            if (swapQueue.length === 0) {
+                // Animation Done
+                isAnimating = false;
+                setControls(true);
+                updateButtons(); // Restore logic state
+                // If Auto was active, continue to next step
+                if (isAuto) {
+                    autoTimer = setTimeout(nextStep, 800);
+                }
+                return;
+            }
+
+            // Perform one swap visual
+            let idx = swapQueue.shift();
+            // Logic swap in local array
+            let temp = animPQ[idx]; animPQ[idx] = animPQ[idx-1]; animPQ[idx-1] = temp;
+            
+            // Re-render table only
+            renderPQTable(animPQ, -1, null, idx-1); // Highlight the destination index
+            
+            // Next frame
+            setTimeout(tick, 350); 
+        }
+
+        // Start animation delay
+        setTimeout(tick, 350);
+    }
+
     function undo() {
+        if (isAnimating) return;
         if (currentStepIndex <= 0) return;
         stopAuto();
         currentStepIndex--;
@@ -564,9 +635,21 @@
         updateButtons();
     }
 
+    function setControls(enabled) {
+        // If animation is running, everything disabled regardless of logic state
+        const state = enabled;
+        document.getElementById('btnNext').disabled = !state;
+        document.getElementById('btnUndo').disabled = !state;
+        // Keep Auto button available to stop, but functionality changes? 
+        // Actually, if animating, better not to allow Auto toggle to prevent race conditions
+        if (!isAuto) document.getElementById('btnAuto').disabled = !state;
+    }
+
     function updateButtons() {
+        if (isAnimating) return; // Managed by animation loop
         document.getElementById('btnUndo').disabled = (currentStepIndex <= 0);
         document.getElementById('btnNext').disabled = (currentStepIndex >= timeline.length - 1);
+        if (!isAuto) document.getElementById('btnAuto').disabled = false;
     }
 
     // --- RENDERER ---
@@ -575,35 +658,50 @@
 
         document.getElementById('logDisplay').innerHTML = `<span class="log-prefix">></span> ${log}`;
         draw(currGraph, verticesOpt, costOpt, activeNode, highlightEdge);
+        
+        // Initial render of PQ (unsorted if ADD)
+        // If animateAdd is true, we highlight the last element as 'New'
+        let highlightIdx = -1;
+        if (animateAdd) highlightIdx = pq.length - 1;
+        
+        renderPQTable(pq, highlightIdx, processingExt, -1, action);
+        renderCostTable(costOpt);
+    }
 
+    function renderPQTable(pqItems, newIdx, processingExt, sortIdx, actionType) {
         const pqBody = document.querySelector('#pqTable tbody');
         pqBody.innerHTML = '';
 
-        if (processingExt && (action === 'POP' || action === 'DISCARD')) {
-            let cls = (action === 'DISCARD') ? 'row-stale' : 'row-popped';
-            let txt = (action === 'DISCARD') ? 'Skipped' : 'Processing...';
+        // Draw processing/skipped item if exists
+        if (processingExt) {
+            let cls = (actionType === 'DISCARD') ? 'row-stale' : 'row-popped';
+            let txt = (actionType === 'DISCARD') ? 'Skipped' : 'Processing...';
             pqBody.innerHTML += `<tr class="${cls}">
                 <td>${fmtV(processingExt.src)}</td><td>${fmtV(processingExt.dst)}</td>
                 <td>${fmtC(processingExt.cost)}</td><td>${txt}</td>
             </tr>`;
         }
 
-        let newExtIndex = -1;
-        if (action === 'ADD' && highlightEdge) {
-            let u = (highlightEdge.u === activeNode) ? highlightEdge.u : highlightEdge.v;
-            let v = (highlightEdge.u === activeNode) ? highlightEdge.v : highlightEdge.u;
-            newExtIndex = pq.findIndex(item => item.src === u && item.dst === v);
-        }
-
-        pq.forEach((item, idx) => {
+        pqItems.forEach((item, idx) => {
             let cls = '';
-            if (idx === newExtIndex && animateAdd) cls = 'row-new';
+            let stateTxt = 'Queued';
+            
+            if (idx === sortIdx) {
+                cls = 'sorting-row';
+                stateTxt = 'Sorting...';
+            } else if (idx === newIdx) {
+                cls = 'row-new';
+                stateTxt = 'New';
+            }
+
             pqBody.innerHTML += `<tr class="${cls}">
                 <td>${fmtV(item.src)}</td><td>${fmtV(item.dst)}</td>
-                <td>${fmtC(item.cost)}</td><td>Queued</td>
+                <td>${fmtC(item.cost)}</td><td>${stateTxt}</td>
             </tr>`;
         });
+    }
 
+    function renderCostTable(costOpt) {
         const costBody = document.querySelector('#costTable tbody');
         costBody.innerHTML = '';
         for (let v in costOpt) {
@@ -709,6 +807,7 @@
 
     // --- GLOBAL ACTIONS ---
     function toggleAuto() {
+        if (isAnimating) return; 
         isAuto = !isAuto;
         const btn = document.getElementById('btnAuto');
         if(isAuto) {
@@ -735,6 +834,7 @@
         currentStepIndex = -1;
         timeline = [];
         stopAuto();
+        isAnimating = false;
         document.querySelector('#pqTable tbody').innerHTML = '';
         document.querySelector('#costTable tbody').innerHTML = '';
         document.getElementById('logDisplay').innerHTML = `<span class="log-prefix">></span> Ready.`;
@@ -751,7 +851,9 @@
     }
 
     // Initialize View
+    resize();
     loadGraph('sample');
+    reset();
 
 </script>
 </body>
