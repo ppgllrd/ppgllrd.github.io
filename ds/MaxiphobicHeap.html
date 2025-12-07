@@ -227,6 +227,7 @@
 
 <script>
 const COLORS = {
+    // Active Colors
     FILL1: '#99FFFF', STROKE1: '#99FFFF',
     FILL2: '#B0F9B0', STROKE2: '#B0F9B0', 
     COMPARE_FILL: '#CC99FF', COMPARE_STROKE: '#CC99FF',
@@ -237,12 +238,21 @@ const COLORS = {
     WEIGHT_TEXT: '#1668BD',
     WEIGHT_STROKE: '#1668BD',
     WEIGHT_HIGHLIGHT: '#F44336', // Red
-    ARROW: '#D50000'
+    ARROW: '#D50000',
+
+    // Inactive (Grayscale/Opaque) Colors
+    INACTIVE_FILL: '#F5F5F5',    // Very Light Gray (Opaque)
+    INACTIVE_STROKE: '#BDBDBD',  // Light Gray border
+    INACTIVE_EDGE: '#E0E0E0',    // Very faint edge
+    INACTIVE_TEXT: '#9E9E9E',    // Gray text
+    INACTIVE_WEIGHT_STROKE: '#BDBDBD'
 };
 
 class Node {
+    static idCounter = 0; // Static Counter for stability
+
     constructor(val, origin) {
-        this.id = Math.random().toString(36).substr(2, 9);
+        this.id = Node.idCounter++;
         this.val = val;
         this.weight = 1;
         this.left = null;
@@ -254,7 +264,7 @@ class Node {
     }
     clone() {
         const n = new Node(this.val, this.origin);
-        n.id = this.id; 
+        n.id = this.id; // Copy ID to track animation
         n.weight = this.weight;
         n.highlight = this.highlight;
         n.highlightWeight = this.highlightWeight;
@@ -398,7 +408,7 @@ const app = {
     
     // Camera & Navigation
     currentSpeedFactor: 1.0,
-    baseMorphSpeed: 3.0, 
+    baseMorphSpeed: 1.5, // Slowed down for better zoom effect
     camera: { scale: 1, x: 0, y: 0, targetScale: 1, targetX: 0, targetY: 0 },
     isDragging: false,
     dragStart: { x: 0, y: 0 },
@@ -582,6 +592,8 @@ const app = {
         const h1 = this.mainTree ? this.mainTree.clone() : null;
         const h2 = newNode.clone();
         this.steps = MaxiHeap.recordMerge([h1, h2].filter(x=>x), h1, h2);
+        
+        // No per-step zoom for insert
         this.mainTree = this.performMerge(this.mainTree, newNode);
         this.startAnimation();
         document.getElementById('inputValue').value = '';
@@ -617,6 +629,7 @@ const app = {
             { msg: "Removing root...", roots: childrenRoots },
             ...mergeSteps 
         ];
+
         this.mainTree = finalTree;
         this.startAnimation();
     },
@@ -633,6 +646,8 @@ const app = {
         const h1 = this.createRandomTree(8, 1);
         const h2 = this.createRandomTree(6, 2);
         this.steps = MaxiHeap.recordMerge([h1, h2], h1, h2);
+        
+        // No per-step zoom
         this.mainTree = this.performMerge(h1.clone(), h2.clone()); 
         this.startAnimation();
     },
@@ -648,7 +663,9 @@ const app = {
             const h2 = newNode.clone();
             let contextRoots = [h1, h2].filter(x=>x);
             const mergeSteps = MaxiHeap.recordMerge(contextRoots, h1, h2);
-            mergeSteps.forEach(s => s.msg = `Insert ${val}: ${s.msg}`);
+            mergeSteps.forEach(s => {
+                s.msg = `Insert ${val}: ${s.msg}`;
+            });
             allSteps.push(...mergeSteps);
             tempTree = this.performMerge(tempTree, newNode);
         }
@@ -657,23 +674,70 @@ const app = {
         this.startAnimation();
     },
     
+    // Build 2: Bottom-Up (Smart Zoom & Order Logic)
     handleBottomUpBuild: function() {
         this.handleClear();
         const count = 12;
         let queue = Array.from({length: count}, (_, i) => new Node(Math.floor(Math.random()*99)+1, (i%2)+1));
-        let allSteps = [{ msg: "Initial Queue of Trees (O(n))", roots: queue.map(r=>r.clone()) }];
+        
+        let allSteps = [{ 
+            msg: "Initial Queue of Trees (O(n))", 
+            roots: queue.map(r=>r.clone()),
+            shouldFit: true
+        }];
         
         while(queue.length > 1) {
             const h1 = queue.shift();
             const h2 = queue.shift();
-            const contextRoots = [h1, h2, ...queue];
-            const mergeSteps = MaxiHeap.recordMerge(contextRoots, h1, h2);
-            mergeSteps.forEach(s => s.msg = `Merging Pair: ${s.msg}`);
+            const rest = queue.map(r => r.clone());
+
+            // --- PHASE 1: Zoom In & Focus ---
+            allSteps.push({
+                msg: `Zooming in to merge pair...`,
+                roots: [h1, h2, ...rest].map(r => r.clone()),
+                focusIndices: [0, 1], // Focus on h1, h2
+                shouldFit: true
+            });
+
+            // --- PHASE 2: Isolated Merge ---
+            // Isolate h1 and h2 for the merge logic recording
+            const mergeSteps = MaxiHeap.recordMerge([h1, h2], h1, h2);
+            mergeSteps.forEach(s => {
+                s.msg = `Merging Pair: ${s.msg}`;
+                s.shouldFit = true; // Keep camera zoomed
+            });
             allSteps.push(...mergeSteps);
+
+            // Perform actual merge logic
             const merged = this.performMerge(h1, h2);
+
+            // --- PHASE 3: Zoom Out (Result at Front) ---
+
+            // Step 3a: Show merged result focused (still zoomed in)
+            allSteps.push({
+                msg: "Merge complete. Result ready.",
+                roots: [merged, ...rest].map(r => r.clone()),
+                focusIndices: [0], // Focus on merged result
+                shouldFit: true
+            });
+
+            // Step 3b: Show merged result at front, but zoom out to see everyone
+            allSteps.push({
+                msg: "Zooming out...",
+                roots: [merged, ...rest].map(r => r.clone()),
+                shouldFit: true
+            });
+
+            // --- PHASE 4: Reorder (Move to Back) ---
             queue.push(merged);
-            allSteps.push({ msg: "Pair merged. Moved to end of queue.", roots: queue.map(r => r.clone()) });
+
+            allSteps.push({ 
+                msg: "Moved merged tree to end of queue.", 
+                roots: queue.map(r => r.clone()),
+                shouldFit: true
+            });
         }
+
         this.mainTree = queue[0];
         this.steps = allSteps;
         this.startAnimation();
@@ -734,33 +798,111 @@ const app = {
 
     startAnimation: function() {
         this.currentStep = 0; this.transition = 0; this.isPlaying = true; this.updateUI();
-        this.fitToAllSteps();
+        if (this.steps[0] && this.steps[0].shouldFit) {
+            this.fitToCurrentStep();
+        } else {
+            this.fitToAllSteps();
+        }
+    },
+
+    fitToCurrentStep: function() {
+        const step = this.steps[this.currentStep];
+        if (!step || !step.roots) return;
+
+        const layout = this.layoutInOrder(step.roots);
+        
+        // Logic for Focus Zooming
+        let targetNodes = [];
+        if (step.focusIndices && Array.isArray(step.focusIndices)) {
+            step.focusIndices.forEach(idx => {
+                if (layout[idx]) targetNodes.push(...this.flatten([layout[idx]]));
+            });
+        } else {
+            targetNodes = this.flatten(layout);
+        }
+
+        if (targetNodes.length === 0) return;
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        targetNodes.forEach(n => {
+            minX = Math.min(minX, n.x - 40); maxX = Math.max(maxX, n.x + 40);
+            minY = Math.min(minY, n.y - 40); maxY = Math.max(maxY, n.y + 40);
+        });
+
+        const w = this.canvas.width; const h = this.canvas.height;
+        const paddingW = 100; const paddingH = 140;
+
+        const contentW = maxX - minX + paddingW;
+        const contentH = maxY - minY + paddingH;
+
+        let sc = Math.min(w / contentW, h / contentH);
+        sc = Math.min(Math.max(0.2, sc), 1.5);
+
+        this.camera.targetScale = sc;
+        this.camera.targetX = (minX + maxX) / 2;
+        this.camera.targetY = minY + (maxY - minY) / 2;
     },
 
     fitToAllSteps: function () {
         if (this.steps.length === 0) return;
-        const frames = [this.steps[0]];
-        if (this.steps.length > 1) frames.push(this.steps[this.steps.length - 1]);
+        
+        // SCAN ALL FRAMES to find maximum width (crucial for Maxiphobic 3-split)
+        const frames = this.steps;
 
-        let allNodes = [];
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+
         frames.forEach(frame => {
             const layout = this.layoutInOrder(frame.roots);
-            allNodes.push(...this.flatten(layout));
+            const nodes = this.flatten(layout);
+            nodes.forEach(n => {
+                minX = Math.min(minX, n.x - 40); 
+                maxX = Math.max(maxX, n.x + 40);
+                minY = Math.min(minY, n.y - 40); 
+                maxY = Math.max(maxY, n.y + 40);
+            });
         });
 
+        if (minX === Infinity) { 
+            this.camera.targetScale = 1; this.camera.targetX = 0; this.camera.targetY = 0;
+            return;
+        }
+
         const w = this.canvas.width; const h = this.canvas.height;
-        if (allNodes.length === 0) {
+        
+        // --- FIX: Matched padding with fitToFinalState to prevent bouncing on static trees ---
+        const paddingW = 100; 
+        const paddingH = 100;
+
+        // Cap scale at 1.1 to prevent single nodes from looking huge
+        const sc = Math.min(w / (maxX - minX + paddingW), h / (maxY - minY + paddingH), 1.1);
+        this.camera.targetScale = sc;
+        this.camera.targetX = (minX + maxX) / 2;
+        this.camera.targetY = minY + (maxY - minY) / 2;
+    },
+
+    // New Function to fit specifically to the final state
+    fitToFinalState: function() {
+        const lastStep = this.steps[this.steps.length - 1];
+        if (!lastStep || !lastStep.roots) return;
+
+        const layout = this.layoutInOrder(lastStep.roots);
+        const nodes = this.flatten(layout);
+
+        if (nodes.length === 0) {
             this.camera.targetScale = 1; this.camera.targetX = 0; this.camera.targetY = 0;
             return;
         }
 
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-        allNodes.forEach(n => {
+        nodes.forEach(n => {
             minX = Math.min(minX, n.x - 40); maxX = Math.max(maxX, n.x + 40);
             minY = Math.min(minY, n.y - 40); maxY = Math.max(maxY, n.y + 40);
         });
 
-        const sc = Math.min(w / (maxX - minX + 100), h / (maxY - minY + 150), 1.1);
+        const w = this.canvas.width; const h = this.canvas.height;
+        const paddingW = 100; const paddingH = 100;
+
+        const sc = Math.min(w / (maxX - minX + paddingW), h / (maxY - minY + paddingH), 1.1);
         this.camera.targetScale = sc;
         this.camera.targetX = (minX + maxX) / 2;
         this.camera.targetY = minY + (maxY - minY) / 2;
@@ -794,8 +936,21 @@ const app = {
             this.transition += dt * this.currentSpeedFactor * this.baseMorphSpeed; 
             if (this.transition >= 1.3) { 
                 this.transition = 0;
-                if (this.currentStep < this.steps.length - 1) { this.currentStep++; this.updateUI(); }
-                else { this.isPlaying = false; this.transition = 1; this.updateUI(); }
+                if (this.currentStep < this.steps.length - 1) { 
+                    this.currentStep++; 
+                    if(this.steps[this.currentStep].shouldFit) {
+                        this.fitToCurrentStep();
+                    }
+                    this.updateUI(); 
+                }
+                else { 
+                    this.isPlaying = false; 
+                    this.transition = 1; 
+                    this.updateUI();
+                    
+                    // AUTO-FIT TO FINAL STATE UPON COMPLETION
+                    this.fitToFinalState();
+                }
             }
         } else {
             if (this.transition < 1) this.transition += dt * this.currentSpeedFactor * this.baseMorphSpeed * 2; else this.transition = 1;
@@ -821,9 +976,24 @@ const app = {
         ctx.save();
         ctx.translate(w/2, h/2); ctx.scale(this.camera.scale, this.camera.scale); ctx.translate(-this.camera.x, -this.camera.y);
         
-        layoutCur.forEach(r => this.drawLinksRec(r, prevMap, easeT));
+        const getIsInactive = (rootIndex, step) => {
+            if (!step.focusIndices) return false;
+            return !step.focusIndices.includes(rootIndex);
+        };
+
+        // Draw Links
+        layoutCur.forEach((r, idx) => {
+            const inactive = getIsInactive(idx, curSnap);
+            this.drawLinksRec(r, prevMap, easeT, inactive);
+        });
+
         this.vizNodes = [];
-        layoutCur.forEach(r => this.drawNodesRec(r, prevMap, easeT));
+        // Draw Nodes
+        layoutCur.forEach((r, idx) => {
+            const inactive = getIsInactive(idx, curSnap);
+            this.drawNodesRec(r, prevMap, easeT, inactive);
+        });
+
         ctx.restore();
     },
 
@@ -841,66 +1011,75 @@ const app = {
         return clones;
     },
 
-    drawLinksRec: function(node, prevMap, t) {
+    drawLinksRec: function(node, prevMap, t, inactive) {
         if (!node) return;
         let cx = node.x, cy = node.y;
         const p = prevMap.get(node.id);
         if(p) { cx = p.x + (node.x-p.x)*t; cy = p.y + (node.y-p.y)*t; }
         
-        if(!node.left) this.drawNull(cx, cy, 'L');
-        if(!node.right) this.drawNull(cx, cy, 'R');
+        if(!node.left) this.drawNull(cx, cy, 'L', inactive);
+        if(!node.right) this.drawNull(cx, cy, 'R', inactive);
         
         const line = (child) => {
             let chx = child.x, chy = child.y;
             const cp = prevMap.get(child.id);
             if(cp) { chx = cp.x + (child.x-cp.x)*t; chy = cp.y + (child.y-cp.y)*t; }
             this.ctx.beginPath(); this.ctx.moveTo(cx, cy); this.ctx.lineTo(chx, chy);
-            this.ctx.strokeStyle = COLORS.EDGE; this.ctx.lineWidth = 3; this.ctx.stroke();
+            this.ctx.strokeStyle = inactive ? COLORS.INACTIVE_EDGE : COLORS.EDGE; 
+            this.ctx.lineWidth = 3; this.ctx.stroke();
         };
-        if(node.left) { line(node.left); this.drawLinksRec(node.left, prevMap, t); }
-        if(node.right) { line(node.right); this.drawLinksRec(node.right, prevMap, t); }
+        if(node.left) { line(node.left); this.drawLinksRec(node.left, prevMap, t, inactive); }
+        if(node.right) { line(node.right); this.drawLinksRec(node.right, prevMap, t, inactive); }
     },
     
-    drawNull: function(x, y, dir) {
+    drawNull: function(x, y, dir, inactive) {
         const dx = dir === 'L' ? -15 : 15; const dy = 25;
         this.ctx.beginPath(); this.ctx.moveTo(x, y+this.nodeRadius/2); this.ctx.lineTo(x+dx, y+this.nodeRadius+dy);
-        this.ctx.strokeStyle = COLORS.EDGE; this.ctx.lineWidth = 3; this.ctx.stroke();
+        this.ctx.strokeStyle = inactive ? COLORS.INACTIVE_EDGE : COLORS.EDGE; 
+        this.ctx.lineWidth = 3; this.ctx.stroke();
         this.ctx.beginPath(); this.ctx.moveTo(x+dx-5, y+this.nodeRadius+dy); this.ctx.lineTo(x+dx+5, y+this.nodeRadius+dy); this.ctx.stroke();
     },
 
-    drawNodesRec: function(n, prevMap, t) {
+    drawNodesRec: function(n, prevMap, t, inactive) {
         if(!n) return;
         let cx = n.x, cy = n.y;
         const p = prevMap.get(n.id);
-        if(p) { cx = p.x + (n.x-p.x)*t; cy = p.y + (n.y-p.y)*t; } /* else this.ctx.globalAlpha = t; */
+        if(p) { cx = p.x + (n.x-p.x)*t; cy = p.y + (n.y-p.y)*t; }
         
         this.vizNodes.push({x:cx, y:cy, val:n.val});
 
         const ctx = this.ctx;
-        let fill = n.origin===1 ? COLORS.FILL1 : COLORS.FILL2;
-        let stroke = n.origin===1 ? COLORS.STROKE1 : COLORS.STROKE2;
-        
-        let textColor = COLORS.TEXT_VAL; 
+        let fill, stroke, textCol;
 
-        if(n.highlight === 'compare') { 
-            fill = COLORS.COMPARE_FILL; 
-            stroke = COLORS.COMPARE_STROKE; 
+        if (inactive) {
+            fill = COLORS.INACTIVE_FILL;
+            stroke = COLORS.INACTIVE_STROKE;
+            textCol = COLORS.INACTIVE_TEXT;
+        } else {
+            fill = n.origin===1 ? COLORS.FILL1 : COLORS.FILL2;
+            stroke = n.origin===1 ? COLORS.STROKE1 : COLORS.STROKE2;
+            textCol = COLORS.TEXT_VAL;
+
+            if(n.highlight === 'compare') { 
+                fill = COLORS.COMPARE_FILL; 
+                stroke = COLORS.COMPARE_STROKE; 
+            }
+            else if(n.highlight === 'minimum') { 
+                fill = COLORS.MINIMUM; 
+                stroke = COLORS.MINIMUM; 
+            }
+            else if(n.highlight === 'delete-target') {
+                fill = COLORS.DELETE; 
+                stroke = COLORS.DELETE; 
+                textCol = '#FFFFFF'; 
+            }
         }
-        else if(n.highlight === 'minimum') { 
-            fill = COLORS.MINIMUM; 
-            stroke = COLORS.MINIMUM; 
-        }
-        else if(n.highlight === 'delete-target') {
-            fill = COLORS.DELETE; 
-            stroke = COLORS.DELETE; 
-            textColor = '#FFFFFF'; 
-        } 
 
         ctx.beginPath(); ctx.arc(cx, cy, this.nodeRadius, 0, 2*Math.PI);
         ctx.fillStyle = fill; ctx.fill(); ctx.strokeStyle = stroke; ctx.lineWidth = 3; ctx.stroke();
         
         // Value Text
-        ctx.fillStyle = textColor; 
+        ctx.fillStyle = textCol; 
         ctx.font = '22px Arial';
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; 
         ctx.fillText(n.val, cx, cy+1);
@@ -908,12 +1087,23 @@ const app = {
         // Weight badge
         const bx = cx+this.nodeRadius-5; const by = cy-this.nodeRadius+5;
         ctx.beginPath(); ctx.arc(bx, by, 10, 0, 2*Math.PI);
-        ctx.fillStyle = n.highlightWeight ? COLORS.WEIGHT_HIGHLIGHT : '#ffffff'; 
-        ctx.fill(); ctx.strokeStyle = n.highlightWeight ? COLORS.WEIGHT_HIGHLIGHT : COLORS.WEIGHT_STROKE; ctx.lineWidth = 1; ctx.stroke();
-        ctx.fillStyle = n.highlightWeight ? '#ffffff' : COLORS.WEIGHT_TEXT; ctx.font = 'bold 11px Arial'; ctx.fillText(n.weight, bx, by+1);
+        
+        if (inactive) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fill();
+            ctx.strokeStyle = COLORS.INACTIVE_WEIGHT_STROKE;
+        } else {
+            ctx.fillStyle = n.highlightWeight ? COLORS.WEIGHT_HIGHLIGHT : '#ffffff'; 
+            ctx.fill(); 
+            ctx.strokeStyle = n.highlightWeight ? COLORS.WEIGHT_HIGHLIGHT : COLORS.WEIGHT_STROKE;
+        }
 
-        ctx.globalAlpha = 1;
-        this.drawNodesRec(n.left, prevMap, t); this.drawNodesRec(n.right, prevMap, t);
+        ctx.lineWidth = 1; ctx.stroke();
+        
+        ctx.fillStyle = inactive ? COLORS.INACTIVE_TEXT : (n.highlightWeight ? '#ffffff' : COLORS.WEIGHT_TEXT);
+        ctx.font = 'bold 11px Arial'; ctx.fillText(n.weight, bx, by+1);
+
+        this.drawNodesRec(n.left, prevMap, t, inactive); this.drawNodesRec(n.right, prevMap, t, inactive);
     },
     
     flatten: function(roots) {
