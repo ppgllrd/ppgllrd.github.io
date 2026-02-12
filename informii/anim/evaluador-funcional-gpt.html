@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Evaluador Funcional · Scala</title>
+<style>
+/* ── Reset & Base ─────────────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  font-family:-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background-color:#f8fafc; color:#334155;
+  height:100vh; display:flex; flex-direction:column;
+}
+.mono { font-family:'JetBrains Mono','Fira Code',Consolas,monospace;   font-variant-ligatures: none; }
+
+/* ── Header ───────────────────────────────────────────────── */
+.header{
+  background:#1e293b; color:#fff; padding:12px 24px;
+  display:flex; justify-content:space-between; align-items:center;
+  border-bottom:1px solid #334155;
+}
+.header h1{font-size:1.1rem;font-weight:700;letter-spacing:0.5px}
+.header-badge{background:#6366f1;padding:4px 10px;border-radius:12px;font-size:0.75rem;font-weight:600}
+
+/* ── Layout ───────────────────────────────────────────────── */
+.main { display:flex; flex:1; overflow:hidden; }
+
+/* Sidebar */
+.sidebar {
+  width:280px; background:#fff; border-right:1px solid #e2e8f0;
+  display:flex; flex-direction:column;
+}
+.sidebar-header {
+  padding:12px 16px; font-size:0.7rem; font-weight:800; text-transform:uppercase;
+  color:#64748b; background:#f1f5f9; border-bottom:1px solid #e2e8f0;
+}
+.ex-list { flex:1; overflow-y:auto; }
+.ex-btn {
+  width:100%; text-align:left; padding:12px 16px;
+  background:transparent; border:none; border-bottom:1px solid #f1f5f9;
+  cursor:pointer; transition:all 0.1s;
+}
+.ex-btn:hover { background:#f8fafc; color:#4f46e5; }
+.ex-btn.active { background:#eef2ff; border-left:4px solid #4f46e5; }
+.ex-btn strong { display:block; font-size:0.85rem; margin-bottom:2px; }
+.ex-btn code   { font-size:0.7rem; color:#64748b; }
+
+/* Workspace */
+.workspace {
+  flex:1; display:flex; flex-direction:column; position:relative;
+  background:#f8fafc; overflow:hidden;
+}
+
+/* Definitions Panel */
+.defs-panel {
+  background:#fff; border-bottom:1px solid #e2e8f0;
+  padding:15px 20px; max-height:150px; overflow-y:auto;
+  box-shadow:0 4px 6px -4px rgba(0,0,0,0.05);
+}
+.defs-code { font-size:0.85rem; line-height:1.5; color:#475569; white-space:pre-wrap; }
+.kwd { color:#a855f7; font-weight:bold; }
+.typ { color:#059669; }
+.def-name { color:#2563eb; font-weight:bold; }
+
+/* Blackboard */
+.blackboard {
+  flex:1; display:flex; flex-direction:column;
+  align-items:center; justify-content:center;
+  padding:20px;
+}
+
+/* Expression Wrapper */
+.expr-wrapper {
+  background:#fff; padding:40px 50px; border-radius:12px;
+  box-shadow:0 10px 25px -5px rgba(0,0,0,0.1);
+  border:2px solid transparent;
+  display:flex; flex-wrap:wrap; gap:4px;
+  align-items:center; justify-content:center;
+  font-size:1.5rem; max-width:95%;
+  transition:transform 0.2s;
+}
+.expr-wrapper.success { border-color:#10b981; background:#ecfdf5; transform:scale(1.02); }
+.expr-wrapper.shake { animation:shake 0.4s cubic-bezier(.36,.07,.19,.97) both; border-color:#ef4444; }
+
+/* Tokens */
+.token {
+  padding:2px 2px; border-radius:4px; cursor:pointer;
+  border:1px solid transparent; transition:all 0.1s; user-select:none;
+  position:relative;
+}
+.token:hover { background:#e0f2fe; border-color:#bae6fd; transform:translateY(-2px); z-index:10; }
+
+/* Syntax Highlight */
+.t-num { color:#059669; }
+.t-str { color:#0891b2; }
+.t-op  { color:#d97706; font-weight:bold; }
+.t-fn  { color:#7c3aed; font-weight:bold; }
+.t-kwd { color:#db2777; font-weight:bold; }
+.t-par { color:#94a3b8; }
+
+/* X-RAY / STRUCTURE MODE */
+.structure-mode .token { opacity:0.2; transform:scale(0.95); filter:blur(0.5px); }
+.structure-mode .token.is-op,
+.structure-mode .token.is-parens {
+  opacity:1; filter:none; transform:scale(1.1); font-weight:900;
+  text-shadow:0 0 10px rgba(99,102,241,0.3);
+}
+.structure-mode .token.in-target {
+  opacity:1; filter:none; transform:scale(1);
+  background:#fffbeb; border:1px dashed #f59e0b;
+}
+
+/* Environment Float */
+.env-float {
+  position:absolute; top:100px; right:10px;
+  background:#1e293b; color:#fff; padding:10px 15px;
+  border-radius:8px; font-size:0.8rem;
+  opacity:0; transform:translateY(-10px); transition:all 0.3s;
+  pointer-events:none;
+}
+.env-float.show { opacity:1; transform:translateY(0); }
+
+/* Controls */
+.controls {
+  padding:15px; background:#fff; border-top:1px solid #e2e8f0;
+  display:flex; justify-content:center; gap:15px; align-items:center; flex-wrap:wrap;
+}
+.msg-box { font-weight:600; font-size:0.9rem; color:#64748b; min-width:250px; text-align:center; }
+.msg-box.error { color:#ef4444; }
+.msg-box.success { color:#10b981; }
+.btn { padding:10px 20px; border-radius:6px; border:none; font-weight:600; cursor:pointer; transition:0.2s; }
+.btn-reset { background:#f1f5f9; color:#64748b; } .btn-reset:hover { background:#e2e8f0; }
+.btn-xray { background:#fff; border:2px solid #6366f1; color:#6366f1; }
+.btn-xray.active { background:#6366f1; color:#fff; border-color:#6366f1; }
+.btn-help { background:#fef3c7; color:#d97706; border:1px solid #fcd34d; font-size:1.2rem; padding:8px 16px; }
+.btn-help:hover { background:#fde68a; }
+.btn-hint { background:#ecfeff; color:#0891b2; border:1px solid #67e8f9; }
+
+/* Right: History */
+.history {
+  width:300px; background:#fff; border-left:1px solid #e2e8f0;
+  display:flex; flex-direction:column;
+}
+.hist-list { flex:1; overflow-y:auto; padding:20px; }
+.hist-item {
+  margin-bottom:15px; padding-left:10px; border-left:3px solid #cbd5e1;
+  opacity:0; animation:slideIn 0.3s forwards;
+}
+.hist-item.active { border-left-color:#10b981; }
+.hist-expr { font-size:0.8rem; color:#94a3b8; text-decoration:line-through; }
+.hist-res { font-size:0.95rem; color:#1e293b; font-weight:600; margin-top:2px; }
+.hist-note { font-size:0.75rem; color:#6366f1; margin-top:4px; font-style:italic; }
+
+/* MODAL DE AYUDA */
+.modal-overlay {
+  position:fixed; top:0; left:0; width:100%; height:100%;
+  background:rgba(15,23,42,0.6); backdrop-filter:blur(2px);
+  z-index:1000; display:none; align-items:center; justify-content:center;
+}
+.modal-overlay.open { display:flex; animation:fadeIn 0.2s; }
+.modal-box {
+  background:#fff; width:90%; max-width:550px;
+  border-radius:12px; padding:30px;
+  box-shadow:0 20px 25px -5px rgba(0,0,0,0.1);
+  position:relative;
+}
+.modal-close {
+  position:absolute; top:15px; right:20px; font-size:1.5rem;
+  cursor:pointer; color:#94a3b8; line-height:1;
+}
+.modal-title {
+  font-size:1.2rem; font-weight:800; color:#1e293b; margin-bottom:15px;
+  border-bottom:2px solid #f1f5f9; padding-bottom:10px;
+}
+.rule-list { list-style:none; padding:0; margin:0; }
+.rule-item { margin-bottom:12px; font-size:0.9rem; color:#475569; padding-left:24px; position:relative; }
+.rule-item::before { content:'👉'; position:absolute; left:0; top:0; }
+.rule-item code {
+  background:#f1f5f9; padding:2px 6px; border-radius:4px;
+  font-family:'JetBrains Mono', monospace; font-size:0.85rem; color:#4f46e5; font-weight:bold;
+}
+
+/* Progress bar */
+.progress-wrap { min-width:220px }
+.progress-text { font-size:0.8rem; color:#64748b; margin-bottom:4px }
+.progress-outer { height:6px; background:#e2e8f0; border-radius:9999px; overflow:hidden }
+.progress-inner { height:6px; width:0%; background:#10b981; transition:width .25s }
+
+/* Animations */
+@keyframes shake { 10%,90%{transform:translate3d(-1px,0,0)} 20%,80%{transform:translate3d(2px,0,0)} }
+@keyframes slideIn { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
+@keyframes fadeIn { from{opacity:0} to{opacity:1} }
+</style>
+</head>
+<body>
+
+<!-- MODAL DE AYUDA -->
+<div id="helpModal" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="helpTitle" onclick="toggleHelp(false)">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <button class="modal-close" onclick="toggleHelp(false)" aria-label="Cerrar">×</button>
+    <div id="helpTitle" class="modal-title">Reglas de Evaluación en Scala</div>
+    <ul class="rule-list">
+      <li class="rule-item">
+        <strong>Funciones (Estricto):</strong> Antes de entrar en una función, se evalúan todos sus argumentos de izquierda a derecha.
+      </li>
+      <li class="rule-item">
+        <strong>Operadores Aritméticos:</strong> Siguen la jerarquía matemática habitual (PEMDAS). <code>*</code> y <code>/</code> ganan a <code>+</code> y <code>-</code>.
+      </li>
+      <li class="rule-item">
+        <strong>Lógica (Cortocircuito):</strong><br><code>A && B</code>: si A es false, no se evalúa B.<br><code>A || B</code>: si A es true, no se evalúa B.
+      </li>
+      <li class="rule-item">
+        <strong>Listas (::):</strong> El operador Cons <code>::</code> asocia por la <strong>derecha</strong>.<br><code>1 :: 2 :: Nil</code> se evalúa como <code>1 :: (2 :: Nil)</code>.
+      </li>
+      <li class="rule-item">
+        <strong>Sustitución:</strong> Al evaluar una función, se reemplaza la llamada por su cuerpo, sustituyendo los parámetros por sus valores.
+      </li>
+    </ul>
+  </div>
+</div>
+
+<div class="header">
+  <h1>λ Evaluador Funcional</h1>
+  <span class="header-badge">Scala Tema 1</span>
+</div>
+
+<div class="main">
+  <div class="sidebar">
+    <div class="sidebar-header">Ejercicios</div>
+    <div class="ex-list" id="exList"></div>
+  </div>
+
+  <div class="workspace">
+    <div class="defs-panel">
+      <div class="defs-code mono" id="defsContent"></div>
+    </div>
+
+    <div id="envFloat" class="env-float mono"></div>
+
+    <div class="blackboard">
+      <div id="exprWrapper" class="expr-wrapper mono"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-reset" onclick="reset()">↺ Reiniciar</button>
+      <div id="msgBox" class="msg-box" role="status" aria-live="polite">Selecciona un ejercicio</div>
+
+      <div class="progress-wrap">
+        <div id="progressText" class="mono progress-text">Paso 0 de 0</div>
+        <div class="progress-outer">
+          <div id="progressBar" class="progress-inner"></div>
+        </div>
+      </div>
+
+      <button id="btnXray" class="btn btn-xray" title="Ver estructura">👁️ Estructura</button>
+      <button class="btn btn-hint" title="Resolver este paso" onclick="hintStep()">💡 Pista</button>
+      <button class="btn btn-help" onclick="toggleHelp(true)" title="Ver Reglas">?</button>
+    </div>
+  </div>
+
+  <div class="history">
+    <div class="sidebar-header">Traza</div>
+    <div class="hist-list" id="histList"></div>
+  </div>
+</div>
+
+<script>
+// ── DEFINICIÓN DE EJERCICIOS ──
+const EXERCISES = [
+  // ── ARITMÉTICA Y LÓGICA ──
+  ,
+  {
+    cat:"Básicos", name:"Prioridad",
+    defs:"// Multiplicación antes que Suma",
+    steps:[
+      { expr:"3 + 4 * 5", target:"4 * 5", trigger:"*", result:"20", note:"Multiplicación gana." },
+      { expr:"3 + 20", target:"3 + 20", trigger:"+", result:"23", note:"Suma." }
+    ]
+  },
+  {
+    cat:"Básicos", name:"Paréntesis",
+    defs:"// Paréntesis fuerzan la evaluación",
+    steps:[
+      { expr:"(3 + 4) * 5", target:"3 + 4", trigger:"+", result:"7", note:"Paréntesis ganan." },
+      { expr:"7 * 5", target:"7 * 5", trigger:"*", result:"35", note:"Multiplicación." }
+    ]
+  },{
+    cat:"Básicos", name:"Lógica: Sin Cortocircuito ||",
+    defs:"// || evalúa derecha si izquierda es false",
+    steps:[
+      { expr:"false || (5 > 3)", target:"(5 > 3)", trigger:">", result:"true", note:"Izq es false, forzosa evaluación derecha." },
+      { expr:"false || true", target:"false || true", trigger:"||", result:"true", note:"OR final." }
+    ]
+  },
+  {
+    cat:"Básicos", name:"Lógica: Cortocircuito ||",
+    defs:"// || no evalúa derecha si izquierda es true",
+    steps:[
+      { expr:"true || (1 / 0 == 0)", target:"true || (1 / 0 == 0)", trigger:"||", result:"true", note:"Cortocircuito ||" }
+    ]
+  },
+  {
+    cat:"Básicos", name:"Lógica: Cortocircuito &&",
+    defs:"// && no evalúa derecha si izquierda es false",
+    steps:[
+      { expr:"false && (1 / 0 == 0)", target:"false && (1 / 0 == 0)", trigger:"&&", result:"false", note:"Cortocircuito &&" }
+    ]
+  },
+  {
+    cat:"Básicos", name:"Lógica: Cortocircuito if then else",
+    defs:"// if then else no evalúa el else si la condición es true",
+    steps:[
+      { expr:"if true then (1 + 2) else (1 / 0)", target:"if true then (1 + 2) else (1 / 0)", trigger:"if", result:"1 + 2", note:"Cortocircuito if then else" },
+      { expr:"1 + 2", target:"1 + 2", trigger:"+", result:"3", note:"Evaluación normal." }
+    ]
+  },
+  // ── FUNCIONES ──
+  {
+    cat:"Funciones", name:"cuadrado (Modelo Sustitución)",
+    defs:`<span class="kwd">def</span> <span class="def-name">cuadrado</span>(x: Int): Int = x * x`,
+    steps:[
+      { expr:"cuadrado(3 + 1)", target:"3 + 1", trigger:"+", result:"4", note:"Evaluar argumento antes de aplicar función." },
+      { expr:"cuadrado(4)", target:"cuadrado(4)", trigger:"cuadrado", result:"4 * 4", env:{x:4}, note:"Sustitución: cuerpo de cuadrado con x=4." },
+      { expr:"4 * 4", target:"4 * 4", trigger:"*", result:"16", note:"Cálculo final." }
+    ]
+  },
+  {
+    cat:"Funciones", name:"xor (Modelo Sustitución)",
+    defs:`<span class="kwd">def</span> <span class="def-name">xor</span>(x: Boolean, y: Boolean): Boolean =
+ (x || y) && !(x && y)`,
+    steps:[
+      { expr:"xor(true || false, !true)", target:"true || false", trigger:"||", result:"true", note:"Evaluamos el primer argumento: true || false -> true" },
+      { expr:"xor(true, !true)", target:"!true", trigger:"!", result:"false", note:"Evaluamos el segundo argumento: !true -> false" },
+      { expr:"xor(true, false)", target:"xor(true, false)", trigger:"xor", result:"(true || false) && !(true && false)", env:{x:"true", y:"false"}, note:"Sustitución en el cuerpo: x=true, y=false" },
+      { expr:"(true || false) && !(true && false)", target:"true || false", trigger:"||", result:"true", note:"Evaluamos la primera parte: true || false -> true" },
+      { expr:"true && !(true && false)", target:"true && false", trigger:"&&", result:"false", note:"Evaluamos el paréntesis interno: true && false -> false" },
+      { expr:"true && !false", target:"!false", trigger:"!", result:"true", note:"Evaluamos la negación: !false -> true" },
+      { expr:"true && true", target:"true && true", trigger:"&&", result:"true", note:"Evaluación final." }
+    ]
+  },
+  {
+    cat:"Funciones", name:"esPar (Modelo Sustitución)",
+    defs:`<span class="kwd">def</span> <span class="def-name">esPar</span>(n: Int): Boolean = n % 2 == 0`,
+    steps:[
+      { expr:"esPar(4)", target:"esPar(4)", trigger:"esPar", result:"4 % 2 == 0", env:{n:4}, note:"Sustitución en el cuerpo de esPar con n=4." },
+      { expr:"4 % 2 == 0", target:"4 % 2", trigger:"%", result:"0", note:"Cálculo del módulo." },
+      { expr:"0 == 0", target:"0 == 0", trigger:"==", result:"true", note:"Comparación final." }
+    ]
+  },
+  {
+    cat:"Funciones", name:"esImpar (Modelo Sustitución)",
+    defs:`<span class="kwd">def</span> <span class="def-name">esImpar</span>(n: Int): Boolean = !esPar(n)
+<span class="kwd">def</span> <span class="def-name">esPar</span>(n: Int): Boolean = n % 2 == 0`,
+    steps:[
+      { expr:"esImpar(5)", target:"esImpar(5)", trigger:"esImpar", result:"!esPar(5)", env:{n:5}, note:"Sustitución en el cuerpo de esImpar con n=5." },
+      { expr:"!esPar(5)", target:"esPar(5)", trigger:"esPar", result:"5 % 2 == 0", env:{n:5}, note:"Sustitución en el cuerpo de esPar con n=5." },
+      { expr:"!(5 % 2 == 0)", target:"5 % 2", trigger:"%", result:"1", note:"Cálculo del módulo." },
+      { expr:"!(1 == 0)", target:"1 == 0", trigger:"==", result:"false", note:"Comparación final." },
+      { expr:"!false", target:"!false", trigger:"!", result:"true", note:"Negación final." }
+    ]
+  },
+  {
+    cat:"Funciones", name:"Currying",
+    defs:`<span class="kwd">def</span> <span class="def-name">suma</span>(x: Int)(y: Int): Int = x + y`,
+    steps:[
+      { expr:"suma(1 + 1)(3 + 1)", target:"1 + 1", trigger:"+", result:"2", note:"Evaluar argumentos." },
+      { expr:"suma(2)(3 + 1)", target:"3 + 1", trigger:"+", result:"4", note:"Evaluar argumentos." },
+      { expr:"suma(2)(4)", target:"suma(2)", trigger:"suma", result:"2 + 4", env:{x:2, y:4}, note:"Sustitución: cuerpo de suma con x=2 e y=4." },
+      { expr:"2 + 4", target:"2 + 4", trigger:"+", result:"6", note:"Resultado." }
+    ]
+  },
+  {
+    cat:"Funciones", name:"Polimorfismo",
+    defs:`<span class="kwd">def</span> <span class="def-name">duplica2</span>[A,B](x: A, y: B): (A, B, A, B) = (x, y, x, y)`,
+    steps:[
+      { expr:"duplica2(1, true)", target:"duplica2(1, true)", trigger:"duplica2", result:"(1, true, 1, true)", env:{A: "Int", B: "Boolean", x:"1", y:"true"}, note:"Sustitución con tipos genéricos A=Int y B=Boolean." }
+    ]
+  },
+  {
+    cat:"Funciones", name:"Orden Superior (Polimorfismo)",
+    defs:`<span class="kwd">def</span> <span class="def-name">dosVeces</span>[A](f: A => A, x: A): A =
+ f(f(x))`,
+    steps:[
+      { expr:"dosVeces((x: Int) => x * x, 2)", target:"dosVeces((x: Int) => x * x, 2)", trigger:"dosVeces", result:"(x => x * x)((x => x * x)(2))", env:{A: "Int", f:"x => x * x", x:"2"}, note:"Sustitución de f y x en el cuerpo f(f(x))." },
+      { expr:"(x => x * x)((x => x * x)(2))", target:"(x => x * x)(2)", trigger:"=>", result:"2 * 2", env:{x:"2"}, note:"Evaluamos la aplicación interna de la lambda." },
+      { expr:"(x => x * x)(2 * 2)", target:"2 * 2", trigger:"*", result:"4", note:"Reducción aritmética." },
+      { expr:"(x => x * x)(4)", target:"(x => x * x)(4)", trigger:"=>", result:"4 * 4", env:{x:"4"}, note:"Aplicación externa con el nuevo valor." },
+      { expr:"4 * 4", target:"4 * 4", trigger:"*", result:"16", note:"Resultado final." }
+    ]
+  },
+  // ── RECURSIVIDAD COMPLETA ──
+  {
+    cat:"Recursividad", name:"Factorial (Pila)",
+    defs:`<span class="kwd">def</span> <span class="def-name">fact</span>(n: Int): Int =\n <span class="kwd">if</span> n == 0 <span class="kwd">then</span> 1\n <span class="kwd">else</span> n * fact(n - 1)`,
+    steps:[
+      { expr:"fact(4)", target:"fact(4)", trigger:"fact", result:"4 * fact(3)", env:{n:4}, note:"Caso recursivo. Pendiente multiplicar por 4." },
+      { expr:"4 * fact(3)", target:"fact(3)", trigger:"fact", result:"3 * fact(2)", env:{n:3}, note:"Expansión n=3. Crece la expresión." },
+      { expr:"4 * (3 * fact(2))", target:"fact(2)", trigger:"fact", result:"2 * fact(1)", env:{n:2}, note:"Expansión n=2." },
+      { expr:"4 * (3 * (2 * fact(1)))", target:"fact(1)", trigger:"fact", result:"1 * fact(0)", env:{n:1}, note:"Expansión n=1." },
+      { expr:"4 * (3 * (2 * (1 * fact(0))))", target:"fact(0)", trigger:"fact", result:"1", env:{n:0}, note:"Caso base: fact(0) = 1" },
+      { expr:"4 * (3 * (2 * (1 * 1)))", target:"1 * 1", trigger:"*", result:"1", note:"Colapsando pila..." },
+      { expr:"4 * (3 * (2 * 1))", target:"2 * 1", trigger:"*", result:"2", note:"Colapsando..." },
+      { expr:"4 * (3 * 2)", target:"3 * 2", trigger:"*", result:"6", note:"Colapsando..." },
+      { expr:"4 * 6", target:"4 * 6", trigger:"*", result:"24", note:"Resultado final." }
+    ]
+  },
+  {
+    cat:"Recursividad", name:"Factorial (Cola)",
+    defs:`<span class="kwd">def</span> <span class="def-name">factCola</span>(n: Int): Int = 
+ @tailrec   
+ <span class="kwd">def</span> <span class="def-name">aux</span>(acc: Int, n: Int): Int =
+   <span class="kwd">if</span> n == 0 <span class="kwd">then</span> acc
+   <span class="kwd">else</span> aux(acc * n, n - 1)
+ aux(1, n)`,
+    steps:[
+      { expr:"factCola(4)", target:"factCola(4)", trigger:"factCola", result:"aux(1, 4)", env:{n:4}, note:"Llamada a aux con acc=1, n=4." },
+      { expr:"aux(1, 4)", target:"aux(1, 4)", trigger:"aux", result:"aux(1 * 4, 4 - 1)", env:{acc:1, n:4}, note:"Llamada de cola. Se prepara el siguiente paso." },
+      { expr:"aux(1 * 4, 4 - 1)", target:"1 * 4", trigger:"*", result:"4", note:"Evaluar argumento acc antes de la llamada." },
+      { expr:"aux(4, 4 - 1)", target:"4 - 1", trigger:"-", result:"3", note:"Evaluar argumento n antes de la llamada." },
+      { expr:"aux(4, 3)", target:"aux(4, 3)", trigger:"aux", result:"aux(4 * 3, 3 - 1)", env:{acc:4, n:3}, note:"Siguiente iteración. No crece la expresión." },
+      { expr:"aux(4 * 3, 3 - 1)", target:"4 * 3", trigger:"*", result:"12", note:"Evaluar acc." },
+      { expr:"aux(12, 3 - 1)", target:"3 - 1", trigger:"-", result:"2", note:"Evaluar n." },
+      { expr:"aux(12, 2)", target:"aux(12, 2)", trigger:"aux", result:"aux(12 * 2, 2 - 1)", env:{acc:12, n:2}, note:"Siguiente iteración." },
+      { expr:"aux(12 * 2, 2 - 1)", target:"12 * 2", trigger:"*", result:"24", note:"Evaluar acc." },
+      { expr:"aux(24, 2 - 1)", target:"2 - 1", trigger:"-", result:"1", note:"Evaluar n." },
+      { expr:"aux(24, 1)", target:"aux(24, 1)", trigger:"aux", result:"aux(24 * 1, 1 - 1)", env:{acc:24, n:1}, note:"Siguiente iteración." },
+      { expr:"aux(24 * 1, 1 - 1)", target:"24 * 1", trigger:"*", result:"24", note:"Evaluar acc." },
+      { expr:"aux(24, 1 - 1)", target:"1 - 1", trigger:"-", result:"0", note:"Evaluar n." },
+      { expr:"aux(24, 0)", target:"aux(24, 0)", trigger:"aux", result:"24", env:{acc:24, n:0}, note:"Caso base: devuelve acc." }
+    ]
+  },
+  // ── PATTERN MATCHING ──
+  {
+    cat:"Pattern Matching", name:"Suma Cuadrados (List)",
+    defs:`<span class="kwd">def</span> <span class="def-name">sumaCuadrados</span>(xs: List[Int]): Int = xs <span class="kwd">match</span>
+ <span class="kwd">case</span> Nil     =>  0
+ <span class="kwd">case</span> y :: ys =>  y * y + sumaCuadrados(ys)`,
+    steps:[
+      { expr:"sumaCuadrados(List(1, 2, 3))", target:"sumaCuadrados(List(1, 2, 3))", trigger:"sumaCuadrados", result:"1 * 1 + sumaCuadrados(List(2, 3))", env:{xs: "List(1, 2, 3)", y:"1", ys:"List(2, 3)"}, note:"Match y::ys. y=1, ys=List(2,3)" },
+      { expr:"1 * 1 + sumaCuadrados(List(2, 3))", target:"1 * 1", trigger:"*", result:"1", note:"Cuadrado del primero." },
+      { expr:"1 + sumaCuadrados(List(2, 3))", target:"sumaCuadrados(List(2, 3))", trigger:"sumaCuadrados", result:"2 * 2 + sumaCuadrados(List(3))", env:{xs: "List(2, 3)", y:"2", ys:"List(3)"}, note:"Match y::ys. y=2, ys=List(3)" },
+      { expr:"1 + (2 * 2 + sumaCuadrados(List(3)))", target:"2 * 2", trigger:"*", result:"4", note:"Cuadrado del segundo." },
+      { expr:"1 + (4 + sumaCuadrados(List(3)))", target:"sumaCuadrados(List(3))", trigger:"sumaCuadrados", result:"3 * 3 + sumaCuadrados(Nil)", env:{xs: "List(3)", y:"3", ys:"Nil"}, note:"Match y::ys. y=3, ys=Nil" },
+      { expr:"1 + (4 + (3 * 3 + sumaCuadrados(Nil)))", target:"3 * 3", trigger:"*", result:"9", note:"Cuadrado del tercero." },
+      { expr:"1 + (4 + (9 + sumaCuadrados(Nil)))", target:"sumaCuadrados(Nil)", trigger:"sumaCuadrados", result:"0", env:{xs: "Nil"}, note:"Match Nil. Caso base." },
+      { expr:"1 + (4 + (9 + 0))", target:"9 + 0", trigger:"+", result:"9", note:"Suma..." },
+      { expr:"1 + (4 + 9)", target:"4 + 9", trigger:"+", result:"13", note:"Suma..." },
+      { expr:"1 + 13", target:"1 + 13", trigger:"+", result:"14", note:"Total." }
+    ]
+  },
+  {
+    cat:"Pattern Matching", name:"Ordenada (List)",
+    defs:`<span class="kwd">def</span> <span class="def-name">ordenada</span>(xs: List[Int]): Boolean = xs <span class="kwd">match</span>
+  <span class="kwd">case</span> Nil          =>  true
+  <span class="kwd">case</span> List(_)      =>  true
+  <span class="kwd">case</span> x :: y :: zs =>  x <= y && ordenada(y :: zs)`,
+    steps:[
+      { expr:"ordenada(List(1, 2, 3))", target:"ordenada(List(1, 2, 3))", trigger:"ordenada", result:"1 <= 2 && ordenada(List(2, 3))", env:{xs: "List(1, 2, 3)", x:"1", y:"2", zs:"List(3)"}, note:"Match x::y::zs. x=1, y=2, zs=List(3)" },
+      { expr:"1 <= 2 && ordenada(List(2, 3))", target:"1 <= 2", trigger:"<=", result:"true", note:"Comparación del primer par." },
+      { expr:"true && ordenada(List(2, 3))", target:"ordenada(List(2, 3))", trigger:"ordenada", result:"2 <= 3 && ordenada(List(3))", env:{xs: "List(2, 3)", x:"2", y:"3", zs:"Nil"}, note:"Match x::y::zs. x=2, y=3, zs=Nil" },
+      { expr:"true && (2 <= 3 && ordenada(List(3)))", target:"2 <= 3", trigger:"<=", result:"true", note:"Comparación del segundo par." },
+      { expr:"true && (true && ordenada(List(3)))", target:"ordenada(List(3))", trigger:"ordenada", result:"true", env:{xs: "List(3)", _:"3"}, note:"Match List(_). Caso base." },
+      { expr:"true && (true && true)", target:"true && true", trigger:"&&", result:"true", note:"Evaluación lógica..." },
+      { expr:"true && true", target:"true && true", trigger:"&&", result:"true", note:"Resultado final." }
+    ]
+  },
+    {
+    cat:"Pattern Matching", name:"Suma Tuplas (List)",
+    defs:`<span class="kwd">def</span> <span class="def-name">sumaTuplas</span>(xs: List[(Int, Int)]): Int = xs <span class="kwd">match</span>
+  <span class="kwd">case</span> Nil          =>  0
+  <span class="kwd">case</span> (x, y) :: zs =>  x + y + sumaTuplas(zs)`,
+    steps:[
+      { expr:"sumaTuplas(List((1, 2), (3, 4)))", target:"sumaTuplas(List((1, 2), (3, 4)))", trigger:"sumaTuplas", result:"1 + 2 + sumaTuplas(List((3, 4)))", env:{xs: "List((1, 2), (3, 4))", x:"1", y:"2", zs:"List((3, 4))"}, note:"Match (x,y)::zs. x=1, y=2, zs=List((3,4))" },
+      { expr:"1 + 2 + sumaTuplas(List((3, 4)))", target:"1 + 2", trigger:"+", result:"3 + sumaTuplas(List((3, 4)))", note:"Suma de los elementos de la primera tupla." },
+      { expr:"3 + sumaTuplas(List((3, 4)))", target:"sumaTuplas(List((3, 4)))", trigger:"sumaTuplas", result:"3 + 4 + sumaTuplas(Nil)", env:{xs: "List((3, 4))", x:"3", y:"4", zs:"Nil"}, note:"Match (x,y)::zs. x=3, y=4, zs=Nil" },
+      { expr:"3 + (3 + 4 + sumaTuplas(Nil))", target:"3 + 4", trigger:"+", result:"3 + (7 + sumaTuplas(Nil))", note:"Suma de los elementos de la segunda tupla." },
+      { expr:"3 + (7 + sumaTuplas(Nil))", target:"sumaTuplas(Nil)", trigger:"sumaTuplas", result:"0", env:{xs: "Nil"}, note:"Match Nil. Caso base." },
+      { expr:"3 + (7 + 0)", target:"7 + 0", trigger:"+", result:"7", note:"Suma..." },
+      { expr:"3 + 7", target:"3 + 7", trigger:"+", result:"10", note:"Resultado final." }
+    ]
+  },
+    {
+    cat:"Pattern Matching", name:"Suma Option Some",
+    defs:`<span class="kwd">def</span> <span class="def-name">suma</span>(x: Int, opt: Option[Int]) = opt <span class="kwd">match</span>
+ <span class="kwd">case</span> None    =>  None
+ <span class="kwd">case</span> Some(y) =>  Some(x + y)`,
+    steps:[
+      { expr:"suma(2 + 8, Some(5))", target:"2 + 8", trigger:"+", result:"suma(10, Some(5))", note:"Suma." },
+      { expr:"suma(10, Some(5))", target:"suma(10, Some(5))", trigger:"suma", result:"Some(10 + 5)", env:{x:"10", opt: "Some(5)", y:"5"}, note:"opt es Some(5). Encaja con 'case Some(y)', vinculando y=5." },
+      { expr:"Some(10 + 5)", target:"10 + 5", trigger:"+", result:"Some(15)", note:"Evaluación aritmética dentro del constructor." }
+    ]
+  },
+    {
+    cat:"Pattern Matching", name:"Suma Option None",
+    defs:`<span class="kwd">def</span> <span class="def-name">suma</span>(x: Int, opt: Option[Int]) = opt <span class="kwd">match</span>
+ <span class="kwd">case</span> None    =>  None
+ <span class="kwd">case</span> Some(y) =>  Some(x + y)`,
+    steps:[
+      { expr:"suma(2 + 8, None)", target:"2 + 8", trigger:"+", result:"suma(10, None)", note:"Suma." },
+      { expr:"suma(10, None)", target:"suma(10, None)", trigger:"suma", result:"None", env:{x:"10", opt: "None"}, note:"opt es None. Encaja con 'case None', resultado es None." }
+    ]
+  },
+  // ── LISTAS / MAP ──
+  {
+    cat:"Listas", name:"Map: Orden Evaluación",
+    defs:`// Map aplica f a cada elemento
+// Izquierda a derecha`,
+    steps:[
+      { expr:"List(1, 2).map(x => x + 10)", target:"List(1, 2).map(x => x + 10)", trigger:"map", result:"(1 + 10) :: List(2).map(...)", note:"Map procesa la cabeza (1)." },
+      { expr:"(1 + 10) :: List(2).map(x => x + 10)", target:"1 + 10", trigger:"+", result:"11", note:"Evaluamos el cuerpo de la lambda para el primer elemento." },
+      { expr:"11 :: List(2).map(x => x + 10)", target:"List(2).map(x => x + 10)", trigger:"map", result:"(2 + 10) :: Nil", note:"Map procesa el resto (2)." },
+      { expr:"11 :: (2 + 10) :: Nil", target:"2 + 10", trigger:"+", result:"12", note:"Evaluamos lambda para el segundo elemento." },
+      { expr:"11 :: 12 :: Nil", target:"12 :: Nil", trigger:"::", result:"List(12)", note:"Construcción de lista (Right Assoc)." },
+      { expr:"11 :: List(12)", target:"11 :: List(12)", trigger:"::", result:"List(11, 12)", note:"Resultado final." }
+    ]
+  },
+    {
+    cat:"Listas", name:"foldLeft: Orden Evaluación",
+    defs:`// foldLeft acumula de izquierda a derecha
+// foldLeft(z)(f) = f(f(f(z, x1), x2), ... xn)`,
+    steps:[
+      { expr:"List(1, 2, 3).foldLeft(0)((acc, x) => acc + x)", target:"List(1, 2, 3).foldLeft(0)((acc, x) => acc + x)", trigger:"foldLeft", result:"((0 + 1) + 2) + 3", note:"foldLeft procesa de izquierda a derecha." },
+      { expr:"((0 + 1) + 2) + 3", target:"0 + 1", trigger:"+", result:"1", note:"Evaluamos la primera aplicación de la lambda con acc=0 y x=1." },
+      { expr:"(1 + 2) + 3", target:"1 + 2", trigger:"+", result:"3", note:"Evaluamos la segunda aplicación de la lambda con acc=1 y x=2." },
+      { expr:"3 + 3", target:"3 + 3", trigger:"+", result:"6", note:"Evaluamos la tercera aplicación de la lambda con acc=3 y x=3." }
+     ]         
+    },
+    {
+    cat:"Listas", name:"foldRight: Orden Evaluación",
+    defs:`// foldRight acumula de derecha a izquierda
+// foldRight(z)(f) = f(x1, f(x2, ... f(xn, z)...))`,
+    steps:[
+      { expr:"List(1, 2, 3).foldRight(0)((x, acc) => x + acc)", target:"List(1, 2, 3).foldRight(0)((x, acc) => x + acc)", trigger:"foldRight", result:"1 + (2 + (3 + 0))", note:"foldRight procesa de derecha a izquierda." },
+      { expr:"1 + (2 + (3 + 0))", target:"3 + 0", trigger:"+", result:"3", note:"Evaluamos la primera aplicación de la lambda con x=3 y acc=0." },
+      { expr:"1 + (2 + 3)", target:"2 + 3", trigger:"+", result:"5", note:"Evaluamos la segunda aplicación de la lambda con x=2 y acc=3." },
+      { expr:"1 + 5", target:"1 + 5", trigger:"+", result:"6", note:"Evaluamos la tercera aplicación de la lambda con x=1 y acc=5." }
+     ]         
+     }
+];
+
+// ── ESTADO ──
+let currentExIdx = 0;
+let stepIdx = 0;
+
+const ui = {
+  exList: document.getElementById('exList'),
+  defs: document.getElementById('defsContent'),
+  exprBox: document.getElementById('exprWrapper'),
+  msgBox: document.getElementById('msgBox'),
+  histList: document.getElementById('histList'),
+  env: document.getElementById('envFloat'),
+  modal: document.getElementById('helpModal'),
+  btnXray: document.getElementById('btnXray'),
+  progressText: document.getElementById('progressText'),
+  progressBar: document.getElementById('progressBar'),
+};
+
+// ── CONSTANTES DE LÉXICO ──
+const OPERATORS = ['+', '-', '*', '/', '%', '::', '||', '&&', '==', '!=', '=>', '<', '>', '<=', '>=', '!', ':'];
+const PARENS    = ['(', ')', '{', '}', '[', ']'];
+const KEYWORDS  = ['if', 'else', 'then', 'case', 'val', 'def', 'match'];
+
+// ── TOKENIZADOR ROBUSTO ──
+const TOKEN_REGEX = /(\d+(?:\.\d+)?|"[^"]*"|=>|::|&&|\|\||==|!=|<=|>=|[A-Za-z_]\w*|[-+*/%<>!:]|[()[\]{},.])/g;
+function tokenizeWithIndices(str) {
+  const tokens = [];
+  let match;
+  while ((match = TOKEN_REGEX.exec(str)) !== null) {
+    tokens.push({ text: match[0], start: match.index, end: TOKEN_REGEX.lastIndex });
+  }
+  return tokens;
+}
+function isOperator(t){ return OPERATORS.includes(t); }
+function isParens(t){ return PARENS.includes(t); }
+function isKeyword(t){ return KEYWORDS.includes(t); }
+function isIdent(t){ return /^[A-Za-z_]/.test(t); }
+
+// ── NORMALIZACIÓN DE OPERADORES (corrige || mal codificado) ──
+function normalizeOperators() {
+  const fix = s => (typeof s === 'string') ? s.replace(/\\\n\\\n/g, '||') : s;
+  EXERCISES.forEach(ex => {
+    ex.defs = fix(ex.defs);
+    ex.steps.forEach(st => {
+      st.expr   = fix(st.expr);
+      st.target = fix(st.target);
+      st.trigger= fix(st.trigger);
+      st.result = fix(st.result);
+      st.note   = fix(st.note);
+    });
+  });
+}
+
+// ── PERSISTENCIA ──
+const STORAGE_KEY = 'scala_evaluator_progress';
+function saveProgress() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ ex: currentExIdx, step: stepIdx }));
+  } catch {}
+}
+function loadProgress() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const { ex, step } = JSON.parse(raw);
+    if (Number.isInteger(ex) && ex >= 0 && ex < EXERCISES.length) {
+      currentExIdx = ex;
+      stepIdx = Math.max(0, Math.min(step || 0, EXERCISES[ex].steps.length));
+      return true;
+    }
+  } catch {}
+  return false;
+}
+
+// ── INICIO ──
+init();
+function init() {
+  normalizeOperators();
+  renderSidebar();
+  if (!loadProgress()) {
+    loadExercise(0);
+  } else {
+    highlightActiveBtn();
+    renderStep();
+  }
+  setupXrayToggle();
+}
+
+// ── SIDEBAR ──
+function renderSidebar() {
+  ui.exList.innerHTML = '';
+  let lastCat = '';
+  EXERCISES.forEach((ex, i) => {
+    if (ex.cat !== lastCat) {
+      const h = document.createElement('div');
+      h.className = 'sidebar-header';
+      h.textContent = ex.cat;
+      ui.exList.appendChild(h);
+      lastCat = ex.cat;
+    }
+    const btn = document.createElement('button');
+    btn.className = 'ex-btn';
+    btn.innerHTML = `<strong>${ex.name}</strong><code class="mono">${ex.steps[0].expr.substring(0,25)}...</code>`;
+    btn.onclick = () => loadExercise(i, btn);
+    btn.dataset.idx = i;
+    ui.exList.appendChild(btn);
+  });
+  highlightActiveBtn();
+}
+function highlightActiveBtn() {
+  document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
+  const active = Array.from(document.querySelectorAll('.ex-btn')).find(b => Number(b.dataset.idx) === currentExIdx);
+  if (active) active.classList.add('active'); else {
+    const first = document.querySelector('.ex-btn'); if (first) first.classList.add('active');
+  }
+}
+function loadExercise(idx, btn) {
+  currentExIdx = idx;
+  if (btn) {
+    document.querySelectorAll('.ex-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+  } else {
+    highlightActiveBtn();
+  }
+  reset();
+}
+
+// ── RESET ──
+function reset() {
+  stepIdx = 0;
+  ui.histList.innerHTML = '';
+  ui.env.classList.remove('show');
+  ui.exprBox.classList.remove('success');
+  renderStep();
+  saveProgress();
+}
+
+// ── CORE RENDER ──
+function renderStep() {
+  const ex = EXERCISES[currentExIdx];
+  ui.defs.innerHTML = ex.defs;
+
+  // Fin
+  if (stepIdx >= ex.steps.length) {
+    const lastVal = ex.steps[stepIdx - 1].result;
+    ui.exprBox.innerHTML = `<div style="text-align:center"><div style="font-size:2.5rem;color:#10b981;font-weight:bold">${lastVal}</div><div>Completado 🎉</div></div>`;
+    ui.exprBox.classList.add('success');
+    ui.msgBox.textContent = "Fin del ejercicio.";
+    ui.msgBox.className = "msg-box success";
+    ui.env.classList.remove('show');
+    updateProgress();
+    saveProgress();
+    return;
+  }
+
+  const step = ex.steps[stepIdx];
+  ui.exprBox.innerHTML = '';
+  ui.exprBox.className = "expr-wrapper mono";
+  ui.msgBox.textContent = "Haz clic en el operador/función a evaluar";
+  ui.msgBox.className = "msg-box";
+
+  // Entorno (variables)
+  if (step.env) {
+    ui.env.innerHTML = Object.entries(step.env).map(([k,v]) => `<span style="color:#f472b6">${k}</span> := <span style="color:#6ee7b7">${v}</span>`).join('  ');
+    ui.env.classList.add('show');
+  } else {
+    if (stepIdx === 0) ui.env.classList.remove('show');
+    ui.env.innerHTML = '';
+    ui.env.classList.remove('show');
+  }
+
+  // Tokenización y mapeo
+  const tokens = tokenizeWithIndices(step.expr);
+  const targetStart = step.expr.indexOf(step.target);
+  const targetEnd   = targetStart + step.target.length;
+
+  tokens.forEach(tok => {
+    const el = document.createElement('div');
+    el.className = 'token';
+    el.textContent = tok.text;
+
+    const t = tok.text;
+
+    // Estilos
+    if (!isNaN(parseFloat(t)))       el.classList.add('t-num');
+    else if (t.startsWith('"'))      el.classList.add('t-str');
+    else if (isOperator(t))          el.classList.add('t-op','is-op');
+    else if (isParens(t))            el.classList.add('t-par','is-parens');
+    else if (isKeyword(t))           el.classList.add('t-kwd');
+    else if (isIdent(t))             el.classList.add('t-fn');
+
+    // ¿Está dentro de la diana?
+    const isInTarget = (tok.start >= targetStart && tok.end <= targetEnd);
+    if (isInTarget) el.classList.add('in-target');
+
+    // Accesibilidad básica
+    el.setAttribute('role','button');
+    el.tabIndex = -1;
+
+    const isTrigger = (t === step.trigger);
+    if (isInTarget && isTrigger) {
+      el.tabIndex = 0;
+      el.setAttribute('aria-label', `Evaluar ${t}`);
+      el.addEventListener('keydown', ke => {
+        if (ke.key === 'Enter' || ke.key === ' ') {
+          ke.preventDefault(); success(step);
+        }
+      });
+    }
+
+    // Click handler
+    el.onclick = (e) => {
+      e.stopPropagation();
+      if (t !== step.trigger) {
+        if (isInTarget) fail(el, "Incorrecto. Pulsa el operador o función que se debe evaluar ahora.");
+        else fail(el, "Esa parte no se evalúa ahora.");
+        return;
+      }
+      if (!isInTarget) {
+        fail(el, "Orden incorrecto. Hay otra operación prioritaria.");
+        return;
+      }
+      success(step);
+    };
+
+    ui.exprBox.appendChild(el);
+  });
+
+  updateProgress();
+  saveProgress();
+}
+
+function success(step) {
+  ui.msgBox.textContent = "¡Correcto!";
+  ui.msgBox.className = "msg-box success";
+  ui.exprBox.classList.add('success');
+
+  const item = document.createElement('div');
+  item.className = 'hist-item active';
+  item.innerHTML = `
+    <div class="hist-expr mono">${step.expr}</div>
+    <div class="hist-res mono">➝ ${step.result}</div>
+    <div class="hist-note">${step.note}</div>
+  `;
+  ui.histList.insertBefore(item, ui.histList.firstChild);
+
+  setTimeout(() => {
+    stepIdx++;
+    renderStep();
+  }, 500);
+}
+
+function fail(el, msg) {
+  ui.msgBox.textContent = msg;
+  ui.msgBox.className = "msg-box error";
+  ui.exprBox.classList.add('shake');
+  setTimeout(() => ui.exprBox.classList.remove('shake'), 500);
+}
+
+// ── XRAY TOGGLE ──
+let xrayToggled = false;
+function setupXrayToggle() {
+  ui.btnXray.addEventListener('click', () => {
+    xrayToggled = !xrayToggled;
+    ui.exprBox.classList.toggle('structure-mode', xrayToggled);
+    ui.btnXray.classList.toggle('active', xrayToggled);
+  });
+  // Soporte pulsar-sostener con Alt
+  ui.btnXray.addEventListener('mousedown', e => {
+    if (e.altKey) ui.exprBox.classList.add('structure-mode');
+  });
+  ui.btnXray.addEventListener('mouseup', () => {
+    if (!xrayToggled) ui.exprBox.classList.remove('structure-mode');
+  });
+}
+
+function toggleXray(active) {
+  ui.exprBox.classList.toggle('structure-mode', !!active);
+  ui.btnXray.classList.toggle('active', !!active);
+  xrayToggled = !!active;
+}
+
+// ── AYUDA ──
+function toggleHelp(show) {
+  if (show) ui.modal.classList.add('open');
+  else ui.modal.classList.remove('open');
+}
+
+// ── PROGRESO VISUAL ──
+function updateProgress() {
+  const ex = EXERCISES[currentExIdx];
+  const total = ex.steps.length;
+  const done = Math.min(stepIdx, total);
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  ui.progressText.textContent = `Paso ${done} de ${total}`;
+  ui.progressBar.style.width = `${pct}%`;
+}
+
+// ── PISTA ──
+function hintStep() {
+  const ex = EXERCISES[currentExIdx];
+  if (stepIdx >= ex.steps.length) return;
+  const step = ex.steps[stepIdx];
+  ui.msgBox.textContent = `Pista aplicada: ${step.trigger}`;
+  ui.msgBox.className = "msg-box";
+  setTimeout(() => success(step), 150);
+}
+</script>
+</body>
+</html>
