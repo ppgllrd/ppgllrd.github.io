@@ -1,0 +1,244 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Distribución Binomial</title>
+  <meta name="description" content="Explora la distribución binomial con ensayo, experimento animado y simulación comparada con teoría. Modo oscuro, diseño responsive y fórmulas LaTeX renderizadas." />
+  <!-- MathJax for LaTeX rendering -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['\\(','\\)'], ['$', '$']] },
+      svg: { fontCache: 'global' }
+    };
+  </script>
+  <script defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"></script>
+  <style>
+    :root{ --bg:#f7faf9; --surface:#ffffff; --text:#1f2937; --muted:#6b7280; --primary:#0f766e; --primary-600:#0ea5a4; --accent:#14b8a6; --border:#e5e7eb; --shadow:0 6px 16px rgba(0,0,0,.08); }
+    .dark{ --bg:#0b1220; --surface:#0f172a; --text:#e5e7eb; --muted:#a1a1aa; --primary:#2dd4bf; --primary-600:#14b8a6; --accent:#2dd4bf; --border:#1f2937; --shadow:0 6px 18px rgba(0,0,0,.55); }
+    html,body{height:100%}
+    body{ margin:0; font-family:"Segoe UI", system-ui, -apple-system, Roboto, Ubuntu, Cantarell, "Noto Sans", Arial; background:var(--bg); color:var(--text); display:flex; flex-direction:column }
+    header{ position:sticky; top:0; z-index:10; backdrop-filter:blur(6px); background: color-mix(in srgb, var(--surface) 85%, transparent); border-bottom:1px solid var(--border) }
+    .wrap{ max-width:1200px; margin:0 auto; padding:14px 18px }
+    .brand{ display:flex; align-items:center; gap:12px }
+    .brand h1{ margin:0; font-size:1.25rem }
+    .tag{ color:var(--muted); font-size:.85rem }
+    .switch{ display:inline-flex; align-items:center; gap:8px }
+    .switch input{ appearance:none; width:44px; height:24px; background:var(--border); border-radius:999px; position:relative; outline:none; cursor:pointer; transition:.2s background }
+    .switch input:checked{ background: color-mix(in srgb, var(--primary) 55%, #999 45%) }
+    .switch input::after{ content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:999px; background:white; transition:.2s left; box-shadow:0 1px 2px rgba(0,0,0,.25) }
+    .switch input:checked::after{ left:23px }
+
+    .grid{ display:grid; grid-template-columns:1fr; gap:18px; align-items:stretch }
+    @media (min-width: 980px){ .grid{ grid-template-columns: 1.1fr .9fr; grid-auto-rows: 1fr } }
+
+    .card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:var(--shadow) }
+    .card.fill{ display:flex; flex-direction:column }
+    .card h2{ margin:.2rem 0 .6rem 0; color:var(--primary); font-size:1.08rem }
+    .muted{ color:var(--muted) }
+
+    .controls{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px }
+    @media (min-width: 740px){ .controls{ grid-template-columns: repeat(4, minmax(0,1fr)) } }
+    .ctrl{ display:flex; flex-direction:column; gap:6px }
+    label{ font-size:.86rem; font-weight:600 }
+    input[type="number"], input[type="text"], input[type="range"], select{ color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font:inherit }
+    input[type="range"]{ height:28px }
+
+    .row-buttons{ display:flex; flex-wrap:wrap; gap:10px; align-items:center }
+    button{ border:1px solid color-mix(in srgb, var(--primary) 45%, var(--border) 55%); background:var(--primary-600); color:white; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; letter-spacing:.2px; box-shadow:0 2px 0 rgba(0,0,0,.05); transition: transform .06s ease, filter .15s ease }
+    button.secondary{ background:transparent; color:var(--primary) }
+    button.ghost{ background:transparent; color:var(--text); border-style:dashed }
+    button:hover{ filter:brightness(1.03) saturate(1.05) }
+    button:active{ transform: translateY(1px) }
+    button:disabled{ opacity:.6; cursor:not-allowed }
+
+    .status{ margin-top:10px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background: color-mix(in srgb, var(--surface) 92%, transparent) }
+
+    .pill{ padding:4px 8px; border-radius:999px; font-weight:700; font-size:.85rem }
+    .pill.E{ background: color-mix(in srgb, #16a34a 22%, #bbf7d0); color:#064e3b }
+    .pill.F{ background: color-mix(in srgb, #ef4444 18%, #fecaca); color:#7f1d1d }
+
+    .sequence{ display:flex; flex-wrap:wrap; gap:6px; min-height:34px; padding:10px; border:1px dashed var(--border); border-radius:10px; background: color-mix(in srgb, var(--surface) 92%, transparent) }
+
+    .charts{ display:grid; grid-template-columns:1fr; gap:14px; flex:1 1 auto; min-height:180px }
+    @media (min-width: 980px){ .charts{ grid-template-columns: 1fr 1fr } }
+    .chart-card{ display:flex; flex-direction:column }
+    .chart-card h3{ margin:.2rem 0 .6rem 0; color:var(--primary) }
+    canvas{ display:block; max-width:100%; background:var(--surface); border:1px solid var(--border); border-radius:10px }
+
+    .progress{ height:8px; background: color-mix(in srgb, var(--border) 70%, transparent); border-radius:999px; overflow:hidden }
+    .progress .pbar{ height:100%; width:0%; background: linear-gradient(90deg, #22c55e, #10b981) }
+
+    footer{ margin-top:auto; border-top:1px solid var(--border) }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap" style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+      <div class="brand"><div style="font-size:1.3rem">🎲</div><div><h1>Distribución Binomial</h1><div class="tag">Ensayo, experimento animado y simulación con teoría</div></div></div>
+      <label class="switch" title="Modo oscuro"><span class="muted">Oscuro</span><input id="themeToggle" type="checkbox" /></label>
+    </div>
+  </header>
+
+  <main class="wrap" aria-live="polite" aria-atomic="true">
+    <div class="grid">
+      <!-- Panel 1: Ensayo + Experimento -->
+      <section class="card fill" id="panel-1">
+        <h2>1) Ensayo de Bernoulli y experimento</h2>
+        <p class="muted">Elige <strong>p</strong> y ejecuta un ensayo o un experimento con <strong>n</strong> repeticiones.</p>
+
+        <div class="controls" style="margin-top:8px">
+          <div class="ctrl"><label>Probabilidad de éxito (p)</label><input type="range" id="pRange" min="0" max="1" step="0.01" value="0.50" /><input type="number" id="pNumber" min="0" max="1" step="0.01" value="0.50" /></div>
+          <div class="ctrl"><label>Nº de ensayos (n)</label><input type="number" id="nInput" min="1" max="1000" step="1" value="10" /></div>
+          <div class="ctrl"><label>Velocidad animación (ms)</label><input type="range" id="speed" min="30" max="800" step="10" value="180" /></div>
+        </div>
+
+        <div class="row-buttons" style="margin-top:10px">
+          <button id="btnBernoulli">Ensayo</button>
+          <button id="btnExperiment">Experimento (n)</button>
+          <button id="btnClearSeq" class="secondary">Limpiar</button>
+        </div>
+
+        <div class="status" id="statusExp">Listo.</div>
+        <h3 style="margin-top:12px">Secuencia</h3>
+        <div class="sequence" id="seq"></div>
+        <div class="muted" id="lastExpSummary" style="margin-top:8px">—</div>
+      </section>
+
+      <!-- Panel 2: Simulación masiva -->
+      <section class="card fill" id="panel-2">
+        <h2>2) Simulación de la distribución binomial</h2>
+        <p class="muted">Repite el experimento <strong>N</strong> veces y compara con la teoría. El tamaño de lote se ajusta automáticamente.</p>
+
+        <div class="controls" style="margin-top:8px">
+          <div class="ctrl"><label>Nº de simulaciones (N)</label><input type="number" id="NInput" min="100" max="10000000" step="100" value="100000" /></div>
+          <div class="ctrl"><label>Semilla (opcional)</label><input type="text" id="seedInput" placeholder="p.ej. 2026" /></div>
+        </div>
+
+        <div class="row-buttons" style="margin-top:10px">
+          <button id="btnRun">Simular distribución</button>
+          <button id="btnCancel" class="ghost" disabled>Cancelar</button>
+          <button id="btnReset" class="secondary">Reiniciar</button>
+        </div>
+        <div class="progress" style="margin-top:10px"><div class="pbar" id="progBar"></div></div>
+        <div class="status" id="statusSim">Sin ejecutar.</div>
+
+        <div class="card" style="margin-top:12px">
+          <h3>Estadísticas</h3>
+          <div class="stats" style="display:grid; grid-template-columns:auto 1fr; gap:6px 12px">
+            <div class="muted">Parámetros</div><div id="params">—</div>
+            <div class="muted">Media exp.</div><div id="meanExp">—</div>
+            <div class="muted">Media teórica (n·p)</div><div id="meanTheo">—</div>
+            <div class="muted">Var. exp. <span title="sigma al cuadrado">σ²</span></div><div id="varExp">—</div>
+            <div class="muted">Var. teórica <span title="sigma al cuadrado">σ² = n·p·(1−p)</span></div><div id="varTheo">—</div>
+          </div>
+        </div>
+
+        <div class="charts" style="margin-top:8px">
+          <div class="chart-card"><h3>Frecuencia simulada (k)</h3><canvas id="chartSim"></canvas></div>
+          <div class="chart-card"><h3>Probabilidad teórica (k)</h3><canvas id="chartTheo"></canvas></div>
+          <div class="chart-card" style="grid-column:1/-1"><h3>Diferencia (Teórica − Simulada)</h3><canvas id="chartDiff"></canvas></div>
+        </div>
+
+        <div class="row-buttons" style="margin-top:8px">
+          <button id="btnCSV" class="secondary" disabled>Descargar CSV</button>
+          <button id="btnPNG" class="secondary" disabled>Descargar PNG de gráficos</button>
+        </div>
+      </section>
+    </div>
+
+    <!-- Panel 3: Explicación -->
+    <section class="card fill" id="panel-3" style="margin-top:18px">
+      <h2>3) ¿Qué estás viendo?</h2>
+      <p>Función de probabilidad: \(\displaystyle P(X=k) = \binom{n}{k}\, p^k\, (1-p)^{n-k} \). La media es \(n p\) y la varianza es \(\sigma^2 = n p (1-p)\).</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap" style="display:flex; justify-content:space-between; align-items:center; gap:12px; padding:12px 18px">
+      <div class="muted">© 2026 · Dist. Binomial</div>
+      <div class="muted">Atajos: <kbd>R</kbd> ejecutar · <kbd>Esc</kbd> cancelar</div>
+    </div>
+  </footer>
+
+  <script>
+    // ===== Utilidades comunes =====
+    const $ = (s)=>document.querySelector(s);
+    const clamp = (x,a,b)=> Math.max(a, Math.min(b, x));
+    function hashStringToInt(str){ let h=1779033703 ^ str.length; for(let i=0;i<str.length;i++){ h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); } return (h>>>0); }
+    function mulberry32(a){ return function(){ let t=(a+=0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+    // ===== Tema =====
+    const themeToggle=$('#themeToggle');
+    (function applyTheme(){ const persisted=localStorage.getItem('distbin_theme'); if(persisted==='dark'){ document.body.classList.add('dark'); themeToggle.checked=true; }})();
+    themeToggle.addEventListener('change', ()=>{ document.body.classList.toggle('dark', themeToggle.checked); localStorage.setItem('distbin_theme', themeToggle.checked?'dark':'light'); redrawCharts(); });
+
+    // ===== Panel 1: Ensayo + Experimento =====
+    const pRange=$('#pRange'), pNumber=$('#pNumber'); const nInput=$('#nInput'); const speedInput=$('#speed');
+    const btnBernoulli=$('#btnBernoulli'), btnExperiment=$('#btnExperiment'), btnClearSeq=$('#btnClearSeq');
+    const seq=$('#seq'); const statusExp=$('#statusExp'); const lastExpSummary=$('#lastExpSummary');
+
+    function syncP(){ const p = clamp(parseFloat(pNumber.value||'0.5'), 0, 1); pNumber.value=p.toFixed(2); pRange.value=p; return p; }
+    pRange.addEventListener('input', ()=>{ pNumber.value=pRange.value; syncP(); }); pNumber.addEventListener('input', syncP);
+
+    let rng=Math.random;
+    function setupRNG(){ const seed=(seedInput.value||'').trim(); rng = seed ? mulberry32(hashStringToInt(seed)) : Math.random; }
+    function ensayoBernoulli(p){ return rng()<p ? 1 : 0; }
+
+    btnBernoulli.addEventListener('click', ()=>{ const p=syncP(); const r=ensayoBernoulli(p); const pill=document.createElement('span'); pill.className='pill '+(r? 'E':'F'); pill.textContent = r? 'E':'F'; seq.appendChild(pill); statusExp.textContent=`Ensayo: ${r? 'Éxito':'Fracaso'} (p=${p.toFixed(2)})`; });
+    btnClearSeq.addEventListener('click', ()=>{ seq.innerHTML=''; lastExpSummary.textContent='—'; statusExp.textContent='Secuencia borrada.'; });
+
+    btnExperiment.addEventListener('click', async ()=>{
+      const p=syncP(); const n = clamp(parseInt(nInput.value||'10',10),1,1000); nInput.value=n; seq.innerHTML=''; statusExp.textContent='Ejecutando experimento...';
+      let ex=0; const delay=parseInt(speedInput.value||'180',10); for(let i=0;i<n;i++){ const r = ensayoBernoulli(p); ex+=r; const pill=document.createElement('span'); pill.className='pill '+(r? 'E':'F'); pill.textContent=r? 'E':'F'; seq.appendChild(pill); await new Promise(res=>setTimeout(res, Math.min(300, delay))); }
+      lastExpSummary.textContent=`Resultado experimento (n=${n}, p=${p.toFixed(2)}): k = ${ex} éxitos.`; statusExp.textContent='Experimento completado.';
+    });
+
+    // ===== Panel 2: Simulación masiva =====
+    const NInput=$('#NInput'); const seedInput=$('#seedInput');
+    const btnRun=$('#btnRun'), btnCancel=$('#btnCancel'), btnReset=$('#btnReset');
+    const statusSim=$('#statusSim'); const progBar=$('#progBar');
+    const paramsEl=$('#params'), meanExpEl=$('#meanExp'), meanTheoEl=$('#meanTheo'), varExpEl=$('#varExp'), varTheoEl=$('#varTheo');
+
+    const chartSim=$('#chartSim'), chartTheo=$('#chartTheo'), chartDiff=$('#chartDiff');
+
+    let running=false; let cancelFlag=false; let lastDataset=null; let lastChartData=null;
+
+    function comb(n,k){ if(k<0||k>n) return 0; if(k===0||k===n) return 1; if(k>n/2) k=n-k; let r=1; for(let i=1;i<=k;i++) r=r*(n-i+1)/i; return r; }
+    function binomProb(k,n,p){ if(p===0) return (k===0)?1:0; if(p===1) return (k===n)?1:0; return comb(n,k)*Math.pow(p,k)*Math.pow(1-p,n-k); }
+
+    function setCanvasSize(canvas){ const pw=canvas.parentElement; const st=getComputedStyle(pw); const w=pw.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight); const ar=1.7; const h=Math.max(160, Math.min(420, Math.round(w/ar))); if(canvas.width!==Math.round(w)||canvas.height!==h){ canvas.width=Math.round(w); canvas.height=h; } }
+    function drawAxes(ctx, maxValue, labels, yTitle){ const c=ctx.canvas; const p={top:18,right:24,bottom:46,left:56}; const cw=c.width-p.left-p.right; const ch=c.height-p.top-p.bottom; if(cw<=0||ch<=0) return p; ctx.clearRect(0,0,c.width,c.height); ctx.strokeStyle=getComputedStyle(document.body).getPropertyValue('--border'); ctx.lineWidth=1; ctx.beginPath(); ctx.moveTo(p.left,p.top); ctx.lineTo(p.left,c.height-p.bottom); ctx.lineTo(c.width-p.right,c.height-p.bottom); ctx.stroke(); ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted'); ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font='11px Segoe UI'; const yTicks=5; for(let i=0;i<=yTicks;i++){ const v=maxValue*i/yTicks; const yp=c.height-p.bottom-(ch*(v/maxValue)); const vt=(Math.abs(v)<1e-6)?'0':v.toFixed(3); ctx.fillText(vt,p.left-8,yp); ctx.beginPath(); ctx.moveTo(p.left-4,yp); ctx.lineTo(p.left,yp); ctx.stroke(); } ctx.save(); ctx.translate(p.left*0.35, c.height/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--primary'); ctx.font='12px Segoe UI'; ctx.fillText(yTitle, 0,-9); ctx.restore(); ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--muted'); ctx.textAlign='center'; ctx.textBaseline='top'; ctx.font='11px Segoe UI'; const nl=labels.length; const cwcell=cw/(nl||1); const step=Math.ceil(nl/Math.max(2,Math.floor(cw/36))); for(let i=0;i<nl;i+=step){ const xp=p.left+cwcell*(i+0.5); ctx.fillText(labels[i], xp, c.height-p.bottom+8);} ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--primary'); ctx.font='12px Segoe UI'; ctx.fillText('Número de éxitos (k)', c.width/2, c.height-p.bottom/2.3); return p; }
+    function drawBars(ctx, labels, data, fill, stroke, maxValue, yTitle){ const p=drawAxes(ctx,maxValue,labels,yTitle); const cw=ctx.canvas.width-p.left-p.right; const ch=ctx.canvas.height-p.top-p.bottom; const nb=labels.length; if(nb===0) return; const cell=cw/nb; const bw=cell*0.72; const gap=(cell-bw)/2; ctx.fillStyle=fill; ctx.strokeStyle=stroke; ctx.lineWidth=0.6; for(let i=0;i<nb;i++){ const h=Math.max(0, ch*(data[i]/maxValue)); const xp=p.left+i*cell+gap; const yp = ctx.canvas.height - p.bottom - h; ctx.fillRect(xp,yp,bw,h); ctx.strokeRect(xp,yp,bw,h); } }
+    function drawCharts(labels, sim, theo, diff){ setCanvasSize(chartSim); setCanvasSize(chartTheo); setCanvasSize(chartDiff); const maxV=Math.max(0.01, ...sim, ...theo)*1.1; const maxD=Math.max(0.01, ...diff.map(v=>Math.abs(v)))*1.1; drawBars(chartSim.getContext('2d'), labels, sim, '#22c55e', '#16a34a', maxV, 'Frecuencia simulada'); drawBars(chartTheo.getContext('2d'), labels, theo, '#f43f5e', '#b91c1c', maxV, 'Prob. teórica'); drawBars(chartDiff.getContext('2d'), labels, diff, '#06b6d4', '#0891b2', maxD, 'Diferencia (Teo − Sim)'); lastChartData={labels, sim, theo, diff}; }
+    function redrawCharts(){ if(!lastChartData) return; const {labels, sim, theo, diff}=lastChartData; drawCharts(labels, sim, theo, diff); }
+    window.addEventListener('resize', ()=>{ clearTimeout(window.__distbin_r); window.__distbin_r=setTimeout(redrawCharts,200); });
+
+    function autoBatch(N){ const targetBatches = clamp(Math.round(N/4000), 50, 200); return Math.max(500, Math.floor(N/targetBatches)); }
+
+    function resetUI(){ cancelFlag=false; progBar.style.width='0%'; statusSim.textContent='Sin ejecutar.'; statusSim.className='status'; paramsEl.textContent=meanExpEl.textContent=meanTheoEl.textContent=varExpEl.textContent=varTheoEl.textContent='—'; btnCSV.disabled=true; btnPNG.disabled=true; lastDataset=null; drawCharts([],[],[],[]); }
+
+    btnRun.addEventListener('click', runSim); btnCancel.addEventListener('click', ()=> cancelFlag=true); btnReset.addEventListener('click', resetUI);
+    document.addEventListener('keydown', (ev)=>{ if(ev.key.toLowerCase()==='r') runSim(); if(ev.key==='Escape') cancelFlag=true; });
+
+    async function runSim(){ if(running) return; running=true; cancelFlag=false; btnRun.disabled=true; btnCancel.disabled=false; statusSim.className='status';
+      setupRNG(); const p=syncP(); const n=clamp(parseInt(nInput.value||'10',10),1,100000); const N=clamp(parseInt(NInput.value||'100000',10),100,10000000); nInput.value=n; NInput.value=N; paramsEl.textContent=`p=${p}, n=${n}, N=${N.toLocaleString()}`; statusSim.textContent=`Simulando ${N.toLocaleString()} repeticiones...`; progBar.style.width='0%';
+      const bs = autoBatch(N);
+      const freq=new Array(n+1).fill(0); const start=performance.now();
+      let done=0; while(done<N){ if(cancelFlag){ statusSim.textContent='Cancelado.'; break; } const lim=Math.min(N, done+bs); for(let i=done;i<lim;i++){ let x=0; for(let j=0;j<n;j++){ if(rng()<p) x++; } freq[x]++; } done=lim; const pct=100*done/N; progBar.style.width=pct.toFixed(1)+'%'; statusSim.textContent=`Progreso: ${pct.toFixed(1)}%`; await new Promise(r=>setTimeout(r)); }
+      const elapsed=performance.now()-start; btnCancel.disabled=true; btnRun.disabled=false; running=false; if(cancelFlag){ return; }
+      const simProb=freq.map(c=>c/N); const labels=Array.from({length:n+1},(_,k)=>k.toString()); const theo=labels.map((_,k)=> comb(n,k)*Math.pow(p,k)*Math.pow(1-p,n-k)); const diff=labels.map((_,k)=> theo[k]-simProb[k]);
+      let sum=0, sum2=0; for(let k=0;k<=n;k++){ sum+=k*freq[k]; sum2+=k*k*freq[k]; } const meanX=sum/N; const varX = N>1 ? (sum2 - (sum*sum)/N)/(N-1) : NaN; const meanT=n*p; const varT=n*p*(1-p);
+      meanExpEl.textContent=isFinite(meanX)?meanX.toFixed(5):'—'; varExpEl.textContent=isFinite(varX)?varX.toFixed(5):'—'; meanTheoEl.textContent=meanT.toFixed(5); varTheoEl.textContent=varT.toFixed(5);
+      drawCharts(labels, simProb, theo, diff); statusSim.textContent=`Listo. ${N.toLocaleString()} simulaciones en ${elapsed.toFixed(0)} ms.`; btnCSV.disabled=false; btnPNG.disabled=false; lastDataset={labels, simProb, theo, diff, params:{p,n,N,seed:seedInput.value||null, batch:bs}};
+    }
+
+    const btnCSV=$('#btnCSV'), btnPNG=$('#btnPNG');
+    btnCSV.addEventListener('click', ()=>{ if(!lastDataset) return; const {labels, simProb, theo, diff, params}=lastDataset; const header=['k','freq_simulada','prob_teorica','diferencia']; const rows=labels.map((k,i)=> [k, simProb[i].toFixed(8), theo[i].toFixed(8), diff[i].toFixed(8)]); const meta=`# Dist. Binomial – comparación\n# params: ${JSON.stringify(params)}\n`; const csv=meta+header.join(',')+'\n'+rows.map(r=>r.join(',')).join('\n'); const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='dist_binomial.csv'; a.click(); URL.revokeObjectURL(a.href); });
+    btnPNG.addEventListener('click', ()=>{ if(!lastDataset) return; const W=Math.max(chartSim.width, chartTheo.width, chartDiff.width); const H=chartSim.height+chartTheo.height+chartDiff.height+60; const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const ctx=cv.getContext('2d'); ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--surface'); ctx.fillRect(0,0,W,H); ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--text'); ctx.font='16px Segoe UI'; let y=22; ctx.fillText('Frecuencia simulada (k)', 12, y); ctx.drawImage(chartSim, 0, y+6); y+=chartSim.height+22; ctx.fillText('Probabilidad teórica (k)', 12, y); ctx.drawImage(chartTheo, 0, y+6); y+=chartTheo.height+22; ctx.fillText('Diferencia (Teórica − Simulada)', 12, y); ctx.drawImage(chartDiff, 0, y+6); const a=document.createElement('a'); a.href=cv.toDataURL('image/png'); a.download='dist_binomial_graficos.png'; a.click(); });
+
+    function init(){ syncP(); redrawCharts(); }
+    init();
+  </script>
+</body>
+</html>

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Banach Matchbox</title>
+  <meta name="description" content="Simulador interactivo del problema de las cerillas de Banach: animación, distribución simulada, comparativa teórica (p=0.5), exportación, modo oscuro y paneles adaptativos." />
+  <style>
+    :root{
+      --bg: #f7faf9; --surface: #ffffff; --text: #1f2937; --muted: #6b7280;
+      --primary: #166534; --primary-600: #16a34a; --accent: #10b981; --border: #e5e7eb; --danger: #ef4444;
+      --card-shadow: 0 6px 16px rgba(0,0,0,.08);
+    }
+    .dark{
+      --bg: #0b1220; --surface: #0f172a; --text: #e5e7eb; --muted: #a1a1aa; --primary: #34d399; --primary-600: #22c55e; --accent: #10b981; --border: #1f2937; --card-shadow: 0 6px 18px rgba(0,0,0,.55);
+    }
+    html,body{height:100%}
+    body{ margin:0; font-family: "Segoe UI", system-ui, -apple-system, Roboto, Ubuntu, Cantarell, "Noto Sans", "Helvetica Neue", Arial; background: var(--bg); color: var(--text); display:flex; flex-direction:column; }
+    header{ position:sticky; top:0; z-index:10; backdrop-filter: blur(6px); background: color-mix(in srgb, var(--surface) 85%, transparent); border-bottom:1px solid var(--border); }
+    .wrap{max-width:1200px; margin:0 auto; padding:14px 18px;}
+    .brand{display:flex; align-items:center; gap:12px}
+    .brand h1{font-size:1.25rem; margin:0; letter-spacing:.2px}
+    .tag{font-size:.75rem; color:var(--muted)}
+
+    .grid{display:grid; gap:18px; grid-template-columns:1fr; align-items:stretch}
+    @media (min-width: 900px){ .grid{ grid-template-columns: 1.15fr .85fr; grid-auto-rows: 1fr; } }
+
+    .card{ background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:16px; box-shadow:var(--card-shadow); }
+    .card.fill{ display:flex; flex-direction:column; }
+    .card h2{margin:.2rem 0 0.6rem 0; font-size:1.1rem; color:var(--primary);} .card h3{margin:.2rem 0 0.6rem 0; font-size:1rem; color:var(--primary)}
+    .muted{color:var(--muted)}
+
+    /* Panel heights responsive */
+    .panel-1, .panel-2, .panel-3{ height:auto; }
+    @media (min-width: 900px){ .panel-1, .panel-2{ min-height: clamp(360px, 48vh, 700px); } .panel-3{ min-height: clamp(240px, 34vh, 560px); } }
+
+    .controls{display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px}
+    @media (min-width: 700px){ .controls{grid-template-columns: repeat(4, minmax(0,1fr));} }
+    .ctrl{display:flex; flex-direction:column; gap:8px}
+    label{font-size:.85rem; font-weight:600}
+    input[type="number"], input[type="text"], input[type="range"], select{ color:var(--text); background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:8px 10px; font:inherit; }
+    input[type="range"]{ height: 28px; }
+    .row-buttons{ display:flex; flex-wrap:wrap; gap:10px; align-items:center; }
+    button{ border:1px solid color-mix(in srgb, var(--primary) 45%, black 0%); background:var(--primary-600); color:white; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:600; letter-spacing:.2px; box-shadow:0 2px 0 rgba(0,0,0,.05); transition: transform .06s ease, filter .15s ease; }
+    button.secondary{ background:transparent; color:var(--primary); border-color: color-mix(in srgb, var(--primary) 55%, var(--border) 45%); }
+    button.ghost{ background:transparent; color:var(--text); border:1px dashed var(--border); }
+    button:hover{ filter:brightness(1.03) saturate(1.05); }
+    button:active{ transform: translateY(1px); }
+    button:disabled{ opacity:.6; cursor:not-allowed; }
+
+    .switch{ display:inline-flex; align-items:center; gap:8px }
+    .switch input{ appearance:none; width:44px; height:24px; background:var(--border); border-radius:999px; position:relative; outline:none; cursor:pointer; transition:.2s background; }
+    .switch input:checked{ background: color-mix(in srgb, var(--primary) 55%, #999 45%); }
+    .switch input::after{ content:""; position:absolute; top:3px; left:3px; width:18px; height:18px; border-radius:999px; background:white; transition:.2s left; box-shadow:0 1px 2px rgba(0,0,0,.25) }
+    .switch input:checked::after{ left:23px; }
+
+    .status{ margin-top:10px; padding:10px 12px; border-radius:10px; border:1px solid var(--border); background: color-mix(in srgb, var(--surface) 90%, transparent); }
+
+    .matchboxes{ display:grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap:12px }
+    .box{ border:1px solid var(--border); border-radius:12px; padding:10px 12px; background: color-mix(in srgb, var(--surface) 96%, var(--bg) 4%); transition: box-shadow .15s ease, border-color .15s ease, transform .12s ease; }
+    .box.active{ box-shadow:0 0 0 3px color-mix(in srgb, var(--accent) 40%, transparent); border-color: color-mix(in srgb, var(--accent) 55%, var(--border)); transform: scale(1.01);} .box h4{ margin:.2rem 0 .5rem 0 }
+    .count{ font-weight:800; font-size:1.4rem }
+    .bar{ height:10px; border-radius:6px; background:linear-gradient(90deg, var(--accent), color-mix(in srgb, var(--accent) 70%, #065f46)); width:0% }
+    .bar-wrap{height:10px; background: color-mix(in srgb, var(--border) 75%, transparent); border-radius:6px; overflow:hidden}
+
+    .sequence{ display:flex; flex-wrap:wrap; gap:6px; min-height:34px; padding:10px; border:1px dashed var(--border); border-radius:10px; background: color-mix(in srgb, var(--surface) 90%, transparent); }
+    .pill{ padding:4px 8px; border-radius:999px; font-weight:700; font-size:.85rem; }
+    .pill.I{ background: color-mix(in srgb, var(--primary) 24%, #c7f9cc); color:#064e3b; } .pill.D{ background: color-mix(in srgb, var(--primary) 14%, #bbf7d0); color:#064e3b; } .pill.empty{ outline:2px solid var(--danger); color:#991b1b; background: color-mix(in srgb, #fecaca 75%, #fee2e2 25%); }
+
+    .charts{ display:grid; grid-template-columns: 1fr; gap:14px; flex:1 1 auto; min-height:160px }
+    @media (min-width: 900px){ .charts{ grid-template-columns: 1fr 1fr; } }
+    canvas{ display:block; max-width:100%; background: var(--surface); border:1px solid var(--border); border-radius:10px }
+
+    .legend{ display:flex; gap:14px; align-items:center; font-size:.9rem; }
+    .legend .sim{ color:#22c55e; font-weight:800 } .legend .theo{ color:#065f46; font-weight:800 }
+
+    .progress{ height:8px; background: color-mix(in srgb, var(--border) 70%, transparent); border-radius:999px; overflow:hidden }
+    .progress .pbar{ height:100%; width:0%; background: linear-gradient(90deg, #22c55e, #10b981); }
+
+    .note{ font-size:.9rem; color:var(--muted) }
+    footer{ margin-top:auto; border-top:1px solid var(--border); }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap" style="display:flex; align-items:center; justify-content:space-between; gap:12px">
+      <div class="brand"><div style="font-size:1.35rem">🔥</div><div><h1>Problema de las Cerillas de Banach</h1><div class="tag">Animación, distribución de k, exportación, modo oscuro</div></div></div>
+      <label class="switch" title="Modo oscuro"><span class="muted">Oscuro</span><input id="themeToggle" type="checkbox" /></label>
+    </div>
+  </header>
+
+  <main class="wrap" aria-live="polite" aria-atomic="true">
+    <div class="grid">
+      <section class="card fill panel-1">
+        <h2>1) Parámetros y estado</h2>
+        <p class="muted">Configura el experimento y controla la animación. La curva teórica se muestra solo en el caso clásico (simétrico, p = 0.5).</p>
+
+        <div class="controls" style="margin-top:8px">
+          <div class="ctrl">
+            <label>Simetría inicial (N en ambas cajas)</label>
+            <select id="symmetrySelect"><option value="sym">Sí, usar N en I y D</option><option value="asym">No, fijaré I y D</option></select>
+          </div>
+          <div class="ctrl" id="ctrlN">
+            <label>Nº inicial de cerillas (N)</label>
+            <input type="number" id="N" min="1" max="200" step="1" value="10" />
+          </div>
+          <div class="ctrl" id="ctrlNI" style="display:none"><label>Cerillas en Izquierda (I)</label><input type="number" id="NI" min="0" max="200" step="1" value="10" /></div>
+          <div class="ctrl" id="ctrlND" style="display:none"><label>Cerillas en Derecha (D)</label><input type="number" id="ND" min="0" max="200" step="1" value="10" /></div>
+
+          <div class="ctrl">
+            <label>Prob. de elegir Izquierda (p)</label>
+            <input type="range" id="pRange" min="0" max="1" step="0.01" value="0.5" />
+            <input type="number" id="pNumber" min="0" max="1" step="0.01" value="0.5" />
+          </div>
+          <div class="ctrl"><label>Semilla (opcional)</label><input type="text" id="seedInput" placeholder="p.ej. 12345" /></div>
+          <div class="ctrl"><label>Velocidad animación (ms)</label><input type="range" id="speed" min="30" max="800" step="10" value="220" /></div>
+        </div>
+
+        <div class="row-buttons" style="margin-top:10px"><button id="btnReset" class="secondary">Reiniciar estado</button><button id="btnStep">Paso</button><button id="btnPlay">Reproducir</button><button id="btnAutoRun" class="ghost">Ejecutar hasta vaciar</button></div>
+        <div class="status" id="statusText">Listo.</div>
+
+        <div class="matchboxes" style="margin-top:12px">
+          <div class="box" id="boxI"><h4>Izquierda (I)</h4><div class="count"><span id="countI">10</span></div><div class="bar-wrap" style="margin-top:6px"><div class="bar" id="barI"></div></div></div>
+          <div class="box" id="boxD"><h4>Derecha (D)</h4><div class="count"><span id="countD">10</span></div><div class="bar-wrap" style="margin-top:6px"><div class="bar" id="barD"></div></div></div>
+        </div>
+        <h3 style="margin-top:14px">Secuencia</h3><div class="sequence" id="seq"></div>
+      </section>
+
+      <section class="card fill panel-2">
+        <h2>2) Distribución de k</h2>
+        <p class="muted">Repite el experimento muchas veces y compara con la probabilidad teórica (solo si simétrico y p=0.5).</p>
+
+        <div class="controls">
+          <div class="ctrl"><label>Nº de simulaciones</label><input type="number" id="numSims" min="100" max="2000000" step="100" value="100000" /></div>
+          <div class="ctrl" style="align-self:end"><button id="btnSim">Simular distribución</button></div>
+          <div class="ctrl" style="grid-column: 1 / -1"><div class="progress"><div class="pbar" id="simProgress"></div></div><div class="muted" id="simInfo" style="margin-top:6px">Sin ejecutar.</div></div>
+        </div>
+
+        <div class="charts" style="margin-top:8px">
+          <div><h3>Frecuencia simulada (k)</h3><canvas id="chartSim"></canvas></div>
+          <div><h3>Probabilidad teórica (k)</h3><canvas id="chartTheo"></canvas><div class="note">Visible solo cuando <em>Simetría = Sí</em> y <em>p = 0.5</em>.</div></div>
+        </div>
+
+        <div class="legend" style="margin-top:10px"><span class="sim">■ Simulada</span><span class="theo">■ Teórica</span></div>
+        <div class="row-buttons" style="margin-top:8px"><button id="btnDownloadCSV" class="secondary" disabled>Descargar CSV</button><button id="btnDownloadPNG" class="secondary" disabled>Descargar PNG de gráficos</button></div>
+
+        <div class="card" style="margin-top:12px"><h3>Estadísticas</h3><div class="stats" style="display:grid; grid-template-columns: auto 1fr; gap:6px 12px"><div class="muted">Media (k)</div><div id="statMean">N/A</div><div class="muted">Varianza (k)</div><div id="statVar">N/A</div></div></div>
+      </section>
+    </div>
+
+    <section class="card fill panel-3" style="margin-top:18px">
+      <h2>3) ¿Qué está pasando?</h2>
+      <p>En el <a href="https://en.wikipedia.org/wiki/Banach%27s_matchbox_problem" target="_blank" rel="noopener">problema clásico de Banach</a>, llevamos dos cajas con <strong>N</strong> cerillas cada una. Elegimos aleatoriamente un bolsillo (I o D), tomamos una cerilla si hay y encendemos. Paramos cuando elegimos un bolsillo <strong>vacío</strong>. El valor <strong>k</strong> es el número de cerillas que quedan en la otra caja al detenernos.</p>
+      <p>La distribución teórica (caso simétrico, p = 0.5) es: <code>P(k;N) = C(2N - k, N) · 2^{-(2N - k)}</code>, para k = 0, …, N.</p>
+      <p class="note">Cuando p ≠ 0.5 o las cajas inician asimétricas, mostramos solo la distribución simulada.</p>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap" style="display:flex; justify-content:space-between; gap:10px; align-items:center; padding:12px 18px"><div class="muted">© 2026 · Banach</div><div class="muted">Atajos: <kbd>Espacio</kbd> reproducir/pausar · <kbd>N</kbd> paso</div></div>
+  </footer>
+
+  <script>
+    const $ = (sel) => document.querySelector(sel);
+    const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+    function hashStringToInt(str){ let h=1779033703 ^ str.length; for(let i=0;i<str.length;i++){ h = Math.imul(h ^ str.charCodeAt(i), 3432918353); h = (h << 13) | (h >>> 19); } return (h>>>0); }
+    function mulberry32(a){ return function(){ let t=(a+=0x6D2B79F5); t = Math.imul(t ^ (t >>> 15), t | 1); t ^= t + Math.imul(t ^ (t >>> 7), t | 61); return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+
+    const themeToggle = $('#themeToggle'); const symmetrySelect = $('#symmetrySelect'); const NInput = $('#N'), NIInput = $('#NI'), NDInput = $('#ND'); const ctrlN = $('#ctrlN'), ctrlNI = $('#ctrlNI'), ctrlND = $('#ctrlND'); const pRange = $('#pRange'), pNumber = $('#pNumber'); const seedInput = $('#seedInput'); const speedInput = $('#speed'); const btnReset = $('#btnReset'); const btnStep = $('#btnStep'); const btnPlay = $('#btnPlay'); const btnAutoRun = $('#btnAutoRun'); const statusText = $('#statusText'); const boxI = $('#boxI'), boxD = $('#boxD'); const countI = $('#countI'), countD = $('#countD'); const barI = $('#barI'), barD = $('#barD'); const seq = $('#seq'); const numSimsInput = $('#numSims'); const btnSim = $('#btnSim'); const simProgress = $('#simProgress'); const simInfo = $('#simInfo'); const chartSim = $('#chartSim'); const chartTheo = $('#chartTheo'); const btnDownloadCSV = $('#btnDownloadCSV'); const btnDownloadPNG = $('#btnDownloadPNG'); const statMean = $('#statMean'); const statVar = $('#statVar');
+
+    let N = 10; let NI = 10, ND = 10; let p = 0.5; let seed = null; let rng = Math.random; let curI = NI, curD = ND; let playing = false; let animTimer = null; let baseN = Math.max(NI, ND);
+
+    function applyTheme(){ const persisted = localStorage.getItem('banach_theme'); if(persisted === 'dark') { document.body.classList.add('dark'); themeToggle.checked = true; } }
+    applyTheme(); themeToggle.addEventListener('change', ()=>{ document.body.classList.toggle('dark', themeToggle.checked); localStorage.setItem('banach_theme', themeToggle.checked ? 'dark' : 'light'); redrawCharts(); });
+    function syncSymmetryUI(){ const sym = symmetrySelect.value === 'sym'; ctrlN.style.display = sym ? '' : 'none'; ctrlNI.style.display = sym ? 'none' : ''; ctrlND.style.display = sym ? 'none' : ''; }
+    symmetrySelect.addEventListener('change', ()=>{ syncSymmetryUI(); resetState(); });
+
+    function syncP(){ p = clamp(parseFloat(pNumber.value), 0, 1); pNumber.value = p.toFixed(2); pRange.value = p; }
+    pNumber.addEventListener('input', syncP); pRange.addEventListener('input', ()=>{ pNumber.value = pRange.value; syncP(); });
+    NInput.addEventListener('change', ()=>{ N = clamp(parseInt(NInput.value||'0',10), 1, 200); NInput.value=N; resetState(); }); NIInput.addEventListener('change', ()=>{ NI = clamp(parseInt(NIInput.value||'0',10), 0, 200); NIInput.value=NI; resetState(); }); NDInput.addEventListener('change', ()=>{ ND = clamp(parseInt(NDInput.value||'0',10), 0, 200); NDInput.value=ND; resetState(); });
+    seedInput.addEventListener('change', ()=>{ seed = seedInput.value && seedInput.value.trim().length ? seedInput.value.trim() : null; setupRNG(); }); function setupRNG(){ rng = seed ? mulberry32(hashStringToInt(seed)) : Math.random; }
+
+    btnReset.addEventListener('click', ()=> resetState()); btnStep.addEventListener('click', ()=> stepOnce()); btnPlay.addEventListener('click', ()=> togglePlay()); btnAutoRun.addEventListener('click', ()=> runToEmptyFast());
+    document.addEventListener('keydown', (ev)=>{ if(ev.code === 'Space'){ ev.preventDefault(); togglePlay(); } if(ev.key.toLowerCase() === 'n'){ ev.preventDefault(); stepOnce(); } });
+
+    function resetState(){ const sym = symmetrySelect.value === 'sym'; if(sym){ NI = ND = N = clamp(parseInt(NInput.value||'10',10), 1, 200); } else { NI = clamp(parseInt(NIInput.value||'10',10), 0, 200); ND = clamp(parseInt(NDInput.value||'10',10), 0, 200); } baseN = Math.max(NI, ND, 1); curI = NI; curD = ND; seq.innerHTML = ''; boxI.classList.remove('active'); boxD.classList.remove('active'); updateBoxUI(); setStatus('Estado reiniciado.'); stop(); }
+    function setStatus(msg){ statusText.textContent = msg; }
+    function updateBoxUI(active=null){ countI.textContent = curI; countD.textContent = curD; const pi = 100 * (curI / (baseN||1)); const pd = 100 * (curD / (baseN||1)); barI.style.width = pi + '%'; barD.style.width = pd + '%'; boxI.classList.toggle('active', active==='I'); boxD.classList.toggle('active', active==='D'); }
+
+    function stepOnce(){ const choice = (rng() < p) ? 'I' : 'D'; let emptied = false; let k = -1; if(choice==='I'){ if(curI===0){ emptied = true; k = curD; } else { curI--; } } else { if(curD===0){ emptied = true; k = curI; } else { curD--; } } const pill = document.createElement('span'); pill.className = 'pill ' + choice + (emptied ? ' empty' : ''); pill.textContent = choice; seq.appendChild(pill); updateBoxUI(choice); if(emptied){ setStatus(`¡Caja ${choice} estaba vacía! k = ${k}.`); stop(); } else { setStatus(`Elección: ${choice}.`); setTimeout(()=> updateBoxUI(null), 90); } return !emptied; }
+    function play(){ if(playing) return; playing = true; btnPlay.textContent = 'Pausar'; loop(); } function stop(){ playing = false; btnPlay.textContent = 'Reproducir'; if(animTimer) { clearTimeout(animTimer); animTimer=null; } } function togglePlay(){ playing ? stop() : play(); } function loop(){ if(!playing) return; const cont = stepOnce(); const delay = parseInt(speedInput.value||'220',10); animTimer = setTimeout(()=>{ if(cont) loop(); }, delay); }
+    function runToEmptyFast(){ while(true){ const cont = stepOnce(); if(!cont) break; } }
+
+    btnSim.addEventListener('click', simulateDistribution);
+    function simulateOne(NI0, ND0, p, rngRef){ let i=NI0, d=ND0; let steps = 0; const limit = (NI0+ND0)*5 + 200; while(steps++ < limit){ const c = (rngRef() < p) ? 'I' : 'D'; if(c==='I'){ if(i===0) return d; i--; } else { if(d===0) return i; d--; } } return -1; }
+    function mean(arr){ if(!arr.length) return NaN; return arr.reduce((a,v)=>a+v,0)/arr.length; } function variance(arr, m){ if(arr.length<2) return 0; let s=0; for(const v of arr) s += (v-m)*(v-m); return s/(arr.length-1); }
+    function comb(n,k){ if(k<0||k>n) return 0; if(k===0||k===n) return 1; if(k>n/2) k=n-k; let r=1; for(let i=1;i<=k;i++) r=r*(n-i+1)/i; return r; } function probBanachTheoretical(k,N){ if(k<0||k>N) return 0; const c = comb(2*N-k, N); return c * Math.pow(0.5, 2*N - k); }
+
+    let lastChartData = null; let lastDataset = null;
+    async function simulateDistribution(){
+      try{
+        const sym = symmetrySelect.value === 'sym'; const isClassic = (sym && Math.abs(p-0.5) < 1e-9); const Ncurrent = sym ? clamp(parseInt(NInput.value||'10',10), 1, 200) : null; const NI0 = sym ? Ncurrent : clamp(parseInt(NIInput.value||'10',10), 0, 200); const ND0 = sym ? Ncurrent : clamp(parseInt(NDInput.value||'10',10), 0, 200); const sims = clamp(parseInt(numSimsInput.value||'100000',10), 100, 2000000);
+        btnSim.disabled = true; btnDownloadCSV.disabled = true; btnDownloadPNG.disabled = true; simInfo.textContent = `Simulando ${sims.toLocaleString()} experimentos...`; simProgress.style.width = '0%'; setupRNG(); const rngLocal = rng;
+        const freq = new Array(Math.max(NI0, ND0) + 1).fill(0); const results = new Array(sims); const batch = 2000; let done = 0; const t0 = performance.now();
+        while(done < sims){ const lim = Math.min(sims, done + batch); for(let i=done; i<lim; i++){ const k = simulateOne(NI0, ND0, p, rngLocal); results[i] = k; if(k>=0){ if(k>=freq.length){ freq.length = k+1; } freq[k] = (freq[k]||0) + 1; } } done = lim; const pct = 100*done/sims; simProgress.style.width = pct.toFixed(1)+'%'; simInfo.textContent = `Progreso: ${pct.toFixed(1)}%`; await new Promise(r=>setTimeout(r)); }
+        const t1 = performance.now();
+        const valid = results.filter(x=>x>=0); const m = mean(valid); const v = variance(valid, m); statMean.textContent = isFinite(m) ? m.toFixed(4) : 'N/A'; statVar.textContent = isFinite(v) ? v.toFixed(4) : 'N/A';
+        const maxK = Math.max(NI0, ND0); const labels = Array.from({length:maxK+1}, (_,k)=>k.toString()); const simProb = labels.map((_,k)=> (freq[k]||0)/valid.length ); const theoProb = isClassic ? labels.map((_,k)=> probBanachTheoretical(k, Ncurrent)) : labels.map(()=>0);
+        drawCharts(labels, simProb, theoProb, isClassic); simInfo.textContent = `Listo. ${valid.length.toLocaleString()} simulaciones válidas en ${(t1-t0).toFixed(0)} ms.`; btnDownloadCSV.disabled = false; btnDownloadPNG.disabled = false; lastDataset = { labels, simProb, theoProb, isClassic, params: { sym, N: Ncurrent, NI: NI0, ND: ND0, p, sims, seed } };
+      } catch(e){ console.error(e); simInfo.textContent = 'Error en simulación'; }
+      finally{ btnSim.disabled = false; }
+    }
+
+    function setCanvasSize(canvas){ const pw = canvas.parentElement; const st = getComputedStyle(pw); const w = pw.clientWidth - parseFloat(st.paddingLeft) - parseFloat(st.paddingRight); const ar = 1.7; const h = Math.max(160, Math.min(420, Math.round(w/ar))); if(canvas.width!==Math.round(w) || canvas.height!==h){ canvas.width=Math.round(w); canvas.height=h; } }
+    function drawAxes(ctx, maxValue, labels, yTitle){ const c = ctx.canvas; const p = {top:18, right:24, bottom:46, left:56}; const cw=c.width-p.left-p.right; const ch=c.height-p.top-p.bottom; if(cw<=0||ch<=0) return p; ctx.clearRect(0,0,c.width,c.height); ctx.strokeStyle = getComputedStyle(document.body).getPropertyValue('--border'); ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(p.left, p.top); ctx.lineTo(p.left, c.height-p.bottom); ctx.lineTo(c.width-p.right, c.height-p.bottom); ctx.stroke(); ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted'); ctx.textAlign='right'; ctx.textBaseline='middle'; ctx.font='11px Segoe UI'; const yTicks = 5; for(let i=0;i<=yTicks;i++){ const v = maxValue * i / yTicks; const yp = c.height - p.bottom - (ch * (v/maxValue)); const vt = (Math.abs(v) < 1e-6) ? '0' : (v.toFixed(3)); ctx.fillText(vt, p.left-8, yp); ctx.beginPath(); ctx.moveTo(p.left-4, yp); ctx.lineTo(p.left, yp); ctx.stroke(); } ctx.save(); ctx.translate(p.left*0.35, c.height/2); ctx.rotate(-Math.PI/2); ctx.textAlign='center'; ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--primary'); ctx.font='12px Segoe UI'; ctx.fillText(yTitle, 0, -9); ctx.restore(); ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--muted'); ctx.textAlign='center'; ctx.textBaseline='top'; ctx.font='11px Segoe UI'; const nl=labels.length; const pcell = cw / (nl||1); const step = Math.ceil(nl / Math.max(2, Math.floor(cw/36))); for(let i=0;i<nl;i+=step){ const xp = p.left + pcell*(i+0.5); ctx.fillText(labels[i], xp, c.height-p.bottom+8); } ctx.fillStyle=getComputedStyle(document.body).getPropertyValue('--primary'); ctx.font='12px Segoe UI'; ctx.fillText('Cerillas restantes (k)', c.width/2, c.height - p.bottom/2.3); return p; }
+    function drawBars(ctx, labels, data, colorFill, colorStroke, maxValue){ const p = drawAxes(ctx, maxValue, labels, ctx===chartSim.getContext('2d') ? 'Frec. Simulada' : 'Prob. Teórica'); const cw=ctx.canvas.width-p.left-p.right; const ch=ctx.canvas.height-p.top-p.bottom; const nb = labels.length; if(nb===0) return; const cell = cw/nb; const bw = cell*0.72; const gap=(cell-bw)/2; ctx.fillStyle = colorFill; ctx.strokeStyle = colorStroke; ctx.lineWidth = 0.6; for(let i=0;i<nb;i++){ const h = Math.max(0, ch * (data[i]/maxValue)); const xp=p.left + i*cell + gap; const yp = ctx.canvas.height - p.bottom - h; ctx.fillRect(xp, yp, bw, h); ctx.strokeRect(xp, yp, bw, h); } }
+    function drawCharts(labels, simProb, theoProb, showTheo){ setCanvasSize(chartSim); setCanvasSize(chartTheo); const ctxS = chartSim.getContext('2d'); const ctxT = chartTheo.getContext('2d'); const maxV = Math.max(0.01, ...simProb, ...(showTheo?theoProb:[0])) * 1.1; drawBars(ctxS, labels, simProb, '#22c55e', '#16a34a', maxV); if(showTheo){ chartTheo.style.opacity='1.0'; drawBars(ctxT, labels, theoProb, '#065f46', '#064e3b', maxV); } else { chartTheo.style.opacity='.4'; const ctx = ctxT; ctx.clearRect(0,0,ctx.canvas.width, ctx.canvas.height); drawAxes(ctx, 0.1, labels, 'Prob. Teórica'); } lastChartData = { labels, simProb, theoProb, showTheo }; }
+    function redrawCharts(){ if(!lastChartData) return; const {labels, simProb, theoProb, showTheo} = lastChartData; drawCharts(labels, simProb, theoProb, showTheo); }
+    window.addEventListener('resize', ()=>{ clearTimeout(window.__banach_r); window.__banach_r = setTimeout(redrawCharts, 200); });
+
+    btnDownloadCSV.addEventListener('click', ()=>{ if(!lastDataset) return; const { labels, simProb, theoProb, isClassic, params } = lastDataset; const header = ['k','freq_simulada','prob_teorica']; const rows = labels.map((k,i)=> [k, simProb[i].toFixed(8), (isClassic?theoProb[i].toFixed(8):'')]); const meta = `# Banach – distribución de k\n# params: ${JSON.stringify(params)}\n`; const csv = meta + header.join(',') + '\n' + rows.map(r=>r.join(',')).join('\n'); const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'}); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'banach_distribucion.csv'; a.click(); URL.revokeObjectURL(a.href); });
+    btnDownloadPNG.addEventListener('click', ()=>{ if(!lastDataset) return; const W = Math.max(chartSim.width, chartTheo.width), H = chartSim.height + chartTheo.height + 40; const cv = document.createElement('canvas'); cv.width = W; cv.height = H; const ctx = cv.getContext('2d'); ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--surface'); ctx.fillRect(0,0,W,H); ctx.fillStyle = getComputedStyle(document.body).getPropertyValue('--text'); ctx.font='16px Segoe UI'; ctx.fillText('Frecuencia simulada (k)', 12, 22); ctx.drawImage(chartSim, 0, 28); ctx.fillText('Probabilidad teórica (k)', 12, chartSim.height + 30 + 16); ctx.drawImage(chartTheo, 0, chartSim.height + 30 + 20); const a = document.createElement('a'); a.href = cv.toDataURL('image/png'); a.download = 'banach_graficos.png'; a.click(); });
+
+    function init(){ const persisted = localStorage.getItem('banach_theme'); if(persisted==='dark') document.body.classList.add('dark'); syncSymmetryUI(); syncP(); setupRNG(); resetState(); drawCharts([],[],[],true); }
+    init();
+  </script>
+</body>
+</html>
