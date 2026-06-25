@@ -1,0 +1,916 @@
+<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>ArrayQueue Visualizer</title><style>
+:root{--b:#1565c0;--c:#91f4f4;--g:#b6f8b6;--r:#e60000;--p:#c78cff;--v:#8d35c9;--panel:#f5f5f5;--q:#4b00d8}*{box-sizing:border-box}body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:white;user-select:none}header{background:var(--panel);border-bottom:1px solid #ddd;padding:10px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}.top,.gui{display:flex;justify-content:space-between;align-items:center;gap:12px}.gui{align-items:flex-start}h1{font-size:1.2rem;margin:0}.controls,.sub{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sub{font-size:.9rem;color:#555}input[type=number]{width:70px;padding:6px;border:1px solid #999;border-radius:4px;text-align:center;font-weight:bold}.idx{width:56px}button{border:0;border-radius:4px;color:white;font-weight:600;padding:6px 12px;box-shadow:0 1px 3px #0003}button:disabled{opacity:.4}.green{background:#2E7D32}.blue{background:#1668BD}.red{background:#c62828}.purple{background:#6A1B9A}.gray{background:#546E7A}.orange{background:#EF6C00}.pause{background:#455A64;width:80px}.help{background:#607D8B;border-radius:50%;font-size:1.1rem;padding:4px 10px}.sep{width:1px;height:20px;background:#ccc;margin:0 5px}#status{border-top:1px solid #ddd;padding-top:8px;font-size:.85rem;color:#555}#status-text{font-weight:bold;color:#222}#wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:white}canvas{display:block;width:100%;height:100%}#legend{position:absolute;top:18px;left:18px;background:#fffffff2;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:.8rem;box-shadow:0 2px 5px #0002;pointer-events:none}.li{display:flex;gap:8px;align-items:center;margin-bottom:5px}.sw{width:18px;height:18px;display:inline-block}.dot{width:12px;height:12px;background:var(--b);border-radius:50%;display:inline-block}#author{background:#f4f7f6;color:#777;text-align:center;line-height:2.5;font-size:.75em;flex-shrink:0}.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10}.modal-content{background:white;margin:5% auto;padding:20px;border-radius:8px;width:80%;max-width:900px;max-height:84vh;overflow:auto}.close{float:right;font-size:28px;color:#aaa;cursor:pointer}.code{font-family:Consolas,monospace;background:#eee;border-radius:4px;padding:2px 5px;color:#c62828}pre{background:#f4f4f4;border-radius:6px;padding:12px;overflow:auto}</style></head><body>
+<header><div class="top"><h1>ArrayQueue Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open the help panel for ArrayQueue behavior and operation summaries.">?</button></div><div class="gui"><div class="controls"><label>Value <input id="val" type="number" placeholder="#" title="Numeric value used by Enqueue." onkeydown="if(event.key==='Enter')app.enqueue()"></label><label>Initial capacity <input id="cap" class="idx" type="number" min="1" value="6" title="Capacity used when creating a new empty ArrayQueue."></label><button class="green" onclick="app.enqueue()" title="Add the value after the current last element, wrapping around the array if needed.">Enqueue</button><button class="blue" onclick="app.firstOp()" title="Read the current first element without removing it from the queue.">First</button><button class="red" onclick="app.dequeue()" title="Remove the current first element and clear its array reference.">Dequeue</button><button class="purple" onclick="app.isEmpty()" title="Check whether the queue currently contains no elements.">isEmpty</button><button class="purple" onclick="app.showSize()" title="Show the current number of elements stored in the queue.">Size</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Create a new sample queue. Sometimes the sample wraps around the end of the array.">Build Random</button><button class="orange" onclick="app.reinit()" title="Create a new empty queue with the selected initial capacity.">New</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Restore the previous queue state.">Undo</button><button class="gray" onclick="app.clear()" title="Clear the queue, reset first to 0, and reset last to elements.length - 1.">Clear</button></div><div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()" title="Slow down or speed up the current animation."><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button></div></div><div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span></div></header>
+<div id="wrap"><canvas id="cv"></canvas><div id="legend"><div class="li"><span class="sw" style="background:#91f4f4"></span>reference</div><div class="li"><span class="dot"></span>null reference</div><div class="li"><span class="sw" style="background:#b6f8b6"></span>object/value</div><div class="li"><span class="sw" style="background:#c78cff"></span>reference to queue</div></div></div><div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+<div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>ArrayQueue&lt;T&gt;</h2><p>This visualizer follows the supplied <strong>ArrayQueue</strong> implementation: <span class="code">DEFAULT_INITIAL_CAPACITY = 16</span>, fields <span class="code">elements</span>, <span class="code">first</span>, <span class="code">last</span>, and <span class="code">size</span>, and circular advancement with <span class="code">advance(index) = (index + 1) % elements.length</span>.</p><ul><li><strong>Constructor / clear</strong>: empty queue state uses <span class="code">first = 0</span> and <span class="code">last = elements.length - 1</span>.</li><li><strong>enqueue</strong>: calls <span class="code">ensureCapacity()</span>, then <span class="code">last = advance(last)</span>, stores into <span class="code">elements[last]</span>, and increments <span class="code">size</span>.</li><li><strong>dequeue</strong>: sets <span class="code">elements[first] = null</span>, advances <span class="code">first</span>, and decrements <span class="code">size</span>.</li><li><strong>ensureCapacity</strong>: when full, allocates a doubled array and copies the queue from <span class="code">first</span> to <span class="code">last</span> into positions <span class="code">0..size-1</span>.</li></ul></div></div>
+<script>
+const K = {
+	b: '#1565c0',
+	c: '#91f4f4',
+	g: '#b6f8b6',
+	r: '#e60000',
+	p: '#c78cff',
+	v: '#8d35c9',
+	k: '#111',
+	q: '#4b00d8'
+};
+class Viz {
+	constructor(id) {
+		this.cv = document.getElementById(id);
+		this.ctx = this.cv.getContext('2d');
+		this.cam = {
+			scale: 1,
+			targetScale: 1,
+			x: 0,
+			targetX: 0,
+			y: 0,
+			targetY: 0
+		};
+		this.sn = [];
+		this.pending = [];
+		this.idx = -1;
+		this.state = 'IDLE';
+		this.t = 0;
+		this.speedFactor = 1;
+		this.paused = false;
+		this.last = 0;
+		this.cell = 40;
+		this.lastHits = [];
+		this.resize();
+		window.addEventListener('resize', () => this.resize());
+		this.cv.addEventListener('wheel', e => this.wheel(e), {
+			passive: false
+		});
+		this.cv.addEventListener('mousedown', e => this.down(e));
+		this.cv.addEventListener('mousemove', e => this.move(e));
+		this.cv.addEventListener('mouseup', () => this.up());
+		this.cv.addEventListener('mouseleave', () => this.up());
+		requestAnimationFrame(t => this.loop(t))
+	}
+	base() {
+		return {
+			x: 355,
+			y: 160,
+			structX: 210,
+			structY: 160,
+			gap: 46
+		}
+	}
+	resize() {
+		const w = document.getElementById('wrap');
+		this.cv.width = w.offsetWidth;
+		this.cv.height = w.offsetHeight;
+		if (this.sn.length) {
+			this.fit([this.sn[Math.max(this.idx, 0)]]);
+			this.cam.scale = this.cam.targetScale;
+			this.cam.x = this.cam.targetX;
+			this.cam.y = this.cam.targetY
+		}
+	}
+	screenToWorld(x, y) {
+		return {
+			x: (x - this.cam.x) / this.cam.scale,
+			y: (y - this.cam.y) / this.cam.scale
+		}
+	}
+	wheel(e) {
+		e.preventDefault();
+		const r = this.cv.getBoundingClientRect(),
+			x = e.clientX - r.left,
+			y = e.clientY - r.top;
+		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
+		ns = Math.min(5, Math.max(.2, ns));
+		const wx = (x - this.cam.targetX) / this.cam.targetScale,
+			wy = (y - this.cam.targetY) / this.cam.targetScale;
+		this.cam.targetScale = ns;
+		this.cam.targetX = x - wx * ns;
+		this.cam.targetY = y - wy * ns
+	}
+	down(e) {
+		const r = this.cv.getBoundingClientRect(),
+			sx = e.clientX - r.left,
+			sy = e.clientY - r.top,
+			w = this.screenToWorld(sx, sy);
+		for (const h of this.lastHits) {
+			if (w.x >= h.x && w.x <= h.x + h.w && w.y >= h.y && w.y <= h.y + h.h) {
+				if (h.v !== null && h.v !== undefined) document.getElementById('val').value = h.v;
+				return
+			}
+		}
+		this.drag = true;
+		this.start = {
+			x: sx,
+			y: sy
+		};
+		this.c0 = {
+			x: this.cam.targetX,
+			y: this.cam.targetY
+		};
+		this.cv.style.cursor = 'grabbing'
+	}
+	move(e) {
+		const r = this.cv.getBoundingClientRect(),
+			x = e.clientX - r.left,
+			y = e.clientY - r.top;
+		if (this.drag) {
+			this.cam.targetX = this.c0.x + x - this.start.x;
+			this.cam.targetY = this.c0.y + y - this.start.y;
+			return
+		}
+		const w = this.screenToWorld(x, y);
+		this.cv.style.cursor = this.lastHits.some(h => w.x >= h.x && w.x <= h.x + h.w && w.y >= h.y && w.y <= h.y + h.h) ? 'pointer' : 'default'
+	}
+	up() {
+		this.drag = false;
+		this.cv.style.cursor = 'default'
+	}
+	layout(s) {
+		const b = this.base();
+		(s.cells || []).forEach((c, i) => {
+			if (c.x === undefined) c.x = b.x + i * b.gap;
+			if (c.y === undefined) c.y = b.y
+		});
+		(s.ptrs || []).forEach((p, i) => {
+			if (p.x === undefined) p.x + b.x;
+			p.x = b.x + (p.i ?? 0) * b.gap - 10;
+			if (p.y === undefined) p.y = b.y - 78 - i * 62
+		})
+	}
+	bounds(s) {
+		let b = {
+			minX: 20,
+			minY: 35,
+			maxX: 780,
+			maxY: 485
+		};
+		(s.cells || []).forEach(c => {
+			b.minX = Math.min(b.minX, c.x - 235);
+			b.maxX = Math.max(b.maxX, c.x + 105);
+			b.minY = Math.min(b.minY, c.y - 125);
+			b.maxY = Math.max(b.maxY, c.y + 215)
+		});
+		return b
+	}
+	fit(snaps) {
+		let B = {
+			minX: 1e9,
+			minY: 1e9,
+			maxX: -1e9,
+			maxY: -1e9
+		};
+		snaps.forEach(s => {
+			const b = this.bounds(s);
+			B.minX = Math.min(B.minX, b.minX);
+			B.maxX = Math.max(B.maxX, b.maxX);
+			B.minY = Math.min(B.minY, b.minY);
+			B.maxY = Math.max(B.maxY, b.maxY)
+		});
+		const sc = Math.min(1.35, this.cv.width / (B.maxX - B.minX + 130), this.cv.height / (B.maxY - B.minY + 130));
+		this.cam.targetScale = sc;
+		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+	}
+	enqueue(snaps) {
+		snaps.forEach(s => this.layout(s));
+		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+		if (!this.sn.length) {
+			this.sn.push(snaps.shift());
+			this.idx = 0;
+			document.getElementById('status-text').innerText = this.sn[0].text || 'Ready.'
+		}
+		if (snaps.length) {
+			this.pending = snaps;
+			this.state = 'CAMERA'
+		}
+	}
+	loop(ts) {
+		if (!this.last) this.last = ts;
+		const dt = Math.min((ts - this.last) / 1000, .1);
+		this.last = ts;
+		if (!this.paused) this.update(dt);
+		this.draw();
+		requestAnimationFrame(t => this.loop(t))
+	}
+	update(dt) {
+		const f = 1 - Math.exp(-10 * dt);
+		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+		this.cam.x += (this.cam.targetX - this.cam.x) * f;
+		this.cam.y += (this.cam.targetY - this.cam.y) * f;
+		if (this.state === 'CAMERA') {
+			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
+		} else if (this.state === 'MORPH') {
+			this.t += 2.5 * this.speedFactor * dt;
+			if (this.t >= 1) {
+				this.t = 1;
+				if (this.sn[this.idx + 1]?.pause) {
+					this.state = 'WAIT';
+					this.wait = .75 / this.speedFactor
+				} else this.finish()
+			}
+		} else if (this.state === 'WAIT') {
+			this.wait -= dt;
+			if (this.wait <= 0) this.finish()
+		}
+	}
+	next() {
+		const s = this.pending.shift();
+		this.sn.push(s);
+		document.getElementById('status-text').innerText = s.text || 'Ready.';
+		this.t = 0;
+		this.state = 'MORPH'
+	}
+	finish() {
+		this.idx++;
+		if (this.pending.length) this.next();
+		else {
+			this.state = 'IDLE';
+			document.getElementById('status-text').innerText = 'Ready.';
+			app.clearInputs()
+		}
+	}
+	ease(t) {
+		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+	}
+	mix(a, b, t) {
+		const ma = new Map((a || []).map(o => [o.id, o])),
+			mb = new Map((b || []).map(o => [o.id, o])),
+			ids = new Set([...ma.keys(), ...mb.keys()]);
+		let out = [];
+		ids.forEach(id => {
+			const A = ma.get(id),
+				B = mb.get(id);
+			if (A && B) out.push({
+				...B,
+				x: A.x + (B.x - A.x) * t,
+				y: A.y + (B.y - A.y) * t
+			});
+			else if (B) out.push({
+				...B
+			});
+			else if (A && t < .85) out.push({
+				...A
+			})
+		});
+		return out
+	}
+	current() {
+		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? {
+			...this.sn[this.idx + 1],
+			cells: this.mix(this.sn[this.idx].cells, this.sn[this.idx + 1].cells, this.ease(this.t)),
+			ptrs: this.mix(this.sn[this.idx].ptrs, this.sn[this.idx + 1].ptrs, this.ease(this.t))
+		} : this.sn[Math.max(this.idx, 0)]
+	}
+	flash() {
+		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+	}
+	draw() {
+		const s = this.current(),
+			c = this.ctx;
+		c.clearRect(0, 0, this.cv.width, this.cv.height);
+		c.save();
+		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+		if (!s) {
+			c.restore();
+			return
+		}
+		this.lastHits = [];
+		this.drawStruct(s);
+		this.drawArrayPointer(s);
+		(s.cells || []).forEach(cell => this.drawCell(cell, s));
+		this.drawWrapArrow(s);
+		this.drawPtrs(s);
+		this.drawIndexLabels(s);
+		this.drawOverlays(s);
+		c.restore()
+	}
+	drawStruct(s) {
+		const c = this.ctx,
+			b = this.base(),
+			x = b.structX,
+			y = b.structY,
+			w = 40,
+			h = this.cell;
+		c.save();
+		c.fillStyle = K.k;
+		c.font = '18px monospace';
+		c.textAlign = 'right';
+		c.textBaseline = 'middle';
+		c.fillText('queue', x - 55, y - 38);
+		[
+			['elements', K.c],
+			['first', K.g],
+			['last', K.g],
+			['size', K.g]
+		].forEach((r, i) => {
+			const yy = y + i * h;
+			c.fillStyle = K.k;
+			c.fillText(r[0], x - 10, yy + h / 2);
+			c.fillStyle = r[1];
+			c.fillRect(x, yy, w, h);
+			if (r[0] === 'elements') {
+				c.fillStyle = K.b;
+				c.beginPath();
+				c.arc(x + w / 2, yy + h / 2, 6, 0, Math.PI * 2);
+				c.fill()
+			} else {
+				c.fillStyle = K.r;
+				c.font = '24px Arial';
+				c.textAlign = 'center';
+				const v = r[0] === 'first' ? s.first : r[0] === 'last' ? s.last : s.size;
+				c.fillText(String(v), x + w / 2, yy + h / 2 + 1);
+				c.font = '18px monospace';
+				c.textAlign = 'right'
+			}
+		});
+		c.fillStyle = K.p;
+		c.fillRect(x - 45, y - 60, w, h);
+		c.fillStyle = K.v;
+		c.beginPath();
+		c.arc(x - 25, y - 40, 6, 0, Math.PI * 2);
+		c.fill();
+		this.arrow(x - 25, y - 40, x + 3, y + 12, K.v, 2.5);
+		c.restore()
+	}
+	drawArrayPointer(s) {
+		const b = this.base(),
+			f = (s.cells || [])[0];
+		if (f) this.arrow(b.structX + 20, b.structY + this.cell / 2, f.x, f.y + this.cell / 2, K.b, 2.5)
+	}
+	drawCell(cell, s) {
+		const c = this.ctx,
+			w = this.cell,
+			active = app.isActiveIndex(cell.i, s),
+			isNull = cell.v === null;
+		c.save();
+		c.fillStyle = K.c;
+		c.fillRect(cell.x, cell.y, w, w);
+		c.strokeStyle = '#fff';
+		c.lineWidth = 2;
+		c.strokeRect(cell.x, cell.y, w, w);
+		this.lastHits.push({
+			x: cell.x,
+			y: cell.y,
+			w: w,
+			h: w,
+			v: cell.v
+		});
+		c.fillStyle = K.k;
+		c.font = '18px monospace';
+		c.textAlign = 'center';
+		c.textBaseline = 'alphabetic';
+		c.fillText(cell.i, cell.x + w / 2, cell.y - 9);
+		c.fillStyle = K.b;
+		c.beginPath();
+		c.arc(cell.x + w / 2, cell.y + w / 2, 6, 0, Math.PI * 2);
+		c.fill();
+		if (active && !isNull) {
+			const vy = cell.y + w + 40;
+			c.restore();
+			this.arrow(cell.x + w / 2, cell.y + w / 2 + 6, cell.x + w / 2, vy, K.b, 2.5);
+			c.save();
+			c.fillStyle = K.g;
+			c.fillRect(cell.x, vy, w, w);
+			c.strokeStyle = '#fff';
+			c.lineWidth = 2;
+			c.strokeRect(cell.x, vy, w, w);
+			this.lastHits.push({
+				x: cell.x,
+				y: vy,
+				w: w,
+				h: w,
+				v: cell.v
+			});
+			c.fillStyle = K.r;
+			c.font = '24px Arial';
+			c.textAlign = 'center';
+			c.textBaseline = 'middle';
+			c.fillText(String(cell.v), cell.x + w / 2, vy + w / 2 + 1)
+		}
+		c.restore()
+	}
+	drawWrapArrow(s) {
+		if (!(s.size > 1 && s.first > s.last)) return;
+		const c = this.ctx,
+			w = this.cell,
+			cells = s.cells || [];
+		if (!cells.length) return;
+		const leftCell = cells[0],
+			rightCell = cells[cells.length - 1];
+		const valueY = rightCell.y + w + 40,
+			cy = valueY + w / 2,
+			bottom = valueY + w + 64,
+			startX = rightCell.x + w + 8,
+			turnR = rightCell.x + w + 34,
+			turnL = leftCell.x - 34,
+			endX = leftCell.x,
+			endY = leftCell.y + w + 40 + w / 2;
+		c.save();
+		c.strokeStyle = K.q;
+		c.fillStyle = K.q;
+		c.lineWidth = 5;
+		c.lineCap = 'round';
+		c.lineJoin = 'round';
+		c.beginPath();
+		c.moveTo(startX, cy);
+		c.lineTo(turnR, cy);
+		c.lineTo(turnR, bottom);
+		c.lineTo(turnL, bottom);
+		c.lineTo(turnL, endY);
+		c.lineTo(endX, endY);
+		c.stroke();
+		this.head(turnL, endY, endX, endY, K.q);
+		c.restore()
+	}
+	drawPtrs(s) {
+		(s.ptrs || []).forEach(p => {
+			const c = this.ctx;
+			c.save();
+			c.fillStyle = K.k;
+			c.font = '18px monospace';
+			c.textAlign = 'center';
+			c.fillText(p.label, p.x + 30, p.y - 8);
+			c.fillStyle = K.c;
+			c.fillRect(p.x, p.y, 60, 40);
+			c.fillStyle = K.b;
+			c.beginPath();
+			c.arc(p.x + 30, p.y + 20, 6, 0, Math.PI * 2);
+			c.fill();
+			c.restore();
+			const target = (s.cells || []).find(c => c.i === p.i);
+			if (target) this.arrow(p.x + 30, p.y + 20, target.x + this.cell / 2, target.y, K.b, 2.5)
+		})
+	}
+	drawIndexLabels(s) {
+		const c = this.ctx,
+			cells = s.cells || [],
+			first = cells.find(x => x.i === s.first),
+			last = cells.find(x => x.i === s.last);
+		c.save();
+		c.fillStyle = K.k;
+		c.font = '18px monospace';
+		c.textAlign = 'center';
+		c.textBaseline = 'alphabetic';
+		if (s.size > 0 && first && last && s.first === s.last) {
+			c.fillText('first', first.x + this.cell / 2, first.y + this.cell + 40 + this.cell + 22);
+			c.fillText('last', last.x + this.cell / 2, last.y + this.cell + 40 + this.cell + 43)
+		} else {
+			if (s.size > 0 && first) c.fillText('first', first.x + this.cell / 2, first.y + this.cell + 40 + this.cell + 24);
+			if (s.size > 0 && last) c.fillText('last', last.x + this.cell / 2, last.y + this.cell + 40 + this.cell + 24)
+		}
+		c.restore()
+	}
+	drawOverlays(s) {
+		if (s.flashFirst) this.flashStruct(1);
+		if (s.flashLast) this.flashStruct(2);
+		if (s.flashSize) this.flashStruct(3);
+		if (s.flashElements) this.flashStruct(0);
+		(s.flashCells || []).forEach(i => {
+			const cell = (s.cells || []).find(c => c.i === i);
+			if (cell) this.roundFlash(cell.x - 4, cell.y - 4, this.cell + 8, this.cell + 8)
+		});
+		(s.crossCells || []).forEach(i => {
+			const cell = (s.cells || []).find(c => c.i === i);
+			if (cell) this.cross(cell.x, cell.y + this.cell + 40, this.cell, this.cell)
+		})
+	}
+	flashStruct(row) {
+		const b = this.base();
+		this.flashCircle(b.structX + 20, b.structY + row * this.cell + this.cell / 2, 22)
+	}
+	flashCircle(x, y, r) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flash();
+		c.strokeStyle = K.r;
+		c.lineWidth = 4;
+		c.beginPath();
+		c.arc(x, y, r, 0, Math.PI * 2);
+		c.stroke();
+		c.restore()
+	}
+	roundFlash(x, y, w, h) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flash();
+		c.strokeStyle = K.r;
+		c.lineWidth = 4;
+		c.beginPath();
+		c.roundRect(x, y, w, h, 8);
+		c.stroke();
+		c.restore()
+	}
+	cross(x, y, w, h) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flash();
+		c.strokeStyle = K.r;
+		c.lineWidth = 5;
+		c.beginPath();
+		c.moveTo(x - 6, y - 6);
+		c.lineTo(x + w + 6, y + h + 6);
+		c.moveTo(x + w + 6, y - 6);
+		c.lineTo(x - 6, y + h + 6);
+		c.stroke();
+		c.restore()
+	}
+	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+		const c = this.ctx;
+		c.save();
+		c.strokeStyle = col;
+		c.fillStyle = col;
+		c.lineWidth = lw;
+		c.beginPath();
+		c.moveTo(x1, y1);
+		c.lineTo(x2, y2);
+		c.stroke();
+		this.head(x1, y1, x2, y2, col);
+		c.restore()
+	}
+	head(x1, y1, x2, y2, col = K.b) {
+		const c = this.ctx,
+			a = Math.atan2(y2 - y1, x2 - x1),
+			h = 13;
+		c.fillStyle = col;
+		c.beginPath();
+		c.moveTo(x2, y2);
+		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
+		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+		c.closePath();
+		c.fill()
+	}
+	setSpeed(v) {
+		this.speedFactor = 1 / v
+	}
+	togglePause() {
+		this.paused = !this.paused;
+		return this.paused
+	}
+}
+const app = {
+	capacity: 6,
+	storage: [],
+	first: 0,
+	last: 5,
+	size: 0,
+	history: [],
+	viz: null,
+	init() {
+		this.viz = new Viz('cv');
+		this.capacity = 6;
+		this.storage = [2, 1, 5, 7, null, null];
+		this.first = 0;
+		this.last = 3;
+		this.size = 4;
+		this.showCurrent('The ArrayQueue is initialized with sample values');
+		this.updateUI()
+	},
+	makeStorage(cap = this.capacity) {
+		return Array.from({
+			length: cap
+		}, (_, i) => this.storage[i] ?? null)
+	},
+	isActiveIndex(i, s) {
+		if (s.size <= 0) return false;
+		if (s.first <= s.last) return i >= s.first && i <= s.last;
+		return i >= s.first || i <= s.last
+	},
+	cells(storage = this.storage, cap = this.capacity) {
+		return Array.from({
+			length: cap
+		}, (_, i) => ({
+			id: 'c' + i,
+			v: i < storage.length ? storage[i] : null,
+			i
+		}))
+	},
+	snapshot(text, extra = {}) {
+		const storage = extra.storage ?? [...this.storage],
+			cap = extra.capacity ?? this.capacity;
+		return {
+			cells: this.cells(storage, cap),
+			capacity: cap,
+			first: extra.first ?? this.first,
+			last: extra.last ?? this.last,
+			size: extra.size ?? this.size,
+			text,
+			...extra,
+			storage
+		}
+	},
+	showCurrent(text = 'Ready.') {
+		this.viz.sn = [];
+		this.viz.pending = [];
+		this.viz.idx = -1;
+		this.viz.state = 'IDLE';
+		this.viz.enqueue([this.snapshot(text)])
+	},
+	v() {
+		return parseInt(document.getElementById('val').value)
+	},
+	save() {
+		this.history.push({
+			capacity: this.capacity,
+			storage: [...this.storage],
+			first: this.first,
+			last: this.last,
+			size: this.size
+		});
+		if (this.history.length > 30) this.history.shift()
+	},
+	next(i, cap = this.capacity) {
+		return (i + 1) % cap
+	},
+	activeList(storage = this.storage, first = this.first, size = this.size, cap = this.capacity) {
+		let out = [];
+		for (let k = 0; k < size; k++) out.push(storage[(first + k) % cap]);
+		return out
+	},
+	ensureSnaps(need, lead) {
+		let snaps = [];
+		if (this.size + need <= this.capacity) return {
+			cap: this.capacity,
+			storage: [...this.storage],
+			first: this.first,
+			last: this.last,
+			snaps
+		};
+		snaps.push(this.snapshot(lead + ' the circular array is full, so capacity must be ensured', {
+			flashSize: true,
+			pause: true
+		}));
+		const vals = this.activeList();
+		let newCap = Math.max(1, this.capacity * 2);
+		while (this.size + need > newCap) newCap *= 2;
+		let st = Array.from({
+			length: newCap
+		}, (_, i) => i < vals.length ? vals[i] : null);
+		snaps.push(this.snapshot('A larger array is allocated and elements are copied from first to last into positions 0..size-1', {
+			capacity: newCap,
+			storage: st,
+			first: 0,
+			last: vals.length - 1,
+			size: vals.length,
+			flashElements: true,
+			flashFirst: true,
+			flashLast: true,
+			pause: true
+		}));
+		return {
+			cap: newCap,
+			storage: st,
+			first: 0,
+			last: vals.length - 1,
+			snaps
+		}
+	},
+	enqueue() {
+		const e = this.v();
+		if (isNaN(e)) return;
+		this.save();
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayQueue state')];
+		let ec = this.ensureSnaps(1, 'Before enqueueing,');
+		snaps.push(...ec.snaps);
+		let cap = ec.cap,
+			st = [...ec.storage],
+			first = ec.first,
+			last = ec.last,
+			size = this.size;
+		let newLast = (last + 1) % cap;
+		snaps.push(this.snapshot('last = advance(last)', {
+			capacity: cap,
+			storage: st,
+			first,
+			last: newLast,
+			size,
+			flashLast: true,
+			pause: true
+		}));
+		st[newLast] = e;
+		snaps.push(this.snapshot('The new reference is stored at elements[last]', {
+			capacity: cap,
+			storage: [...st],
+			first,
+			last: newLast,
+			size,
+			flashCells: [newLast],
+			pause: true
+		}));
+		size++;
+		snaps.push(this.snapshot('size is incremented; the element becomes the new last element', {
+			capacity: cap,
+			storage: [...st],
+			first,
+			last: newLast,
+			size,
+			flashSize: true,
+			flashCells: [newLast],
+			pause: true
+		}));
+		snaps.push(this.snapshot('The operation is complete', {
+			capacity: cap,
+			storage: [...st],
+			first,
+			last: newLast,
+			size
+		}));
+		this.capacity = cap;
+		this.storage = st;
+		this.first = first;
+		this.last = newLast;
+		this.size = size;
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	firstOp() {
+		if (this.size === 0) {
+			this.viz.enqueue([this.snapshot('The queue is empty: first() would throw EmptyQueueException', {
+				flashSize: true,
+				pause: true
+			}), this.snapshot('The operation is complete')]);
+			return
+		}
+		this.viz.enqueue([this.snapshot('The algorithm starts from the current ArrayQueue state'), this.snapshot('first() accesses elements[first] directly', {
+			ptrs: [{
+				id: 'pfirst',
+				label: 'elements[first]',
+				i: this.first
+			}],
+			flashCells: [this.first],
+			flashFirst: true,
+			pause: true
+		}), this.snapshot('The first element is ' + this.storage[this.first], {
+			flashCells: [this.first],
+			pause: true
+		}), this.snapshot('The operation is complete')]);
+		this.updateUI()
+	},
+	dequeue() {
+		if (this.size === 0) {
+			this.viz.enqueue([this.snapshot('The queue is empty: dequeue() would throw EmptyQueueException', {
+				flashSize: true,
+				pause: true
+			}), this.snapshot('The operation is complete')]);
+			return
+		}
+		this.save();
+		let st = [...this.storage],
+			oldFirst = this.first,
+			newFirst = this.next(this.first),
+			newSize = this.size - 1;
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayQueue state'), this.snapshot('The first element is selected for removal', {
+			flashCells: [oldFirst],
+			crossCells: [oldFirst],
+			pause: true
+		})];
+		st[oldFirst] = null;
+		snaps.push(this.snapshot('elements[first] is set to null', {
+			storage: [...st],
+			flashCells: [oldFirst],
+			pause: true
+		}));
+		snaps.push(this.snapshot('first = advance(first); size is decremented', {
+			storage: [...st],
+			first: newFirst,
+			last: this.last,
+			size: newSize,
+			flashFirst: true,
+			flashSize: true,
+			pause: true
+		}));
+		snaps.push(this.snapshot('The operation is complete', {
+			storage: [...st],
+			first: newFirst,
+			last: this.last,
+			size: newSize
+		}));
+		this.storage = st;
+		this.first = newFirst;
+		this.size = newSize;
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	isEmpty() {
+		let e = this.size === 0;
+		this.viz.enqueue([this.snapshot('isEmpty() checks whether size == 0', {
+			flashSize: true,
+			pause: true
+		}), this.snapshot('Result: isEmpty() = ' + e, {
+			flashSize: true,
+			pause: true
+		}), this.snapshot('The operation is complete')])
+	},
+	showSize() {
+		this.viz.enqueue([this.snapshot('size() returns the integer field size', {
+			flashSize: true,
+			pause: true
+		}), this.snapshot('Result: size() = ' + this.size, {
+			flashSize: true,
+			pause: true
+		}), this.snapshot('The operation is complete')])
+	},
+	clear() {
+		this.save();
+		let st = [...this.storage],
+			snaps = [this.snapshot('The algorithm starts from the current ArrayQueue state')];
+		let f = this.first;
+		for (let i = 0; i < this.size; i++) {
+			st[f] = null;
+			snaps.push(this.snapshot('elements[first] is set to null, then first is advanced', {
+				storage: [...st],
+				first: f,
+				last: this.last,
+				size: this.size - i,
+				flashCells: [f],
+				flashFirst: true,
+				pause: true
+			}));
+			f = this.next(f)
+		}
+		snaps.push(this.snapshot('size is set to 0, first is reset to 0, and last is reset to elements.length - 1', {
+			storage: [...st],
+			first: 0,
+			last: this.capacity - 1,
+			size: 0,
+			flashFirst: true,
+			flashLast: true,
+			flashSize: true,
+			pause: true
+		}));
+		snaps.push(this.snapshot('The operation is complete', {
+			storage: [...st],
+			first: 0,
+			last: this.capacity - 1,
+			size: 0
+		}));
+		this.storage = st;
+		this.first = 0;
+		this.last = this.capacity - 1;
+		this.size = 0;
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	random() {
+		this.save();
+		this.capacity = 6;
+		this.storage = Array(6).fill(null);
+		let wrap = Math.random() < .5;
+		if (wrap) {
+			this.first = 4;
+			this.last = 1;
+			this.size = 4;
+			[5, 7, 2, 1].forEach((v, k) => this.storage[(this.first + k) % 6] = v)
+		} else {
+			this.first = 0;
+			this.last = 3;
+			this.size = 4;
+			[2, 1, 5, 7].forEach((v, k) => this.storage[k] = v)
+		}
+		this.showCurrent(wrap ? 'A wrapped sample ArrayQueue has been created' : 'A sample ArrayQueue has been created');
+		this.updateUI()
+	},
+	reinit() {
+		let c = parseInt(document.getElementById('cap').value);
+		if (isNaN(c) || c < 1) c = 16;
+		this.save();
+		this.capacity = c;
+		this.storage = Array(c).fill(null);
+		this.first = 0;
+		this.last = c - 1;
+		this.size = 0;
+		this.showCurrent('A new empty ArrayQueue has been allocated with capacity ' + c);
+		this.updateUI()
+	},
+	undo() {
+		if (!this.history.length) return;
+		const h = this.history.pop();
+		this.capacity = h.capacity;
+		this.storage = h.storage;
+		this.first = h.first;
+		this.last = h.last;
+		this.size = h.size;
+		this.showCurrent('The previous ArrayQueue state has been restored');
+		this.updateUI()
+	},
+	speed() {
+		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+	},
+	pause() {
+		const p = this.viz.togglePause();
+		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
+	},
+	toggleModal() {
+		const m = document.getElementById('helpModal');
+		m.style.display = m.style.display === 'block' ? 'none' : 'block'
+	},
+	updateUI() {
+		document.getElementById('btnUndo').disabled = this.history.length === 0
+	},
+	clearInputs() {
+		document.getElementById('val').value = ''
+	}
+};
+window.onload = () => app.init();
+window.onclick = e => {
+	if (e.target === document.getElementById('helpModal')) app.toggleModal()
+};
+</script></body></html>
