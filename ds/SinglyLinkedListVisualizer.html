@@ -257,9 +257,10 @@
                     onclick="app.prepend()" title="Prepend the value at the beginning of the list." aria-label="Prepend the value at the beginning of the list.">Prepend</button><button class="blue"
                     onclick="app.insert()" title="Insert the value at the selected index." aria-label="Insert the value at the selected index.">Insert</button><button class="blue" id="btnSortedInsert"
                     onclick="app.sorted_insert()" title="Insert the value preserving ascending order. Enabled only when the list is sorted ascending." aria-label="Insert the value preserving ascending order. Enabled only when the list is sorted ascending.">Sorted Insert</button>
-					<button class="blue" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button><button
-                    class="purple" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button><button class="red"
-                    onclick="app.del()" title="Delete the node at the selected index." aria-label="Delete the node at the selected index.">Delete</button>
+					<button class="blue" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button>
+					<button class="purple" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button>
+					<button class="blue" onclick="app.length()" title="Compute the number of nodes in the list." aria-label="Compute the number of nodes in the list.">Length</button>
+					<button class="red" onclick="app.del()" title="Delete the node at the selected index." aria-label="Delete the node at the selected index.">Delete</button>
                 <div class="sep"></div>
 					
 					<button class="orange"
@@ -291,6 +292,7 @@
                 <li><strong>Prepend</strong>: <span class="code">O(1)</span>.</li>
                 <li><strong>Insert</strong>: <span class="code">O(n)</span>.</li>
                 <li><strong>Sorted Insert</strong>: <span class="code">O(n)</span>. It uses <span class="code">p_previous</span> and <span class="code">p_current</span> to insert in ascending order. The button is disabled if the current list is not sorted ascending.</li>
+                <li><strong>Length</strong>: <span class="code">O(n)</span>. It traverses the list from <span class="code">p_first</span> using <span class="code">p_current</span> and updates a green counter box.</li>
                 <li><strong>Get</strong>, <strong>Set</strong>, <strong>Delete</strong>: <span class="code">O(n)</span>.</li>
             </ul>
             <p>The visualization shows how links and temporary pointers change while each algorithm progresses.</p>
@@ -2248,6 +2250,83 @@ snaps.push(this.snapshot(
     }
 ));
         this.values = newVals; this.ids = newIds; this.viz.enqueue(snaps); this.updateUI()
+    };
+})();
+
+    
+;
+/* === Length operation with green counter box: fixed local LEN_GAP === */
+(function () {
+    const LEN_GAP = 116 + 58;
+
+    Viz.prototype.drawLengthBox = function (box) {
+        const c = this.ctx;
+        const x = box.x, y = box.y, w = box.w ?? 76, h = box.h ?? this.cell;
+        c.save();
+        c.fillStyle = K.k;
+        c.font = '28px monospace';
+        c.textAlign = 'right';
+        c.textBaseline = 'middle';
+        c.fillText(box.label ?? 'length', x - 16, y + h / 2);
+        c.fillStyle = K.g;
+        c.fillRect(x, y, w, h - h * 0.05);
+        c.fillStyle = K.r;
+        c.font = '32px Arial';
+        c.textAlign = 'center';
+        c.fillText(String(box.value ?? 0), x + w / 2, y + h / 2 + 2);
+        c.restore()
+    };
+
+    const previousDrawOverlaysLength = Viz.prototype.drawOverlays;
+    Viz.prototype.drawOverlays = function (s) {
+        if (s.lengthBox) this.drawLengthBox(s.lengthBox);
+        previousDrawOverlaysLength.call(this, s)
+    };
+
+    app.length = function () {
+        const nodes = this.baseNodes();
+        const n = this.values.length;
+        const b = this.viz.base();
+        const lengthBox = count => ({ x: 205, y: 225, value: count, label: 'length' });
+        const currentNullX = b.x + n * LEN_GAP - 50;
+        const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed, target === null ? currentNullX : b.x - 180);
+        const snaps = [this.snapshot('The algorithm starts from the current list state', nodes, { lengthBox: lengthBox(0) })];
+
+        if (n === 0) {
+            const nullPtr = makePtr(null);
+            snaps.push(this.snapshot('p_current is initialized with p_first, which is NULL; length = 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
+            snaps.push(this.snapshot('The loop is not entered; the final length is 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
+            snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), flashAuxCross: true, pause: true }));
+            snaps.push(this.snapshot('The length result remains visible briefly: 0', nodes, { lengthBox: lengthBox(0), pause: true }));
+            snaps.push(this.snapshot('The length display is removed', nodes));
+            this.viz.enqueue(snaps);
+            this.updateUI();
+            return
+        }
+
+        let curId = this.ids[0], count = 0;
+        snaps.push(this.snapshot('p_current starts at p_first; length = 0', nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
+
+        for (let k = 0; k < n; k++) {
+            const currentPtr = makePtr(curId);
+            count++;
+            snaps.push(this.snapshot('A node is visited; length becomes ' + count, nodes.map(node => node.id === curId ? { ...node, flashElement: true } : node), { ptrs: [currentPtr], lengthBox: lengthBox(count), pause: true }));
+            snaps.push(this.snapshot('p_current is advanced to p_current->p_next', nodes, { ptrs: [currentPtr], lengthBox: lengthBox(count), flashPtrs: ['p_current'], pause: true }));
+            curId = this.ids[k + 1] ?? null;
+            const nextPtr = makePtr(curId, currentPtr);
+            snaps.push(this.snapshot(curId === null ? 'p_current is now NULL, so the traversal stops' : 'p_current now refers to the next node', nodes, { ptrs: [nextPtr], lengthBox: lengthBox(count), pause: true }));
+            if (curId !== null) {
+                snaps.push(this.snapshot('The next iteration continues with length = ' + count, nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
+            }
+        }
+
+        const finalPtr = makePtr(null);
+        snaps.push(this.snapshot('No more nodes remain; the final length is ' + count, nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), pause: true }));
+        snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), flashAuxCross: true, pause: true }));
+        snaps.push(this.snapshot('The length result remains visible briefly: ' + count, nodes, { lengthBox: lengthBox(count), pause: true }));
+        snaps.push(this.snapshot('The length display is removed', nodes));
+        this.viz.enqueue(snaps);
+        this.updateUI()
     };
 })();
 
