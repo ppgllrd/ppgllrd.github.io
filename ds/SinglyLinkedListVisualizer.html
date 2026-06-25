@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>LinkedList Visualizer</title>
+    <title>Singly Linked List Visualizer</title>
     <style>
         :root {
             --b: #1565c0;
@@ -247,7 +247,7 @@
 <body>
     <header>
         <div class="top">
-            <h1>LinkedList Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
+            <h1>Singly Linked List Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
         </div>
         <div class="gui">
             <div class="controls"><label>Value <input id="val" type="number" placeholder="#"
@@ -255,7 +255,8 @@
                         type="number" placeholder="i"></label><button class="green"
                     onclick="app.append()" title="Append the value at the end of the list." aria-label="Append the value at the end of the list.">Append</button><button class="green"
                     onclick="app.prepend()" title="Prepend the value at the beginning of the list." aria-label="Prepend the value at the beginning of the list.">Prepend</button><button class="blue"
-                    onclick="app.insert()" title="Insert the value at the selected index." aria-label="Insert the value at the selected index.">Insert</button>
+                    onclick="app.insert()" title="Insert the value at the selected index." aria-label="Insert the value at the selected index.">Insert</button><button class="blue" id="btnSortedInsert"
+                    onclick="app.sorted_insert()" title="Insert the value preserving ascending order. Enabled only when the list is sorted ascending." aria-label="Insert the value preserving ascending order. Enabled only when the list is sorted ascending.">Sorted Insert</button>
 					<button class="blue" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button><button
                     class="purple" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button><button class="red"
                     onclick="app.del()" title="Delete the node at the selected index." aria-label="Delete the node at the selected index.">Delete</button>
@@ -273,26 +274,24 @@
     </header>
     <div id="wrap"><canvas id="cv"></canvas>
         <div id="legend">
-            <div class="li"><span class="sw" style="background:#b6f8b6"></span>element / size</div>
+            <div class="li"><span class="sw" style="background:#b6f8b6"></span>element</div>
             <div class="li"><span class="sw" style="background:#91f4f4"></span>pointer to node</div>
-            <div class="li"><span class="sw" style="background:#c78cff"></span>pointer to list</div>
             <div class="li"><span class="dot"></span>null pointer</div>
         </div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
     <div id="helpModal" class="modal">
         <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
-            <h2>LinkedList</h2>
-            <p>A <strong>LinkedList</strong> stores a sequence of values as nodes connected by pointers. Each node contains an <span class="code">element</span> field with the stored value and a <span class="code">p_next</span> field that points to the next node, or to <span class="code">NULL</span> when there is no next node.</p>
-            <p>The list object keeps three pieces of information: <span class="code">p_first</span>, a pointer to the first node; <span class="code">p_last</span>, a pointer to the last node; and <span class="code">size</span>, the number of nodes currently stored. Keeping <span class="code">p_last</span> allows some operations at the end of the list to run without traversing from the beginning.</p>
+            <h2>Singly Linked List</h2>
+            <p>A <strong>singly linked list</strong> stores a sequence of values as nodes connected by pointers. Each node contains an <span class="code">element</span> field and a <span class="code">p_next</span> field.</p>
+            <p>The list structure contains only <span class="code">p_first</span>, a pointer to the first node, or <span class="code">NULL</span> when the list is empty.</p>
             <h3>Operations and asymptotic complexity</h3>
             <ul>
-                <li><strong>Append</strong>: adds a new node at the end. Complexity: <span class="code">O(1)</span>, because the algorithm uses <span class="code">p_last</span>.</li>
-                <li><strong>Prepend</strong>: adds a new node at the beginning. Complexity: <span class="code">O(1)</span>, because the algorithm updates <span class="code">p_first</span>.</li>
-                <li><strong>Insert</strong>: adds a new node at a selected index. Complexity: <span class="code">O(n)</span> in general, because the algorithm may need to traverse the list to find the insertion point. Inserting at the beginning behaves like Prepend; inserting at the end behaves like Append.</li>
-                <li><strong>Get</strong>: reads the value at a selected index. Complexity: <span class="code">O(n)</span> in general. Reading the last node can be <span class="code">O(1)</span> by using <span class="code">p_last</span>.</li>
-                <li><strong>Set</strong>: replaces the value at a selected index. Complexity: <span class="code">O(n)</span> in general. Updating the last node can be <span class="code">O(1)</span> by using <span class="code">p_last</span>.</li>
-                <li><strong>Delete</strong>: removes the node at a selected index. Complexity: <span class="code">O(n)</span>, because the algorithm locates the node to delete and, when needed, the previous node. Deleting the first node updates <span class="code">p_first</span>; deleting the last node also updates <span class="code">p_last</span>.</li>
+                <li><strong>Append</strong>: <span class="code">O(n)</span>, because traversal starts at <span class="code">p_first</span>.</li>
+                <li><strong>Prepend</strong>: <span class="code">O(1)</span>.</li>
+                <li><strong>Insert</strong>: <span class="code">O(n)</span>.</li>
+                <li><strong>Sorted Insert</strong>: <span class="code">O(n)</span>. It uses <span class="code">p_previous</span> and <span class="code">p_current</span> to insert in ascending order. The button is disabled if the current list is not sorted ascending.</li>
+                <li><strong>Get</strong>, <strong>Set</strong>, <strong>Delete</strong>: <span class="code">O(n)</span>.</li>
             </ul>
             <p>The visualization shows how links and temporary pointers change while each algorithm progresses.</p>
         </div>
@@ -589,17 +588,18 @@
     		this.t = 0;
     		this.state = 'MORPH'
     	}
-    	finish() {
-    		this.idx++;
-    		if (this.pending.length) this.next();
-    		else {
-    			this.state = 'IDLE';
-    			document.getElementById('status-text').innerText = 'Ready.'
-				if (typeof app !== 'undefined' && app.clearInputs) {
-					app.clearInputs();
-				}
-    		}
-    	}
+finish() {
+    this.idx++;
+    if (this.pending.length) this.next();
+    else {
+        this.state = 'IDLE';
+        document.getElementById('status-text').innerText = 'Ready.';
+
+        if (typeof app !== 'undefined' && app.clearInputs) {
+            app.clearInputs();
+        }
+    }
+}
     	ease(t) {
     		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
     	}
@@ -722,7 +722,7 @@
     		c.fillStyle = K.k;
     		c.font = '28px monospace';
     		c.textAlign = 'right';
-    		c.fillText('p_list', x - 145, y - 62);
+    		c.fillText('outer list pointer', x - 145, y - 62);
     		c.fillStyle = K.p;
     		c.fillRect(x - 125, y - 108, w, h);
     		c.fillStyle = K.v;
@@ -731,7 +731,7 @@
     		c.fill();
     		[
     			['p_first', K.c, s.firstId],
-    			['p_last', K.c, s.lastId],
+    			['last-node pointer', K.c, s.lastId],
     			['size', K.g, s.size]
     		].forEach((r, i) => {
     			const yy = y + i * h;
@@ -1069,7 +1069,7 @@ ptr(n) {
     			...newUp,
     			flashNew: false
     		};
-    		snaps.push(this.snapshot(oldSize === 0 ? 'The list is empty, so the new node will become both first and last' : 'The list is ready to update its first-node pointer', [newUp, ...shiftedOld], {
+    		snaps.push(this.snapshot(oldSize === 0 ? 'The list is empty, so p_first is ready to point to the new node' : 'p_first is ready to point to the new node', [newUp, ...shiftedOld], {
     			size: oldSize,
     			pnode,
     			firstId: oldFirst,
@@ -1078,7 +1078,7 @@ ptr(n) {
     			flashPLast: oldSize === 0,
     			pause: true
     		}));
-    		snaps.push(this.snapshot('The new node becomes the first node of the list', [newUp, ...shiftedOld], {
+    		snaps.push(this.snapshot('p_first now points to the new first node', [newUp, ...shiftedOld], {
     			size: oldSize,
     			pnode,
     			firstId: newId,
@@ -1096,7 +1096,7 @@ ptr(n) {
     			lastId: oldIds.at(-1) ?? newId,
     			pause: true
     		}));
-    		snaps.push(this.snapshot('The stored list size is about to change', [newDown, ...shiftedOld], {
+    		snaps.push(this.snapshot('The node indices are about to be refreshed', [newDown, ...shiftedOld], {
     			size: oldSize,
     			pnode,
     			firstId: newId,
@@ -1104,7 +1104,7 @@ ptr(n) {
     			flashSize: true,
     			pause: true
     		}));
-    		snaps.push(this.snapshot('The list size increases by one', [newDown, ...shiftedOld], {
+    		snaps.push(this.snapshot('The node indices have been refreshed', [newDown, ...shiftedOld], {
     			size: oldSize + 1,
     			pnode,
     			firstId: newId,
@@ -1195,7 +1195,7 @@ ptr(n) {
     				preserveLinks: true,
     				pause: true
     			}));
-    			snaps.push(this.snapshot('The stored list size is about to change', [nd], {
+    			snaps.push(this.snapshot('The node indices are about to be refreshed', [nd], {
     				size: 0,
     				pnode,
     				firstId: newId,
@@ -1204,7 +1204,7 @@ ptr(n) {
     				preserveLinks: true,
     				pause: true
     			}));
-    			snaps.push(this.snapshot('The list size increases by one', [nd], {
+    			snaps.push(this.snapshot('The node indices have been refreshed', [nd], {
     				size: 1,
     				pnode,
     				firstId: newId,
@@ -1304,7 +1304,7 @@ ptr(n) {
     				preserveLinks: true,
     				pause: true
     			}));
-    			snaps.push(this.snapshot('The stored list size is about to change', [...linkedOld, nd], {
+    			snaps.push(this.snapshot('The node indices are about to be refreshed', [...linkedOld, nd], {
     				size: oldSize,
     				pnode,
     				firstId: oldIds[0],
@@ -1313,7 +1313,7 @@ ptr(n) {
     				preserveLinks: true,
     				pause: true
     			}));
-    			snaps.push(this.snapshot('The list size increases by one', [...linkedOld, nd], {
+    			snaps.push(this.snapshot('The node indices have been refreshed', [...linkedOld, nd], {
     				size: oldSize + 1,
     				pnode,
     				firstId: oldIds[0],
@@ -1501,7 +1501,7 @@ ptr(n) {
     			preserveLinks: true,
     			pause: true
     		}));
-    		snaps.push(this.snapshot('The stored list size is about to change', [...linkedNodes, newUp], {
+    		snaps.push(this.snapshot('The node indices are about to be refreshed', [...linkedNodes, newUp], {
     			size: oldSize,
     			pnode,
     			firstId: oldIds[0],
@@ -1511,7 +1511,7 @@ ptr(n) {
     			preserveLinks: true,
     			pause: true
     		}));
-    		snaps.push(this.snapshot('The list size increases by one', [...linkedNodes, newUp], {
+    		snaps.push(this.snapshot('The node indices have been refreshed', [...linkedNodes, newUp], {
     			size: oldSize + 1,
     			pnode,
     			firstId: oldIds[0],
@@ -1555,7 +1555,7 @@ ptr(n) {
     		}));
     		if (i === this.values.length - 1) {
     			const lastId = this.ids.at(-1);
-    			snaps.push(this.snapshot('The algorithm uses p_last to access the last node directly', nodes, {
+    			snaps.push(this.snapshot('The algorithm uses last-node pointer to access the last node directly', nodes, {
     				size: this.values.length,
     				markPLastArrow: true,
     				pause: true
@@ -1648,7 +1648,7 @@ ptr(n) {
     		}));
     		if (i === oldVals.length - 1) {
     			const lastId = oldIds.at(-1);
-    			snaps.push(this.snapshot('The algorithm uses p_last to access the last node directly', nodes, {
+    			snaps.push(this.snapshot('The algorithm uses last-node pointer to access the last node directly', nodes, {
     				size: oldVals.length,
     				markPLastArrow: true,
     				pause: true
@@ -1795,9 +1795,9 @@ ptr(n) {
 			snaps.push(this.snapshot(needsDetour ? 'The previous node is linked around the node being removed' : 'The previous node is linked to the node after the removed node', linkedNodes, { size: oldSize, firstId: oldIds[0], lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
 		}
 		if (curId === oldIds.at(-1)) {
-			snaps.push(this.snapshot('The removed node is the last node, so the last-node pointer must change', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), flashPLast: true, preserveLinks: true, pause: true }));
+			snaps.push(this.snapshot('The removed node has no successor, so only the bypass link is needed', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), flashPLast: true, preserveLinks: true, pause: true }));
 			lastAfterLink = prevId;
-			snaps.push(this.snapshot('The previous node becomes the last node', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
+			snaps.push(this.snapshot('The previous node now ends the list with p_next = NULL', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
 		}
 		const crossNodes = linkedNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
 		const twoNodeDeleteFirst = oldSize === 2 && prevId === null && currentNext !== null;
@@ -1807,14 +1807,14 @@ ptr(n) {
 		let straightNodes = freedGoneNodes.map(n => n.id === prevId ? ({ ...n, detourNext: needsDetour, detourAmount: 0 }) : ({ ...n }));
 		snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'The bypass link settles into its final shape' : 'The final link between the remaining nodes is established', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 0 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
 		if (twoNodeDeleteFirst) {
-			snaps.push(this.snapshot('The last-node pointer settles into its final shape', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: true, pFirstDetourAmount: 0, preserveLinks: true, pause: true }));
+			snaps.push(this.snapshot('The remaining pointer settles into its final shape', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: true, pFirstDetourAmount: 0, preserveLinks: true, pause: true }));
 		}
 		const newVals = oldVals.filter((_, idx) => idx !== i), newIds = oldIds.filter((_, idx) => idx !== i), newFirst = newIds[0] ?? null, newLast = newIds.at(-1) ?? null;
 		const compactNodes = this.baseNodes(newVals, newIds, 0, b.y);
 		snaps.push(this.snapshot('The remaining nodes close the gap left by the removed node', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
-		snaps.push(this.snapshot('The stored list size is about to change', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashSize: true, preserveLinks: true, pause: true }));
-		snaps.push(this.snapshot('The list size decreases by one', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
-		snaps.push(this.snapshot('The temporary pointers are is deallocated after exiting the function', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashAuxCross: true, preserveLinks: true, pause: true }));
+		snaps.push(this.snapshot('The node indices are about to be refreshed', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashSize: true, preserveLinks: true, pause: true }));
+		snaps.push(this.snapshot('The node indices have been refreshed', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
+		snaps.push(this.snapshot('The temporary pointers are deallocated after exiting the function', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashAuxCross: true, preserveLinks: true, pause: true }));
 		snaps.push(this.snapshot('The operation is complete', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true }));
 		this.values = newVals;
 		this.ids = newIds;
@@ -1886,6 +1886,371 @@ ptr(n) {
 			document.getElementById('idx').value = '';
 		}
     }
+    ;
+
+/* === p_first-only overrides + sorted_insert. Leading semicolon prevents object-literal call errors. === */
+(function () {
+    const GAP = 116 + 58;
+
+    Viz.prototype.drawStructBoxes = function (s) {
+        const c = this.ctx, x = 205, y = 155, w = 70, h = this.cell;
+        c.save();
+        c.fillStyle = K.k; c.font = '28px monospace'; c.textAlign = 'right'; c.textBaseline = 'middle';
+        c.fillText('p_first', x - 16, y + h / 2);
+        c.fillStyle = K.c; c.fillRect(x, y, w, h - h * 0.05);
+        c.fillStyle = K.b; c.beginPath(); c.arc(x + w / 2, y + h / 2, 8, 0, Math.PI * 2); c.fill();
+        c.restore()
+    };
+
+    Viz.prototype.drawStructArrows = function (s) {
+        const x = 205, y = 155, w = 70, h = this.cell, f = this.nodeById(s, s.firstId);
+        if (f) {
+            const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
+            if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, amount);
+            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3)
+        }
+    };
+
+    Viz.prototype.drawOverlays = function (s) {
+        if (s.flashPFirst) this.flashStruct(0);
+        (s.nodes || []).forEach(n => {
+            if (n.flashNew) this.roundFlash(n.x - 8, n.y - 8, this.nodeW + 16, this.cell + 16);
+            if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, 29);
+            if (n.flashElement) this.roundFlash(n.x - 4, n.y - 4, this.cell + 8, this.cell + 8);
+            if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
+        });
+        if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, 60, 58);
+        if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, 60, 58));
+        if (s.flashPtrs)(s.ptrs || []).forEach(p => { if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + 30, p.y + 29, 28) })
+    };
+
+    app.snapshot = function (text, nodes, extra = {}) {
+        nodes = nodes.map(n => ({ ...n }));
+        if (!extra.preserveLinks) relink(nodes);
+        return { nodes, firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null), text, ...extra }
+    };
+
+    app.isSortedAscending = function () {
+        for (let i = 1; i < this.values.length; i++) if (this.values[i - 1] > this.values[i]) return false;
+        return true
+    };
+
+    app.updateUI = function () {
+        document.getElementById('btnUndo').disabled = this.history.length === 0;
+        const b = document.getElementById('btnSortedInsert');
+        if (b) {
+            const ok = this.isSortedAscending();
+            b.disabled = !ok;
+            b.title = ok ? 'Insert the value preserving ascending order.' : 'Disabled: the current list is not sorted ascending.';
+            b.setAttribute('aria-label', b.title)
+        }
+    };
+
+    app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
+        const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
+        return { label, target, x: fixed?.x ?? (t ? t.x - 50 : (fallbackX ?? b.x - 180)), y: fixed?.y ?? (b.y - 112) }
+    };
+
+    app.append = function () {
+        const e = this.v();
+        if (isNaN(e)) return;
+        this.save();
+        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
+        const b = this.viz.base();
+        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        const snaps = [this.snapshot('The algorithm starts from the current list state', oldNodes)];
+        let newNode = { id: newId, e, index: oldSize, x: b.x + oldSize * GAP, y: b.up, next: null, flashNew: true };
+        const pnode = { x: newNode.x - 130, y: b.up, target: newId, label: 'p_node' };
+        snaps.push(this.snapshot('A new node is allocated with p_next = NULL', [...oldNodes, newNode], { pnode, firstId: oldIds[0] ?? null, preserveLinks: true, pause: true }));
+        newNode = { ...newNode, flashNew: false };
+        if (oldSize === 0) {
+            const nd = { ...newNode, y: b.y };
+            snaps.push(this.snapshot('The list is empty, so p_first is ready to point to the new node', [newNode], { pnode, firstId: null, flashPFirst: true, preserveLinks: true, pause: true }));
+snaps.push(this.snapshot(
+    'p_first now points to the new node',
+    [nd],
+    {
+        pnode,
+        firstId: newId,
+        preserveLinks: true,
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The temporary pointer p_node is deallocated after exiting the function',
+    [nd],
+    {
+        pnode,
+        firstId: newId,
+        flashPNodeCross: true,
+        preserveLinks: true,
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The operation is complete',
+    [nd],
+    {
+        firstId: newId,
+        preserveLinks: true
+    }
+));
+        } else {
+            const makePtr = (target, fixed = null, ns = oldNodes) => this._ptr('p_current', target, ns, fixed);
+            let curId = oldIds[0];
+            snaps.push(this.snapshot('Because there is no last-node pointer, traversal starts at p_first', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], preserveLinks: true, pause: true }));
+            for (let k = 0; k < oldSize - 1; k++) {
+                const oldPtr = makePtr(curId);
+                snaps.push(this.snapshot('p_current advances through p_next looking for the last node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [oldPtr], flashPtrs: ['p_current'], preserveLinks: true, pause: true }));
+                curId = oldIds[k + 1];
+                snaps.push(this.snapshot('p_current now refers to the next node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId, oldPtr)], preserveLinks: true, pause: true }));
+                snaps.push(this.snapshot('The traversal continues from this node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], preserveLinks: true, pause: true }));
+            }
+            snaps.push(this.snapshot('The last node has been found: its p_next is ready to change', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], flashPNext: curId, preserveLinks: true, pause: true }));
+            const linked = oldNodes.map(n => ({ ...n })); linked[linked.length - 1].next = newId;
+            const nd = { ...newNode, y: b.y };
+            snaps.push(this.snapshot('The former last node now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId, null, linked)], preserveLinks: true, pause: true }));
+const finalPtr = makePtr(curId, null, linked);
+
+snaps.push(this.snapshot(
+    'The new node is placed in its final list position',
+    [...linked, nd],
+    {
+        pnode,
+        firstId: oldIds[0],
+        ptrs: [finalPtr],
+        preserveLinks: true,
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The temporary pointers are deallocated after exiting the function',
+    [...linked, nd],
+    {
+        pnode,
+        firstId: oldIds[0],
+        ptrs: [finalPtr],
+        flashPNodeCross: true,
+        flashAuxCross: true,
+        preserveLinks: true,
+        pause: true
+    }
+));
+
+
+snaps.push(this.snapshot(
+    'The operation is complete',
+    [...linked, nd],
+    {
+        firstId: oldIds[0],
+        preserveLinks: true
+    }
+));
+
+        }
+        this.values = [...oldVals, e]; this.ids = [...oldIds, newId]; this.viz.enqueue(snaps); this.updateUI()
+    };
+
+    app.get = function () {
+        const i = parseInt(document.getElementById('idx').value);
+        if (isNaN(i) || i < 0 || i >= this.values.length) return;
+        const nodes = this.baseNodes();
+        const snaps = [this.snapshot('The algorithm starts from the current list state', nodes)];
+        const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed);
+        let curId = this.ids[0];
+        snaps.push(this.snapshot('Traversal starts at p_first', nodes, { ptrs: [makePtr(curId)], pause: true }));
+        for (let k = 0; k < i; k++) {
+            const oldPtr = makePtr(curId);
+            snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [oldPtr], flashPtrs: ['p_current'], pause: true }));
+            curId = this.ids[k + 1];
+            snaps.push(this.snapshot('p_current now refers to the next node', nodes, { ptrs: [makePtr(curId, oldPtr)], pause: true }));
+            snaps.push(this.snapshot('The traversal continues from this node', nodes, { ptrs: [makePtr(curId)], pause: true }));
+        }
+const finalPtr = makePtr(curId);
+
+snaps.push(this.snapshot(
+    'The target node has been found: get(' + i + ') = ' + this.values[i],
+    nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n),
+    {
+        ptrs: [finalPtr],
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The temporary traversal pointer p_current is deallocated after exiting the function',
+    nodes,
+    {
+        ptrs: [finalPtr],
+        flashAuxCross: true,
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The lookup is complete: get(' + i + ') = ' + this.values[i],
+    nodes
+));
+        this.viz.enqueue(snaps); this.updateUI()
+    };
+
+    app.set = function () {
+        const i = parseInt(document.getElementById('idx').value), e = this.v();
+        if (isNaN(i) || isNaN(e) || i < 0 || i >= this.values.length) return;
+        this.save();
+        const oldVals = [...this.values], oldIds = [...this.ids], nodes = this.baseNodes(oldVals, oldIds);
+        const snaps = [this.snapshot('The algorithm starts from the current list state', nodes)];
+        const makePtr = (target, fixed = null, ns = nodes) => this._ptr('p_current', target, ns, fixed);
+        let curId = oldIds[0];
+        snaps.push(this.snapshot('Traversal starts at p_first', nodes, { ptrs: [makePtr(curId)], pause: true }));
+        for (let k = 0; k < i; k++) {
+            const oldPtr = makePtr(curId);
+            snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [oldPtr], flashPtrs: ['p_current'], pause: true }));
+            curId = oldIds[k + 1];
+            snaps.push(this.snapshot('p_current now refers to the next node', nodes, { ptrs: [makePtr(curId, oldPtr)], pause: true }));
+            snaps.push(this.snapshot('The traversal continues from this node', nodes, { ptrs: [makePtr(curId)], pause: true }));
+        }
+        snaps.push(this.snapshot('The target node has been located and its value will be replaced', nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n), { ptrs: [makePtr(curId)], pause: true }));
+const newVals = [...oldVals];
+newVals[i] = e;
+
+const updated = this.baseNodes(newVals, oldIds);
+const finalPtr = makePtr(curId, null, updated);
+
+snaps.push(this.snapshot(
+    'The node value is updated to ' + e,
+    updated,
+    {
+        ptrs: [finalPtr],
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The temporary traversal pointer p_current is deallocated after exiting the function',
+    updated,
+    {
+        ptrs: [finalPtr],
+        flashAuxCross: true,
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The operation is complete',
+    updated
+));
+        this.values = newVals; this.viz.enqueue(snaps); this.updateUI()
+    };
+
+    app.sorted_insert = function () {
+        const e = this.v();
+        if (isNaN(e) || !this.isSortedAscending()) return;
+        this.save();
+        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
+        const b = this.viz.base(), newNodeY = b.y + 100;
+        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        const snaps = [this.snapshot('The list is sorted ascending, so sorted_insert can start', oldNodes)];
+const currentNullX = b.x + oldSize * GAP - 50;
+
+const makePtr = (label, target, nodes = oldNodes, fixed = null) => {
+    const nullX = label === 'p_current'
+        ? currentNullX
+        : b.x - 220;
+
+    return this._ptr(
+        label,
+        target,
+        nodes,
+        fixed,
+        target === null ? nullX : b.x - 180
+    );
+};
+        const ptrsFor = (prev, cur, nodes = oldNodes, fp = null, fc = null) => [makePtr('p_previous', prev, nodes, fp), makePtr('p_current', cur, nodes, fc)];
+        let prevId = null, curId = oldIds[0] ?? null, pos = 0;
+        snaps.push(this.snapshot('p_previous starts as NULL and p_current starts at p_first', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
+        while (pos < oldSize && oldVals[pos] < e) {
+            const oldCur = curId, nextCur = oldIds[pos + 1] ?? null, oldPtrs = ptrsFor(prevId, curId);
+            snaps.push(this.snapshot('The current value is smaller than ' + e + ', so the search advances', oldNodes, { ptrs: oldPtrs, flashElement: oldCur, pause: true }));
+            snaps.push(this.snapshot('p_previous is advanced to p_current', oldNodes, { ptrs: oldPtrs, flashPtrs: ['p_previous'], pause: true }));
+            prevId = oldCur;
+            const prevUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+            snaps.push(this.snapshot('p_previous now refers to the node just visited', oldNodes, { ptrs: prevUpdated, pause: true }));
+            snaps.push(this.snapshot('p_current is advanced to the next node', oldNodes, { ptrs: prevUpdated, flashPtrs: ['p_current'], pause: true }));
+            curId = nextCur; pos++;
+            const currentUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+            snaps.push(this.snapshot(curId === null ? 'p_current is now NULL: the new value belongs at the end' : 'p_current now refers to the next node', oldNodes, { ptrs: currentUpdated, pause: true }));
+            snaps.push(this.snapshot('The traversal pointers are positioned for the next comparison', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
+        }
+        snaps.push(this.snapshot(curId !== null ? 'The first node not smaller than ' + e + ' has been found' : 'No remaining node is greater than or equal to ' + e + ', so insertion will be at the end', oldNodes, { ptrs: ptrsFor(prevId, curId), flashElement: curId ?? undefined, pause: true }));
+        const shifted = oldVals.map((val, j) => ({ id: oldIds[j], e: val, index: j < pos ? j : j + 1, x: b.x + (j + (j >= pos ? 1 : 0)) * GAP, y: b.y, next: j < oldIds.length - 1 ? oldIds[j + 1] : null }));
+        snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shifted, { firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+        const pnode = { x: b.x + pos * GAP - 120, y: newNodeY, target: newId, label: 'p_node' };
+        let newNode = { id: newId, e, index: pos, x: b.x + pos * GAP, y: newNodeY, next: curId, flashNew: true };
+        snaps.push(this.snapshot('A new node is allocated and its p_next points to p_current', [...shifted, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+        newNode = { ...newNode, flashNew: false };
+        let linked = shifted.map(n => ({ ...n }));
+        let newFirst = oldIds[0] ?? newId;
+        if (prevId === null) {
+            snaps.push(this.snapshot('The new value belongs before the current first node, so p_first must change', [...linked, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), flashPFirst: true, preserveLinks: true, pause: true }));
+            newFirst = newId;
+            snaps.push(this.snapshot('p_first now points to the new node', [...linked, newNode], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+        } else {
+            snaps.push(this.snapshot('p_previous is ready to link to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), flashPNext: prevId, preserveLinks: true, pause: true }));
+            const prevNode = linked.find(n => n.id === prevId); if (prevNode) prevNode.next = newId;
+            snaps.push(this.snapshot('p_previous->p_next now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+        }
+        const newUp = { ...newNode, y: b.y };
+        snaps.push(this.snapshot('The new node is placed into the main list sequence', [...linked, newUp], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+        const newVals = [...oldVals], newIds = [...oldIds]; newVals.splice(pos, 0, e); newIds.splice(pos, 0, newId);
+const compact = this.baseNodes(newVals, newIds, 0, b.y);
+
+// Mantener posiciones finales de los punteros temporales.
+// Uso 'shifted' para que, si p_current === NULL, no se recalcule más a la derecha
+// al pasar a 'compact', que ya tiene un nodo más.
+const finalPtrs = ptrsFor(prevId, curId, shifted);
+
+snaps.push(this.snapshot(
+    'The list remains sorted ascending after the insertion',
+    compact,
+    {
+        firstId: newIds[0] ?? null,
+        pnode,
+        ptrs: finalPtrs,
+        preserveLinks: true,
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The temporary pointers are deallocated after exiting the function',
+    compact,
+    {
+        firstId: newIds[0] ?? null,
+        pnode,
+        ptrs: finalPtrs,
+        flashPNodeCross: true,
+        flashAuxCross: true,
+        preserveLinks: true,
+        pause: true
+    }
+));
+
+snaps.push(this.snapshot(
+    'The operation is complete',
+    compact,
+    {
+        firstId: newIds[0] ?? null,
+        preserveLinks: true
+    }
+));
+        this.values = newVals; this.ids = newIds; this.viz.enqueue(snaps); this.updateUI()
+    };
+})();
+
     window.onload = () => app.init();
     window.onclick = e => {
     	if (e.target === document.getElementById('helpModal')) app.toggleModal()
