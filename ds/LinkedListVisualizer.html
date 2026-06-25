@@ -1886,6 +1886,217 @@ ptr(n) {
 			document.getElementById('idx').value = '';
 		}
     }
+
+;
+/* === Animated LinkedList_clear(struct LinkedList* p_list) operation === */
+(function () {
+    const CLEAR_GAP = 116 + 58;
+
+    if (!app._ptr) {
+        app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
+            const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
+            return { label, target, x: fixed?.x ?? (t ? t.x - 50 : (fallbackX ?? b.x - 180)), y: fixed?.y ?? (b.y - 112) }
+        }
+    }
+
+    /* Draw p_first and p_last arrows even when they are dangling pointers to
+       nodes that have already been removed from the visual representation. */
+    Viz.prototype.drawStructArrows = function (s) {
+        const x = 205, y = 155, w = 70, h = this.cell;
+        this.arrow(x - 90, y - 81, x, y + 8, K.v, 3);
+
+        const f = this.nodeById(s, s.firstId), l = this.nodeById(s, s.lastId);
+        if (f) {
+            const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
+            if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, firstAmount);
+            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3)
+        } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
+            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.b, 3)
+        }
+
+        if (l) {
+            const targetY = l.y + this.cell * 0.75, lastCol = s.markPLastArrow ? K.r : K.b;
+            if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3);
+            else this.lastArrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3)
+        } else if (s.lastTargetX !== undefined && s.lastTargetY !== undefined) {
+			if (s.straightPLastArrow && !s.keepCurvedPLastArrow) {
+				this.arrow(
+					x + w / 2,
+					y + h + h / 2,
+					s.lastTargetX,
+					s.lastTargetY,
+					K.b,
+					3
+				);
+			} else {
+				this.lastArrow(
+					x + w / 2,
+					y + h + h / 2,
+					s.lastTargetX,
+					s.lastTargetY,
+					K.b,
+					3
+				);
+			}
+		}
+    };
+
+    if (!Viz.prototype._drawOverlaysSupportsPtrCross) {
+        const previousDrawOverlaysForPtrCross = Viz.prototype.drawOverlays;
+        Viz.prototype.drawOverlays = function (s) {
+            previousDrawOverlaysForPtrCross.call(this, s);
+            if (s.flashPtrCross) {
+                (s.ptrs || []).forEach(p => {
+                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, 60, 58)
+                })
+            }
+        };
+        Viz.prototype._drawOverlaysSupportsPtrCross = true
+    }
+
+    app.clear = function () {
+        this.save();
+        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
+        const b = this.viz.base();
+        const originalNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        const oldNodeMap = new Map(originalNodes.map(n => [n.id, n]));
+        const oldFirstId = oldIds[0] ?? null, oldLastId = oldIds.at(-1) ?? null;
+        const oldFirstNode = originalNodes[0] ?? null, oldLastNode = originalNodes.at(-1) ?? null;
+        const firstDanglingTarget = oldFirstNode ? { firstTargetX: oldFirstNode.x, firstTargetY: oldFirstNode.y + this.viz.cell / 2 } : {};
+        const lastDanglingTarget = oldLastNode ? { lastTargetX: oldLastNode.x, lastTargetY: oldLastNode.y + this.viz.cell * 0.75 } : {};
+        const listNormal = () => ({ firstId: oldFirstId, lastId: oldLastId, size: oldSize });
+        const listDangling = (nodes = []) => ({
+			firstId: oldFirstId,
+			lastId: oldLastId,
+			size: oldSize,
+			...firstDanglingTarget,
+			...lastDanglingTarget,
+			straightPLastArrow: nodes.length <= 1
+		});
+        const currentNullX = b.x + Math.max(oldSize, 1) * CLEAR_GAP - 50;
+
+        const makePtr = (label, target, nodes, fixed = null) => {
+            const fallback = target === null
+                ? (label === 'p_current' ? currentNullX : b.x - 220)
+                : b.x - 180;
+            const ptr = this._ptr(label, target, nodes, fixed, fallback);
+            const visible = (nodes || []).some(n => n.id === target);
+            const oldNode = oldNodeMap.get(target);
+            if (target !== undefined && target !== null && !visible && oldNode) {
+                ptr.targetX = oldNode.x;
+                ptr.targetY = oldNode.y
+            }
+            return ptr
+        };
+
+        const pToDeleteAt = (pCurrentPtr, target, nodes) => {
+            const fixed = { x: pCurrentPtr.x - 155, y: pCurrentPtr.y };
+            return makePtr('p_toDelete', target, nodes, fixed)
+        };
+
+        const compactRemaining = startIndex => this.baseNodes(oldVals.slice(startIndex), oldIds.slice(startIndex), startIndex * CLEAR_GAP, b.y);
+        let snaps = [this.snapshot('The algorithm starts from the current list state', originalNodes, listNormal())];
+
+        let pNodeValue = oldFirstId;
+        let pCurrentPtr = makePtr('p_current', pNodeValue, originalNodes);
+        let pToDeleteValue = null;
+        let pToDeletePtr = pToDeleteAt(pCurrentPtr, pToDeleteValue, originalNodes);
+
+        snaps.push(this.snapshot('Function-local pointers are created: p_current receives p_list->p_first and p_toDelete starts as NULL', originalNodes, { ...listNormal(), ptrs: [pCurrentPtr, pToDeletePtr], flashPtrs: ['p_current', 'p_toDelete'], pause: true }));
+
+        if (oldSize === 0) {
+            snaps.push(this.snapshot('p_current is NULL, so the freeing loop is not entered', originalNodes, { firstId: null, lastId: null, size: 0, ptrs: [pCurrentPtr, pToDeletePtr], pause: true }));
+            snaps.push(this.snapshot('p_list->p_first is already NULL', originalNodes, { firstId: null, lastId: null, size: 0, ptrs: [pCurrentPtr, pToDeletePtr], flashPFirst: true, pause: true }));
+            snaps.push(this.snapshot('p_list->p_last is already NULL', originalNodes, { firstId: null, lastId: null, size: 0, ptrs: [pCurrentPtr, pToDeletePtr], flashPLast: true, pause: true }));
+            snaps.push(this.snapshot('p_list->size is already 0', originalNodes, { firstId: null, lastId: null, size: 0, ptrs: [pCurrentPtr, pToDeletePtr], flashSize: true, pause: true }));
+            snaps.push(this.snapshot('The function-local pointers are deallocated after exiting the function', originalNodes, { firstId: null, lastId: null, size: 0, ptrs: [pCurrentPtr, pToDeletePtr], flashPtrCross: ['p_current', 'p_toDelete'], pause: true }));
+            snaps.push(this.snapshot('The operation is complete', [], { firstId: null, lastId: null, size: 0 }));
+            this.values = [];
+            this.ids = [];
+            this.viz.enqueue(snaps);
+            this.updateUI();
+            return
+        }
+
+        for (let k = 0; k < oldSize; k++) {
+            const curId = oldIds[k];
+            const nextId = oldIds[k + 1] ?? null;
+            const visibleNodes = compactRemaining(k);
+            const listState = k === 0 ? listNormal() : listDangling(visibleNodes);
+
+            const pCurrent = makePtr('p_current', curId, visibleNodes);
+            const pToDeleteBefore = pToDeleteAt(pCurrent, pToDeleteValue, visibleNodes);
+            snaps.push(this.snapshot('Loop test: p_current is not NULL', visibleNodes, { ...listState, ptrs: [pCurrent, pToDeleteBefore], pause: true }));
+
+            pToDeleteValue = curId;
+            const pToDeleteAssigned = pToDeleteAt(pCurrent, pToDeleteValue, visibleNodes);
+            snaps.push(this.snapshot('p_toDelete moves to p_current; the node to free is selected', visibleNodes, { ...listState, ptrs: [pCurrent, pToDeleteAssigned], flashPtrs: ['p_toDelete'], pause: true }));
+
+            const pMoving = makePtr('p_current', nextId, visibleNodes, pCurrent);
+            snaps.push(this.snapshot('p_current advances before the node is freed', visibleNodes, { ...listState, ptrs: [pMoving, pToDeleteAssigned], flashPtrs: ['p_current'], pause: true }));
+
+            const pNext = makePtr('p_current', nextId, visibleNodes);
+            const pToDeleteLeftOfP = pToDeleteAt(pNext, pToDeleteValue, visibleNodes);
+            snaps.push(this.snapshot(nextId === null ? 'p_current is now NULL; this is the last node to free' : 'p_current now points to the next node', visibleNodes, { ...listState, ptrs: [pNext, pToDeleteLeftOfP], pause: true }));
+
+            const crossedNodes = visibleNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
+            snaps.push(this.snapshot('The node pointed by p_toDeleteis freed; p_toDelete becomes dangling', crossedNodes, { ...listState, ptrs: [pNext, pToDeleteLeftOfP], preserveLinks: true, pause: true }));
+
+            const remainingNodes = compactRemaining(k + 1);
+            const pAfterFree = makePtr('p_current', nextId, remainingNodes);
+            const pToDeleteAfterFree = pToDeleteAt(pAfterFree, pToDeleteValue, remainingNodes);
+            snaps.push(this.snapshot(
+				'The freed node is removed; p_first, p_last and p_toDelete keep their dangling values until the final assignments',
+				remainingNodes,
+				{
+					...listDangling(remainingNodes),
+					ptrs: [pAfterFree, pToDeleteAfterFree],
+					preserveLinks: true,
+					pause: true
+				}
+			));
+        }
+
+        const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - 112 });
+        const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteValue, []);
+        snaps.push(this.snapshot(
+			'All nodes have been freed; p_current is NULL and the list fields still contain dangling pointers',
+			[],
+			{
+				...listDangling([]),
+				ptrs: [nullPtr, pToDeleteFinal],
+				pause: true
+			}
+		));
+
+        snaps.push(this.snapshot(
+			'p_list->p_first is set to NULL',
+			[],
+			{
+				...listDangling([]),
+				ptrs: [nullPtr, pToDeleteFinal],
+				flashPFirst: true,
+				pause: true
+			}
+		));
+        snaps.push(this.snapshot('p_list->p_first now contains NULL; p_last is still dangling', [], { firstId: null, lastId: oldLastId, size: oldSize, ...lastDanglingTarget, ptrs: [nullPtr, pToDeleteFinal], straightPLastArrow: true, pause: true }));
+
+        snaps.push(this.snapshot('p_list->p_last is set to NULL', [], { firstId: null, lastId: oldLastId, size: oldSize, ...lastDanglingTarget, ptrs: [nullPtr, pToDeleteFinal], flashPLast: true, straightPLastArrow: true, pause: true }));
+        snaps.push(this.snapshot('p_list->p_last now contains NULL', [], { firstId: null, lastId: null, size: oldSize, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+
+        snaps.push(this.snapshot('p_list->size is set to 0', [], { firstId: null, lastId: null, size: oldSize, ptrs: [nullPtr, pToDeleteFinal], flashSize: true, pause: true }));
+        snaps.push(this.snapshot('The LinkedList state is now empty', [], { firstId: null, lastId: null, size: 0, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+
+        snaps.push(this.snapshot('The function-local pointers p_current and p_toDelete are deallocated after exiting the function', [], { firstId: null, lastId: null, size: 0, ptrs: [nullPtr, pToDeleteFinal], flashPtrCross: ['p_current', 'p_toDelete'], pause: true }));
+        snaps.push(this.snapshot('The operation is complete', [], { firstId: null, lastId: null, size: 0 }));
+
+        this.values = [];
+        this.ids = [];
+        this.viz.enqueue(snaps);
+        this.updateUI()
+    };
+})();
+
     window.onload = () => app.init();
     window.onclick = e => {
     	if (e.target === document.getElementById('helpModal')) app.toggleModal()
