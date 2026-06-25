@@ -257,10 +257,9 @@
                     onclick="app.prepend()" title="Prepend the value at the beginning of the list." aria-label="Prepend the value at the beginning of the list.">Prepend</button><button class="blue"
                     onclick="app.insert()" title="Insert the value at the selected index." aria-label="Insert the value at the selected index.">Insert</button><button class="blue" id="btnSortedInsert"
                     onclick="app.sorted_insert()" title="Insert the value preserving ascending order. Enabled only when the list is sorted ascending." aria-label="Insert the value preserving ascending order. Enabled only when the list is sorted ascending.">Sorted Insert</button>
-					<button class="blue" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button>
-					<button class="purple" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button>
-					<button class="blue" onclick="app.length()" title="Compute the number of nodes in the list." aria-label="Compute the number of nodes in the list.">Length</button>
-					<button class="red" onclick="app.del()" title="Delete the node at the selected index." aria-label="Delete the node at the selected index.">Delete</button>
+					<button class="blue" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button><button class="blue" onclick="app.length()" title="Compute the number of nodes in the list." aria-label="Compute the number of nodes in the list.">Length</button><button
+                    class="purple" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button><button class="red"
+                    onclick="app.del()" title="Delete the node at the selected index." aria-label="Delete the node at the selected index.">Delete</button>
                 <div class="sep"></div>
 					
 					<button class="orange"
@@ -294,6 +293,7 @@
                 <li><strong>Sorted Insert</strong>: <span class="code">O(n)</span>. It uses <span class="code">p_previous</span> and <span class="code">p_current</span> to insert in ascending order. The button is disabled if the current list is not sorted ascending.</li>
                 <li><strong>Length</strong>: <span class="code">O(n)</span>. It traverses the list from <span class="code">p_first</span> using <span class="code">p_current</span> and updates a green counter box.</li>
                 <li><strong>Get</strong>, <strong>Set</strong>, <strong>Delete</strong>: <span class="code">O(n)</span>.</li>
+                <li><strong>Clear</strong>: <span class="code">O(n)</span>. It follows the C algorithm <span class="code">clear(struct Node** p_p_first)</span>, advancing <span class="code">p</span>, storing each node in <span class="code">p_toDelete</span>, freeing it, and finally setting <span class="code">p_first</span> to <span class="code">NULL</span>.</li>
             </ul>
             <p>The visualization shows how links and temporary pointers change while each algorithm progresses.</p>
         </div>
@@ -2259,29 +2259,31 @@ snaps.push(this.snapshot(
 (function () {
     const LEN_GAP = 116 + 58;
 
-    Viz.prototype.drawLengthBox = function (box) {
-        const c = this.ctx;
-        const x = box.x, y = box.y, w = box.w ?? 76, h = box.h ?? this.cell;
-        c.save();
-        c.fillStyle = K.k;
-        c.font = '28px monospace';
-        c.textAlign = 'right';
-        c.textBaseline = 'middle';
-        c.fillText(box.label ?? 'length', x - 16, y + h / 2);
-        c.fillStyle = K.g;
-        c.fillRect(x, y, w, h - h * 0.05);
-        c.fillStyle = K.r;
-        c.font = '32px Arial';
-        c.textAlign = 'center';
-        c.fillText(String(box.value ?? 0), x + w / 2, y + h / 2 + 2);
-        c.restore()
-    };
+    if (!Viz.prototype.drawLengthBox) {
+        Viz.prototype.drawLengthBox = function (box) {
+            const c = this.ctx;
+            const x = box.x, y = box.y, w = box.w ?? 76, h = box.h ?? this.cell;
+            c.save();
+            c.fillStyle = K.k;
+            c.font = '28px monospace';
+            c.textAlign = 'right';
+            c.textBaseline = 'middle';
+            c.fillText(box.label ?? 'length', x - 16, y + h / 2);
+            c.fillStyle = K.g;
+            c.fillRect(x, y, w, h - h * 0.05);
+            c.fillStyle = K.r;
+            c.font = '32px Arial';
+            c.textAlign = 'center';
+            c.fillText(String(box.value ?? 0), x + w / 2, y + h / 2 + 2);
+            c.restore()
+        };
 
-    const previousDrawOverlaysLength = Viz.prototype.drawOverlays;
-    Viz.prototype.drawOverlays = function (s) {
-        if (s.lengthBox) this.drawLengthBox(s.lengthBox);
-        previousDrawOverlaysLength.call(this, s)
-    };
+        const previousDrawOverlaysLength = Viz.prototype.drawOverlays;
+        Viz.prototype.drawOverlays = function (s) {
+            if (s.lengthBox) this.drawLengthBox(s.lengthBox);
+            previousDrawOverlaysLength.call(this, s)
+        };
+    }
 
     app.length = function () {
         const nodes = this.baseNodes();
@@ -2306,7 +2308,6 @@ snaps.push(this.snapshot(
 
         let curId = this.ids[0], count = 0;
         snaps.push(this.snapshot('p_current starts at p_first; length = 0', nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
-
         for (let k = 0; k < n; k++) {
             const currentPtr = makePtr(curId);
             count++;
@@ -2315,11 +2316,8 @@ snaps.push(this.snapshot(
             curId = this.ids[k + 1] ?? null;
             const nextPtr = makePtr(curId, currentPtr);
             snaps.push(this.snapshot(curId === null ? 'p_current is now NULL, so the traversal stops' : 'p_current now refers to the next node', nodes, { ptrs: [nextPtr], lengthBox: lengthBox(count), pause: true }));
-            if (curId !== null) {
-                snaps.push(this.snapshot('The next iteration continues with length = ' + count, nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
-            }
+            if (curId !== null) snaps.push(this.snapshot('The next iteration continues with length = ' + count, nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
         }
-
         const finalPtr = makePtr(null);
         snaps.push(this.snapshot('No more nodes remain; the final length is ' + count, nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), pause: true }));
         snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), flashAuxCross: true, pause: true }));
@@ -2327,6 +2325,155 @@ snaps.push(this.snapshot(
         snaps.push(this.snapshot('The length display is removed', nodes));
         this.viz.enqueue(snaps);
         this.updateUI()
+    };
+})();
+
+    
+;
+/* === Animated clear(struct Node** p_p_first) operation === */
+(function () {
+    const CLEAR_GAP = 116 + 58;
+
+    if (!app._ptr) {
+        app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
+            const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
+            return { label, target, x: fixed?.x ?? (t ? t.x - 50 : (fallbackX ?? b.x - 180)), y: fixed?.y ?? (b.y - 112) }
+        }
+    }
+
+    if (!Viz.prototype._drawOverlaysSupportsPtrCross) {
+        const previousDrawOverlaysForPtrCross = Viz.prototype.drawOverlays;
+        Viz.prototype.drawOverlays = function (s) {
+            previousDrawOverlaysForPtrCross.call(this, s);
+            if (s.flashPtrCross) {
+                (s.ptrs || []).forEach(p => {
+                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, 60, 58)
+                })
+            }
+        };
+        Viz.prototype._drawOverlaysSupportsPtrCross = true
+    }
+
+    app.clear = function () {
+        this.save();
+        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
+        const b = this.viz.base();
+        const originalNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        const oldNodeMap = new Map(originalNodes.map(n => [n.id, n]));
+        const firstDanglingTarget = originalNodes[0] ? { firstTargetX: originalNodes[0].x, firstTargetY: originalNodes[0].y + this.viz.cell / 2 } : {};
+        const firstRef = () => ({ firstId: oldIds[0] ?? null });
+        const firstDanglingRef = () => ({ firstId: oldIds[0] ?? null, ...firstDanglingTarget });
+        const currentNullX = b.x + oldSize * CLEAR_GAP - 50;
+
+        const makePtr = (label, target, nodes, fixed = null) => {
+            const fallback = target === null
+                ? (label === 'p' ? currentNullX : b.x - 220)
+                : b.x - 180;
+            return this._ptr(label, target, nodes, fixed, fallback)
+        };
+
+        // p_toDelete is visualized as a function-scope local variable.
+        // It is never set to NULL by the animation. After Node_free(&p_toDelete),
+        // it deliberately stays as a dangling pointer to the freed node until the
+        // next assignment p_toDelete = p, or until the function exits.
+        // It is always drawn at the same vertical height as p, and clearly to its left.
+        const pToDeleteAt = (pPtr, target, nodes) => {
+            const ptr = makePtr('p_toDelete', target, nodes, { x: pPtr.x - 170, y: pPtr.y });
+            const stillVisible = (nodes || []).some(n => n.id === target);
+            const oldNode = oldNodeMap.get(target);
+            if (target !== undefined && target !== null && !stillVisible && oldNode) {
+                ptr.targetX = oldNode.x;
+                ptr.targetY = oldNode.y;
+            }
+            return ptr
+        };
+
+        const compactRemaining = startIndex => this.baseNodes(oldVals.slice(startIndex), oldIds.slice(startIndex), startIndex * CLEAR_GAP, b.y);
+        const snaps = [this.snapshot('The algorithm starts from the current list state', originalNodes, firstRef())];
+
+        let pId = oldIds[0] ?? null;
+        let pPtr = makePtr('p', pId, originalNodes);
+        let pToDeleteCurrentValue = undefined;
+        let pToDeletePtr = pToDeleteAt(pPtr, pToDeleteCurrentValue, originalNodes);
+
+        snaps.push(this.snapshot('The function-local pointers p and p_toDelete are created; p_toDelete is uninitialized', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], pause: true }));
+        snaps.push(this.snapshot('p is initialized with *p_p_first', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], flashPtrs: ['p'], pause: true }));
+
+        if (oldSize === 0) {
+            snaps.push(this.snapshot('p is NULL, so the loop is not entered', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], pause: true }));
+            snaps.push(this.snapshot('*p_p_first is already NULL', originalNodes, { firstId: null, flashPFirst: true, ptrs: [pPtr, pToDeletePtr], pause: true }));
+            snaps.push(this.snapshot('The function-local pointers are deallocated after exiting the function', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], flashPtrCross: ['p', 'p_toDelete'], pause: true }));
+            snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
+            this.values = [];
+            this.ids = [];
+            this.viz.enqueue(snaps);
+            this.updateUI();
+            return
+        }
+
+        for (let k = 0; k < oldSize; k++) {
+            const curId = oldIds[k];
+            const nextId = oldIds[k + 1] ?? null;
+            const visibleNodes = compactRemaining(k);
+            const firstState = k === 0 ? firstRef() : firstDanglingRef();
+            const pCurrent = makePtr('p', curId, visibleNodes);
+            const pToDeleteBeforeAssignment = pToDeleteAt(pCurrent, pToDeleteCurrentValue, visibleNodes);
+
+            snaps.push(this.snapshot('Loop test: p is not NULL', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteBeforeAssignment], pause: true }));
+
+            pToDeleteCurrentValue = curId;
+            const pToDeleteAssigned = pToDeleteAt(pCurrent, pToDeleteCurrentValue, visibleNodes);
+            snaps.push(this.snapshot('p_toDelete = p', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteAssigned], flashPtrs: ['p_toDelete'], pause: true }));
+
+            const pNextMoving = makePtr('p', nextId, visibleNodes, pCurrent);
+            snaps.push(this.snapshot('p is advanced to p->p_next before freeing the node', visibleNodes, { ...firstState, ptrs: [pNextMoving, pToDeleteAssigned], flashPtrs: ['p'], pause: true }));
+
+            const pNext = makePtr('p', nextId, visibleNodes);
+            const pToDeleteLeftOfNextP = pToDeleteAt(pNext, pToDeleteCurrentValue, visibleNodes);
+            snaps.push(this.snapshot(nextId === null ? 'p is now NULL; this is the last node to free' : 'p now points to the next node', visibleNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], pause: true }));
+
+            const crossedNodes = visibleNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
+            // Only the node is flashed/crossed here. p_toDelete is not crossed during the loop.
+            snaps.push(this.snapshot('Node_free(&p_toDelete) releases the selected node; p_toDelete becomes dangling', crossedNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], preserveLinks: true, pause: true }));
+
+            const remainingNodes = compactRemaining(k + 1);
+            const pAfterFree = makePtr('p', nextId, remainingNodes);
+            const pToDeleteAfterFree = pToDeleteAt(pAfterFree, pToDeleteCurrentValue, remainingNodes);
+            // p_first is not made NULL here. After the first node is freed it is dangling,
+            // and it stays dangling until the final explicit assignment *p_p_first = NULL.
+            snaps.push(this.snapshot('The freed node is removed; p_toDelete remains dangling until the next assignment', remainingNodes, { ...firstDanglingRef(), ptrs: [pAfterFree, pToDeleteAfterFree], preserveLinks: true, pause: true }));
+        }
+
+        // p_first is intentionally kept dangling until the explicit final assignment *p_p_first = NULL.
+        const nullPtr = makePtr('p', null, [], { x: currentNullX, y: b.y - 112 });
+        const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteCurrentValue, []);
+        snaps.push(this.snapshot('All nodes have been freed; p is NULL and p_toDelete is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+        snaps.push(this.snapshot('*p_p_first is set to NULL', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], flashPFirst: true, pause: true }));
+        snaps.push(this.snapshot('p_first now contains NULL', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+        snaps.push(this.snapshot('The function-local pointers p and p_toDelete are deallocated after exiting the function', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], flashPtrCross: ['p', 'p_toDelete'], pause: true }));
+        snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
+
+        this.values = [];
+        this.ids = [];
+        this.viz.enqueue(snaps);
+        this.updateUI()
+    };
+})();
+
+    
+;
+/* === Draw dangling p_first arrows when firstTargetX/firstTargetY are provided === */
+(function () {
+    Viz.prototype.drawStructArrows = function (s) {
+        const x = 205, y = 155, w = 70, h = this.cell;
+        const f = this.nodeById(s, s.firstId);
+        if (f) {
+            const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
+            if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, amount);
+            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3)
+        } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
+            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.b, 3)
+        }
     };
 })();
 
