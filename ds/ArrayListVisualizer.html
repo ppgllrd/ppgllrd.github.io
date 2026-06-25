@@ -1,0 +1,889 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>ArrayList Visualizer</title>
+<style>
+:root{--b:#1565c0;--c:#91f4f4;--g:#b6f8b6;--r:#e60000;--p:#c78cff;--v:#8d35c9;--panel:#f5f5f5;--y:#fff7b3}
+*{box-sizing:border-box}body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:white;user-select:none}header{background:var(--panel);border-bottom:1px solid #ddd;padding:10px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}.top,.gui{display:flex;justify-content:space-between;align-items:center;gap:12px}.gui{align-items:flex-start}h1{font-size:1.2rem;margin:0}.controls,.sub{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sub{font-size:.9rem;color:#555}input[type=number]{width:70px;padding:6px;border:1px solid #999;border-radius:4px;text-align:center;font-weight:bold}.idx{width:56px}button{border:0;border-radius:4px;color:white;font-weight:600;padding:6px 12px;box-shadow:0 1px 3px #0003}button:disabled{opacity:.4}.green{background:#2E7D32}.blue{background:#1668BD}.red{background:#c62828}.purple{background:#6A1B9A}.gray{background:#546E7A}.orange{background:#EF6C00}.pause{background:#455A64;width:80px}.help{background:#607D8B;border-radius:50%;font-size:1.1rem;padding:4px 10px}.sep{width:1px;height:20px;background:#ccc;margin:0 5px}#status{border-top:1px solid #ddd;padding-top:8px;font-size:.85rem;color:#555}#status-text{font-weight:bold;color:#222}#wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:white}canvas{display:block;width:100%;height:100%}#legend{position:absolute;top:18px;left:18px;background:#fffffff2;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:.8rem;box-shadow:0 2px 5px #0002;pointer-events:none}.li{display:flex;gap:8px;align-items:center;margin-bottom:5px}.sw{width:18px;height:18px;display:inline-block}.dot{width:12px;height:12px;background:var(--b);border-radius:50%;display:inline-block}#author{background:#f4f7f6;color:#777;text-align:center;line-height:2.5;font-size:.75em;flex-shrink:0}.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10}.modal-content{background:white;margin:5% auto;padding:20px;border-radius:8px;width:80%;max-width:820px}.close{float:right;font-size:28px;color:#aaa;cursor:pointer}.code{font-family:Consolas,monospace;background:#eee;border-radius:4px;padding:2px 5px;color:#c62828}
+</style>
+</head>
+<body>
+<header><div class="top"><h1>ArrayList Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help and asymptotic complexity summary.">?</button></div><div class="gui"><div class="controls"><label>Value <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.append()"></label><label>Index <input id="idx" class="idx" type="number" placeholder="i"></label><label>Initial capacity <input id="cap" class="idx" type="number" min="1" value="6"></label><button class="green" onclick="app.append()" title="Append: add the value at the end of the list">Append</button><button class="green" onclick="app.prepend()" title="Prepend: insert the value at index 0 and shift existing elements one position to the right.">Prepend</button><button class="blue" onclick="app.insert()" title="Insert: place the value at the selected index, shifting following elements to the right.">Insert</button><button class="blue" onclick="app.get()" title="Get: read the element at the selected index by direct array access.">Get</button><button class="purple" onclick="app.set()" title="Set: replace the element at the selected index by direct array access.">Set</button><button class="red" onclick="app.del()" title="Delete: remove the element at the selected index and shift following elements to the left.">Delete</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Build Random: create a new sample list with three random distinct values.">Build Random</button><button class="orange" onclick="app.reinit()" title="New: allocate a new empty ArrayList with the selected initial capacity.">New</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo: restore the previous ArrayList state.">Undo</button><button class="gray" onclick="app.clear()" title="Clear: set size to 0 while keeping capacity and the allocated array.">Clear</button></div><div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button></div></div><div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span></div></header>
+<div id="wrap"><canvas id="cv"></canvas><div id="legend"><div class="li"><span class="sw" style="background:#b6f8b6"></span>logical element / capacity / size</div><div class="li"><span class="sw" style="background:#fff7b3"></span>allocated but outside size</div><div class="li"><span class="sw" style="background:#91f4f4"></span>pointer to array</div><div class="li"><span class="sw" style="background:#c78cff"></span>pointer to list</div></div></div>
+<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+<div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>ArrayList</h2><p>An <strong>ArrayList</strong> stores the sequence in a heap allocated array <span class="code">elements</span>. The object also stores <span class="code">capacity</span> and <span class="code">size</span>.</p><ul><li><strong>Append</strong>: ensure capacity, write at <span class="code">elements[size]</span>, then increment <span class="code">size</span>. Complexity: <strong>amortized O(1)</strong>; <strong>O(n)</strong> in the occasional worst case when reallocation copies the existing elements.</li><li><strong>Prepend</strong>: insert at index <span class="code">0</span>, shifting all current elements one position to the right before writing the new value. Complexity: <strong>O(n)</strong>.</li><li><strong>Insert</strong>: shift elements from the insertion point to the end one position to the right, write the new value, then increment <span class="code">size</span>. Complexity: <strong>O(n)</strong> in the worst case; <strong>O(1)</strong> when inserting at the end and no reallocation is needed.</li><li><strong>Get</strong>: direct access to <span class="code">elements[index]</span>. Complexity: <strong>O(1)</strong>.</li><li><strong>Set</strong>: direct access to <span class="code">elements[index]</span> followed by overwriting that cell. Complexity: <strong>O(1)</strong>.</li><li><strong>Delete</strong>: shift elements after the removed position one cell to the left and then decrement <span class="code">size</span>. The old last physical cell is not cleared; it becomes outside the logical list. Complexity: <strong>O(n)</strong> in the worst case; <strong>O(1)</strong> when deleting the last element.</li><li><strong>Clear</strong>: set <span class="code">size</span> to <span class="code">0</span>. The allocated array and its old physical values are kept. Complexity: <strong>O(1)</strong>.</li><li><strong>Ensure capacity</strong>: when the array is full, <span class="code">realloc</span> doubles the capacity and preserves stored elements by copying them into the new array. Complexity: <strong>O(n)</strong> for that resizing step.</li></ul><h3>Summary of asymptotic complexity</h3><ul><li><strong>Append</strong>: amortized <strong>O(1)</strong>, worst-case <strong>O(n)</strong>.</li><li><strong>Prepend</strong>: <strong>O(n)</strong>.</li><li><strong>Insert</strong>: worst-case <strong>O(n)</strong>, best case <strong>O(1)</strong> at the end without resizing.</li><li><strong>Get</strong>: <strong>O(1)</strong>.</li><li><strong>Set</strong>: <strong>O(1)</strong>.</li><li><strong>Delete</strong>: worst-case <strong>O(n)</strong>, <strong>O(1)</strong> when deleting the last element.</li><li><strong>Clear</strong>: <strong>O(1)</strong>.</li></ul></div></div>
+<script>
+const K = {
+	b: '#1565c0',
+	c: '#91f4f4',
+	g: '#b6f8b6',
+	r: '#e60000',
+	p: '#c78cff',
+	v: '#8d35c9',
+	k: '#111',
+	y: '#fff7b3'
+};
+let gid = 0;
+class Viz {
+	constructor(id) {
+		this.cv = document.getElementById(id);
+		this.ctx = this.cv.getContext('2d');
+		this.cam = {
+			scale: 1,
+			targetScale: 1,
+			x: 0,
+			targetX: 0,
+			y: 0,
+			targetY: 0
+		};
+		this.sn = [];
+		this.pending = [];
+		this.idx = -1;
+		this.state = 'IDLE';
+		this.t = 0;
+		this.speedFactor = 1;
+		this.paused = false;
+		this.last = 0;
+		this.cell = 58;
+		this.lastCells = [];
+		this.resize();
+		window.addEventListener('resize', () => this.resize());
+		this.cv.addEventListener('wheel', e => this.wheel(e), {
+			passive: false
+		});
+		this.cv.addEventListener('mousedown', e => this.down(e));
+		this.cv.addEventListener('mousemove', e => this.move(e));
+		this.cv.addEventListener('mouseup', () => this.up());
+		this.cv.addEventListener('mouseleave', () => this.up());
+		requestAnimationFrame(t => this.loop(t))
+	}
+	base() {
+		return {
+			x: 355,
+			y: 190,
+			structX: 210,
+			structY: 160,
+			up: 86,
+			gap: 68
+		}
+	}
+	resize() {
+		const w = document.getElementById('wrap');
+		this.cv.width = w.offsetWidth;
+		this.cv.height = w.offsetHeight;
+		if (this.sn.length) {
+			this.fit([this.sn[Math.max(this.idx, 0)]]);
+			this.cam.scale = this.cam.targetScale;
+			this.cam.x = this.cam.targetX;
+			this.cam.y = this.cam.targetY
+		}
+	}
+	screenToWorld(x, y) {
+		return {
+			x: (x - this.cam.x) / this.cam.scale,
+			y: (y - this.cam.y) / this.cam.scale
+		}
+	}
+	wheel(e) {
+		e.preventDefault();
+		const r = this.cv.getBoundingClientRect(),
+			x = e.clientX - r.left,
+			y = e.clientY - r.top;
+		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
+		ns = Math.min(5, Math.max(.2, ns));
+		const wx = (x - this.cam.targetX) / this.cam.targetScale,
+			wy = (y - this.cam.targetY) / this.cam.targetScale;
+		this.cam.targetScale = ns;
+		this.cam.targetX = x - wx * ns;
+		this.cam.targetY = y - wy * ns
+	}
+	down(e) {
+		const r = this.cv.getBoundingClientRect(),
+			sx = e.clientX - r.left,
+			sy = e.clientY - r.top,
+			w = this.screenToWorld(sx, sy);
+		for (const c of this.lastCells) {
+			if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) {
+				document.getElementById('val').value = c.v === '?' ? '' : c.v;
+				document.getElementById('idx').value = c.i;
+				return
+			}
+		}
+		this.drag = true;
+		this.start = {
+			x: sx,
+			y: sy
+		};
+		this.c0 = {
+			x: this.cam.targetX,
+			y: this.cam.targetY
+		};
+		this.cv.style.cursor = 'grabbing'
+	}
+	move(e) {
+		const r = this.cv.getBoundingClientRect(),
+			x = e.clientX - r.left,
+			y = e.clientY - r.top;
+		if (this.drag) {
+			this.cam.targetX = this.c0.x + x - this.start.x;
+			this.cam.targetY = this.c0.y + y - this.start.y;
+			return
+		}
+		const w = this.screenToWorld(x, y);
+		this.cv.style.cursor = this.lastCells.some(c => w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) ? 'pointer' : 'default'
+	}
+	up() {
+		this.drag = false;
+		this.cv.style.cursor = 'default'
+	}
+	layout(s) {
+		const b = this.base();
+		(s.cells || []).forEach((c, i) => {
+			if (c.x === undefined) c.x = b.x + i * b.gap;
+			if (c.y === undefined) c.y = b.y
+		});
+		(s.ghosts || []).forEach(g => {
+			if (g.x === undefined) g.x = b.x + (g.i ?? 0) * b.gap;
+			if (g.y === undefined) g.y = b.up
+		});
+		(s.ptrs || []).forEach((p, i) => {
+			if (p.x === undefined) p.x = b.x + (p.i ?? 0) * b.gap - 10;
+			if (p.y === undefined) p.y = b.y - 95 - i * 64
+		})
+	}
+	bounds(s) {
+		let b = {
+			minX: 20,
+			minY: 35,
+			maxX: 760,
+			maxY: 470
+		};
+		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
+			b.minX = Math.min(b.minX, c.x - 210);
+			b.maxX = Math.max(b.maxX, c.x + 110);
+			b.minY = Math.min(b.minY, c.y - 125);
+			b.maxY = Math.max(b.maxY, c.y + 175)
+		});
+		return b
+	}
+	fit(snaps) {
+		let B = {
+			minX: 1e9,
+			minY: 1e9,
+			maxX: -1e9,
+			maxY: -1e9
+		};
+		snaps.forEach(s => {
+			const b = this.bounds(s);
+			B.minX = Math.min(B.minX, b.minX);
+			B.maxX = Math.max(B.maxX, b.maxX);
+			B.minY = Math.min(B.minY, b.minY);
+			B.maxY = Math.max(B.maxY, b.maxY)
+		});
+		const sc = Math.min(1.22, this.cv.width / (B.maxX - B.minX + 150), this.cv.height / (B.maxY - B.minY + 150));
+		this.cam.targetScale = sc;
+		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+	}
+	enqueue(snaps) {
+		snaps.forEach(s => this.layout(s));
+		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+		if (!this.sn.length) {
+			this.sn.push(snaps.shift());
+			this.idx = 0;
+			document.getElementById('status-text').innerText = this.sn[0].text || 'Ready.'
+		}
+		if (snaps.length) {
+			this.pending = snaps;
+			this.state = 'CAMERA'
+		}
+	}
+	loop(ts) {
+		if (!this.last) this.last = ts;
+		const dt = Math.min((ts - this.last) / 1000, .1);
+		this.last = ts;
+		if (!this.paused) this.update(dt);
+		this.draw();
+		requestAnimationFrame(t => this.loop(t))
+	}
+	update(dt) {
+		const f = 1 - Math.exp(-10 * dt);
+		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+		this.cam.x += (this.cam.targetX - this.cam.x) * f;
+		this.cam.y += (this.cam.targetY - this.cam.y) * f;
+		if (this.state === 'CAMERA') {
+			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
+		} else if (this.state === 'MORPH') {
+			this.t += 2.5 * this.speedFactor * dt;
+			if (this.t >= 1) {
+				this.t = 1;
+				if (this.sn[this.idx + 1]?.pause) {
+					this.state = 'WAIT';
+					this.wait = .75 / this.speedFactor
+				} else this.finish()
+			}
+		} else if (this.state === 'WAIT') {
+			this.wait -= dt;
+			if (this.wait <= 0) this.finish()
+		}
+	}
+	next() {
+		const s = this.pending.shift();
+		this.sn.push(s);
+		document.getElementById('status-text').innerText = s.text || 'Ready.';
+		this.t = 0;
+		this.state = 'MORPH'
+	}
+	finish() {
+		this.idx++;
+		if (this.pending.length) this.next();
+		else {
+			this.state = 'IDLE';
+			document.getElementById('status-text').innerText = 'Ready.';
+			app.clearInputs()
+		}
+	}
+	ease(t) {
+		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+	}
+	mix(a, b, t) {
+		const ma = new Map((a || []).map(o => [o.id, o])),
+			mb = new Map((b || []).map(o => [o.id, o])),
+			ids = new Set([...ma.keys(), ...mb.keys()]);
+		let out = [];
+		ids.forEach(id => {
+			const A = ma.get(id),
+				B = mb.get(id);
+			if (A && B) out.push({
+				...B,
+				x: A.x + (B.x - A.x) * t,
+				y: A.y + (B.y - A.y) * t
+			});
+			else if (B) out.push({
+				...B
+			});
+			else if (A && t < .85) out.push({
+				...A
+			})
+		});
+		return out
+	}
+	interp(A, B, t) {
+		return {
+			...B,
+			cells: this.mix(A.cells, B.cells, t),
+			ghosts: this.mix(A.ghosts, B.ghosts, t),
+			ptrs: this.mix(A.ptrs, B.ptrs, t)
+		}
+	}
+	current() {
+		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)]
+	}
+	flash() {
+		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+	}
+	draw() {
+		const s = this.current(),
+			c = this.ctx;
+		c.clearRect(0, 0, this.cv.width, this.cv.height);
+		c.save();
+		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+		if (!s) {
+			c.restore();
+			return
+		}
+		this.lastCells = s.cells || [];
+		this.drawStruct(s);
+		this.drawArrayPointer(s);
+		(s.cells || []).forEach(cell => this.drawCell(cell, s));
+		(s.ghosts || []).forEach(g => this.drawGhost(g));
+		this.drawMoves(s);
+		this.drawPtrs(s);
+		this.drawOverlays(s);
+		c.restore()
+	}
+	drawStruct(s) {
+		const c = this.ctx,
+			b = this.base(),
+			x = b.structX,
+			y = b.structY,
+			w = 72,
+			h = this.cell;
+		c.save();
+		c.fillStyle = K.k;
+		c.font = '28px monospace';
+		c.textAlign = 'right';
+		c.fillText('p_list', x - 145, y - 62);
+		c.fillStyle = K.p;
+		c.fillRect(x - 125, y - 108, w, h);
+		c.fillStyle = K.v;
+		c.beginPath();
+		c.arc(x - 89, y - 79, 8, 0, Math.PI * 2);
+		c.fill();
+		this.arrow(x - 89, y - 79, x, y + 8, K.v, 3);
+		[
+			['elements', K.c],
+			['capacity', K.g],
+			['size', K.g]
+		].forEach((r, i) => {
+			const yy = y + i * h;
+			c.fillStyle = K.k;
+			c.font = '28px monospace';
+			c.textAlign = 'right';
+			c.textBaseline = 'middle';
+			c.fillText(r[0], x - 16, yy + h / 2);
+			c.fillStyle = r[1];
+			c.fillRect(x, yy, w, h - h * .05);
+			if (r[0] === 'elements') {
+				c.fillStyle = K.b;
+				c.beginPath();
+				c.arc(x + w / 2, yy + h / 2, 8, 0, Math.PI * 2);
+				c.fill()
+			} else {
+				c.fillStyle = K.r;
+				c.font = '32px Arial';
+				c.textAlign = 'center';
+				c.fillText(String(r[0] === 'capacity' ? s.capacity : s.size), x + w / 2, yy + h / 2 + 2)
+			}
+		});
+		c.restore()
+	}
+	drawArrayPointer(s) {
+		const b = this.base(),
+			f = (s.cells || [])[0];
+		if (f) this.arrow(b.structX + 36, b.structY + this.cell / 2, f.x, f.y + this.cell / 2, K.b, 3)
+	}
+	drawCell(cell, s) {
+		const c = this.ctx,
+			w = this.cell,
+			isGrey = ((s.greyCells || []).includes(cell.i)),
+			active = !isGrey && (cell.i < s.size || ((s.greenCells || []).includes(cell.i)));
+		c.save();
+		c.fillStyle = active ? K.g : K.y;
+		c.fillRect(cell.x, cell.y, w, w);
+		c.strokeStyle = '#333';
+		c.lineWidth = 1.5;
+		c.strokeRect(cell.x, cell.y, w, w);
+		c.fillStyle = active ? K.r : '#777';
+		c.font = cell.v === '?' ? '27px Arial' : '30px Arial';
+		c.textAlign = 'center';
+		c.textBaseline = 'middle';
+		c.fillText(String(cell.v), cell.x + w / 2, cell.y + w / 2 + 2);
+		c.fillStyle = K.k;
+		c.font = '22px monospace';
+		c.textBaseline = 'alphabetic';
+		c.fillText(cell.i, cell.x + w / 2, cell.y - 8);
+		c.restore()
+	}
+	drawGhost(g) {
+		const c = this.ctx,
+			w = this.cell;
+		c.save();
+		c.globalAlpha = .82;
+		c.fillStyle = K.g;
+		c.fillRect(g.x, g.y, w, w);
+		c.strokeStyle = K.r;
+		c.lineWidth = 3;
+		c.strokeRect(g.x, g.y, w, w);
+		c.fillStyle = K.r;
+		c.font = '30px Arial';
+		c.textAlign = 'center';
+		c.textBaseline = 'middle';
+		c.fillText(String(g.v), g.x + w / 2, g.y + w / 2 + 2);
+		c.restore()
+	}
+	drawMoves(s) {
+		(s.moves || []).forEach(m => {
+			const from = (s.cells || []).find(c => c.i === m.from),
+				to = (s.cells || []).find(c => c.i === m.to);
+			if (from && to) this.arrow(from.x + this.cell / 2, from.y + this.cell + 20, to.x + this.cell / 2, to.y + this.cell + 20, K.r, 3)
+		})
+	}
+	drawPtrs(s) {
+		(s.ptrs || []).forEach(p => {
+			const c = this.ctx;
+			c.save();
+			c.fillStyle = K.k;
+			c.font = '22px monospace';
+			c.textAlign = 'center';
+			c.fillText(p.label, p.x + 30, p.y - 10);
+			c.fillStyle = K.c;
+			c.fillRect(p.x, p.y, 60, 58);
+			c.fillStyle = K.b;
+			c.beginPath();
+			c.arc(p.x + 30, p.y + 29, 8, 0, Math.PI * 2);
+			c.fill();
+			c.restore();
+			const target = (s.cells || []).find(c => c.i === p.i);
+			if (target) this.arrow(p.x + 30, p.y + 29, target.x + this.cell / 2, target.y, K.b, 3)
+		})
+	}
+	drawOverlays(s) {
+		if (s.flashElements) this.flashStruct(0);
+		if (s.flashCapacity) this.flashStruct(1);
+		if (s.flashSize) this.flashStruct(2);
+		(s.flashCells || []).forEach(i => {
+			const cell = (s.cells || []).find(c => c.i === i);
+			if (cell) this.roundFlash(cell.x - 5, cell.y - 5, this.cell + 10, this.cell + 10)
+		});
+		(s.crossCells || []).forEach(i => {
+			const cell = (s.cells || []).find(c => c.i === i);
+			if (cell) this.cross(cell.x, cell.y, this.cell, this.cell)
+		})
+	}
+	flashStruct(row) {
+		const b = this.base();
+		this.flashCircle(b.structX + 36, b.structY + row * this.cell + this.cell / 2, 28)
+	}
+	flashCircle(x, y, r) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flash();
+		c.strokeStyle = K.r;
+		c.lineWidth = 5;
+		c.beginPath();
+		c.arc(x, y, r, 0, Math.PI * 2);
+		c.stroke();
+		c.restore()
+	}
+	roundFlash(x, y, w, h) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flash();
+		c.strokeStyle = K.r;
+		c.lineWidth = 5;
+		c.beginPath();
+		c.roundRect(x, y, w, h, 8);
+		c.stroke();
+		c.restore()
+	}
+	cross(x, y, w, h) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flash();
+		c.strokeStyle = K.r;
+		c.lineWidth = 6;
+		c.beginPath();
+		c.moveTo(x - 7, y - 7);
+		c.lineTo(x + w + 7, y + h + 7);
+		c.moveTo(x + w + 7, y - 7);
+		c.lineTo(x - 7, y + h + 7);
+		c.stroke();
+		c.restore()
+	}
+	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+		const c = this.ctx;
+		c.save();
+		c.strokeStyle = col;
+		c.fillStyle = col;
+		c.lineWidth = lw;
+		c.beginPath();
+		c.moveTo(x1, y1);
+		c.lineTo(x2, y2);
+		c.stroke();
+		this.head(x1, y1, x2, y2, col);
+		c.restore()
+	}
+	head(x1, y1, x2, y2, col = K.b) {
+		const c = this.ctx,
+			a = Math.atan2(y2 - y1, x2 - x1),
+			h = 17;
+		c.fillStyle = col;
+		c.beginPath();
+		c.moveTo(x2, y2);
+		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
+		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+		c.closePath();
+		c.fill()
+	}
+	setSpeed(v) {
+		this.speedFactor = 1 / v
+	}
+	togglePause() {
+		this.paused = !this.paused;
+		return this.paused
+	}
+}
+const app = {
+	values: [],
+	capacity: 6,
+	storage: [],
+	history: [],
+	viz: null,
+	init() {
+		this.viz = new Viz('cv');
+		this.values = [2, 1, 4];
+		this.capacity = 6;
+		this.storage = [...this.values];
+		this.showCurrent('The ArrayList is initialized with sample values');
+		this.updateUI()
+	},
+	cells(vals = this.values, cap = this.capacity) {
+		return Array.from({
+			length: cap
+		}, (_, i) => {
+			const hasVal = i < vals.length && vals[i] !== undefined;
+			const hasStored = this.storage && i < this.storage.length && this.storage[i] !== undefined;
+			return {
+				id: 'c' + i,
+				v: hasVal ? vals[i] : (hasStored ? this.storage[i] : '?'),
+				i
+			}
+		})
+	},
+	commitStorage(vals, cap = this.capacity) {
+		const next = Array.from({ length: cap }, (_, i) => this.storage?.[i]);
+		vals.forEach((v, i) => {
+			next[i] = v
+		});
+		this.storage = next
+	},
+	snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
+		return {
+			cells: this.cells(vals, cap),
+			size: extra.size ?? this.values.length,
+			capacity: cap,
+			text,
+			...extra
+		}
+	},
+	showCurrent(text = 'Ready.') {
+		this.viz.sn = [];
+		this.viz.pending = [];
+		this.viz.idx = -1;
+		this.viz.state = 'IDLE';
+		this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
+			size: this.values.length
+		})])
+	},
+	v() {
+		return parseInt(document.getElementById('val').value)
+	},
+	i() {
+		return parseInt(document.getElementById('idx').value)
+	},
+	save() {
+		this.history.push({
+			values: [...this.values],
+			capacity: this.capacity,
+			storage: [...this.storage]
+		});
+		if (this.history.length > 30) this.history.shift()
+	},
+	ensureSnaps(vals, cap, need, lead) {
+		let snaps = [];
+		if (vals.length + need <= cap) return {
+			cap,
+			snaps
+		};
+		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
+			size: vals.length,
+			flashCapacity: true,
+			pause: true
+		}));
+		let newCap = Math.max(1, cap * 2);
+		while (vals.length + need > newCap) newCap *= 2;
+		snaps.push(this.snapshot('realloc doubles the capacity and preserves the existing elements', vals, newCap, {
+			size: vals.length,
+			flashElements: true,
+			flashCapacity: true,
+			pause: true
+		}));
+		return {
+			cap: newCap,
+			snaps
+		}
+	},
+	append() {
+		const e = this.v();
+		if (isNaN(e)) return;
+		this.save();
+		const old = [...this.values],
+			oldCap = this.capacity;
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
+			size: old.length
+		})];
+		let ec = this.ensureSnaps(old, oldCap, 1, 'Before appending,');
+		snaps.push(...ec.snaps);
+		let vals = [...old],
+			cap = ec.cap;
+		let beforeSizeIncrement = [...vals];
+		beforeSizeIncrement[old.length] = e;
+		snaps.push(this.snapshot('The new element is written at array index size', beforeSizeIncrement, cap, {
+			size: old.length,
+			greenCells: [old.length],
+			flashCells: [old.length],
+			pause: true
+		}));
+		vals.push(e);
+		snaps.push(this.snapshot('size is incremented after storing the new element', vals, cap, {
+			size: old.length,
+			greenCells: [old.length],
+			flashSize: true,
+			pause: true
+		}));
+		snaps.push(this.snapshot('The operation is complete', vals, cap, {
+			size: vals.length
+		}));
+		this.commitStorage(vals, cap);
+		this.values = vals;
+		this.capacity = cap;
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	prepend() {
+		document.getElementById('idx').value = 0;
+		this.insert()
+	},
+	insert() {
+		let idx = this.i(),
+			e = this.v();
+		if (isNaN(idx) || isNaN(e) || idx < 0 || idx > this.values.length) return;
+		this.save();
+		const old = [...this.values],
+			oldCap = this.capacity;
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
+			size: old.length
+		})];
+		let ec = this.ensureSnaps(old, oldCap, 1, 'Before inserting,');
+		snaps.push(...ec.snaps);
+		let cap = ec.cap,
+			work = [...old],
+			grownCells = [],
+			greyCells = [];
+		for (let j = old.length - 1; j >= idx; j--) {
+			let tmp = [...work];
+			tmp[j + 1] = tmp[j];
+			greyCells = greyCells.filter(i => i !== j + 1);
+			if (!greyCells.includes(j)) greyCells.push(j);
+			if (j + 1 >= old.length && !grownCells.includes(j + 1)) grownCells.push(j + 1);
+			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position right', tmp, cap, {
+				size: old.length,
+				moves: [{
+					from: j,
+					to: j + 1
+				}],
+				flashCells: [j, j + 1],
+				greenCells: [...grownCells],
+				greyCells: [...greyCells],
+				pause: true
+			}));
+			work = tmp
+		}
+		snaps.push(this.snapshot('The gap at index ' + idx + ' is ready for the new element', work, cap, {
+			size: old.length,
+			flashCells: [idx],
+			greenCells: [...grownCells],
+			greyCells: [...greyCells],
+			pause: true
+		}));
+		work[idx] = e;
+		greyCells = greyCells.filter(i => i !== idx);
+		let final = work.slice(0, old.length + 1),
+			storedGreenCells = [...grownCells];
+		if (!storedGreenCells.includes(idx)) storedGreenCells.push(idx);
+		snaps.push(this.snapshot('The new element is stored at index ' + idx, final, cap, {
+			size: old.length,
+			flashCells: [idx],
+			greenCells: storedGreenCells,
+			greyCells: [...greyCells],
+			pause: true
+		}));
+		snaps.push(this.snapshot('size is incremented after the insertion', final, cap, {
+			size: old.length,
+			flashSize: true,
+			greenCells: storedGreenCells,
+			greyCells: [...greyCells],
+			pause: true
+		}));
+		snaps.push(this.snapshot('The operation is complete', final, cap, {
+			size: final.length
+		}));
+		this.commitStorage(final, cap);
+		this.values = final;
+		this.capacity = cap;
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	get() {
+		let idx = this.i();
+		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', this.values, this.capacity, {
+			size: this.values.length
+		}), this.snapshot('ArrayList_get accesses elements[' + idx + '] directly', this.values, this.capacity, {
+			size: this.values.length,
+			ptrs: [{
+				id: 'pget',
+				label: 'elements[' + idx + ']',
+				i: idx
+			}],
+			flashCells: [idx],
+			pause: true
+		}), this.snapshot('The lookup result is get(' + idx + ') = ' + this.values[idx], this.values, this.capacity, {
+			size: this.values.length,
+			flashCells: [idx],
+			pause: true
+		}), this.snapshot('The operation is complete', this.values, this.capacity, {
+			size: this.values.length
+		})];
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	set() {
+		let idx = this.i(),
+			e = this.v();
+		if (isNaN(idx) || isNaN(e) || idx < 0 || idx >= this.values.length) return;
+		this.save();
+		let old = [...this.values],
+			upd = [...old];
+		upd[idx] = e;
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, {
+			size: old.length
+		}), this.snapshot('ArrayList_set locates elements[' + idx + '] directly', old, this.capacity, {
+			size: old.length,
+			ptrs: [{
+				id: 'pset',
+				label: 'elements[' + idx + ']',
+				i: idx
+			}],
+			flashCells: [idx],
+			pause: true
+		}), this.snapshot('The value at index ' + idx + ' is replaced by ' + e, upd, this.capacity, {
+			size: upd.length,
+			flashCells: [idx],
+			pause: true
+		}), this.snapshot('The operation is complete', upd, this.capacity, {
+			size: upd.length
+		})];
+		this.commitStorage(upd, this.capacity);
+		this.values = upd;
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	del() {
+		let idx = this.i();
+		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
+		this.save();
+		let old = [...this.values],
+			work = [...old],
+			greyCells = [];
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, {
+			size: old.length
+		}), this.snapshot('The element at index ' + idx + ' is selected for deletion', old, this.capacity, {
+			size: old.length,
+			flashCells: [idx],
+			crossCells: [idx],
+			pause: true
+		})];
+		for (let j = idx + 1; j < old.length; j++) {
+			work[j - 1] = work[j];
+			greyCells = greyCells.filter(i => i !== j - 1);
+			if (!greyCells.includes(j)) greyCells.push(j);
+			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position left', work, this.capacity, {
+				size: old.length,
+				moves: [{
+					from: j,
+					to: j - 1
+				}],
+				flashCells: [j - 1, j],
+				greyCells: [...greyCells],
+				pause: true
+			}))
+		}
+		let final = old.filter((_, i) => i !== idx);
+		snaps.push(this.snapshot('The trailing duplicate is now outside the logical list', work, this.capacity, {
+			size: old.length,
+			greyCells: [...greyCells],
+			pause: true
+		}));
+		snaps.push(this.snapshot('size is decremented; the last physical value remains allocated but becomes unused', work, this.capacity, {
+			size: old.length - 1,
+			flashSize: true,
+			pause: true
+		}));
+		snaps.push(this.snapshot('The operation is complete', work, this.capacity, {
+			size: final.length
+		}));
+		this.commitStorage(work, this.capacity);
+		this.values = final;
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	clear() {
+		this.save();
+		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', this.values, this.capacity, {
+			size: this.values.length
+		}), this.snapshot('ArrayList_clear sets size to 0; capacity and the allocated array are kept', this.values, this.capacity, {
+			size: this.values.length,
+			flashSize: true,
+			pause: true
+		}), this.snapshot('The ArrayList is now logically empty; old cells are outside size', this.values, this.capacity, {
+			size: 0,
+			pause: true
+		}), this.snapshot('The operation is complete', this.values, this.capacity, {
+			size: 0
+		})];
+		this.commitStorage(this.values, this.capacity);
+		this.values = [];
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	},
+	random() {
+		this.save();
+		this.capacity = 6;
+		this.values = [];
+		while (this.values.length < 3) {
+			let v = Math.floor(Math.random() * 9) + 1;
+			if (!this.values.includes(v)) this.values.push(v)
+		}
+		this.storage = [...this.values];
+		this.showCurrent('A random sample ArrayList has been created');
+		this.updateUI()
+	},
+	reinit() {
+		let c = parseInt(document.getElementById('cap').value);
+		if (isNaN(c) || c < 1) c = 6;
+		this.save();
+		this.capacity = c;
+		this.values = [];
+		this.storage = [];
+		this.showCurrent('A new empty ArrayList has been allocated with capacity ' + c);
+		this.updateUI()
+	},
+	undo() {
+		if (!this.history.length) return;
+		const h = this.history.pop();
+		this.values = h.values;
+		this.capacity = h.capacity;
+		this.storage = h.storage ?? [...h.values];
+		this.showCurrent('The previous ArrayList state has been restored');
+		this.updateUI()
+	},
+	speed() {
+		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+	},
+	pause() {
+		const p = this.viz.togglePause();
+		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
+	},
+	toggleModal() {
+		const m = document.getElementById('helpModal');
+		m.style.display = m.style.display === 'block' ? 'none' : 'block'
+	},
+	updateUI() {
+		document.getElementById('btnUndo').disabled = this.history.length === 0
+	},
+	clearInputs() {
+		document.getElementById('val').value = '';
+		document.getElementById('idx').value = ''
+	}
+};
+window.onload = () => app.init();
+window.onclick = e => {
+	if (e.target === document.getElementById('helpModal')) app.toggleModal()
+};
+</script>
+</body>
+</html>
