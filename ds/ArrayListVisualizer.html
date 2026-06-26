@@ -66,7 +66,7 @@ class Viz {
 			structX: 210,
 			structY: 160,
 			up: 86,
-			gap: 68
+			gap: 62
 		}
 	}
 	resize() {
@@ -149,7 +149,7 @@ class Viz {
 			if (g.y === undefined) g.y = b.up
 		});
 		(s.ptrs || []).forEach((p, i) => {
-			if (p.x === undefined) p.x = b.x + (p.i ?? 0) * b.gap - 10;
+			if (p.x === undefined) p.x = b.x + (p.i ?? 0) * b.gap;
 			if (p.y === undefined) p.y = b.y - 95 - i * 64
 		})
 	}
@@ -309,20 +309,20 @@ class Viz {
 			b = this.base(),
 			x = b.structX,
 			y = b.structY,
-			w = 72,
+			w = this.cell,
 			h = this.cell;
 		c.save();
 		c.fillStyle = K.k;
 		c.font = '28px monospace';
 		c.textAlign = 'right';
-		c.fillText('p_list', x - 145, y - 62);
+		c.fillText('p_list', x - 145, y - 67);
 		c.fillStyle = K.p;
 		c.fillRect(x - 125, y - 108, w, h);
 		c.fillStyle = K.v;
 		c.beginPath();
-		c.arc(x - 89, y - 79, 8, 0, Math.PI * 2);
+		c.arc(x - 95, y - 79, 8, 0, Math.PI * 2);
 		c.fill();
-		this.arrow(x - 89, y - 79, x, y + 8, K.v, 3);
+		this.arrow(x - 95, y - 79, x, y + 8, K.v, 3);
 		[
 			['elements', K.c],
 			['capacity', K.g],
@@ -335,7 +335,7 @@ class Viz {
 			c.textBaseline = 'middle';
 			c.fillText(r[0], x - 16, yy + h / 2);
 			c.fillStyle = r[1];
-			c.fillRect(x, yy, w, h - h * .05);
+			c.fillRect(x, yy, w, h - h * .04);
 			if (r[0] === 'elements') {
 				c.fillStyle = K.b;
 				c.beginPath();
@@ -364,8 +364,6 @@ class Viz {
 		c.fillStyle = active ? K.g : K.y;
 		c.fillRect(cell.x, cell.y, w, w);
 		c.strokeStyle = '#333';
-		c.lineWidth = 1.5;
-		c.strokeRect(cell.x, cell.y, w, w);
 		c.fillStyle = active ? K.r : '#777';
 		c.font = cell.v === '?' ? '27px Arial' : '30px Arial';
 		c.textAlign = 'center';
@@ -408,16 +406,16 @@ class Viz {
 			c.fillStyle = K.k;
 			c.font = '22px monospace';
 			c.textAlign = 'center';
-			c.fillText(p.label, p.x + 30, p.y - 10);
+			c.fillText(p.label, p.x + 28, p.y - 10);
 			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, 60, 58);
+			c.fillRect(p.x, p.y, this.cell, this.cell);
 			c.fillStyle = K.b;
 			c.beginPath();
-			c.arc(p.x + 30, p.y + 29, 8, 0, Math.PI * 2);
+			c.arc(p.x + 28, p.y + 29, 8, 0, Math.PI * 2);
 			c.fill();
 			c.restore();
 			const target = (s.cells || []).find(c => c.i === p.i);
-			if (target) this.arrow(p.x + 30, p.y + 29, target.x + this.cell / 2, target.y, K.b, 3)
+			if (target) this.arrow(p.x + 28, p.y + 29, target.x + this.cell / 2, target.y, K.b, 3)
 		})
 	}
 	drawOverlays(s) {
@@ -426,7 +424,7 @@ class Viz {
 		if (s.flashSize) this.flashStruct(2);
 		(s.flashCells || []).forEach(i => {
 			const cell = (s.cells || []).find(c => c.i === i);
-			if (cell) this.roundFlash(cell.x - 5, cell.y - 5, this.cell + 10, this.cell + 10)
+			if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
 		});
 		(s.crossCells || []).forEach(i => {
 			const cell = (s.cells || []).find(c => c.i === i);
@@ -435,7 +433,7 @@ class Viz {
 	}
 	flashStruct(row) {
 		const b = this.base();
-		this.flashCircle(b.structX + 36, b.structY + row * this.cell + this.cell / 2, 28)
+		this.flashCircle(b.structX + 31, b.structY + row * this.cell + this.cell / 2, 28)
 	}
 	flashCircle(x, y, r) {
 		const c = this.ctx;
@@ -665,7 +663,7 @@ const app = {
 					from: j,
 					to: j + 1
 				}],
-				flashCells: [j, j + 1],
+				flashCells: [j + 1],
 				greenCells: [...grownCells],
 				greyCells: [...greyCells],
 				pause: true
@@ -787,7 +785,7 @@ const app = {
 					from: j,
 					to: j - 1
 				}],
-				flashCells: [j - 1, j],
+				flashCells: [j - 1],
 				greyCells: [...greyCells],
 				pause: true
 			}))
@@ -833,8 +831,9 @@ const app = {
 	random() {
 		this.save();
 		this.capacity = 6;
+		let sz = Math.floor(Math.random() * 3) + 2;
 		this.values = [];
-		while (this.values.length < 3) {
+		while (this.values.length < sz) {
 			let v = Math.floor(Math.random() * 9) + 1;
 			if (!this.values.includes(v)) this.values.push(v)
 		}
