@@ -305,16 +305,168 @@
         </div>
     </div>
     <script>
-    	const K = {
-    		b: '#1565c0',
-    		c: '#91f4f4',
-    		g: '#b6f8b6',
-    		r: '#e60000',
-    		p: '#c78cff',
-    		v: '#8d35c9',
-			d: '#EF6C00',
-    		k: '#111'
-    	};
+    const K = {
+    	b: '#1565c0',
+    	c: '#91f4f4',
+    	g: '#b6f8b6',
+    	r: '#e60000',
+    	p: '#c78cff',
+    	v: '#8d35c9',
+		d: '#EF6C00',
+    	k: '#111'
+    };
+
+    /*
+     * Visual constants used by the canvas renderer.
+     * The visualizer intentionally keeps every commonly reused size, offset,
+     * spacing, animation threshold and pointer position here so the drawing
+     * formulas read like layout specifications instead of magic numbers.
+     */
+    const VISUAL = (() => {
+        const CELL = 58;
+        const NODE_WIDTH = CELL * 2;
+        const NODE_GAP = CELL;
+        const NODE_STEP = NODE_WIDTH + NODE_GAP;
+        const STRUCT_X = 205;
+        const STRUCT_Y = 155;
+        const STRUCT_FIELD_WIDTH = 58;
+        const POINTER_BOX_WIDTH = 60;
+        const POINTER_BOX_HEIGHT = CELL;
+        const POINTER_CENTER_X = POINTER_BOX_WIDTH / 2;
+        const POINTER_CENTER_Y = POINTER_BOX_HEIGHT / 2;
+        return Object.freeze({
+            node: Object.freeze({
+                cell: CELL,
+                width: NODE_WIDTH,
+                gap: NODE_GAP,
+                step: NODE_STEP,
+                elementCellIndex: 0,
+                pointerCellIndex: 1,
+                pointerDotRadius: 7.5,
+                indexLabelOffsetX: 4,
+                indexLabelOffsetY: 8,
+                valueBaselineCorrection: 2,
+                flashPadding: 8,
+                elementFlashPadding: 1
+            }),
+            list: Object.freeze({
+                originX: 360,
+                originY: STRUCT_Y,
+                tempY: 78,
+                tempNodeYOffset: 120,
+                tempPointerXOffset: 100,
+                insertPointerXOffset: 120,
+                pointerTraversalYOffset: 112,
+                pointerTraversalLevelGap: 0,
+                pointerFallbackXOffset: 200,
+                toDeleteXOffsetFromCurrent: 165,
+                nullPointerXOffset: 50,
+                nullPointerFallbackXOffset: 220
+            }),
+            struct: Object.freeze({
+                x: STRUCT_X,
+                y: STRUCT_Y,
+                fieldWidth: STRUCT_FIELD_WIDTH,
+                rowHeightFactor: 0.95,
+                labelOffsetX: 16,
+                listLabelOffsetX: 145,
+                listLabelOffsetY: 62,
+                listPointerBoxOffsetX: 125,
+                listPointerBoxOffsetY: 108,
+                listPointerDotOffsetX: 125 - CELL / 2,
+                listPointerDotOffsetY: 108 - CELL / 2,
+                listPointerArrowTargetYOffset: 8,
+                firstRow: 0,
+                lastRow: 1,
+                sizeRow: 2,
+                pointerDotRadius: 8,
+                lastArrowTargetYFactor: 0.75
+            }),
+            pointerBox: Object.freeze({
+                width: POINTER_BOX_WIDTH,
+                height: POINTER_BOX_HEIGHT,
+                centerX: POINTER_CENTER_X,
+                centerY: POINTER_CENTER_Y,
+                dotRadius: 8,
+                labelOffsetX: 12,
+                labelBaselineOffsetY: 40,
+                auxLabelYOffset: 10,
+                auxTargetXOffset: 50
+            }),
+            bounds: Object.freeze({
+                defaultMinX: 20,
+                defaultMinY: 35,
+                defaultMaxX: 760,
+                defaultMaxY: 460,
+                nodeLeftPadding: 170,
+                nodeRightPadding: 230,
+                nodeTopPadding: 150,
+                nodeBottomPadding: 210,
+                pnodeLeftPadding: 30,
+                pnodeRightPadding: 220,
+                pnodeTopPadding: 40,
+                pnodeBottomPadding: 120,
+                pointerLeftPadding: 80,
+                pointerRightPadding: 120,
+                pointerTopPadding: 50,
+                pointerBottomPadding: 100,
+                fitPadding: 150
+            }),
+            camera: Object.freeze({
+                minScale: 0.2,
+                maxScale: 5,
+                defaultMaxFitScale: 1.25,
+                wheelSensitivity: 0.001,
+                smoothingFactor: 10,
+                snapDistance: 5,
+                snapScaleDelta: 0.01
+            }),
+            animation: Object.freeze({
+                maxFrameDeltaSeconds: 0.1,
+                morphSpeed: 2.5,
+                waitSeconds: 0.75,
+                deleteFadeCutoff: 0.85,
+                flashMinAlpha: 0.3,
+                flashMaxAlphaDelta: 0.7,
+                flashPeriodMs: 110
+            }),
+            stroke: Object.freeze({
+                normalWidth: 3,
+                flashWidth: 5,
+                crossWidth: 6,
+                arrowHeadLength: 17,
+                arrowHeadHalfAngle: Math.PI / 6,
+                detourOffset: 46,
+                lastArrowHorizontalOffset: 24,
+                detourThreshold: 0.001
+            }),
+            fonts: Object.freeze({
+                value: '30px Arial',
+                structValue: '32px Arial',
+                structLabel: '28px monospace',
+                index: '25px monospace',
+                pointerLabel: '24px monospace',
+                auxPointerLabel: '22px monospace'
+            }),
+            overlay: Object.freeze({
+                nodeFlashExpansion: 16,
+                elementFlashExpansion: 2,
+                nodeFlashCornerRadius: 8,
+                structFlashRadius: 28,
+                pNextFlashRadius: 29,
+                pointerFlashRadius: 28,
+                crossExpansion: 7
+            }),
+            random: Object.freeze({
+                minSize: 2,
+                sizeRange: 4,
+                minValue: 1,
+                valueRange: 9,
+                sortedProbability: 0.25
+            }),
+            undo: Object.freeze({ maxHistoryEntries: 30 })
+        });
+    })();
     let nextId = 0;
     class Viz {
     	constructor(id) {
@@ -336,9 +488,9 @@
     		this.speedFactor = 1;
     		this.paused = false;
     		this.last = 0;
-    		this.cell = 58;
-    		this.nodeW = 116;
-    		this.gap = 58;
+    		this.cell = VISUAL.node.cell;
+    		this.nodeW = VISUAL.node.width;
+    		this.gap = VISUAL.node.gap;
     		this.lastNodes = [];
     		this.resize();
     		window.addEventListener('resize', () => this.resize());
@@ -360,9 +512,9 @@
     	}
     	base() {
     		return {
-    			x: 360,
-    			y: 155,
-    			up: 78
+    			x: VISUAL.list.originX,
+    			y: VISUAL.list.originY,
+    			up: VISUAL.list.tempY
     		}
     	}
     	resize() {
@@ -387,8 +539,8 @@
     		const r = this.cv.getBoundingClientRect(),
     			x = e.clientX - r.left,
     			y = e.clientY - r.top;
-    		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
-    		ns = Math.min(5, Math.max(.2, ns));
+    		let ns = this.cam.targetScale * (1 - e.deltaY * VISUAL.camera.wheelSensitivity);
+    		ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, ns));
     		const wx = (x - this.cam.targetX) / this.cam.targetScale,
     			wy = (y - this.cam.targetY) / this.cam.targetScale;
     		this.cam.targetScale = ns;
@@ -486,7 +638,7 @@
     			this.cam.targetX = this.c0.x + x - this.start.x;
     			this.cam.targetY = this.c0.y + y - this.start.y
     		} else if (e.touches.length === 2 && this.p0) {
-    			const ns = Math.min(5, Math.max(.2, this.s0 * this.td(e.touches) / this.p0)),
+    			const ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, this.s0 * this.td(e.touches) / this.p0)),
     				c = this.tc(e.touches, r);
     			this.cam.targetScale = ns;
     			this.cam.targetX = c.x - this.pw.x * ns;
@@ -500,33 +652,33 @@
     			if (n.y === undefined) n.y = b.y
     		});
     		if (s.pnode && s.pnode.x === undefined) {
-    			s.pnode.x = b.x - 130;
+    			s.pnode.x = b.x - VISUAL.list.tempPointerXOffset;
     			s.pnode.y = s.pnode.y ?? b.up
     		}
     	}
     	bounds(s) {
     		let b = {
-    			minX: 20,
-    			minY: 35,
-    			maxX: 760,
-    			maxY: 460
+    			minX: VISUAL.bounds.defaultMinX,
+    			minY: VISUAL.bounds.defaultMinY,
+    			maxX: VISUAL.bounds.defaultMaxX,
+    			maxY: VISUAL.bounds.defaultMaxY
     		};
     		(s.nodes || []).forEach(n => {
-    			b.minX = Math.min(b.minX, n.x - 170);
-    			b.maxX = Math.max(b.maxX, n.x + 230);
-    			b.minY = Math.min(b.minY, n.y - 150);
-    			b.maxY = Math.max(b.maxY, n.y + 210)
+    			b.minX = Math.min(b.minX, n.x - VISUAL.bounds.nodeLeftPadding);
+    			b.maxX = Math.max(b.maxX, n.x + VISUAL.bounds.nodeRightPadding);
+    			b.minY = Math.min(b.minY, n.y - VISUAL.bounds.nodeTopPadding);
+    			b.maxY = Math.max(b.maxY, n.y + VISUAL.bounds.nodeBottomPadding)
     		});
     		if (s.pnode) {
-    			b.minX = Math.min(b.minX, s.pnode.x - 30);
-    			b.maxX = Math.max(b.maxX, s.pnode.x + 220);
-    			b.minY = Math.min(b.minY, s.pnode.y - 40);
-    			b.maxY = Math.max(b.maxY, s.pnode.y + 120)
+    			b.minX = Math.min(b.minX, s.pnode.x - VISUAL.bounds.pnodeLeftPadding);
+    			b.maxX = Math.max(b.maxX, s.pnode.x + VISUAL.bounds.pnodeRightPadding);
+    			b.minY = Math.min(b.minY, s.pnode.y - VISUAL.bounds.pnodeTopPadding);
+    			b.maxY = Math.max(b.maxY, s.pnode.y + VISUAL.bounds.pnodeBottomPadding)
     		}(s.ptrs || []).forEach(p => {
-    			b.minX = Math.min(b.minX, p.x - 80);
-    			b.maxX = Math.max(b.maxX, p.x + 120);
-    			b.minY = Math.min(b.minY, p.y - 50);
-    			b.maxY = Math.max(b.maxY, p.y + 100)
+    			b.minX = Math.min(b.minX, p.x - VISUAL.bounds.pointerLeftPadding);
+    			b.maxX = Math.max(b.maxX, p.x + VISUAL.bounds.pointerRightPadding);
+    			b.minY = Math.min(b.minY, p.y - VISUAL.bounds.pointerTopPadding);
+    			b.maxY = Math.max(b.maxY, p.y + VISUAL.bounds.pointerBottomPadding)
     		});
     		return b
     	}
@@ -544,7 +696,7 @@
     			B.minY = Math.min(B.minY, b.minY);
     			B.maxY = Math.max(B.maxY, b.maxY)
     		});
-    		const sc = Math.min(1.25, this.cv.width / (B.maxX - B.minX + 150), this.cv.height / (B.maxY - B.minY + 150));
+    		const sc = Math.min(VISUAL.camera.defaultMaxFitScale, this.cv.width / (B.maxX - B.minX + VISUAL.bounds.fitPadding), this.cv.height / (B.maxY - B.minY + VISUAL.bounds.fitPadding));
     		this.cam.targetScale = sc;
     		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
     		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
@@ -563,26 +715,26 @@
     	}
     	loop(ts) {
     		if (!this.last) this.last = ts;
-    		const dt = Math.min((ts - this.last) / 1000, .1);
+    		const dt = Math.min((ts - this.last) / 1000, VISUAL.animation.maxFrameDeltaSeconds);
     		this.last = ts;
     		if (!this.paused) this.update(dt);
     		this.draw();
     		requestAnimationFrame(t => this.loop(t))
     	}
     	update(dt) {
-    		const f = 1 - Math.exp(-10 * dt);
+    		const f = 1 - Math.exp(-VISUAL.camera.smoothingFactor * dt);
     		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
     		this.cam.x += (this.cam.targetX - this.cam.x) * f;
     		this.cam.y += (this.cam.targetY - this.cam.y) * f;
     		if (this.state === 'CAMERA') {
-    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
+    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VISUAL.camera.snapDistance && Math.abs(this.cam.scale - this.cam.targetScale) < VISUAL.camera.snapScaleDelta) this.next()
     		} else if (this.state === 'MORPH') {
-    			this.t += 2.5 * this.speedFactor * dt;
+    			this.t += VISUAL.animation.morphSpeed * this.speedFactor * dt;
     			if (this.t >= 1) {
     				this.t = 1;
     				if (this.sn[this.idx + 1]?.pause) {
     					this.state = 'WAIT';
-    					this.wait = .75 / this.speedFactor
+    					this.wait = VISUAL.animation.waitSeconds / this.speedFactor
     				} else this.finish()
     			}
     		} else if (this.state === 'WAIT') {
@@ -628,7 +780,7 @@
     			else if (b && !a) nodes.push({
     				...b
     			});
-    			else if (a && !b && t < .85) nodes.push({
+    			else if (a && !b && t < VISUAL.animation.deleteFadeCutoff) nodes.push({
     				...a,
     				deleted: true
     			})
@@ -669,7 +821,7 @@
     		return this.sn[Math.max(this.idx, 0)]
     	}
     	flash() {
-    		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+    		return VISUAL.animation.flashMinAlpha + VISUAL.animation.flashMaxAlphaDelta * Math.abs(Math.sin(performance.now() / VISUAL.animation.flashPeriodMs))
     	}
     	draw() {
     		const s = this.current();
@@ -703,39 +855,39 @@
     		c.fillStyle = K.c;
     		c.fillRect(x + w, y, w, w);
     		c.fillStyle = K.r;
-    		c.font = '30px Arial';
+    		c.font = VISUAL.fonts.value;
     		c.textAlign = 'center';
     		c.textBaseline = 'middle';
-    		c.fillText(n.e, x + w / 2, y + w / 2 + 2);
+    		c.fillText(n.e, x + w / 2, y + w / 2 + VISUAL.node.valueBaselineCorrection);
     		c.fillStyle = K.b;
     		c.beginPath();
-    		c.arc(x + w + w / 2, y + w / 2, 7.5, 0, Math.PI * 2);
+    		c.arc(x + w + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, 0, Math.PI * 2);
     		c.fill();
     		if (n.index !== undefined) {
     			c.fillStyle = K.k;
-    			c.font = '25px monospace';
+    			c.font = VISUAL.fonts.index;
     			c.textBaseline = 'alphabetic';
-    			c.fillText(n.index, x + w - 4, y - 8)
+    			c.fillText(n.index, x + w - VISUAL.node.indexLabelOffsetX, y - VISUAL.node.indexLabelOffsetY)
     		}
 
     		c.restore()
     	}
     	drawStructBoxes(s) {
     		const c = this.ctx,
-    			x = 205,
-    			y = 155,
-    			w = 70,
+    			x = VISUAL.struct.x,
+    			y = VISUAL.struct.y,
+    			w = VISUAL.struct.fieldWidth,
     			h = this.cell;
     		c.save();
     		c.fillStyle = K.k;
-    		c.font = '28px monospace';
+    		c.font = VISUAL.fonts.structLabel;
     		c.textAlign = 'right';
-    		c.fillText('p_list', x - 145, y - 62);
+    		c.fillText('p_list', x - VISUAL.struct.listLabelOffsetX, y - VISUAL.struct.listLabelOffsetY);
     		c.fillStyle = K.p;
-    		c.fillRect(x - 125, y - 108, w, h);
+    		c.fillRect(x - VISUAL.struct.listPointerBoxOffsetX, y - VISUAL.struct.listPointerBoxOffsetY, w, h);
     		c.fillStyle = K.v;
     		c.beginPath();
-    		c.arc(x - 90, y - 81, 8, 0, Math.PI * 2);
+    		c.arc(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
     		c.fill();
     		[
     			['p_first', K.c, s.firstId],
@@ -744,24 +896,24 @@
     		].forEach((r, i) => {
     			const yy = y + i * h;
     			c.fillStyle = K.k;
-    			c.font = '28px monospace';
+    			c.font = VISUAL.fonts.structLabel;
     			c.textAlign = 'right';
     			c.textBaseline = 'middle';
-    			c.fillText(r[0], x - 16, yy + h / 2);
+    			c.fillText(r[0], x - VISUAL.struct.labelOffsetX, yy + h / 2);
     			c.fillStyle = r[1];
-    			c.fillRect(x, yy, w, h-h*0.05);
+    			c.fillRect(x, yy, w, h * VISUAL.struct.rowHeightFactor);
     			if (r[0] === 'size') {
     				c.fillStyle = K.r;
-    				c.font = '32px Arial';
+    				c.font = VISUAL.fonts.structValue;
     				c.textAlign = 'center';
-    				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + 2)
+    				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + VISUAL.node.valueBaselineCorrection)
     			} else {
 				const isDanglingStructPointer = r[0] === 'p_first'
 					? (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined)
 					: (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.lastTargetX !== undefined && s.lastTargetY !== undefined);
     				c.fillStyle = isDanglingStructPointer ? K.d : K.b;
     				c.beginPath();
-    				c.arc(x + w / 2, yy + h / 2, 8, 0, Math.PI * 2);
+    				c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
     				c.fill()
     			}
     		});
@@ -771,16 +923,16 @@
     		return (s.nodes || []).find(n => n.id === id)
     	}
     	drawStructArrows(s) {
-    		const x = 205,
-    			y = 155,
-    			w = 70,
+    		const x = VISUAL.struct.x,
+    			y = VISUAL.struct.y,
+    			w = VISUAL.struct.fieldWidth,
     			h = this.cell;
-    		this.arrow(x - 90, y - 81, x, y + 8, K.v, 3);
+    		this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
     		const f = this.nodeById(s, s.firstId),
     			l = this.nodeById(s, s.lastId);
-    		if (f) { const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0); if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, firstAmount); else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3) }
+    		if (f) { const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0); if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth, firstAmount); else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth) }
     		if (l) {
-    			const targetY = l.y + this.cell * 0.75,
+    			const targetY = l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor,
     				lastCol = s.markPLastArrow ? K.r : K.b;
     			if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3);
     			else this.lastArrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3)
@@ -793,18 +945,18 @@
 				if (to) {
 					const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
 					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
-					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3)
+					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
 				}
 			}
 		})
 	}
-	detourArrow(x1, y1, x2, y2, col = K.b, lw = 3, amount = 1) {
+	detourArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth, amount = 1) {
 		const c = this.ctx;
 		c.save();
 		c.strokeStyle = col;
 		c.fillStyle = col;
 		c.lineWidth = lw;
-		const d = 46 * amount, midY = y1 + d;
+		const d = VISUAL.stroke.detourOffset * amount, midY = y1 + d;
 		c.beginPath();
 		c.moveTo(x1, y1);
 		c.lineTo(x1 + d, midY);
@@ -825,15 +977,15 @@ ptr(n) {
     			c = this.ctx;
     		c.save();
     		c.fillStyle = K.k;
-    		c.font = '24px monospace';
+    		c.font = VISUAL.fonts.pointerLabel;
     		c.textAlign = 'right';
     		c.textBaseline = 'alphabetic';
-    		c.fillText(p.label || 'p_node', p.x - 12, p.y + 40);
+    		c.fillText(p.label || 'p_node', p.x - VISUAL.pointerBox.labelOffsetX, p.y + VISUAL.pointerBox.labelBaselineOffsetY);
     		c.fillStyle = K.c;
-    		c.fillRect(p.x, p.y, 60, 58);
+    		c.fillRect(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
     		c.fillStyle = K.b;
     		c.beginPath();
-    		c.arc(p.x + 30, p.y + 29, 8, 0, Math.PI * 2);
+    		c.arc(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
     		c.fill();
     		c.restore()
     	}
@@ -845,55 +997,55 @@ ptr(n) {
 			const pointerColor = isDanglingAuxPointer ? K.d : K.b;
 			c.save();
 			c.fillStyle = K.k;
-			c.font = '22px monospace';
+			c.font = VISUAL.fonts.auxPointerLabel;
 			c.textAlign = 'center';
 			c.textBaseline = 'alphabetic';
-			c.fillText(p.label, p.x + 30, p.y - 10);
+			c.fillText(p.label, p.x + VISUAL.pointerBox.centerX, p.y - VISUAL.pointerBox.auxLabelYOffset);
 			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, 60, 58);
+			c.fillRect(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
 			c.fillStyle = pointerColor;
 			c.beginPath();
-			c.arc(p.x + 30, p.y + 29, 8, 0, Math.PI * 2);
+			c.arc(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
 			c.fill();
 			c.restore();
-			if (t) this.arrow(p.x + 30, p.y + 29, t.x + 0 * this.cell / 2, t.y, K.b, 3);
-			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + 30, p.y + 29, p.targetX, p.targetY, pointerColor, 3)
+			if (t) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x + 0 * this.cell / 2, t.y, K.b, VISUAL.stroke.normalWidth);
+			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, p.targetX, p.targetY, pointerColor, 3)
 		})
 	}
 	drawPNodeArrow(s) {
     		const p = s.pnode,
     			t = this.nodeById(s, p.target);
-    		if (t) this.arrow(p.x + 30, p.y + 29, t.x, t.y + this.cell / 2, K.b, 3)
+    		if (t) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x, t.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
     	}
     	drawOverlays(s) {
     		if (s.flashPFirst) this.flashStruct(0);
     		if (s.flashPLast) this.flashStruct(1);
     		if (s.flashSize) this.flashStruct(2);
     		(s.nodes || []).forEach(n => {
-    			if (n.flashNew) this.roundFlash(n.x - 8, n.y - 8, this.nodeW + 16, this.cell + 16);
-    			if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, 29);
-    			if (n.flashElement) this.roundFlash(n.x - 4, n.y - 4, this.cell + 8, this.cell + 8);
+    			if (n.flashNew) this.roundFlash(n.x - VISUAL.node.flashPadding, n.y - VISUAL.node.flashPadding, this.nodeW + VISUAL.overlay.nodeFlashExpansion, this.cell + VISUAL.overlay.nodeFlashExpansion);
+    			if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, VISUAL.overlay.pNextFlashRadius);
+    			if (n.flashElement) this.roundFlash(n.x - VISUAL.node.elementFlashPadding, n.y - VISUAL.node.elementFlashPadding, this.cell + VISUAL.overlay.elementFlashExpansion, this.cell + VISUAL.overlay.elementFlashExpansion);
 			if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
     		});
-    		if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, 60, 58);
-    		if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, 60, 58));
+    		if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
+    		if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height));
     		if (s.flashPtrs)(s.ptrs || []).forEach(p => {
-    			if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + 30, p.y + 29, 28)
+    			if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, 28)
     		})
     	}
     	flashStruct(row) {
-    		const x = 205,
-    			y = 155 + row * this.cell,
-    			w = 70,
+    		const x = VISUAL.struct.x,
+    			y = VISUAL.struct.y + row * this.cell,
+    			w = VISUAL.struct.fieldWidth,
     			h = this.cell;
-    		this.flashCircle(x + w / 2, y + h / 2, 28)
+    		this.flashCircle(x + w / 2, y + h / 2, VISUAL.overlay.structFlashRadius)
     	}
     	flashCircle(x, y, r) {
     		const c = this.ctx;
     		c.save();
     		c.globalAlpha = this.flash();
     		c.strokeStyle = K.r;
-    		c.lineWidth = 5;
+    		c.lineWidth = VISUAL.stroke.flashWidth;
     		c.beginPath();
     		c.arc(x, y, r, 0, Math.PI * 2);
     		c.stroke();
@@ -904,9 +1056,9 @@ ptr(n) {
     		c.save();
     		c.globalAlpha = this.flash();
     		c.strokeStyle = K.r;
-    		c.lineWidth = 5;
+    		c.lineWidth = VISUAL.stroke.flashWidth;
     		c.beginPath();
-    		c.roundRect(x, y, w, h, 8);
+    		c.roundRect(x, y, w, h, VISUAL.overlay.nodeFlashCornerRadius);
     		c.stroke();
     		c.restore()
     	}
@@ -915,16 +1067,16 @@ ptr(n) {
     		c.save();
     		c.globalAlpha = this.flash();
     		c.strokeStyle = K.r;
-    		c.lineWidth = 6;
+    		c.lineWidth = VISUAL.stroke.crossWidth;
     		c.beginPath();
-    		c.moveTo(x - 7, y - 7);
-    		c.lineTo(x + w + 7, y + h + 7);
-    		c.moveTo(x + w + 7, y - 7);
-    		c.lineTo(x - 7, y + h + 7);
+    		c.moveTo(x - VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion);
+    		c.lineTo(x + w + VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
+    		c.moveTo(x + w + VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion);
+    		c.lineTo(x - VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
     		c.stroke();
     		c.restore()
     	}
-    	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+    	arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
     		const c = this.ctx;
     		c.save();
     		c.strokeStyle = col;
@@ -940,16 +1092,16 @@ ptr(n) {
     	head(x1, y1, x2, y2, col = K.b) {
     		const c = this.ctx,
     			a = Math.atan2(y2 - y1, x2 - x1),
-    			h = 17;
+    			h = VISUAL.stroke.arrowHeadLength;
     		c.fillStyle = col;
     		c.beginPath();
     		c.moveTo(x2, y2);
-    		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
-    		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+    		c.lineTo(x2 - h * Math.cos(a - VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a - VISUAL.stroke.arrowHeadHalfAngle));
+    		c.lineTo(x2 - h * Math.cos(a + VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a + VISUAL.stroke.arrowHeadHalfAngle));
     		c.closePath();
     		c.fill()
     	}
-    	lastArrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+    	lastArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
     		const c = this.ctx;
     		c.save();
     		c.strokeStyle = col;
@@ -957,7 +1109,7 @@ ptr(n) {
     		c.lineWidth = lw;
     		c.beginPath();
     		c.moveTo(x1, y1);
-    		const d = 24,
+    		const d = VISUAL.stroke.lastArrowHorizontalOffset,
     			midY = y1;
     		c.lineTo(x2 - d, midY);
     		c.lineTo(x2, y2);
@@ -998,7 +1150,7 @@ ptr(n) {
     			id: ids[i],
     			e,
     			index: i,
-    			x: 360 + shift + i * (116 + 58),
+    			x: VISUAL.list.originX + shift + i * VISUAL.node.step,
     			y: yy,
     			next: i < ids.length - 1 ? ids[i + 1] : null
     		}))
@@ -1032,7 +1184,7 @@ ptr(n) {
     			values: [...this.values],
     			ids: [...this.ids]
     		});
-    		if (this.history.length > 30) this.history.shift()
+    		if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift()
     	},
     	prepend() {
     		const e = this.v();
@@ -1043,7 +1195,7 @@ ptr(n) {
     			oldSize = oldVals.length,
     			newId = nextId++;
     		const b = this.viz.base(),
-    			gap = 116 + 58,
+    			gap = VISUAL.node.step,
     			oldFirst = oldIds[0] ?? null;
     		let snaps = [];
     		let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
@@ -1058,7 +1210,7 @@ ptr(n) {
     			pause: true
     		}));
     		let pnode = {
-    			x: b.x - 130,
+    			x: b.x - VISUAL.list.tempPointerXOffset,
     			y: b.up,
     			target: newId
     		};
@@ -1156,10 +1308,10 @@ ptr(n) {
     		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, {
     			size: oldSize
     		}));
-    		let x = b.x + oldSize * (116 + 58),
+    		let x = b.x + oldSize * (VISUAL.node.step),
     			y = b.up,
     			pnode = {
-    				x: x - 130,
+    				x: x - VISUAL.list.tempPointerXOffset,
     				y,
     				target: newId
     			};
@@ -1373,8 +1525,8 @@ ptr(n) {
     			oldSize = oldVals.length,
     			newId = nextId++;
     		const b = this.viz.base(),
-    			gap = 116 + 58,
-    			newNodeY = b.y + 100;
+    			gap = VISUAL.node.step,
+    			newNodeY = b.y + VISUAL.list.tempNodeYOffset;
     		let snaps = [];
     		const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
     		const makePtr = (label, target, nodes, level = 0, fixedX = null, fixedY = null) => {
@@ -1382,8 +1534,8 @@ ptr(n) {
     			return {
     				label,
     				target,
-    				x: fixedX ?? (t ? t.x - 50 : b.x - 180),
-    				y: fixedY ?? (b.y - 112 - level * 0)
+    				x: fixedX ?? (t ? t.x - VISUAL.pointerBox.auxTargetXOffset : b.x - VISUAL.list.pointerFallbackXOffset),
+    				y: fixedY ?? (b.y - VISUAL.list.pointerTraversalYOffset - level * VISUAL.list.pointerTraversalLevelGap)
     			}
     		};
     		const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('p_previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('p_current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
@@ -1451,7 +1603,7 @@ ptr(n) {
     			pause: true
     		}));
     		let pnode = {
-    			x: b.x + i * gap - 120,
+    			x: b.x + i * gap - VISUAL.list.insertPointerXOffset,
     			y: newNodeY,
     			target: newId,
     			label: 'p_node'
@@ -1594,8 +1746,8 @@ ptr(n) {
     			return {
     				label: 'p_current',
     				target,
-    				x: fixed?.x ?? (t ? t.x - 50 : b.x - 180),
-    				y: fixed?.y ?? (b.y - 112)
+    				x: fixed?.x ?? (t ? t.x - VISUAL.pointerBox.auxTargetXOffset : b.x - VISUAL.list.pointerFallbackXOffset),
+    				y: fixed?.y ?? (b.y - VISUAL.list.pointerTraversalYOffset)
     			}
     		};
     		let curId = this.ids[0];
@@ -1696,8 +1848,8 @@ ptr(n) {
     			return {
     				label: 'p_current',
     				target,
-    				x: fixed?.x ?? (t ? t.x - 50 : b.x - 180),
-    				y: fixed?.y ?? (b.y - 112)
+    				x: fixed?.x ?? (t ? t.x - VISUAL.pointerBox.auxTargetXOffset : b.x - VISUAL.list.pointerFallbackXOffset),
+    				y: fixed?.y ?? (b.y - VISUAL.list.pointerTraversalYOffset)
     			}
     		};
     		let curId = oldIds[0];
@@ -1771,8 +1923,8 @@ ptr(n) {
 			return {
 				label,
 				target,
-				x: fixedX ?? (t ? t.x - 50 : (oldT ? oldT.x - 50 : b.x - 180)),
-				y: fixedY ?? (b.y - 112 - level * 0),
+				x: fixedX ?? (t ? t.x - VISUAL.pointerBox.auxTargetXOffset : (oldT ? oldT.x - VISUAL.pointerBox.auxTargetXOffset : b.x - VISUAL.list.pointerFallbackXOffset)),
+				y: fixedY ?? (b.y - VISUAL.list.pointerTraversalYOffset - level * VISUAL.list.pointerTraversalLevelGap),
 				targetX: t ? undefined : oldT?.x,
 				targetY: t ? undefined : oldT?.y
 			}
@@ -1856,12 +2008,12 @@ ptr(n) {
     	},
 		randomFill() {
     		this.values = [];
-			let sz = Math.floor(Math.random() * 4) + 2;
+			let sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
     		while (this.values.length < sz) {
-    			let v = Math.floor(Math.random() * 9) + 1;
+    			let v = Math.floor(Math.random() * VISUAL.random.valueRange) + VISUAL.random.minValue;
     			if (!this.values.includes(v)) this.values.push(v)
     		}
-			if (Math.random() < 0.25) {
+			if (Math.random() < VISUAL.random.sortedProbability) {
 				this.values.sort()
 			}
     	},
@@ -1911,32 +2063,32 @@ ptr(n) {
 ;
 /* === Animated LinkedList_clear(struct LinkedList* p_list) operation === */
 (function () {
-    const CLEAR_GAP = 116 + 58;
+    const CLEAR_GAP = VISUAL.node.step;
 
     if (!app._ptr) {
         app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
             const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
-            return { label, target, x: fixed?.x ?? (t ? t.x - 50 : (fallbackX ?? b.x - 180)), y: fixed?.y ?? (b.y - 112) }
+            return { label, target, x: fixed?.x ?? (t ? t.x - VISUAL.pointerBox.auxTargetXOffset : (fallbackX ?? b.x - VISUAL.list.pointerFallbackXOffset)), y: fixed?.y ?? (b.y - VISUAL.list.pointerTraversalYOffset) }
         }
     }
 
     /* Draw p_first and p_last arrows even when they are dangling pointers to
        nodes that have already been removed from the visual representation. */
     Viz.prototype.drawStructArrows = function (s) {
-        const x = 205, y = 155, w = 70, h = this.cell;
-        this.arrow(x - 90, y - 81, x, y + 8, K.v, 3);
+        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.cell;
+        this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
 
         const f = this.nodeById(s, s.firstId), l = this.nodeById(s, s.lastId);
         if (f) {
             const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-            if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, firstAmount);
-            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3)
+            if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth, firstAmount);
+            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth)
         } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
-            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, 3)
+            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, VISUAL.stroke.normalWidth)
         }
 
         if (l) {
-            const targetY = l.y + this.cell * 0.75, lastCol = s.markPLastArrow ? K.r : K.b;
+            const targetY = l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor, lastCol = s.markPLastArrow ? K.r : K.b;
             if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3);
             else this.lastArrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3)
         } else if (s.lastTargetX !== undefined && s.lastTargetY !== undefined) {
@@ -1968,7 +2120,7 @@ ptr(n) {
             previousDrawOverlaysForPtrCross.call(this, s);
             if (s.flashPtrCross) {
                 (s.ptrs || []).forEach(p => {
-                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, 60, 58)
+                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height)
                 })
             }
         };
@@ -1984,7 +2136,7 @@ ptr(n) {
         const oldFirstId = oldIds[0] ?? null, oldLastId = oldIds.at(-1) ?? null;
         const oldFirstNode = originalNodes[0] ?? null, oldLastNode = originalNodes.at(-1) ?? null;
         const firstDanglingTarget = oldFirstNode ? { firstTargetX: oldFirstNode.x, firstTargetY: oldFirstNode.y + this.viz.cell / 2 } : {};
-        const lastDanglingTarget = oldLastNode ? { lastTargetX: oldLastNode.x, lastTargetY: oldLastNode.y + this.viz.cell * 0.75 } : {};
+        const lastDanglingTarget = oldLastNode ? { lastTargetX: oldLastNode.x, lastTargetY: oldLastNode.y + this.viz.cell * VISUAL.struct.lastArrowTargetYFactor } : {};
         const listNormal = () => ({ firstId: oldFirstId, lastId: oldLastId, size: oldSize });
         const listDangling = (nodes = []) => ({
 			firstId: oldFirstId,
@@ -1994,12 +2146,12 @@ ptr(n) {
 			...lastDanglingTarget,
 			straightPLastArrow: nodes.length <= 1
 		});
-        const currentNullX = b.x + Math.max(oldSize, 1) * CLEAR_GAP - 50;
+        const currentNullX = b.x + Math.max(oldSize, 1) * CLEAR_GAP - VISUAL.list.nullPointerXOffset;
 
         const makePtr = (label, target, nodes, fixed = null) => {
             const fallback = target === null
-                ? (label === 'p_current' ? currentNullX : b.x - 220)
-                : b.x - 180;
+                ? (label === 'p_current' ? currentNullX : b.x - VISUAL.list.nullPointerFallbackXOffset)
+                : b.x - VISUAL.list.pointerFallbackXOffset;
             const ptr = this._ptr(label, target, nodes, fixed, fallback);
             const visible = (nodes || []).some(n => n.id === target);
             const oldNode = oldNodeMap.get(target);
@@ -2011,7 +2163,7 @@ ptr(n) {
         };
 
         const pToDeleteAt = (pCurrentPtr, target, nodes) => {
-            const fixed = { x: pCurrentPtr.x - 155, y: pCurrentPtr.y };
+            const fixed = { x: pCurrentPtr.x - VISUAL.list.toDeleteXOffsetFromCurrent, y: pCurrentPtr.y };
             return makePtr('p_toDelete', target, nodes, fixed)
         };
 
@@ -2078,7 +2230,7 @@ ptr(n) {
 			));
         }
 
-        const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - 112 });
+        const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - VISUAL.list.pointerTraversalYOffset });
         const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteValue, []);
         snaps.push(this.snapshot(
 			'All nodes have been freed; p_current is NULL and the list fields still contain dangling pointers',
