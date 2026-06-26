@@ -367,14 +367,110 @@
 							</div>
 							<script>
     	const K = {
-    		b: '#1565c0',
-    		c: '#91f4f4',
-    		g: '#b6f8b6',
-    		r: '#e60000',
-    		p: '#c78cff',
-    		v: '#8d35c9',
-    		k: '#111'
-    	};
+    b: '#1565c0',
+    c: '#91f4f4',
+    g: '#b6f8b6',
+    r: '#e60000',
+    p: '#c78cff',
+    v: '#8d35c9',
+    k: '#111'
+};
+
+const GEOMETRY = Object.freeze({
+    LIST_START_X: 360,
+    LIST_BASELINE_Y: 155,
+    TEMP_ROW_Y: 78,
+    STRUCT_X: 205,
+    STRUCT_Y: 155,
+    NODE_FIELD_SIZE: 58,
+    NODE_WIDTH: 116,
+    NODE_GAP: 58,
+    get NODE_STEP() { return this.NODE_WIDTH + this.NODE_GAP; },
+    STRUCT_POINTER_COLUMN_WIDTH: 70,
+    POINTER_BOX_WIDTH: 58,
+    POINTER_BOX_HEIGHT: 58,
+    POINTER_ANCHOR_X: 30,
+    POINTER_ANCHOR_Y: 29,
+    POINTER_LABEL_GAP: 12,
+    POINTER_LABEL_BASELINE_OFFSET: 40,
+    TEMP_POINTER_LEFT_OF_TARGET: 65,
+    DEFAULT_NULL_POINTER_X_OFFSET: 220,
+    PREVIOUS_NULL_POINTER_X_OFFSET: 220,
+    PNODE_LEFT_OF_TARGET: 100,
+    PNODE_INSERT_LEFT_OF_TARGET: 120,
+    CLEAR_P_TO_DELETE_LEFT_OF_CURRENT: 170,
+    INSERT_NODE_VERTICAL_OFFSET: 100,
+    AUX_POINTER_ROW_ABOVE_LIST: 112,
+    LENGTH_BOX_Y: 225,
+    FIT_PADDING: 150,
+    DEFAULT_BOUNDS_MIN_X: 20,
+    DEFAULT_BOUNDS_MIN_Y: 35,
+    DEFAULT_BOUNDS_MAX_X: 760,
+    DEFAULT_BOUNDS_MAX_Y: 460,
+    BOUNDS_NODE_LEFT_PADDING: 170,
+    BOUNDS_NODE_RIGHT_PADDING: 230,
+    BOUNDS_NODE_TOP_PADDING: 150,
+    BOUNDS_NODE_BOTTOM_PADDING: 210,
+    BOUNDS_PNODE_LEFT_PADDING: 30,
+    BOUNDS_PNODE_RIGHT_PADDING: 220,
+    BOUNDS_PNODE_TOP_PADDING: 40,
+    BOUNDS_PNODE_BOTTOM_PADDING: 120,
+    BOUNDS_AUX_LEFT_PADDING: 80,
+    BOUNDS_AUX_RIGHT_PADDING: 120,
+    BOUNDS_AUX_TOP_PADDING: 50,
+    BOUNDS_AUX_BOTTOM_PADDING: 100
+});
+
+const DRAW = Object.freeze({
+    STRUCT_LABEL_FONT: '28px monospace',
+    NODE_VALUE_FONT: '30px Arial',
+    NODE_INDEX_FONT: '25px monospace',
+    POINTER_LABEL_FONT: '22px monospace',
+    PNODE_LABEL_FONT: '24px monospace',
+    SIZE_VALUE_FONT: '32px Arial',
+    NODE_VALUE_BASELINE_OFFSET: 2,
+    NODE_INDEX_RIGHT_OFFSET: 4,
+    NODE_INDEX_TOP_OFFSET: 8,
+    POINTER_DOT_RADIUS: 8,
+    NODE_NEXT_DOT_RADIUS: 7.5,
+    FLASH_NODE_PADDING: 8,
+    FLASH_ELEMENT_PADDING: 4,
+    FLASH_ELEMENT_TIGHT_PADDING: 1,
+    FLASH_STROKE_WIDTH: 5,
+    CROSS_STROKE_WIDTH: 6,
+    CROSS_OVERHANG: 7,
+    ROUNDED_FLASH_RADIUS: 8,
+    FLASH_POINTER_RADIUS: 28,
+    FLASH_NEXT_RADIUS: 29,
+    ARROW_HEAD_LENGTH: 17,
+    ARROW_HEAD_HALF_ANGLE: Math.PI / 6,
+    DETOUR_DISTANCE: 46,
+    LAST_ARROW_HORIZONTAL_OFFSET: 24,
+    ROW_FILL_SHRINK_RATIO: 0.05,
+    OUTER_POINTER_LABEL_X_OFFSET: 145,
+    OUTER_POINTER_LABEL_Y_OFFSET: 62,
+    OUTER_POINTER_BOX_X_OFFSET: 125,
+    OUTER_POINTER_BOX_Y_OFFSET: 108,
+    OUTER_POINTER_DOT_X_OFFSET: 90,
+    OUTER_POINTER_DOT_Y_OFFSET: 81,
+    STRUCT_LABEL_GAP: 16
+});
+
+const VIEW = Object.freeze({
+    MIN_ZOOM: 0.2,
+    MAX_ZOOM: 5,
+    MAX_AUTO_ZOOM: 1.25,
+    WHEEL_ZOOM_FACTOR: 0.001,
+    CAMERA_EASING: 10,
+    CAMERA_POSITION_EPSILON: 5,
+    CAMERA_SCALE_EPSILON: 0.01,
+    MAX_FRAME_DELTA_SECONDS: 0.1,
+    MORPH_SPEED: 2.5,
+    WAIT_SECONDS: 0.75,
+    FLASH_BASE_ALPHA: 0.3,
+    FLASH_ALPHA_RANGE: 0.7,
+    FLASH_PERIOD_MS: 110
+});
     let nextId = 0;
     class Viz {
     	constructor(id) {
@@ -396,9 +492,9 @@
     		this.speedFactor = 1;
     		this.paused = false;
     		this.last = 0;
-    		this.cell = 58;
-    		this.nodeW = 116;
-    		this.gap = 58;
+    		this.cell = GEOMETRY.NODE_FIELD_SIZE;
+    		this.nodeW = GEOMETRY.NODE_WIDTH;
+    		this.gap = GEOMETRY.NODE_GAP;
     		this.lastNodes = [];
     		this.resize();
     		window.addEventListener('resize', () => this.resize());
@@ -420,9 +516,9 @@
     	}
     	base() {
     		return {
-    			x: 360,
-    			y: 155,
-    			up: 78
+    			x: GEOMETRY.LIST_START_X,
+    			y: GEOMETRY.LIST_BASELINE_Y,
+    			up: GEOMETRY.TEMP_ROW_Y
     		}
     	}
     	resize() {
@@ -447,8 +543,8 @@
     		const r = this.cv.getBoundingClientRect(),
     			x = e.clientX - r.left,
     			y = e.clientY - r.top;
-    		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
-    		ns = Math.min(5, Math.max(.2, ns));
+    		let ns = this.cam.targetScale * (1 - e.deltaY * VIEW.WHEEL_ZOOM_FACTOR);
+    		ns = Math.min(VIEW.MAX_ZOOM, Math.max(VIEW.MIN_ZOOM, ns));
     		const wx = (x - this.cam.targetX) / this.cam.targetScale,
     			wy = (y - this.cam.targetY) / this.cam.targetScale;
     		this.cam.targetScale = ns;
@@ -546,7 +642,7 @@
     			this.cam.targetX = this.c0.x + x - this.start.x;
     			this.cam.targetY = this.c0.y + y - this.start.y
     		} else if (e.touches.length === 2 && this.p0) {
-    			const ns = Math.min(5, Math.max(.2, this.s0 * this.td(e.touches) / this.p0)),
+    			const ns = Math.min(VIEW.MAX_ZOOM, Math.max(VIEW.MIN_ZOOM, this.s0 * this.td(e.touches) / this.p0)),
     				c = this.tc(e.touches, r);
     			this.cam.targetScale = ns;
     			this.cam.targetX = c.x - this.pw.x * ns;
@@ -560,33 +656,33 @@
     			if (n.y === undefined) n.y = b.y
     		});
     		if (s.pnode && s.pnode.x === undefined) {
-    			s.pnode.x = b.x - 130;
+    			s.pnode.x = b.x - GEOMETRY.PNODE_LEFT_OF_TARGET;
     			s.pnode.y = s.pnode.y ?? b.up
     		}
     	}
     	bounds(s) {
     		let b = {
-    			minX: 20,
-    			minY: 35,
-    			maxX: 760,
-    			maxY: 460
+    			minX: GEOMETRY.DEFAULT_BOUNDS_MIN_X,
+    			minY: GEOMETRY.DEFAULT_BOUNDS_MIN_Y,
+    			maxX: GEOMETRY.DEFAULT_BOUNDS_MAX_X,
+    			maxY: GEOMETRY.DEFAULT_BOUNDS_MAX_Y
     		};
     		(s.nodes || []).forEach(n => {
-    			b.minX = Math.min(b.minX, n.x - 170);
-    			b.maxX = Math.max(b.maxX, n.x + 230);
-    			b.minY = Math.min(b.minY, n.y - 150);
-    			b.maxY = Math.max(b.maxY, n.y + 210)
+    			b.minX = Math.min(b.minX, n.x - GEOMETRY.BOUNDS_NODE_LEFT_PADDING);
+    			b.maxX = Math.max(b.maxX, n.x + GEOMETRY.BOUNDS_NODE_RIGHT_PADDING);
+    			b.minY = Math.min(b.minY, n.y - GEOMETRY.BOUNDS_NODE_TOP_PADDING);
+    			b.maxY = Math.max(b.maxY, n.y + GEOMETRY.BOUNDS_NODE_BOTTOM_PADDING)
     		});
     		if (s.pnode) {
-    			b.minX = Math.min(b.minX, s.pnode.x - 30);
-    			b.maxX = Math.max(b.maxX, s.pnode.x + 220);
-    			b.minY = Math.min(b.minY, s.pnode.y - 40);
-    			b.maxY = Math.max(b.maxY, s.pnode.y + 120)
+    			b.minX = Math.min(b.minX, s.pnode.x - GEOMETRY.BOUNDS_PNODE_LEFT_PADDING);
+    			b.maxX = Math.max(b.maxX, s.pnode.x + GEOMETRY.BOUNDS_PNODE_RIGHT_PADDING);
+    			b.minY = Math.min(b.minY, s.pnode.y - GEOMETRY.BOUNDS_PNODE_TOP_PADDING);
+    			b.maxY = Math.max(b.maxY, s.pnode.y + GEOMETRY.BOUNDS_PNODE_BOTTOM_PADDING)
     		}(s.ptrs || []).forEach(p => {
-    			b.minX = Math.min(b.minX, p.x - 80);
-    			b.maxX = Math.max(b.maxX, p.x + 120);
-    			b.minY = Math.min(b.minY, p.y - 50);
-    			b.maxY = Math.max(b.maxY, p.y + 100)
+    			b.minX = Math.min(b.minX, p.x - GEOMETRY.BOUNDS_AUX_LEFT_PADDING);
+    			b.maxX = Math.max(b.maxX, p.x + GEOMETRY.BOUNDS_AUX_RIGHT_PADDING);
+    			b.minY = Math.min(b.minY, p.y - GEOMETRY.BOUNDS_AUX_TOP_PADDING);
+    			b.maxY = Math.max(b.maxY, p.y + GEOMETRY.BOUNDS_AUX_BOTTOM_PADDING)
     		});
     		return b
     	}
@@ -604,7 +700,7 @@
     			B.minY = Math.min(B.minY, b.minY);
     			B.maxY = Math.max(B.maxY, b.maxY)
     		});
-    		const sc = Math.min(1.25, this.cv.width / (B.maxX - B.minX + 150), this.cv.height / (B.maxY - B.minY + 150));
+    		const sc = Math.min(VIEW.MAX_AUTO_ZOOM, this.cv.width / (B.maxX - B.minX + GEOMETRY.FIT_PADDING), this.cv.height / (B.maxY - B.minY + GEOMETRY.FIT_PADDING));
     		this.cam.targetScale = sc;
     		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
     		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
@@ -623,26 +719,26 @@
     	}
     	loop(ts) {
     		if (!this.last) this.last = ts;
-    		const dt = Math.min((ts - this.last) / 1000, .1);
+    		const dt = Math.min((ts - this.last) / 1000, VIEW.MAX_FRAME_DELTA_SECONDS);
     		this.last = ts;
     		if (!this.paused) this.update(dt);
     		this.draw();
     		requestAnimationFrame(t => this.loop(t))
     	}
     	update(dt) {
-    		const f = 1 - Math.exp(-10 * dt);
+    		const f = 1 - Math.exp(-VIEW.CAMERA_EASING * dt);
     		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
     		this.cam.x += (this.cam.targetX - this.cam.x) * f;
     		this.cam.y += (this.cam.targetY - this.cam.y) * f;
     		if (this.state === 'CAMERA') {
-    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
+    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VIEW.CAMERA_POSITION_EPSILON && Math.abs(this.cam.scale - this.cam.targetScale) < VIEW.CAMERA_SCALE_EPSILON) this.next()
     		} else if (this.state === 'MORPH') {
-    			this.t += 2.5 * this.speedFactor * dt;
+    			this.t += VIEW.MORPH_SPEED * this.speedFactor * dt;
     			if (this.t >= 1) {
     				this.t = 1;
     				if (this.sn[this.idx + 1]?.pause) {
     					this.state = 'WAIT';
-    					this.wait = .75 / this.speedFactor
+    					this.wait = VIEW.WAIT_SECONDS / this.speedFactor
     				} else this.finish()
     			}
     		} else if (this.state === 'WAIT') {
@@ -730,7 +826,7 @@ finish() {
     		return this.sn[Math.max(this.idx, 0)]
     	}
     	flash() {
-    		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+    		return VIEW.FLASH_BASE_ALPHA + VIEW.FLASH_ALPHA_RANGE * Math.abs(Math.sin(performance.now() / VIEW.FLASH_PERIOD_MS))
     	}
     	draw() {
     		const s = this.current();
@@ -764,39 +860,39 @@ finish() {
     		c.fillStyle = K.c;
     		c.fillRect(x + w, y, w, w);
     		c.fillStyle = K.r;
-    		c.font = '30px Arial';
+    		c.font = DRAW.NODE_VALUE_FONT;
     		c.textAlign = 'center';
     		c.textBaseline = 'middle';
-    		c.fillText(n.e, x + w / 2, y + w / 2 + 2);
+    		c.fillText(n.e, x + w / 2, y + w / 2 + DRAW.NODE_VALUE_BASELINE_OFFSET);
     		c.fillStyle = K.b;
     		c.beginPath();
-    		c.arc(x + w + w / 2, y + w / 2, 7.5, 0, Math.PI * 2);
+    		c.arc(x + w + w / 2, y + w / 2, DRAW.NODE_NEXT_DOT_RADIUS, 0, Math.PI * 2);
     		c.fill();
     		if (n.index !== undefined) {
     			c.fillStyle = K.k;
-    			c.font = '25px monospace';
+    			c.font = DRAW.NODE_INDEX_FONT;
     			c.textBaseline = 'alphabetic';
-    			c.fillText(n.index, x + w - 4, y - 8)
+    			c.fillText(n.index, x + w - DRAW.NODE_INDEX_RIGHT_OFFSET, y - DRAW.NODE_INDEX_TOP_OFFSET)
     		}
 
     		c.restore()
     	}
     	drawStructBoxes(s) {
     		const c = this.ctx,
-    			x = 205,
-    			y = 155,
+    			x = GEOMETRY.STRUCT_X,
+    				y = GEOMETRY.STRUCT_Y,
     			w = this.cell,
     			h = this.cell;
     		c.save();
     		c.fillStyle = K.k;
-    		c.font = '28px monospace';
+    		c.font = DRAW.STRUCT_LABEL_FONT;
     		c.textAlign = 'right';
-    		c.fillText('outer list pointer', x - 145, y - 62);
+    		c.fillText('outer list pointer', x - DRAW.OUTER_POINTER_LABEL_X_OFFSET, y - DRAW.OUTER_POINTER_LABEL_Y_OFFSET);
     		c.fillStyle = K.p;
-    		c.fillRect(x - 125, y - 108, w, h);
+    		c.fillRect(x - DRAW.OUTER_POINTER_BOX_X_OFFSET, y - DRAW.OUTER_POINTER_BOX_Y_OFFSET, w, h);
     		c.fillStyle = K.v;
     		c.beginPath();
-    		c.arc(x - 90, y - 81, 8, 0, Math.PI * 2);
+    		c.arc(x - DRAW.OUTER_POINTER_DOT_X_OFFSET, y - DRAW.OUTER_POINTER_DOT_Y_OFFSET, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
     		c.fill();
     		[
     			['p_first', K.c, s.firstId],
@@ -805,21 +901,21 @@ finish() {
     		].forEach((r, i) => {
     			const yy = y + i * h;
     			c.fillStyle = K.k;
-    			c.font = '28px monospace';
+    			c.font = DRAW.STRUCT_LABEL_FONT;
     			c.textAlign = 'right';
     			c.textBaseline = 'middle';
-    			c.fillText(r[0], x - 16, yy + h / 2);
+    			c.fillText(r[0], x - DRAW.STRUCT_LABEL_GAP, yy + h / 2);
     			c.fillStyle = r[1];
-    			c.fillRect(x, yy, w, h-h*0.05);
+    			c.fillRect(x, yy, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO);
     			if (r[0] === 'size') {
     				c.fillStyle = K.r;
-    				c.font = '32px Arial';
+    				c.font = DRAW.SIZE_VALUE_FONT;
     				c.textAlign = 'center';
     				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + 2)
     			} else {
     				c.fillStyle = K.b;
     				c.beginPath();
-    				c.arc(x + w / 2, yy + h / 2, 8, 0, Math.PI * 2);
+    				c.arc(x + w / 2, yy + h / 2, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
     				c.fill()
     			}
     		});
@@ -829,11 +925,11 @@ finish() {
     		return (s.nodes || []).find(n => n.id === id)
     	}
     	drawStructArrows(s) {
-    		const x = 205,
-    			y = 155,
+    		const x = GEOMETRY.STRUCT_X,
+    				y = GEOMETRY.STRUCT_Y,
     			w = 70,
     			h = this.cell;
-    		this.arrow(x - 90, y - 81, x, y + 8, K.v, 3);
+    		this.arrow(x - DRAW.OUTER_POINTER_DOT_X_OFFSET, y - DRAW.OUTER_POINTER_DOT_Y_OFFSET, x, y + 8, K.v, 3);
     		const f = this.nodeById(s, s.firstId),
     			l = this.nodeById(s, s.lastId);
     		if (f) { const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0); if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, firstAmount); else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3) }
@@ -862,7 +958,7 @@ finish() {
 		c.strokeStyle = col;
 		c.fillStyle = col;
 		c.lineWidth = lw;
-		const d = 46 * amount, midY = y1 + d;
+		const d = DRAW.DETOUR_DISTANCE * amount, midY = y1 + d;
 		c.beginPath();
 		c.moveTo(x1, y1);
 		c.lineTo(x1 + d, midY);
@@ -883,15 +979,15 @@ ptr(n) {
     			c = this.ctx;
     		c.save();
     		c.fillStyle = K.k;
-    		c.font = '24px monospace';
+    		c.font = DRAW.PNODE_LABEL_FONT;
     		c.textAlign = 'right';
     		c.textBaseline = 'alphabetic';
-    		c.fillText(p.label || 'p_node', p.x - 12, p.y + 40);
+    		c.fillText(p.label || 'p_node', p.x - GEOMETRY.POINTER_LABEL_GAP, p.y + GEOMETRY.POINTER_LABEL_BASELINE_OFFSET);
     		c.fillStyle = K.c;
-    		c.fillRect(p.x, p.y, 60, 58);
+    		c.fillRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
     		c.fillStyle = K.b;
     		c.beginPath();
-    		c.arc(p.x + 30, p.y + 29, 8, 0, Math.PI * 2);
+    		c.arc(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
     		c.fill();
     		c.restore()
     	}
@@ -900,56 +996,56 @@ ptr(n) {
 		(s.ptrs || []).forEach(p => {
 			c.save();
 			c.fillStyle = K.k;
-			c.font = '22px monospace';
+			c.font = DRAW.POINTER_LABEL_FONT;
 			c.textAlign = 'center';
 			c.textBaseline = 'alphabetic';
-			c.fillText(p.label, p.x + 30, p.y - 10);
+			c.fillText(p.label, p.x + 30, p.y - GEOMETRY.POINTER_LABEL_GAP);
 			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, 60, 58);
+			c.fillRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
 			c.fillStyle = K.b;
 			c.beginPath();
-			c.arc(p.x + 30, p.y + 29, 8, 0, Math.PI * 2);
+			c.arc(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
 			c.fill();
 			c.restore();
 			const t = this.nodeById(s, p.target);
-			if (t) this.arrow(p.x + 30, p.y + 29, t.x + 0 * this.cell / 2, t.y, K.b, 3);
-			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + 30, p.y + 29, p.targetX, p.targetY, K.b, 3)
+			if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y, K.b, 3);
+			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, p.targetX, p.targetY, K.b, 3)
 		})
 	}
 	drawPNodeArrow(s) {
     		const p = s.pnode,
     			t = this.nodeById(s, p.target);
-    		if (t) this.arrow(p.x + 30, p.y + 29, t.x, t.y + this.cell / 2, K.b, 3)
+    		if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y + this.cell / 2, K.b, 3)
     	}
     	drawOverlays(s) {
     		if (s.flashPFirst) this.flashStruct(0);
     		if (s.flashPLast) this.flashStruct(1);
     		if (s.flashSize) this.flashStruct(2);
     		(s.nodes || []).forEach(n => {
-    			if (n.flashNew) this.roundFlash(n.x - 8, n.y - 8, this.nodeW + 16, this.cell + 16);
-    			if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, 29);
-    			if (n.flashElement) this.roundFlash(n.x - 4, n.y - 4, this.cell + 8, this.cell + 8);
+    			if (n.flashNew) this.roundFlash(n.x - DRAW.FLASH_NODE_PADDING, n.y - DRAW.FLASH_NODE_PADDING, this.nodeW + 2 * DRAW.FLASH_NODE_PADDING, this.cell + 2 * DRAW.FLASH_NODE_PADDING);
+    			if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, DRAW.FLASH_NEXT_RADIUS);
+    			if (n.flashElement) this.roundFlash(n.x - DRAW.FLASH_ELEMENT_PADDING, n.y - DRAW.FLASH_ELEMENT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_PADDING);
 			if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
     		});
-    		if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, 60, 58);
-    		if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, 60, 58));
+    		if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
+    		if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT));
     		if (s.flashPtrs)(s.ptrs || []).forEach(p => {
-    			if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + 30, p.y + 29, 28)
+    			if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.FLASH_POINTER_RADIUS)
     		})
     	}
     	flashStruct(row) {
-    		const x = 205,
-    			y = 155 + row * this.cell,
+    		const x = GEOMETRY.STRUCT_X,
+    			y = GEOMETRY.STRUCT_Y + row * this.cell,
     			w = this.cell,
     			h = this.cell;
-    		this.flashCircle(x + w / 2, y + h / 2, 28)
+    		this.flashCircle(x + w / 2, y + h / 2, DRAW.FLASH_POINTER_RADIUS)
     	}
     	flashCircle(x, y, r) {
     		const c = this.ctx;
     		c.save();
     		c.globalAlpha = this.flash();
     		c.strokeStyle = K.r;
-    		c.lineWidth = 5;
+    		c.lineWidth = DRAW.FLASH_STROKE_WIDTH;
     		c.beginPath();
     		c.arc(x, y, r, 0, Math.PI * 2);
     		c.stroke();
@@ -960,9 +1056,9 @@ ptr(n) {
     		c.save();
     		c.globalAlpha = this.flash();
     		c.strokeStyle = K.r;
-    		c.lineWidth = 5;
+    		c.lineWidth = DRAW.FLASH_STROKE_WIDTH;
     		c.beginPath();
-    		c.roundRect(x, y, w, h, 8);
+    		c.roundRect(x, y, w, h, DRAW.ROUNDED_FLASH_RADIUS);
     		c.stroke();
     		c.restore()
     	}
@@ -971,12 +1067,12 @@ ptr(n) {
     		c.save();
     		c.globalAlpha = this.flash();
     		c.strokeStyle = K.r;
-    		c.lineWidth = 6;
+    		c.lineWidth = DRAW.CROSS_STROKE_WIDTH;
     		c.beginPath();
-    		c.moveTo(x - 7, y - 7);
-    		c.lineTo(x + w + 7, y + h + 7);
-    		c.moveTo(x + w + 7, y - 7);
-    		c.lineTo(x - 7, y + h + 7);
+    		c.moveTo(x - DRAW.CROSS_OVERHANG, y - DRAW.CROSS_OVERHANG);
+    		c.lineTo(x + w + DRAW.CROSS_OVERHANG, y + h + DRAW.CROSS_OVERHANG);
+    		c.moveTo(x + w + DRAW.CROSS_OVERHANG, y - DRAW.CROSS_OVERHANG);
+    		c.lineTo(x - DRAW.CROSS_OVERHANG, y + h + DRAW.CROSS_OVERHANG);
     		c.stroke();
     		c.restore()
     	}
@@ -996,12 +1092,12 @@ ptr(n) {
     	head(x1, y1, x2, y2, col = K.b) {
     		const c = this.ctx,
     			a = Math.atan2(y2 - y1, x2 - x1),
-    			h = 17;
+    			h = DRAW.ARROW_HEAD_LENGTH;
     		c.fillStyle = col;
     		c.beginPath();
     		c.moveTo(x2, y2);
-    		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
-    		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+    		c.lineTo(x2 - h * Math.cos(a - DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a - DRAW.ARROW_HEAD_HALF_ANGLE));
+    		c.lineTo(x2 - h * Math.cos(a + DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a + DRAW.ARROW_HEAD_HALF_ANGLE));
     		c.closePath();
     		c.fill()
     	}
@@ -1013,7 +1109,7 @@ ptr(n) {
     		c.lineWidth = lw;
     		c.beginPath();
     		c.moveTo(x1, y1);
-    		const d = 24,
+    		const d = DRAW.LAST_ARROW_HORIZONTAL_OFFSET,
     			midY = y1;
     		c.lineTo(x2 - d, midY);
     		c.lineTo(x2, y2);
@@ -1043,7 +1139,7 @@ ptr(n) {
     	viz: null,
     	init() {
     		this.viz = new Viz('cv');
-    		this.values = [4, 8, 2];
+    		this.randomFill();
     		this.ids = this.values.map(_ => nextId++);
     		this.showCurrent('The list is initialized with sample values');
     		this.updateUI()
@@ -1054,7 +1150,7 @@ ptr(n) {
     			id: ids[i],
     			e,
     			index: i,
-    			x: 360 + shift + i * (116 + 58),
+    			x: this.viz.base().x + shift + i * GEOMETRY.NODE_STEP,
     			y: yy,
     			next: i < ids.length - 1 ? ids[i + 1] : null
     		}))
@@ -1099,7 +1195,7 @@ ptr(n) {
     			oldSize = oldVals.length,
     			newId = nextId++;
     		const b = this.viz.base(),
-    			gap = 116 + 58,
+    			gap = GEOMETRY.NODE_STEP,
     			oldFirst = oldIds[0] ?? null;
     		let snaps = [];
     		let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
@@ -1114,7 +1210,7 @@ ptr(n) {
     			pause: true
     		}));
     		let pnode = {
-    			x: b.x - 130,
+    			x: b.x - GEOMETRY.PNODE_LEFT_OF_TARGET,
     			y: b.up,
     			target: newId
     		};
@@ -1212,10 +1308,10 @@ ptr(n) {
     		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, {
     			size: oldSize
     		}));
-    		let x = b.x + oldSize * (116 + 58),
+    		let x = b.x + oldSize * GEOMETRY.NODE_STEP,
     			y = b.up,
     			pnode = {
-    				x: x - 130,
+    				x: x - GEOMETRY.PNODE_LEFT_OF_TARGET,
     				y,
     				target: newId
     			};
@@ -1429,8 +1525,8 @@ ptr(n) {
     			oldSize = oldVals.length,
     			newId = nextId++;
     		const b = this.viz.base(),
-    			gap = 116 + 58,
-    			newNodeY = b.y + 100;
+    			gap = GEOMETRY.NODE_STEP,
+    			newNodeY = b.y + GEOMETRY.INSERT_NODE_VERTICAL_OFFSET;
     		let snaps = [];
     		const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
     		const makePtr = (label, target, nodes, level = 0, fixedX = null, fixedY = null) => {
@@ -1438,8 +1534,8 @@ ptr(n) {
     			return {
     				label,
     				target,
-    				x: fixedX ?? (t ? t.x - 50 : b.x - 180),
-    				y: fixedY ?? (b.y - 112 - level * 0)
+    				x: fixedX ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET),
+    				y: fixedY ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST)
     			}
     		};
     		const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('p_previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('p_current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
@@ -1507,7 +1603,7 @@ ptr(n) {
     			pause: true
     		}));
     		let pnode = {
-    			x: b.x + i * gap - 120,
+    			x: b.x + i * gap - GEOMETRY.PNODE_INSERT_LEFT_OF_TARGET,
     			y: newNodeY,
     			target: newId,
     			label: 'p_node'
@@ -1650,8 +1746,8 @@ ptr(n) {
     			return {
     				label: 'p_current',
     				target,
-    				x: fixed?.x ?? (t ? t.x - 50 : b.x - 180),
-    				y: fixed?.y ?? (b.y - 112)
+    				x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET),
+    				y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST)
     			}
     		};
     		let curId = this.ids[0];
@@ -1752,8 +1848,8 @@ ptr(n) {
     			return {
     				label: 'p_current',
     				target,
-    				x: fixed?.x ?? (t ? t.x - 50 : b.x - 180),
-    				y: fixed?.y ?? (b.y - 112)
+    				x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET),
+    				y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST)
     			}
     		};
     		let curId = oldIds[0];
@@ -1827,8 +1923,8 @@ ptr(n) {
 			return {
 				label,
 				target,
-				x: fixedX ?? (t ? t.x - 50 : (oldT ? oldT.x - 50 : b.x - 180)),
-				y: fixedY ?? (b.y - 112 - level * 0),
+				x: fixedX ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : (oldT ? oldT.x - 50 : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)),
+				y: fixedY ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST - level * 0),
 				targetX: t ? undefined : oldT?.x,
 				targetY: t ? undefined : oldT?.y
 			}
@@ -1910,13 +2006,21 @@ ptr(n) {
     		this.viz.state = 'IDLE';
     		this.append()
     	},
-    	random() {
-    		this.save();
+    	randomFill() {
     		this.values = [];
-    		while (this.values.length < 4) {
+			let sz = Math.floor(Math.random() * 4) + 2;
+    		while (this.values.length < sz) {
     			let v = Math.floor(Math.random() * 9) + 1;
     			if (!this.values.includes(v)) this.values.push(v)
     		}
+			if (Math.random() < 0.25) {
+				this.values.sort()
+			}
+    	},
+    	random() {
+    		this.save();
+    		this.values = [];
+			this.randomFill()
     		this.ids = this.values.map(_ => nextId++);
     		this.showCurrent('A random sample list has been created');
     		this.updateUI()
@@ -1959,20 +2063,22 @@ ptr(n) {
 
 /* === p_first-only overrides + sorted_insert. Leading semicolon prevents object-literal call errors. === */
 (function () {
-    const GAP = 116 + 58;
+    const GAP = GEOMETRY.NODE_STEP;
 
     Viz.prototype.drawStructBoxes = function (s) {
-        const c = this.ctx, x = 205, y = 155, w = this.cell, h = this.cell;
+        const c = this.ctx, x = GEOMETRY.STRUCT_X,
+    				y = GEOMETRY.STRUCT_Y, w = this.cell, h = this.cell;
         c.save();
-        c.fillStyle = K.k; c.font = '28px monospace'; c.textAlign = 'right'; c.textBaseline = 'middle';
-        c.fillText('p_first', x - 16, y + h / 2);
-        c.fillStyle = K.c; c.fillRect(x, y, w, h - h * 0.05);
-        c.fillStyle = K.b; c.beginPath(); c.arc(x + w / 2, y + h / 2, 8, 0, Math.PI * 2); c.fill();
+        c.fillStyle = K.k; c.font = DRAW.STRUCT_LABEL_FONT; c.textAlign = 'right'; c.textBaseline = 'middle';
+        c.fillText('p_first', x - DRAW.STRUCT_LABEL_GAP, y + h / 2);
+        c.fillStyle = K.c; c.fillRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO);
+        c.fillStyle = K.b; c.beginPath(); c.arc(x + w / 2, y + h / 2, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2); c.fill();
         c.restore()
     };
 
     Viz.prototype.drawStructArrows = function (s) {
-        const x = 205, y = 155, w = 70, h = this.cell, f = this.nodeById(s, s.firstId);
+        const x = GEOMETRY.STRUCT_X,
+    				y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell, f = this.nodeById(s, s.firstId);
         if (f) {
             const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
             if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, amount);
@@ -1983,14 +2089,14 @@ ptr(n) {
     Viz.prototype.drawOverlays = function (s) {
         if (s.flashPFirst) this.flashStruct(0);
         (s.nodes || []).forEach(n => {
-            if (n.flashNew) this.roundFlash(n.x - 8, n.y - 8, this.nodeW + 16, this.cell + 16);
-            if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, 29);
-            if (n.flashElement) this.roundFlash(n.x - 1, n.y - 1, this.cell + 2, this.cell + 2);
+            if (n.flashNew) this.roundFlash(n.x - DRAW.FLASH_NODE_PADDING, n.y - DRAW.FLASH_NODE_PADDING, this.nodeW + 2 * DRAW.FLASH_NODE_PADDING, this.cell + 2 * DRAW.FLASH_NODE_PADDING);
+            if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, DRAW.FLASH_NEXT_RADIUS);
+            if (n.flashElement) this.roundFlash(n.x - DRAW.FLASH_ELEMENT_TIGHT_PADDING, n.y - DRAW.FLASH_ELEMENT_TIGHT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_TIGHT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_TIGHT_PADDING);
             if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
         });
-        if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, 60, 58);
-        if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, 60, 58));
-        if (s.flashPtrs)(s.ptrs || []).forEach(p => { if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + 30, p.y + 29, 28) })
+        if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
+        if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT));
+        if (s.flashPtrs)(s.ptrs || []).forEach(p => { if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.FLASH_POINTER_RADIUS) })
     };
 
     app.snapshot = function (text, nodes, extra = {}) {
@@ -2017,7 +2123,7 @@ ptr(n) {
 
     app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
         const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
-        return { label, target, x: fixed?.x ?? (t ? t.x - 50 : (fallbackX ?? b.x - 180)), y: fixed?.y ?? (b.y - 112) }
+        return { label, target, x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : (fallbackX ?? b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)), y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST) }
     };
 
     app.append = function () {
@@ -2029,7 +2135,7 @@ ptr(n) {
         const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
         const snaps = [this.snapshot('The algorithm starts from the current list state', oldNodes)];
         let newNode = { id: newId, e, index: oldSize, x: b.x + oldSize * GAP, y: b.up, next: null, flashNew: true };
-        const pnode = { x: newNode.x - 130, y: b.up, target: newId, label: 'p_node' };
+        const pnode = { x: newNode.x - GEOMETRY.PNODE_LEFT_OF_TARGET, y: b.up, target: newId, label: 'p_node' };
         snaps.push(this.snapshot('A new node is allocated with p_next = NULL', [...oldNodes, newNode], { pnode, firstId: oldIds[0] ?? null, preserveLinks: true, pause: true }));
         newNode = { ...newNode, flashNew: false };
         if (oldSize === 0) {
@@ -2220,7 +2326,7 @@ snaps.push(this.snapshot(
         if (isNaN(e) || !this.isSortedAscending()) return;
         this.save();
         const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
-        const b = this.viz.base(), newNodeY = b.y + 100;
+        const b = this.viz.base(), newNodeY = b.y + GEOMETRY.INSERT_NODE_VERTICAL_OFFSET;
         const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
         const snaps = [this.snapshot('The list is sorted ascending, so sorted_insert can start', oldNodes)];
 const currentNullX = b.x + oldSize * GAP - 50;
@@ -2228,22 +2334,22 @@ const currentNullX = b.x + oldSize * GAP - 50;
 const makePtr = (label, target, nodes = oldNodes, fixed = null) => {
     const nullX = label === 'p_current'
         ? currentNullX
-        : b.x - 220;
+        : b.x - GEOMETRY.PREVIOUS_NULL_POINTER_X_OFFSET;
 
     return this._ptr(
         label,
         target,
         nodes,
         fixed,
-        target === null ? nullX : b.x - 180
+        target === null ? nullX : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET
     );
 };
         const ptrsFor = (prev, cur, nodes = oldNodes, fp = null, fc = null) => [makePtr('p_previous', prev, nodes, fp), makePtr('p_current', cur, nodes, fc)];
         let prevId = null, curId = oldIds[0] ?? null, pos = 0;
         snaps.push(this.snapshot('p_previous starts as NULL and p_current starts at p_first', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
-        while (pos < oldSize && oldVals[pos] < e) {
+        while (pos < oldSize && oldVals[pos] <= e) {
             const oldCur = curId, nextCur = oldIds[pos + 1] ?? null, oldPtrs = ptrsFor(prevId, curId);
-            snaps.push(this.snapshot('The current value is smaller than ' + e + ', so the search advances', oldNodes, { ptrs: oldPtrs, flashElement: oldCur, pause: true }));
+            snaps.push(this.snapshot('The current value is smaller than or equal to ' + e + ', so the search advances', oldNodes, { ptrs: oldPtrs, flashElement: oldCur, pause: true }));
             snaps.push(this.snapshot('p_previous is advanced to p_current', oldNodes, { ptrs: oldPtrs, flashPtrs: ['p_previous'], pause: true }));
             prevId = oldCur;
             const prevUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
@@ -2254,10 +2360,10 @@ const makePtr = (label, target, nodes = oldNodes, fixed = null) => {
             snaps.push(this.snapshot(curId === null ? 'p_current is now NULL: the new value belongs at the end' : 'p_current now refers to the next node', oldNodes, { ptrs: currentUpdated, pause: true }));
             snaps.push(this.snapshot('The traversal pointers are positioned for the next comparison', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
         }
-        snaps.push(this.snapshot(curId !== null ? 'The first node not smaller than ' + e + ' has been found' : 'No remaining node is greater than or equal to ' + e + ', so insertion will be at the end', oldNodes, { ptrs: ptrsFor(prevId, curId), flashElement: curId ?? undefined, pause: true }));
+        snaps.push(this.snapshot(curId !== null ? 'The first node larger than ' + e + ' has been found' : 'No remaining node is greater than ' + e + ', so insertion will be at the end', oldNodes, { ptrs: ptrsFor(prevId, curId), flashElement: curId ?? undefined, pause: true }));
         const shifted = oldVals.map((val, j) => ({ id: oldIds[j], e: val, index: j < pos ? j : j + 1, x: b.x + (j + (j >= pos ? 1 : 0)) * GAP, y: b.y, next: j < oldIds.length - 1 ? oldIds[j + 1] : null }));
         snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shifted, { firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
-        const pnode = { x: b.x + pos * GAP - 120, y: newNodeY, target: newId, label: 'p_node' };
+        const pnode = { x: b.x + pos * GAP - GEOMETRY.PNODE_INSERT_LEFT_OF_TARGET, y: newNodeY, target: newId, label: 'p_node' };
         let newNode = { id: newId, e, index: pos, x: b.x + pos * GAP, y: newNodeY, next: curId, flashNew: true };
         snaps.push(this.snapshot('A new node is allocated and its p_next points to p_current', [...shifted, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
         newNode = { ...newNode, flashNew: false };
@@ -2324,7 +2430,7 @@ snaps.push(this.snapshot(
 ;
 /* === Length operation with green counter box: fixed local LEN_GAP === */
 (function () {
-    const LEN_GAP = 116 + 58;
+    const LEN_GAP = GEOMETRY.NODE_STEP;
 
     if (!Viz.prototype.drawLengthBox) {
         Viz.prototype.drawLengthBox = function (box) {
@@ -2332,16 +2438,16 @@ snaps.push(this.snapshot(
             const x = box.x, y = box.y, w = box.w ?? this.cell, h = box.h ?? this.cell;
             c.save();
             c.fillStyle = K.k;
-            c.font = '28px monospace';
+            c.font = DRAW.STRUCT_LABEL_FONT;
             c.textAlign = 'right';
             c.textBaseline = 'middle';
-            c.fillText(box.label ?? 'size', x - 16, y + h / 2);
+            c.fillText(box.label ?? 'size', x - DRAW.STRUCT_LABEL_GAP, y + h / 2);
             c.fillStyle = K.g;
-            c.fillRect(x, y, w, h - h * 0.05);
+            c.fillRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO);
             c.fillStyle = K.r;
-            c.font = '32px Arial';
+            c.font = DRAW.SIZE_VALUE_FONT;
             c.textAlign = 'center';
-            c.fillText(String(box.value ?? 0), x + w / 2, y + h / 2 + 2);
+            c.fillText(String(box.value ?? 0), x + w / 2, y + h / 2 + DRAW.NODE_VALUE_BASELINE_OFFSET);
             c.restore()
         };
 
@@ -2356,9 +2462,9 @@ snaps.push(this.snapshot(
         const nodes = this.baseNodes();
         const n = this.values.length;
         const b = this.viz.base();
-        const lengthBox = count => ({ x: 205, y: 225, value: count, label: 'size' });
+        const lengthBox = count => ({ x: GEOMETRY.STRUCT_X, y: GEOMETRY.LENGTH_BOX_Y, value: count, label: 'size' });
         const currentNullX = b.x + n * LEN_GAP - 50;
-        const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed, target === null ? currentNullX : b.x - 180);
+        const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed, target === null ? currentNullX : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET);
         const snaps = [this.snapshot('The algorithm starts from the current list state', nodes, { lengthBox: lengthBox(0) })];
 
         if (n === 0) {
@@ -2399,12 +2505,12 @@ snaps.push(this.snapshot(
 ;
 /* === Animated clear(struct Node** p_p_first) operation === */
 (function () {
-    const CLEAR_GAP = 116 + 58;
+    const CLEAR_GAP = GEOMETRY.NODE_STEP;
 
     if (!app._ptr) {
         app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
             const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
-            return { label, target, x: fixed?.x ?? (t ? t.x - 50 : (fallbackX ?? b.x - 180)), y: fixed?.y ?? (b.y - 112) }
+            return { label, target, x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : (fallbackX ?? b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)), y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST) }
         }
     }
 
@@ -2414,7 +2520,7 @@ snaps.push(this.snapshot(
             previousDrawOverlaysForPtrCross.call(this, s);
             if (s.flashPtrCross) {
                 (s.ptrs || []).forEach(p => {
-                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, 60, 58)
+                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT)
                 })
             }
         };
@@ -2434,8 +2540,8 @@ snaps.push(this.snapshot(
 
         const makePtr = (label, target, nodes, fixed = null) => {
             const fallback = target === null
-                ? (label === 'p_current' ? currentNullX : b.x - 220)
-                : b.x - 180;
+                ? (label === 'p_current' ? currentNullX : b.x - GEOMETRY.PREVIOUS_NULL_POINTER_X_OFFSET)
+                : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET;
             return this._ptr(label, target, nodes, fixed, fallback)
         };
 
@@ -2445,7 +2551,7 @@ snaps.push(this.snapshot(
         // next assignment p_toDelete = p, or until the function exits.
         // It is always drawn at the same vertical height as p, and clearly to its left.
         const pToDeleteAt = (pPtr, target, nodes) => {
-            const ptr = makePtr('p_toDelete', target, nodes, { x: pPtr.x - 170, y: pPtr.y });
+            const ptr = makePtr('p_toDelete', target, nodes, { x: pPtr.x - GEOMETRY.CLEAR_P_TO_DELETE_LEFT_OF_CURRENT, y: pPtr.y });
             const stillVisible = (nodes || []).some(n => n.id === target);
             const oldNode = oldNodeMap.get(target);
             if (target !== undefined && target !== null && !stillVisible && oldNode) {
@@ -2512,7 +2618,7 @@ snaps.push(this.snapshot(
         }
 
         // p_first is intentionally kept dangling until the explicit final assignment *p_p_first = NULL.
-        const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - 112 });
+        const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST });
         const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteCurrentValue, []);
         snaps.push(this.snapshot('All nodes have been freed; p_current is NULL and p_toDelete is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
         snaps.push(this.snapshot('p_first is set to NULL', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], flashPFirst: true, pause: true }));
@@ -2532,7 +2638,8 @@ snaps.push(this.snapshot(
 /* === Draw dangling p_first arrows when firstTargetX/firstTargetY are provided === */
 (function () {
     Viz.prototype.drawStructArrows = function (s) {
-        const x = 205, y = 155, w = 70, h = this.cell;
+        const x = GEOMETRY.STRUCT_X,
+    				y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell;
         const f = this.nodeById(s, s.firstId);
         if (f) {
             const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
