@@ -303,6 +303,9 @@
 									<div class="li">
 										<span class="dot"></span>null pointer
 									</div>
+									<div class="li">
+										<span class="dot" style="background:#a21bd8"></span>dangling pointer
+									</div>
 								</div>
 							</div>
 							<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
@@ -373,7 +376,8 @@
     r: '#e60000',
     p: '#c78cff',
     v: '#8d35c9',
-    k: '#111'
+    k: '#111',
+    d: '#a21bd8'
 };
 
 const GEOMETRY = Object.freeze({
@@ -994,6 +998,7 @@ ptr(n) {
     	drawAuxPointers(s) {
 		const c = this.ctx;
 		(s.ptrs || []).forEach(p => {
+			const pointerColor = p.dangling ? K.d : K.b;
 			c.save();
 			c.fillStyle = K.k;
 			c.font = DRAW.POINTER_LABEL_FONT;
@@ -1002,14 +1007,14 @@ ptr(n) {
 			c.fillText(p.label, p.x + 30, p.y - GEOMETRY.POINTER_LABEL_GAP);
 			c.fillStyle = K.c;
 			c.fillRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
-			c.fillStyle = K.b;
+			c.fillStyle = pointerColor;
 			c.beginPath();
 			c.arc(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
 			c.fill();
 			c.restore();
 			const t = this.nodeById(s, p.target);
-			if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y, K.b, 3);
-			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, p.targetX, p.targetY, K.b, 3)
+			if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y, pointerColor, 3);
+			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, p.targetX, p.targetY, pointerColor, 3)
 		})
 	}
 	drawPNodeArrow(s) {
@@ -1923,10 +1928,15 @@ ptr(n) {
 			return {
 				label,
 				target,
-				x: fixedX ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : (oldT ? oldT.x - 50 : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)),
+				x: fixedX ?? (
+					t
+						? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET
+						: (oldT ? oldT.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)
+				),
 				y: fixedY ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST - level * 0),
 				targetX: t ? undefined : oldT?.x,
-				targetY: t ? undefined : oldT?.y
+				targetY: t ? undefined : oldT?.y,
+				dangling: target !== undefined && target !== null && !t && !!oldT
 			}
 		};
 		const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('p_previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('p_current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
@@ -2072,7 +2082,7 @@ ptr(n) {
         c.fillStyle = K.k; c.font = DRAW.STRUCT_LABEL_FONT; c.textAlign = 'right'; c.textBaseline = 'middle';
         c.fillText('p_first', x - DRAW.STRUCT_LABEL_GAP, y + h / 2);
         c.fillStyle = K.c; c.fillRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO);
-        c.fillStyle = K.b; c.beginPath(); c.arc(x + w / 2, y + h / 2, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2); c.fill();
+        c.fillStyle = s.firstDangling ? K.d : K.b; c.beginPath(); c.arc(x + w / 2, y + h / 2, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2); c.fill();
         c.restore()
     };
 
@@ -2535,7 +2545,7 @@ snaps.push(this.snapshot(
         const oldNodeMap = new Map(originalNodes.map(n => [n.id, n]));
         const firstDanglingTarget = originalNodes[0] ? { firstTargetX: originalNodes[0].x, firstTargetY: originalNodes[0].y + this.viz.cell / 2 } : {};
         const firstRef = () => ({ firstId: oldIds[0] ?? null });
-        const firstDanglingRef = () => ({ firstId: oldIds[0] ?? null, ...firstDanglingTarget });
+        const firstDanglingRef = () => ({ firstId: oldIds[0] ?? null, firstDangling: true, ...firstDanglingTarget });
         const currentNullX = b.x + oldSize * CLEAR_GAP - 50;
 
         const makePtr = (label, target, nodes, fixed = null) => {
@@ -2557,6 +2567,7 @@ snaps.push(this.snapshot(
             if (target !== undefined && target !== null && !stillVisible && oldNode) {
                 ptr.targetX = oldNode.x;
                 ptr.targetY = oldNode.y;
+                ptr.dangling = true;
             }
             return ptr
         };
@@ -2640,13 +2651,14 @@ snaps.push(this.snapshot(
     Viz.prototype.drawStructArrows = function (s) {
         const x = GEOMETRY.STRUCT_X,
     				y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell;
+        const firstColor = s.firstDangling ? K.d : K.b;
         const f = this.nodeById(s, s.firstId);
         if (f) {
             const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-            if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, amount);
-            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3)
+            if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3, amount);
+            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3)
         } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
-            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.b, 3)
+            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, firstColor, 3)
         }
     };
 })();
