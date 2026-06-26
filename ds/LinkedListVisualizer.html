@@ -254,17 +254,23 @@
                         onkeydown="if(event.key==='Enter')app.append()"></label><label>Index <input id="idx" class="idx"
                         type="number" placeholder="i"></label><button class="green"
                     onclick="app.append()" title="Append the value at the end of the list." aria-label="Append the value at the end of the list.">Append</button><button class="green"
-                    onclick="app.prepend()" title="Prepend the value at the beginning of the list." aria-label="Prepend the value at the beginning of the list.">Prepend</button><button class="blue"
+                    onclick="app.prepend()" title="Prepend the value at the beginning of the list." aria-label="Prepend the value at the beginning of the list.">Prepend</button>
+					<button class="blue"
                     onclick="app.insert()" title="Insert the value at the selected index." aria-label="Insert the value at the selected index.">Insert</button>
-					<button class="blue" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button><button
-                    class="purple" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button><button class="red"
+					<button class="purple" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button>
+					<button
+                    class="blue" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button>
+					<button class="red"
                     onclick="app.del()" title="Delete the node at the selected index." aria-label="Delete the node at the selected index.">Delete</button>
                 <div class="sep"></div>
 					
 					<button class="orange"
                     onclick="app.random()" title="Build a random sample list." aria-label="Build a random sample list.">Build Random</button>
-                <div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo"
-                    disabled title="Undo the last operation that modified the list." aria-label="Undo the last operation that modified the list.">Undo</button><button class="gray" onclick="app.clear()" title="Clear the list." aria-label="Clear the list.">Clear</button>
+					<button class="gray" onclick="app.clear()" title="Clear the list." aria-label="Clear the list.">Clear</button>
+                <div class="sep"></div>
+				<button class="purple" onclick="app.undo()" id="btnUndo"
+                    disabled title="Undo the last operation that modified the list." aria-label="Undo the last operation that modified the list.">Undo</button>
+					
             </div>
             <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1"
                     oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button></div>
@@ -277,6 +283,7 @@
             <div class="li"><span class="sw" style="background:#91f4f4"></span>pointer to node</div>
             <div class="li"><span class="sw" style="background:#c78cff"></span>pointer to list</div>
             <div class="li"><span class="dot"></span>null pointer</div>
+            <div class="li"><span class="dot" style="background:#EF6C00"></span>dangling pointer</div>
         </div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
@@ -305,6 +312,7 @@
     		r: '#e60000',
     		p: '#c78cff',
     		v: '#8d35c9',
+			d: '#EF6C00',
     		k: '#111'
     	};
     let nextId = 0;
@@ -748,7 +756,10 @@
     				c.textAlign = 'center';
     				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + 2)
     			} else {
-    				c.fillStyle = K.b;
+				const isDanglingStructPointer = r[0] === 'p_first'
+					? (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined)
+					: (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.lastTargetX !== undefined && s.lastTargetY !== undefined);
+    				c.fillStyle = isDanglingStructPointer ? K.d : K.b;
     				c.beginPath();
     				c.arc(x + w / 2, yy + h / 2, 8, 0, Math.PI * 2);
     				c.fill()
@@ -829,6 +840,9 @@ ptr(n) {
     	drawAuxPointers(s) {
 		const c = this.ctx;
 		(s.ptrs || []).forEach(p => {
+			const t = this.nodeById(s, p.target);
+			const isDanglingAuxPointer = p.target !== null && p.target !== undefined && !t && p.targetX !== undefined && p.targetY !== undefined;
+			const pointerColor = isDanglingAuxPointer ? K.d : K.b;
 			c.save();
 			c.fillStyle = K.k;
 			c.font = '22px monospace';
@@ -837,14 +851,13 @@ ptr(n) {
 			c.fillText(p.label, p.x + 30, p.y - 10);
 			c.fillStyle = K.c;
 			c.fillRect(p.x, p.y, 60, 58);
-			c.fillStyle = K.b;
+			c.fillStyle = pointerColor;
 			c.beginPath();
 			c.arc(p.x + 30, p.y + 29, 8, 0, Math.PI * 2);
 			c.fill();
 			c.restore();
-			const t = this.nodeById(s, p.target);
 			if (t) this.arrow(p.x + 30, p.y + 29, t.x + 0 * this.cell / 2, t.y, K.b, 3);
-			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + 30, p.y + 29, p.targetX, p.targetY, K.b, 3)
+			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + 30, p.y + 29, p.targetX, p.targetY, pointerColor, 3)
 		})
 	}
 	drawPNodeArrow(s) {
@@ -974,7 +987,7 @@ ptr(n) {
     	viz: null,
     	init() {
     		this.viz = new Viz('cv');
-    		this.values = [4, 8, 2];
+    		this.randomFill();
     		this.ids = this.values.map(_ => nextId++);
     		this.showCurrent('The list is initialized with sample values');
     		this.updateUI()
@@ -1841,13 +1854,21 @@ ptr(n) {
     		this.viz.state = 'IDLE';
     		this.append()
     	},
-    	random() {
-    		this.save();
+		randomFill() {
     		this.values = [];
-    		while (this.values.length < 4) {
+			let sz = Math.floor(Math.random() * 4) + 2;
+    		while (this.values.length < sz) {
     			let v = Math.floor(Math.random() * 9) + 1;
     			if (!this.values.includes(v)) this.values.push(v)
     		}
+			if (Math.random() < 0.25) {
+				this.values.sort()
+			}
+    	},
+    	random() {
+    		this.save();
+    		this.values = [];
+    		this.randomFill();
     		this.ids = this.values.map(_ => nextId++);
     		this.showCurrent('A random sample list has been created');
     		this.updateUI()
@@ -1911,7 +1932,7 @@ ptr(n) {
             if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, firstAmount);
             else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3)
         } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
-            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.b, 3)
+            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, 3)
         }
 
         if (l) {
@@ -1925,7 +1946,7 @@ ptr(n) {
 					y + h + h / 2,
 					s.lastTargetX,
 					s.lastTargetY,
-					K.b,
+					K.d,
 					3
 				);
 			} else {
@@ -1934,7 +1955,7 @@ ptr(n) {
 					y + h + h / 2,
 					s.lastTargetX,
 					s.lastTargetY,
-					K.b,
+					K.d,
 					3
 				);
 			}
