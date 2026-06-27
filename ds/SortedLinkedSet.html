@@ -1,0 +1,1186 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>SortedLinkedSet Visualizer</title>
+    <style>
+        :root {
+            --b: #1565c0;
+            --c: #91f4f4;
+            --g: #b6f8b6;
+            --r: #e60000;
+            --p: #c78cff;
+            --v: #8d35c9;
+            --panel: #f5f5f5
+        }
+
+        * {
+            box-sizing: border-box
+        }
+
+        body {
+            margin: 0;
+            height: 100vh;
+            height: 100dvh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: white;
+            user-select: none
+        }
+
+        header {
+            background: var(--panel);
+            border-bottom: 1px solid #ddd;
+            padding: 10px 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            flex-shrink: 0
+        }
+
+        .top,
+        .gui {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px
+        }
+
+        .gui {
+            align-items: flex-start
+        }
+
+        h1 {
+            font-size: 1.2rem;
+            margin: 0
+        }
+
+        .controls,
+        .sub {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            flex-wrap: wrap
+        }
+
+        .sub {
+            font-size: .9rem;
+            color: #555
+        }
+
+        input[type=number] {
+            width: 64px;
+            padding: 6px;
+            border: 1px solid #999;
+            border-radius: 4px;
+            text-align: center;
+            font-weight: bold
+        }
+
+        button {
+            border: 0;
+            border-radius: 4px;
+            color: white;
+            font-weight: 600;
+            padding: 6px 12px;
+            box-shadow: 0 1px 3px #0003;
+            cursor: pointer;
+        }
+
+        button:disabled {
+            opacity: .4;
+            cursor: default;
+        }
+
+        .green {
+            background: #2E7D32
+        }
+
+        .blue {
+            background: #1668BD
+        }
+
+        .red {
+            background: #c62828
+        }
+
+        .purple {
+            background: #6A1B9A
+        }
+
+        .gray {
+            background: #546E7A
+        }
+
+        .orange {
+            background: #EF6C00
+        }
+
+        .pause {
+            background: #455A64;
+            width: 80px
+        }
+
+        .help {
+            background: #607D8B;
+            border-radius: 50%;
+            font-size: 1.1rem;
+            padding: 4px 10px
+        }
+
+        .sep {
+            width: 1px;
+            height: 20px;
+            background: #ccc;
+            margin: 0 5px
+        }
+
+        #status {
+            border-top: 1px solid #ddd;
+            padding-top: 8px;
+            font-size: .85rem;
+            color: #555
+        }
+
+        #status-text {
+            font-weight: bold;
+            color: #222
+        }
+
+        #wrap {
+            position: relative;
+            flex: 1;
+            min-height: 0;
+            overflow: hidden;
+            background: white
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%
+        }
+
+        #legend {
+            position: absolute;
+            top: 18px;
+            left: 18px;
+            background: #fffffff2;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 10px;
+            font-size: .8rem;
+            box-shadow: 0 2px 5px #0002;
+            pointer-events: none
+        }
+
+        .li {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 5px
+        }
+
+        .sw {
+            width: 18px;
+            height: 18px;
+            display: inline-block
+        }
+
+        .dot {
+            width: 12px;
+            height: 12px;
+            background: var(--b);
+            border-radius: 50%;
+            display: inline-block
+        }
+
+        #author {
+            background: #f4f7f6;
+            color: #777;
+            text-align: center;
+            line-height: 2.5;
+            font-size: .75em;
+            flex-shrink: 0
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: #0008;
+            z-index: 10
+        }
+
+        .modal-content {
+            background: white;
+            margin: 5% auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: 80%;
+            max-width: 760px
+        }
+
+        .close {
+            float: right;
+            font-size: 28px;
+            color: #aaa;
+            cursor: pointer
+        }
+
+        .code {
+            font-family: Consolas, monospace;
+            background: #eee;
+            border-radius: 4px;
+            padding: 2px 5px;
+            color: #c62828
+        }
+    </style>
+</head>
+
+<body>
+    <header>
+        <div class="top">
+            <h1>SortedLinkedSet Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
+        </div>
+        <div class="gui">
+            <div class="controls"><label>Element <input id="val" type="number" placeholder="#"
+                        onkeydown="if(event.key==='Enter')app.insert()"></label><button class="green"
+                    onclick="app.insert()" title="Insert the element into the sorted set." aria-label="Insert the element into the sorted set.">Insert</button>
+                    <button class="red"
+                    onclick="app.del()" title="Delete the element from the set." aria-label="Delete the element from the set.">Delete</button>
+                    <button class="purple" onclick="app.contains()" title="Check if the element is in the set." aria-label="Check if the element is in the set.">Contains</button>
+                <div class="sep"></div>
+					<button class="orange" onclick="app.newList()" title="Create a new empty set." aria-label="Create a new empty set.">New</button>
+					<button class="orange"
+                    onclick="app.random()" title="Build a random sample sorted set." aria-label="Build a random sample sorted set.">Build Random</button>
+					<button class="gray" onclick="app.clear()" title="Clear the set." aria-label="Clear the set.">Clear</button>
+                <div class="sep"></div>
+				<button class="purple" onclick="app.undo()" id="btnUndo"
+                    disabled title="Undo the last operation that modified the set." aria-label="Undo the last operation that modified the set.">Undo</button>
+					
+            </div>
+            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1"
+                    oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button></div>
+        </div>
+        <div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span></div>
+    </header>
+    <div id="wrap"><canvas id="cv"></canvas>
+        <div id="legend">
+            <div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div>
+            <div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div>
+            <div class="li"><span class="sw" style="background:#c78cff"></span>object reference</div>
+            <div class="li"><span class="dot"></span>null reference</div>
+            <!-- <div class="li"><span class="dot" style="background:#EF6C00"></span>dangling reference</div> -->
+        </div>
+    </div>
+    <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+    <div id="helpModal" class="modal">
+        <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
+            <h2>SortedLinkedSet</h2>
+            <p>A <strong>SortedLinkedSet</strong> stores a sequence of unique elements in ascending order as nodes connected by references. Each node contains an <span class="code">element</span> reference that points to the stored object, and a <span class="code">next</span> reference that points to the next node.</p>
+            <p>The set object keeps two pieces of information: <span class="code">first</span>, a reference to the front node; and <span class="code">size</span>, the number of elements currently stored.</p>
+            <p>To implement operations, this structure uses a private <strong>Finder</strong> utility class. The Finder traverses the set searching for an element, and returns an object containing three fields: <span class="code">previous</span>, a reference to the node immediately preceding the insertion/deletion point; <span class="code">current</span>, a reference to the node at the insertion/deletion point; and <span class="code">found</span>, a boolean indicating if the exact element was found.</p>
+            <h3>Operations and asymptotic complexity</h3>
+            <ul>
+                <li><strong>Insert</strong>: searches using Finder and adds a new node if it doesn't exist. Complexity: <span class="code">O(n)</span>.</li>
+                <li><strong>Delete</strong>: searches using Finder and removes the node if it exists. Complexity: <span class="code">O(n)</span>.</li>
+                <li><strong>Contains</strong>: runs Finder and returns the <span class="code">found</span> field. Complexity: <span class="code">O(n)</span>.</li>
+            </ul>
+        </div>
+    </div>
+    <script>
+    const K = {
+    	b: '#1565c0',
+    	c: '#91f4f4',
+    	g: '#b6f8b6',
+    	r: '#e60000',
+    	p: '#c78cff',
+    	v: '#8d35c9',
+		d: '#EF6C00',
+    	k: '#111'
+    };
+
+    const VISUAL = (() => {
+        const CELL = 58;
+        const NODE_WIDTH = CELL * 2;
+        const NODE_GAP = CELL;
+        const NODE_STEP = NODE_WIDTH + NODE_GAP;
+        const STRUCT_X = 220;
+        const STRUCT_Y = 150;
+        const STRUCT_FIELD_WIDTH = 58;
+        const POINTER_BOX_WIDTH = 60;
+        const POINTER_BOX_HEIGHT = CELL;
+        return Object.freeze({
+            node: Object.freeze({
+                cell: CELL,
+                width: NODE_WIDTH,
+                gap: NODE_GAP,
+                step: NODE_STEP,
+                pointerDotRadius: 7.5,
+                elementYOffset: -85,
+                valueBaselineCorrection: 2,
+                flashPadding: 8,
+                elementFlashPadding: 1
+            }),
+            list: Object.freeze({
+                originX: 380,
+                originY: STRUCT_Y,
+                tempNodeYOffset: 160,
+                pointerFallbackXOffset: 200,
+                nullPointerXOffset: 50
+            }),
+            struct: Object.freeze({
+                x: STRUCT_X,
+                y: STRUCT_Y,
+                fieldWidth: STRUCT_FIELD_WIDTH,
+                rowHeightFactor: 0.95,
+                labelOffsetX: 16,
+                listLabelOffsetX: 130,
+                listLabelOffsetY: 2 * CELL / 3,
+                listPointerBoxOffsetX: 125,
+                listPointerBoxOffsetY: 79,
+                listPointerDotOffsetX: 125 - CELL / 2,
+                listPointerDotOffsetY: 79 - CELL / 2,
+                listPointerArrowTargetYOffset: 8,
+                pointerDotRadius: 8
+            }),
+            pointerBox: Object.freeze({
+                width: POINTER_BOX_WIDTH,
+                height: POINTER_BOX_HEIGHT
+            }),
+            bounds: Object.freeze({
+                defaultMinX: 20,
+                defaultMinY: 35,
+                defaultMaxX: 760,
+                defaultMaxY: 650,
+                nodeLeftPadding: 170,
+                nodeRightPadding: 230,
+                nodeTopPadding: 200,
+                nodeBottomPadding: 210,
+                fitPadding: 150
+            }),
+            camera: Object.freeze({
+                minScale: 0.2,
+                maxScale: 5,
+                defaultMaxFitScale: 1.25,
+                wheelSensitivity: 0.001,
+                smoothingFactor: 10,
+                snapDistance: 5,
+                snapScaleDelta: 0.01
+            }),
+            animation: Object.freeze({
+                maxFrameDeltaSeconds: 0.1,
+                morphSpeed: 2.5,
+                waitSeconds: 0.75,
+                deleteFadeCutoff: 0.85,
+                flashMinAlpha: 0.3,
+                flashMaxAlphaDelta: 0.7,
+                flashPeriodMs: 110
+            }),
+            stroke: Object.freeze({
+                normalWidth: 3,
+                flashWidth: 5,
+                crossWidth: 6,
+                arrowHeadLength: 17,
+                arrowHeadHalfAngle: Math.PI / 6,
+                detourOffset: 46
+            }),
+            fonts: Object.freeze({
+                value: '30px Arial',
+                structValue: '32px Arial',
+                structLabel: '28px monospace'
+            }),
+            overlay: Object.freeze({
+                nodeFlashExpansion: 16,
+                elementFlashExpansion: 2,
+                nodeFlashCornerRadius: 8,
+                structFlashRadius: 28,
+                pNextFlashRadius: 29,
+                crossExpansion: 7
+            }),
+            random: Object.freeze({
+                minSize: 2,
+                sizeRange: 4
+            }),
+            undo: Object.freeze({ maxHistoryEntries: 30 })
+        });
+    })();
+    
+    let nextId = 0;
+    
+    class Viz {
+    	constructor(id) {
+    		this.cv = document.getElementById(id);
+    		this.ctx = this.cv.getContext('2d');
+    		this.cam = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
+    		this.sn = [];
+    		this.pending = [];
+    		this.idx = -1;
+    		this.state = 'IDLE';
+    		this.t = 0;
+    		this.speedFactor = 1;
+    		this.paused = false;
+    		this.last = 0;
+    		this.cell = VISUAL.node.cell;
+    		this.nodeW = VISUAL.node.width;
+    		this.gap = VISUAL.node.gap;
+    		this.lastNodes = [];
+    		this.resize();
+    		window.addEventListener('resize', () => this.resize());
+    		this.cv.addEventListener('wheel', e => this.wheel(e), { passive: false });
+    		this.cv.addEventListener('mousedown', e => this.down(e));
+    		this.cv.addEventListener('mousemove', e => this.move(e));
+    		this.cv.addEventListener('mouseup', () => this.up());
+    		this.cv.addEventListener('mouseleave', () => this.up());
+    		this.cv.addEventListener('touchstart', e => this.ts(e), { passive: false });
+    		this.cv.addEventListener('touchmove', e => this.tm(e), { passive: false });
+    		this.cv.addEventListener('touchend', () => this.up());
+    		requestAnimationFrame(t => this.loop(t))
+    	}
+    	base() {
+    		return { x: VISUAL.list.originX, y: VISUAL.list.originY }
+    	}
+    	resize() {
+    		const w = document.getElementById('wrap');
+    		this.cv.width = w.offsetWidth;
+    		this.cv.height = w.offsetHeight;
+    		if (this.sn.length) {
+    			this.fit([this.sn[Math.max(this.idx, 0)]]);
+    			this.cam.scale = this.cam.targetScale;
+    			this.cam.x = this.cam.targetX;
+    			this.cam.y = this.cam.targetY
+    		}
+    	}
+    	screenToWorld(x, y) {
+    		return { x: (x - this.cam.x) / this.cam.scale, y: (y - this.cam.y) / this.cam.scale }
+    	}
+    	wheel(e) {
+    		e.preventDefault();
+    		const r = this.cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    		let ns = this.cam.targetScale * (1 - e.deltaY * VISUAL.camera.wheelSensitivity);
+    		ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, ns));
+    		const wx = (x - this.cam.targetX) / this.cam.targetScale, wy = (y - this.cam.targetY) / this.cam.targetScale;
+    		this.cam.targetScale = ns;
+    		this.cam.targetX = x - wx * ns;
+    		this.cam.targetY = y - wy * ns
+    	}
+    	down(e) {
+    		const r = this.cv.getBoundingClientRect(), sx = e.clientX - r.left, sy = e.clientY - r.top, w = this.screenToWorld(sx, sy);
+    		for (const n of this.lastNodes) {
+    			if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y + VISUAL.node.elementYOffset && w.y <= n.y + this.cell) {
+    				document.getElementById('val').value = n.e;
+    				return
+    			}
+    		}
+    		this.drag = true;
+    		this.start = { x: sx, y: sy };
+    		this.c0 = { x: this.cam.targetX, y: this.cam.targetY };
+    		this.cv.style.cursor = 'grabbing'
+    	}
+    	move(e) {
+    		const r = this.cv.getBoundingClientRect(), x = e.clientX - r.left, y = e.clientY - r.top;
+    		if (this.drag) {
+    			this.cam.targetX = this.c0.x + x - this.start.x;
+    			this.cam.targetY = this.c0.y + y - this.start.y;
+    			return
+    		}
+    		const w = this.screenToWorld(x, y);
+    		this.cv.style.cursor = this.lastNodes.some(n => w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y + VISUAL.node.elementYOffset && w.y <= n.y + this.cell) ? 'pointer' : 'default'
+    	}
+    	up() { this.drag = false; this.cv.style.cursor = 'default' }
+    	td(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY) }
+    	tc(t, r) { return { x: (t[0].clientX + t[1].clientX) / 2 - r.left, y: (t[0].clientY + t[1].clientY) / 2 - r.top } }
+    	ts(e) {
+    		e.preventDefault();
+    		const r = this.cv.getBoundingClientRect();
+    		if (e.touches.length === 1) {
+    			const x = e.touches[0].clientX - r.left, y = e.touches[0].clientY - r.top, w = this.screenToWorld(x, y);
+    			for (const n of this.lastNodes) {
+    				if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y + VISUAL.node.elementYOffset && w.y <= n.y + this.cell) {
+    					document.getElementById('val').value = n.e;
+    					return
+    				}
+    			}
+    			this.drag = true;
+    			this.start = { x, y };
+    			this.c0 = { x: this.cam.targetX, y: this.cam.targetY }
+    		} else if (e.touches.length === 2) {
+    			this.drag = false;
+    			this.p0 = this.td(e.touches);
+    			this.s0 = this.cam.targetScale;
+    			const c = this.tc(e.touches, r);
+    			this.pw = { x: (c.x - this.cam.targetX) / this.cam.targetScale, y: (c.y - this.cam.targetY) / this.cam.targetScale }
+    		}
+    	}
+    	tm(e) {
+    		e.preventDefault();
+    		const r = this.cv.getBoundingClientRect();
+    		if (e.touches.length === 1 && this.drag) {
+    			const x = e.touches[0].clientX - r.left, y = e.touches[0].clientY - r.top;
+    			this.cam.targetX = this.c0.x + x - this.start.x;
+    			this.cam.targetY = this.c0.y + y - this.start.y
+    		} else if (e.touches.length === 2 && this.p0) {
+    			const ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, this.s0 * this.td(e.touches) / this.p0)), c = this.tc(e.touches, r);
+    			this.cam.targetScale = ns;
+    			this.cam.targetX = c.x - this.pw.x * ns;
+    			this.cam.targetY = c.y - this.pw.y * ns
+    		}
+    	}
+    	layout(s) {
+    		const b = this.base();
+    		(s.nodes || []).forEach((n, i) => {
+    			if (n.x === undefined) n.x = b.x + i * (this.nodeW + this.gap);
+    			if (n.y === undefined) n.y = b.y
+    		});
+    	}
+    	bounds(s) {
+    		let b = {
+    			minX: VISUAL.bounds.defaultMinX,
+    			minY: VISUAL.bounds.defaultMinY,
+    			maxX: VISUAL.bounds.defaultMaxX,
+    			maxY: VISUAL.bounds.defaultMaxY
+    		};
+    		(s.nodes || []).forEach(n => {
+    			b.minX = Math.min(b.minX, n.x - VISUAL.bounds.nodeLeftPadding);
+    			b.maxX = Math.max(b.maxX, n.x + VISUAL.bounds.nodeRightPadding);
+    			b.minY = Math.min(b.minY, n.y - VISUAL.bounds.nodeTopPadding);
+    			b.maxY = Math.max(b.maxY, n.y + VISUAL.bounds.nodeBottomPadding)
+    		});
+            if (s.finder && s.finder.active !== false) {
+                b.minX = Math.min(b.minX, s.finder.x - 220); // Extra padding left to accommodate the purple reference box
+                b.maxX = Math.max(b.maxX, s.finder.x + 100);
+                b.maxY = Math.max(b.maxY, s.finder.y + 250);
+            }
+    		return b
+    	}
+    	fit(snaps) {
+    		let B = { minX: 1e9, minY: 1e9, maxX: -1e9, maxY: -1e9 };
+    		snaps.forEach(s => {
+    			const b = this.bounds(s);
+    			B.minX = Math.min(B.minX, b.minX); B.maxX = Math.max(B.maxX, b.maxX);
+    			B.minY = Math.min(B.minY, b.minY); B.maxY = Math.max(B.maxY, b.maxY)
+    		});
+    		const sc = Math.min(VISUAL.camera.defaultMaxFitScale, this.cv.width / (B.maxX - B.minX + VISUAL.bounds.fitPadding), this.cv.height / (B.maxY - B.minY + VISUAL.bounds.fitPadding));
+    		this.cam.targetScale = sc;
+    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+    	}
+    	enqueue(snaps) {
+    		snaps.forEach(s => this.layout(s));
+    		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+    		if (!this.sn.length) { this.sn.push(snaps.shift()); this.idx = 0 }
+    		if (snaps.length) { this.pending = snaps; this.state = 'CAMERA' }
+    	}
+    	loop(ts) {
+    		if (!this.last) this.last = ts;
+    		const dt = Math.min((ts - this.last) / 1000, VISUAL.animation.maxFrameDeltaSeconds);
+    		this.last = ts;
+    		if (!this.paused) this.update(dt);
+    		this.draw();
+    		requestAnimationFrame(t => this.loop(t))
+    	}
+    	update(dt) {
+    		const f = 1 - Math.exp(-VISUAL.camera.smoothingFactor * dt);
+    		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+    		this.cam.x += (this.cam.targetX - this.cam.x) * f;
+    		this.cam.y += (this.cam.targetY - this.cam.y) * f;
+    		if (this.state === 'CAMERA') {
+    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VISUAL.camera.snapDistance && Math.abs(this.cam.scale - this.cam.targetScale) < VISUAL.camera.snapScaleDelta) this.next()
+    		} else if (this.state === 'MORPH') {
+    			this.t += VISUAL.animation.morphSpeed * this.speedFactor * dt;
+    			if (this.t >= 1) {
+    				this.t = 1;
+    				if (this.sn[this.idx + 1]?.pause) {
+    					this.state = 'WAIT';
+    					this.wait = VISUAL.animation.waitSeconds / this.speedFactor
+    				} else this.finish()
+    			}
+    		} else if (this.state === 'WAIT') {
+    			this.wait -= dt;
+    			if (this.wait <= 0) this.finish()
+    		}
+    	}
+    	next() {
+    		const s = this.pending.shift();
+    		this.sn.push(s);
+    		document.getElementById('status-text').innerText = s.text || 'Ready.';
+    		this.t = 0;
+    		this.state = 'MORPH'
+    	}
+    	finish() {
+    		this.idx++;
+    		if (this.pending.length) this.next();
+    		else {
+    			this.state = 'IDLE';
+    			document.getElementById('status-text').innerText = 'Ready.'
+				if (typeof app !== 'undefined' && app.clearInputs) { app.clearInputs(); }
+    		}
+    	}
+    	ease(t) { return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t }
+    	interp(A, B, t) {
+    		const ma = new Map((A.nodes || []).map(n => [n.id, n])), mb = new Map((B.nodes || []).map(n => [n.id, n])), ids = new Set([...ma.keys(), ...mb.keys()]), nodes = [];
+    		ids.forEach(id => {
+    			const a = ma.get(id), b = mb.get(id);
+    			if (a && b) nodes.push({
+    				...b, x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t,
+    				detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
+    			});
+    			else if (b && !a) nodes.push({ ...b });
+    			else if (a && !b && t < VISUAL.animation.deleteFadeCutoff) nodes.push({ ...a, deleted: true })
+    		});
+            
+            let finder = null;
+            if (A.finder && B.finder) {
+                finder = { ...B.finder, x: A.finder.x + (B.finder.x - A.finder.x) * t, y: A.finder.y + (B.finder.y - A.finder.y) * t };
+            } else {
+                finder = B.finder || A.finder || null;
+            }
+
+    		const firstDetourAmount = (A.firstDetourAmount !== undefined || B.firstDetourAmount !== undefined) ? ((A.firstDetourAmount ?? (A.detourFirst ? 1 : 0)) + ((B.firstDetourAmount ?? (B.detourFirst ? 1 : 0)) - (A.firstDetourAmount ?? (A.detourFirst ? 1 : 0))) * t) : B.firstDetourAmount;
+    		return { ...B, nodes, finder, firstDetourAmount }
+    	}
+    	current() {
+    		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
+    		return this.sn[Math.max(this.idx, 0)]
+    	}
+    	flash() { return VISUAL.animation.flashMinAlpha + VISUAL.animation.flashMaxAlphaDelta * Math.abs(Math.sin(performance.now() / VISUAL.animation.flashPeriodMs)) }
+    	
+        draw() {
+    		const s = this.current();
+    		const c = this.ctx;
+    		c.clearRect(0, 0, this.cv.width, this.cv.height);
+    		c.save();
+    		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+    		if (!s) { c.restore(); return }
+    		this.lastNodes = s.nodes || [];
+    		
+            this.drawStructBoxes(s);
+    		(s.nodes || []).forEach(n => this.drawNode(n));
+    		this.drawStructArrows(s);
+    		this.drawLinks(s);
+            this.drawFinder(s);
+    		this.drawOverlays(s);
+    		c.restore()
+    	}
+    	
+        drawNode(n) {
+    		const c = this.ctx, w = this.cell, x = n.x, y = n.y, elemY = y + VISUAL.node.elementYOffset;
+    		c.save();
+            c.fillStyle = K.g; c.fillRect(x, elemY, w, w);
+            c.fillStyle = K.r; c.font = VISUAL.fonts.value; c.textAlign = 'center'; c.textBaseline = 'middle';
+    		c.fillText(n.e, x + w / 2, elemY + w / 2 + VISUAL.node.valueBaselineCorrection);
+    		c.fillStyle = K.c; c.fillRect(x, y, w - 1, w); c.fillRect(x + w + 1, y, w - 1, w);
+            this.arrow(x + w / 2, y + w / 2, x + w / 2, elemY + w, K.b, VISUAL.stroke.normalWidth);
+            c.fillStyle = K.b; c.beginPath(); c.arc(x + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, 0, Math.PI * 2); c.fill();
+            c.beginPath(); c.arc(x + w + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, 0, Math.PI * 2); c.fill();
+    		c.restore()
+    	}
+    	
+        drawStructBoxes(s) {
+    		const c = this.ctx, x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.cell;
+    		c.save();
+    		c.fillStyle = K.k; c.font = VISUAL.fonts.structLabel; c.textAlign = 'right';
+    		c.fillText('set', x - VISUAL.struct.listLabelOffsetX, y - VISUAL.struct.listLabelOffsetY);
+    		c.fillStyle = K.p; c.fillRect(x - VISUAL.struct.listPointerBoxOffsetX, y - VISUAL.struct.listPointerBoxOffsetY, w, h);
+    		c.fillStyle = K.v; c.beginPath(); c.arc(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill();
+    		
+            [['first', K.c, s.firstId], ['size', K.g, s.size]].forEach((r, i) => {
+    			const yy = y + i * h;
+    			c.fillStyle = K.k; c.font = VISUAL.fonts.structLabel; c.textAlign = 'right'; c.textBaseline = 'middle';
+    			c.fillText(r[0], x - VISUAL.struct.labelOffsetX, yy + h / 2);
+    			c.fillStyle = r[1]; c.fillRect(x, yy, w, h * VISUAL.struct.rowHeightFactor);
+    			if (r[0] === 'size') {
+    				c.fillStyle = K.r; c.font = VISUAL.fonts.structValue; c.textAlign = 'center';
+    				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + VISUAL.node.valueBaselineCorrection)
+    			} else {
+				    const isDangling = r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined;
+    				c.fillStyle = isDangling ? K.d : K.b;
+    				c.beginPath(); c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill()
+    			}
+    		});
+    		c.restore()
+    	}
+    	
+        nodeById(s, id) { return (s.nodes || []).find(n => n.id === id) }
+    	
+        drawStructArrows(s) {
+    		const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.cell;
+    		this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
+    		const f = this.nodeById(s, s.firstId);
+    		if (f) { 
+                const amount = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0); 
+                if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth, amount); 
+                else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth) 
+            } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
+                this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, VISUAL.stroke.normalWidth);
+            }
+    	}
+    	
+        drawLinks(s) {
+            (s.nodes || []).forEach(n => {
+                if (n.next !== null && n.next !== undefined) {
+                    const to = this.nodeById(s, n.next);
+                    if (to) {
+                        const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
+                        if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
+                        else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
+                    }
+                }
+            })
+        }
+	
+        detourArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth, amount = 1) {
+            const c = this.ctx;
+            c.save(); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = lw;
+            const d = VISUAL.stroke.detourOffset * amount, midY = y1 + d;
+            c.beginPath(); c.moveTo(x1, y1); c.lineTo(x1 + d, midY); c.lineTo(x2 - d, midY); c.lineTo(x2, y2); c.stroke();
+            this.head(x2 - d, midY, x2, y2, col);
+            c.restore()
+        }
+        
+        ptr(n) { return { x: n.x + this.cell + this.cell / 2, y: n.y + this.cell / 2 } }
+
+        drawFinder(s) {
+            if (!s.finder || s.finder.active === false) return;
+            const c = this.ctx;
+            const fx = s.finder.x;
+            const fy = s.finder.y;
+            const w = VISUAL.struct.fieldWidth;
+            const h = this.cell;
+            const dotR = VISUAL.struct.pointerDotRadius;
+
+            // Compute reference box dynamically so it moves alongside the Finder object
+            const refX = fx - 120;
+            const refY = fy - 60; 
+
+            c.save();
+            
+            // Draw finder reference box (purple)
+            c.fillStyle = K.k; c.font = VISUAL.fonts.structLabel; c.textAlign = 'right'; c.textBaseline = 'middle';
+            c.fillText('finder', refX - 16, refY + h / 2);
+            c.fillStyle = K.p; c.fillRect(refX, refY, w, h);
+            c.fillStyle = K.v; c.beginPath(); c.arc(refX + w/2, refY + h/2, dotR, 0, Math.PI * 2); c.fill();
+
+            // Arrow to finder object
+            this.arrow(refX + w/2, refY + h/2, fx, fy, K.v, VISUAL.stroke.normalWidth);
+
+            // Draw Finder object fields
+            // Row 0: previous
+            c.fillStyle = K.k; c.fillText('previous', fx - 16, fy + h / 2);
+            c.fillStyle = K.c; c.fillRect(fx, fy, w, h * 0.95);
+            c.fillStyle = K.b; c.beginPath(); c.arc(fx + w/2, fy + h/2, dotR, 0, Math.PI * 2); c.fill();
+            
+            // Row 1: current
+            c.fillStyle = K.k; c.fillText('current', fx - 16, fy + h + h / 2);
+            c.fillStyle = K.c; c.fillRect(fx, fy + h, w, h * 0.95);
+            c.fillStyle = K.b; c.beginPath(); c.arc(fx + w/2, fy + h + h/2, dotR, 0, Math.PI * 2); c.fill();
+
+            // Row 2: found
+            c.fillStyle = K.k; c.fillText('found', fx - 16, fy + 2*h + h / 2);
+            const fCol = s.finder.found === true ? K.g : (s.finder.found === false ? K.g : '#eee'); 
+            c.fillStyle = fCol; c.fillRect(fx, fy + 2*h, w, h * 0.95);
+            if (s.finder.found !== null) {
+                c.fillStyle = K.r; c.font = s.finder.found ? 'bold 20px monospace' : 'bold 16px monospace'; c.textAlign = 'center';
+                c.fillText(s.finder.found ? 'true' : 'false', fx + w/2, fy + 2*h + h / 2 + 2);
+            }
+
+            c.restore();
+
+            // Draw arrows to nodes
+            const pTarget = this.nodeById(s, s.finder.previous);
+            if (pTarget) {
+                this.arrow(fx + w/2, fy + h/2, pTarget.x + w/2, pTarget.y + h, K.b, VISUAL.stroke.normalWidth);
+            }
+            
+            const cTarget = this.nodeById(s, s.finder.current);
+            if (cTarget) {
+                this.arrow(fx + w/2, fy + h + h/2, cTarget.x + w/2, cTarget.y + h, K.b, VISUAL.stroke.normalWidth);
+            }
+        }
+        
+    	drawOverlays(s) {
+    		if (s.flashFirst) this.flashStruct(0);
+    		if (s.flashSize) this.flashStruct(1);
+    		(s.nodes || []).forEach(n => {
+    			if (n.flashNew) this.lShapeFlash(n.x, n.y, this.cell, n.y + VISUAL.node.elementYOffset);
+    			if (n.flashNext || s.flashNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, VISUAL.overlay.pNextFlashRadius);
+    			if (n.flashElement) this.roundFlash(n.x - VISUAL.node.elementFlashPadding, n.y + VISUAL.node.elementYOffset - VISUAL.node.elementFlashPadding, this.cell + VISUAL.overlay.elementFlashExpansion * 2, this.cell + VISUAL.overlay.elementFlashExpansion * 2);
+			    if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
+    		});
+            
+            if (s.finder) {
+                const fx = s.finder.x, fy = s.finder.y, w = VISUAL.struct.fieldWidth, h = this.cell;
+                if (s.flashFinderPrev) this.flashCircle(fx + w/2, fy + h/2, 28);
+                if (s.flashFinderCur)  this.flashCircle(fx + w/2, fy + h + h/2, 28);
+                if (s.flashFinderFound) this.roundFlash(fx, fy + 2*h, w, h * 0.95);
+            }
+    	}
+    	
+        flashStruct(row) {
+    		const x = VISUAL.struct.x, y = VISUAL.struct.y + row * this.cell, w = VISUAL.struct.fieldWidth, h = this.cell;
+    		this.flashCircle(x + w / 2, y + h / 2, VISUAL.overlay.structFlashRadius)
+    	}
+    	flashCircle(x, y, r) {
+    		const c = this.ctx;
+    		c.save(); c.globalAlpha = this.flash(); c.strokeStyle = K.r; c.lineWidth = VISUAL.stroke.flashWidth;
+    		c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke(); c.restore()
+    	}
+    	roundFlash(x, y, w, h) {
+    		const c = this.ctx;
+    		c.save(); c.globalAlpha = this.flash(); c.strokeStyle = K.r; c.lineWidth = VISUAL.stroke.flashWidth;
+    		c.beginPath(); c.roundRect(x, y, w, h, VISUAL.overlay.nodeFlashCornerRadius); c.stroke(); c.restore()
+    	}
+        lShapeFlash(x, y, w, elemY) {
+            const c = this.ctx, p = VISUAL.node.flashPadding, r = VISUAL.overlay.nodeFlashCornerRadius;
+            c.save(); c.globalAlpha = this.flash(); c.strokeStyle = K.r; c.lineWidth = VISUAL.stroke.flashWidth;
+            c.beginPath();
+            c.moveTo(x - p + r, elemY - p); c.lineTo(x + w + p - r, elemY - p); c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
+            c.lineTo(x + w + p, y - p - r); c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
+            c.lineTo(x + this.nodeW + p - r, y - p); c.arcTo(x + this.nodeW + p, y - p, x + this.nodeW + p, y - p + r, r);
+            c.lineTo(x + this.nodeW + p, y + w + p - r); c.arcTo(x + this.nodeW + p, y + w + p, x + this.nodeW + p - r, y + w + p, r);
+            c.lineTo(x - p + r, y + w + p); c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
+            c.lineTo(x - p, elemY - p + r); c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
+            c.closePath(); c.stroke(); c.restore();
+        }
+    	cross(x, y, w, h) {
+    		const c = this.ctx;
+    		c.save(); c.globalAlpha = this.flash(); c.strokeStyle = K.r; c.lineWidth = VISUAL.stroke.crossWidth;
+    		c.beginPath();
+    		c.moveTo(x - VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion); c.lineTo(x + w + VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
+    		c.moveTo(x + w + VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion); c.lineTo(x - VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
+    		c.stroke(); c.restore()
+    	}
+    	arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
+    		const c = this.ctx;
+    		c.save(); c.strokeStyle = col; c.fillStyle = col; c.lineWidth = lw;
+    		c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2, y2); c.stroke();
+    		this.head(x1, y1, x2, y2, col); c.restore()
+    	}
+    	head(x1, y1, x2, y2, col = K.b) {
+    		const c = this.ctx, a = Math.atan2(y2 - y1, x2 - x1), h = VISUAL.stroke.arrowHeadLength;
+    		c.fillStyle = col; c.beginPath();
+    		c.moveTo(x2, y2);
+    		c.lineTo(x2 - h * Math.cos(a - VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a - VISUAL.stroke.arrowHeadHalfAngle));
+    		c.lineTo(x2 - h * Math.cos(a + VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a + VISUAL.stroke.arrowHeadHalfAngle));
+    		c.closePath(); c.fill()
+    	}
+    	setSpeed(v) { this.speedFactor = 1 / v }
+    	togglePause() { this.paused = !this.paused; return this.paused }
+    }
+
+    const app = {
+    	values: [], ids: [], history: [], viz: null,
+    	
+        init() {
+    		this.viz = new Viz('cv');
+    		this.randomFill();
+    		this.ids = this.values.map(_ => nextId++);
+    		this.showCurrent('The sorted set is initialized with sample elements');
+    		this.updateUI()
+    	},
+    	
+        baseNodes(vals = this.values, ids = this.ids) {
+    		const y = this.viz.base().y;
+    		return vals.map((e, i) => ({
+    			id: ids[i], e,
+    			x: VISUAL.list.originX + i * VISUAL.node.step, y,
+    			next: i < ids.length - 1 ? ids[i + 1] : null
+    		}))
+    	},
+    	
+        snapshot(text, nodes, extra = {}) {
+    		nodes = nodes.map(n => ({...n}));
+            nodes.forEach(n => n.index = undefined);
+    		return {
+    			nodes,
+    			firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
+    			size: extra.size ?? nodes.length,
+    			text, ...extra
+    		}
+    	},
+    	
+        showCurrent(text = 'Ready.') {
+    		this.viz.sn = []; this.viz.pending = []; this.viz.idx = -1; this.viz.state = 'IDLE';
+    		this.viz.enqueue([this.snapshot(text, this.baseNodes())])
+    	},
+    	
+        v() { return parseInt(document.getElementById('val').value) },
+    	save() {
+    		this.history.push({ values: [...this.values], ids: [...this.ids] });
+    		if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift()
+    	},
+
+        // Helper para que el Finder siempre se coloque un poco a la izquierda de 'previous'
+        getFinderX(prevId, curId, nodes) {
+            const p = nodes.find(n => n.id === prevId);
+            if (p) return p.x - 40;
+            const c = nodes.find(n => n.id === curId);
+            if (c) return c.x - 100;
+            return VISUAL.list.originX - 100;
+        },
+
+        runFinder(val, nodes, size, firstId) {
+            let snaps = [];
+            let prev = null, cur = firstId;
+            let fx = this.getFinderX(prev, cur, nodes);
+            let finder = { x: fx, y: VISUAL.struct.y + 180, previous: prev, current: cur, found: null };
+            
+            snaps.push(this.snapshot(`The Finder is initialized with previous = null and current = first`, nodes, { firstId, size, finder, pause: true }));
+
+            while (true) {
+                let curNode = nodes.find(n => n.id === cur);
+                if (!curNode || curNode.e >= val) break;
+
+                prev = cur;
+                finder = { ...finder, previous: prev, x: this.getFinderX(prev, curNode.next, nodes) };
+                snaps.push(this.snapshot(`previous advances to current`, nodes, { firstId, size, finder, flashFinderPrev: true, pause: true }));
+
+                cur = curNode.next;
+                finder = { ...finder, current: cur };
+                snaps.push(this.snapshot(`current advances to the next node`, nodes, { firstId, size, finder, flashFinderCur: true, pause: true }));
+            }
+
+            let isFound = false;
+            let curNode = nodes.find(n => n.id === cur);
+            if (curNode && curNode.e === val) isFound = true;
+
+            finder = { ...finder, found: isFound };
+            snaps.push(this.snapshot(`Traversal stops. ${isFound ? 'current matches the element.' : (curNode ? 'current exceeds the element.' : 'current reached the end.')} found is set to ${isFound}`, nodes, { firstId, size, finder, flashFinderFound: true, pause: true }));
+
+            return { snaps, prev, cur, found: isFound };
+        },
+
+        insert() {
+            const e = this.v();
+            if (isNaN(e)) return;
+            this.save();
+            const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, oldFirst = oldIds[0] ?? null;
+            const oldNodes = this.baseNodes(oldVals, oldIds);
+
+            let res = this.runFinder(e, oldNodes, oldSize, oldFirst);
+            let snaps = [...res.snaps];
+            let finder = res.snaps.at(-1).finder;
+
+            if (res.found) {
+                snaps.push(this.snapshot(`Element ${e} already exists in the set. Insertion aborted.`, oldNodes, { firstId: oldFirst, size: oldSize, finder: null, pause: true }));
+                this.viz.enqueue(snaps);
+                this.updateUI();
+                return;
+            }
+
+            let newId = nextId++;
+            let gap = VISUAL.node.step;
+
+            let shiftedNodes = oldVals.map((v, j) => {
+                let n = oldNodes[j];
+                if (v > e) return { ...n, x: n.x + gap };
+                return { ...n };
+            });
+
+            let insertIdx = oldVals.findIndex(v => v > e);
+            if (insertIdx === -1) insertIdx = oldSize;
+
+            let newX = VISUAL.list.originX + insertIdx * gap;
+            let newY = this.viz.base().y - VISUAL.list.tempNodeYOffset;
+
+            let newNode = { id: newId, e, x: newX, y: newY, next: res.cur, flashNew: true };
+
+            snaps.push(this.snapshot('A new node is created and its next reference is set to current', [...shiftedNodes, newNode], { firstId: oldFirst, size: oldSize, finder, pause: true }));
+            newNode.flashNew = false;
+
+            if (res.prev === null) {
+                snaps.push(this.snapshot('set.first is updated to point to the new node', [...shiftedNodes, newNode], { firstId: newId, size: oldSize, finder, flashFirst: true, pause: true }));
+            } else {
+                let prevNode = shiftedNodes.find(n => n.id === res.prev);
+                prevNode.next = newId;
+                snaps.push(this.snapshot('previous.next is updated to point to the new node', [...shiftedNodes, newNode], { firstId: oldFirst, size: oldSize, finder, flashNext: res.prev, pause: true }));
+            }
+
+            newNode.y = this.viz.base().y;
+            snaps.push(this.snapshot('The new node is placed in its final position', [...shiftedNodes, newNode], { firstId: res.prev === null ? newId : oldFirst, size: oldSize, finder, pause: true }));
+
+            snaps.push(this.snapshot('Size is incremented', [...shiftedNodes, newNode], { firstId: res.prev === null ? newId : oldFirst, size: oldSize + 1, finder, flashSize: true, pause: true }));
+
+            snaps.push(this.snapshot('The operation is complete and the Finder is discarded', [...shiftedNodes, newNode], { firstId: res.prev === null ? newId : oldFirst, size: oldSize + 1, finder: null }));
+
+            this.values.splice(insertIdx, 0, e);
+            this.ids.splice(insertIdx, 0, newId);
+            this.viz.enqueue(snaps);
+            this.updateUI();
+        },
+
+        del() {
+            const e = this.v();
+            if (isNaN(e)) return;
+            this.save();
+            const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, oldFirst = oldIds[0] ?? null;
+            const oldNodes = this.baseNodes(oldVals, oldIds);
+
+            let res = this.runFinder(e, oldNodes, oldSize, oldFirst);
+            let snaps = [...res.snaps];
+            let finder = res.snaps.at(-1).finder;
+
+            if (!res.found) {
+                snaps.push(this.snapshot(`Element ${e} not found in the set. Deletion aborted.`, oldNodes, { firstId: oldFirst, size: oldSize, finder: null, pause: true }));
+                this.viz.enqueue(snaps);
+                this.updateUI();
+                return;
+            }
+
+            let cur = res.cur;
+            let nextOfCur = oldNodes.find(n => n.id === cur).next;
+            let firstAfter = oldFirst;
+            let linkedNodes = oldNodes.map(n => ({...n}));
+
+            let firstNeedsDetour = false, needsDetour = false;
+
+            if (res.prev === null) {
+                firstAfter = nextOfCur;
+                firstNeedsDetour = nextOfCur !== null;
+                snaps.push(this.snapshot('set.first is updated to bypass the deleted node', linkedNodes, { firstId: firstAfter, size: oldSize, finder, flashFirst: true, detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : 0, pause: true }));
+            } else {
+                let prevNode = linkedNodes.find(n => n.id === res.prev);
+                prevNode.next = nextOfCur;
+                needsDetour = nextOfCur !== null;
+                prevNode.detourNext = needsDetour;
+                prevNode.detourAmount = needsDetour ? 1 : 0;
+                snaps.push(this.snapshot('previous.next is updated to bypass the deleted node', linkedNodes, { firstId: oldFirst, size: oldSize, finder, flashNext: res.prev, pause: true }));
+            }
+
+            snaps.push(this.snapshot('Size is decremented', linkedNodes, { firstId: firstAfter, size: oldSize - 1, finder, flashSize: true, detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : 0, pause: true }));
+
+            snaps.push(this.snapshot('The method exits and the Finder is discarded', linkedNodes, { firstId: firstAfter, size: oldSize - 1, finder: null, detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : 0, pause: true }));
+
+            let crossNodes = linkedNodes.map(n => n.id === cur ? { ...n, flashNodeCross: true } : n);
+            snaps.push(this.snapshot('Without references pointing to it, the unlinked node becomes unreachable', crossNodes, { firstId: firstAfter, size: oldSize - 1, detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : undefined, pause: true }));
+
+            let freedGoneNodes = linkedNodes.filter(n => n.id !== cur).map(n => ({...n}));
+            snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', freedGoneNodes, { firstId: firstAfter, size: oldSize - 1, detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : undefined, pause: true }));
+
+            let straightNodes = freedGoneNodes.map(n => n.id === res.prev ? ({ ...n, detourNext: needsDetour, detourAmount: 0 }) : ({ ...n }));
+            snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'The bypass link settles into its final shape' : 'The final link between the remaining nodes is established', straightNodes, { firstId: firstAfter, size: oldSize - 1, detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 0 : undefined, pause: true }));
+
+            let delIdx = oldVals.indexOf(e);
+            this.values.splice(delIdx, 1);
+            this.ids.splice(delIdx, 1);
+            let compactNodes = this.baseNodes(this.values, this.ids);
+
+            snaps.push(this.snapshot('The remaining nodes close the gap left by the removed node', compactNodes, { firstId: firstAfter, size: oldSize - 1, pause: true }));
+            snaps.push(this.snapshot('The operation is complete', compactNodes, { firstId: firstAfter, size: oldSize - 1 }));
+
+            this.viz.enqueue(snaps);
+            this.updateUI();
+        },
+
+        contains() {
+            const e = this.v();
+            if (isNaN(e)) return;
+            const oldVals = [...this.values];
+            const oldIds = [...this.ids];
+            let res = this.runFinder(e, this.baseNodes(oldVals, oldIds), oldVals.length, oldIds[0] ?? null);
+            let snaps = [...res.snaps];
+            snaps.push(this.snapshot(`Contains returns ${res.found}.`, res.snaps.at(-1).nodes, { ...res.snaps.at(-1), finder: null }));
+            this.viz.enqueue(snaps);
+            this.updateUI();
+        },
+
+		randomFill() {
+    		this.values = [];
+			let sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
+            let set = new Set();
+    		while (set.size < sz) {
+    			set.add(Math.floor(Math.random() * 20) + 1);
+    		}
+            this.values = Array.from(set).sort((a, b) => a - b);
+    	},
+    	newList() {
+    		this.save();
+    		this.values = [];
+    		this.ids = [];
+    		this.showCurrent('A new empty set has been created');
+    		this.updateUI()
+    	},
+    	random() {
+    		this.save();
+    		this.values = [];
+    		this.randomFill();
+    		this.ids = this.values.map(_ => nextId++);
+    		this.showCurrent('A random sample sorted set has been created');
+    		this.updateUI()
+    	},
+    	clear() {
+    		this.save();
+    		const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
+    		const originalNodes = this.baseNodes(oldVals, oldIds);
+    		let snaps = [this.snapshot('The algorithm starts from the current set state', originalNodes, { firstId: oldIds[0] ?? null, size: oldSize })];
+
+    		if (oldSize === 0) {
+    			snaps.push(this.snapshot('The set is already empty', originalNodes, { firstId: null, size: 0, pause: true }));
+    			this.viz.enqueue(snaps);
+    			this.updateUI();
+    			return
+    		}
+
+    		snaps.push(this.snapshot('set.first is set to null', originalNodes, { firstId: null, size: oldSize, flashFirst: true, pause: true }));
+    		snaps.push(this.snapshot('set.size is set to 0', originalNodes, { firstId: null, size: 0, flashSize: true, pause: true }));
+
+    		let currentNodes = originalNodes.map(n => ({...n}));
+    		for (let k = 0; k < oldSize; k++) {
+    			const curId = oldIds[k];
+    			const crossNodes = currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
+    			const msgUnreachable = k === 0 
+                    ? 'Without references pointing to it, the first node becomes unreachable' 
+                    : 'As the previous node is collected, the next node loses its only incoming reference and becomes unreachable';
+    			
+                snaps.push(this.snapshot(msgUnreachable, crossNodes, { firstId: null, size: 0, preserveLinks: true, pause: true }));
+    			
+    			currentNodes = currentNodes.filter(n => n.id !== curId);
+    			snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', currentNodes, { firstId: null, size: 0, preserveLinks: true, pause: true }));
+    		}
+
+    		snaps.push(this.snapshot('The operation is complete', [], { firstId: null, size: 0 }));
+
+    		this.values = [];
+    		this.ids = [];
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	},
+    	undo() {
+    		if (!this.history.length) return;
+    		const h = this.history.pop();
+    		this.values = h.values;
+    		this.ids = h.ids;
+    		this.showCurrent('The previous set state has been restored');
+    		this.updateUI()
+    	},
+    	speed() {
+    		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+    	},
+    	pause() {
+    		const p = this.viz.togglePause();
+    		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
+    	},
+    	toggleModal() {
+    		const m = document.getElementById('helpModal');
+    		m.style.display = m.style.display === 'block' ? 'none' : 'block'
+    	},
+    	updateUI() {
+    		document.getElementById('btnUndo').disabled = this.history.length === 0
+    	},
+		clearInputs() {
+			document.getElementById('val').value = '';
+		}
+    };
+
+    window.onload = () => app.init();
+    window.onclick = e => {
+    	if (e.target === document.getElementById('helpModal')) app.toggleModal()
+    }; 
+</script>
+</body>
+</html>
