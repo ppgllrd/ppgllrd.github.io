@@ -267,12 +267,16 @@ class Viz {
 		(s.ptrs || []).forEach((p, i) => {
 			if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
 			if (p.y === undefined) p.y = b.arrayTopY - 95 - i * (this.cell + 6)
+		});
+		(s.objBoxes || []).forEach(o => {
+			if (o.x === undefined) o.x = b.arrayLeftX + (o.i ?? 0) * b.cellPitch;
+			if (o.y === undefined) o.y = b.arrayTopY
 		})
 	}
 	bounds(s) {
 		const m = this.layoutMetrics();
 		let b = { minX: 20, minY: 35, maxX: 760, maxY: 470 };
-		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
+		[...(s.cells || []), ...(s.ghosts || []), ...(s.objBoxes || [])].forEach(c => {
 			b.minX = Math.min(b.minX, c.x - m.boundLeftExtra);
 			b.maxX = Math.max(b.maxX, c.x + m.boundRightExtra);
 			b.minY = Math.min(b.minY, c.y - m.boundTopExtra);
@@ -353,14 +357,23 @@ class Viz {
 		}
 	}
 	ease(t) { return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t }
-	mix(a, b, t) {
+	findAnimSource(ctx, id) {
+		if (!ctx || id === undefined) return null;
+		for (const group of [ctx.cells, ctx.ghosts, ctx.ptrs, ctx.objBoxes]) {
+			const found = (group || []).find(o => o.id === id);
+			if (found) return found;
+		}
+		return null
+	}
+	mix(a, b, t, sourceCtx = null) {
 		const ma = new Map((a || []).map(o => [o.id, o])), mb = new Map((b || []).map(o => [o.id, o])), ids = new Set([...ma.keys(), ...mb.keys()]), sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
 		let out = [];
 		ids.forEach(id => {
 			const A = ma.get(id), B = mb.get(id);
 			if (A && B) out.push({ ...B, x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t });
 			else if (B) {
-				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+				let S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+				if (!S && B.fromId !== undefined) S = this.findAnimSource(sourceCtx, B.fromId);
 				if (S) out.push({ ...B, x: S.x + (B.x - S.x) * t, y: S.y + (B.y - S.y) * t });
 				else out.push({ ...B })
 			}
@@ -368,7 +381,7 @@ class Viz {
 		});
 		return out
 	}
-	interp(A, B, t) { return { ...B, cells: this.mix(A.cells, B.cells, t), ghosts: this.mix(A.ghosts, B.ghosts, t), ptrs: this.mix(A.ptrs, B.ptrs, t) } }
+	interp(A, B, t) { return { ...B, cells: this.mix(A.cells, B.cells, t, A), ghosts: this.mix(A.ghosts, B.ghosts, t, A), ptrs: this.mix(A.ptrs, B.ptrs, t, A), objBoxes: this.mix(A.objBoxes, B.objBoxes, t, A) } }
 	current() { return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)] }
 	flash() { return .3 + .7 * Math.abs(Math.sin(performance.now() / 110)) }
 	draw() {
@@ -384,6 +397,8 @@ class Viz {
 		(s.cells || []).forEach(cell => this.drawCell(cell, s));
 		(s.ghosts || []).forEach(g => this.drawGhost(g));
 		this.drawMoves(s);
+		(s.objBoxes || []).forEach(o => this.drawObjBox(o));
+		this.drawRefArrows(s);
 		this.drawPtrs(s);
 		this.drawOverlays(s);
 		c.restore()
@@ -451,7 +466,9 @@ class Viz {
         c.fill();
 
         // Object
-        if (cell.v !== '?') {
+        const hiddenObjectIds = new Set(s.hideObjectIds || []);
+        const hiddenObjectIndices = new Set(s.hideObjectIndices || []);
+        if (cell.v !== '?' && !hiddenObjectIds.has(cell.id) && !hiddenObjectIndices.has(cell.i)) {
             let objY = cell.y + w + 30; // 30 is arrow length
             this.arrow(cell.x + m.cellCenter, cell.y + m.cellCenter + m.dotRadius, cell.x + m.cellCenter, objY, K.b, 3);
             
@@ -507,6 +524,25 @@ class Viz {
 		(s.moves || []).forEach(m => {
 			const from = (s.cells || []).find(c => c.i === m.from), to = (s.cells || []).find(c => c.i === m.to);
 			if (from && to) this.arrow(from.x + this.cell / 2, from.y - 35, to.x + this.cell / 2, to.y - 35, K.r, 3)
+		})
+	}
+	drawObjBox(o) {
+		const c = this.ctx, m = this.layoutMetrics(), w = m.cell, objY = o.y + w + 30;
+		c.save();
+		c.globalAlpha = o.alpha ?? 1;
+		c.fillStyle = K.g; c.fillRect(o.x, objY, w, w);
+		if (o.border !== false) { c.strokeStyle = K.r; c.lineWidth = 3; c.strokeRect(o.x, objY, w, w) }
+		c.fillStyle = K.r; c.font = '30px Arial'; c.textAlign = 'center'; c.textBaseline = 'middle';
+		c.fillText(String(o.v), o.x + m.cellCenter, objY + m.cellCenter + 2);
+		c.restore()
+	}
+	drawRefArrows(s) {
+		const m = this.layoutMetrics();
+		(s.refArrows || []).forEach(r => {
+			const slot = (s.cells || []).find(c => c.i === r.from);
+			const obj = (s.objBoxes || []).find(o => o.id === r.objId);
+			if (!slot || !obj) return;
+			this.arrow(slot.x + m.cellCenter, slot.y + m.cellCenter + m.dotRadius, obj.x + m.cellCenter, obj.y + this.cell + 30, K.b, 4)
 		})
 	}
 	drawPtrs(s) {
@@ -709,13 +745,29 @@ const app = {
 		let ec = this.ensureSnaps(old, oldCap, 1, 'Before inserting,');
 		snaps.push(...ec.snaps);
 		let cap = ec.cap, work = [...old];
+		const bShiftRight = this.viz.base();
+		const sourceIndicesRight = [];
+		for (let j = idx; j < old.length; j++) sourceIndicesRight.push(j);
+		const hideRight = [...sourceIndicesRight];
+		const oldObjBoxesRight = sourceIndicesRight.map(j => ({ id: 'shiftObj' + j, i: j, v: work[j], x: bShiftRight.arrayLeftX + j * bShiftRight.cellPitch, y: bShiftRight.arrayTopY, border: false }));
+		let changedRefArrowsRight = [];
 		for (let j = old.length - 1; j >= idx; j--) {
-			let tmp = [...work]; tmp[j + 1] = tmp[j];
-			snaps.push(this.snapshot('Reference at index ' + j + ' is copied one position to the right', tmp, cap, {
-				size: old.length, moves: [{ from: j, to: j + 1 }], flashCells: [j + 1], pause: true
+			changedRefArrowsRight.push({ from: j + 1, objId: 'shiftObj' + j });
+			const unchangedRefArrowsRight = [];
+			for (let k = idx; k <= j; k++) unchangedRefArrowsRight.push({ from: k, objId: 'shiftObj' + k });
+			const visibleRefArrowsRight = [...changedRefArrowsRight, ...unchangedRefArrowsRight];
+			snaps.push(this.snapshot('Cell ' + (j + 1) + ' now points obliquely to the object currently below cell ' + j + '; unchanged arrows remain visible', work, cap, {
+				size: old.length, objBoxes: oldObjBoxesRight, refArrows: visibleRefArrowsRight, hideObjectIndices: hideRight, flashCells: [j + 1], pause: true
 			}));
-			work = tmp
 		}
+		const refArrowsRight = [...changedRefArrowsRight, { from: idx, objId: 'shiftObj' + idx }];
+		const movedObjBoxesRight = sourceIndicesRight.map(j => ({ id: 'shiftObj' + j, fromId: 'shiftObj' + j, i: j + 1, v: work[j], x: bShiftRight.arrayLeftX + (j + 1) * bShiftRight.cellPitch, y: bShiftRight.arrayTopY, border: false }));
+		snaps.push(this.snapshot('All shifted objects move right simultaneously; the affected arrows follow the objects', work, cap, {
+			size: old.length, objBoxes: movedObjBoxesRight, refArrows: refArrowsRight, hideObjectIndices: hideRight, pause: true
+		}));
+		let shifted = [...work];
+		for (let j = old.length - 1; j >= idx; j--) shifted[j + 1] = shifted[j];
+		work = shifted
 		snaps.push(this.snapshot('The slot at index ' + idx + ' is ready for the new element', work, cap, {
 			size: old.length, flashCells: [idx], pause: true
 		}));
@@ -776,12 +828,27 @@ const app = {
 				size: old.length, crossCells: [idx], pause: true
 			})
 		];
+		const bShiftLeft = this.viz.base();
+		const sourceIndicesLeft = [];
+		for (let j = idx + 1; j < old.length; j++) sourceIndicesLeft.push(j);
+		const hideLeft = [...sourceIndicesLeft];
+		const oldObjBoxesLeft = sourceIndicesLeft.map(j => ({ id: 'shiftObj' + j, i: j, v: work[j], x: bShiftLeft.arrayLeftX + j * bShiftLeft.cellPitch, y: bShiftLeft.arrayTopY, border: false }));
+		let changedRefArrowsLeft = [];
 		for (let j = idx + 1; j < old.length; j++) {
-			work[j - 1] = work[j];
-			snaps.push(this.snapshot('Reference at index ' + j + ' is copied one position to the left', work, this.capacity, {
-				size: old.length, moves: [{ from: j, to: j - 1 }], flashCells: [j - 1], pause: true
+			changedRefArrowsLeft.push({ from: j - 1, objId: 'shiftObj' + j });
+			const unchangedRefArrowsLeft = [];
+			for (let k = j; k < old.length; k++) unchangedRefArrowsLeft.push({ from: k, objId: 'shiftObj' + k });
+			const visibleRefArrowsLeft = [...changedRefArrowsLeft, ...unchangedRefArrowsLeft];
+			snaps.push(this.snapshot('Cell ' + (j - 1) + ' now points obliquely to the object currently below cell ' + j + '; unchanged arrows remain visible', work, this.capacity, {
+				size: old.length, objBoxes: oldObjBoxesLeft, refArrows: visibleRefArrowsLeft, hideObjectIndices: hideLeft, flashCells: [j - 1], pause: true
 			}))
 		}
+		const refArrowsLeft = [...changedRefArrowsLeft, { from: old.length - 1, objId: 'shiftObj' + (old.length - 1) }];
+		const movedObjBoxesLeft = sourceIndicesLeft.map(j => ({ id: 'shiftObj' + j, fromId: 'shiftObj' + j, i: j - 1, v: work[j], x: bShiftLeft.arrayLeftX + (j - 1) * bShiftLeft.cellPitch, y: bShiftLeft.arrayTopY, border: false }));
+		snaps.push(this.snapshot('All shifted objects move left simultaneously; the affected arrows follow the objects', work, this.capacity, {
+			size: old.length, objBoxes: movedObjBoxesLeft, refArrows: refArrowsLeft, hideObjectIndices: hideLeft, pause: true
+		}));
+		for (let j = idx + 1; j < old.length; j++) work[j - 1] = work[j]
         work[old.length - 1] = '?'; // In Java, this nulls the reference to avoid memory leak
 		snaps.push(this.snapshot('The old last slot is explicitly set to null to allow Garbage Collection', work, this.capacity, {
 			size: old.length, flashCells: [old.length - 1], pause: true
