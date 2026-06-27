@@ -1,15 +1,118 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>ArrayStack Visualizer</title>
-<style>
+	<head>
+		<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width,initial-scale=1">
+				<title>ArrayStack Visualizer</title>
+				<style>
 :root{--b:#1565c0;--c:#91f4f4;--g:#b6f8b6;--r:#e60000;--p:#c78cff;--v:#8d35c9;--panel:#f5f5f5}*{box-sizing:border-box}body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:white;user-select:none}header{background:var(--panel);border-bottom:1px solid #ddd;padding:10px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}.top,.gui{display:flex;justify-content:space-between;align-items:center;gap:12px}.gui{align-items:flex-start}h1{font-size:1.2rem;margin:0}.controls,.sub{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sub{font-size:.9rem;color:#555}input[type=number]{width:70px;padding:6px;border:1px solid #999;border-radius:4px;text-align:center;font-weight:bold}.idx{width:56px}button{border:0;border-radius:4px;color:white;font-weight:600;padding:6px 12px;box-shadow:0 1px 3px #0003}button:disabled{opacity:.4}.green{background:#2E7D32}.blue{background:#1668BD}.red{background:#c62828}.purple{background:#6A1B9A}.gray{background:#546E7A}.orange{background:#EF6C00}.pause{background:#455A64;width:80px}.help{background:#607D8B;border-radius:50%;font-size:1.1rem;padding:4px 10px}.sep{width:1px;height:20px;background:#ccc;margin:0 5px}#status{border-top:1px solid #ddd;padding-top:8px;font-size:.85rem;color:#555}#status-text{font-weight:bold;color:#222}#wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:white}canvas{display:block;width:100%;height:100%}#legend{position:absolute;top:18px;left:18px;background:#fffffff2;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:.8rem;box-shadow:0 2px 5px #0002;pointer-events:none}.li{display:flex;gap:8px;align-items:center;margin-bottom:5px}.sw{width:18px;height:18px;display:inline-block}.dot{width:12px;height:12px;background:var(--b);border-radius:50%;display:inline-block}#author{background:#f4f7f6;color:#777;text-align:center;line-height:2.5;font-size:.75em;flex-shrink:0}.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10}.modal-content{background:white;margin:5% auto;padding:20px;border-radius:8px;width:80%;max-width:850px;max-height:84vh;overflow:auto}.close{float:right;font-size:28px;color:#aaa;cursor:pointer}.code{font-family:Consolas,monospace;background:#eee;border-radius:4px;padding:2px 5px;color:#c62828}
-</style></head><body>
-<header><div class="top"><h1>ArrayStack Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open the help panel for ArrayStack behavior and operation summaries.">?</button></div><div class="gui"><div class="controls"><label>Value <input id="val" type="number" placeholder="#" title="Numeric value used by Push." onkeydown="if(event.key==='Enter')app.push()"></label><label>Initial capacity <input id="cap" class="idx" type="number" min="1" value="6" title="Capacity used when creating a new empty ArrayStack."></label><button class="green" onclick="app.push()" title="Push the value onto the top of the stack. The value is stored in the first free array position.">Push</button><button class="blue" onclick="app.top()" title="Read the current top element without removing it from the stack.">Top</button><button class="red" onclick="app.pop()" title="Remove the current top element and clear its array reference.">Pop</button><button class="purple" onclick="app.isEmpty()" title="Check whether the stack currently contains no elements.">isEmpty</button><button class="purple" onclick="app.showSize()" title="Show the current number of elements stored in the stack.">Size</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Create a new sample stack with three random distinct values.">Build Random</button><button class="orange" onclick="app.reinit()" title="Create a new empty stack with the selected initial capacity.">New</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Restore the previous stack state.">Undo</button><button class="gray" onclick="app.clear()" title="Remove all elements by clearing the used array references.">Clear</button></div><div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()" title="Slow down or speed up the current animation."><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button></div></div><div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span></div></header>
-<div id="wrap"><canvas id="cv"></canvas><div id="legend"><div class="li"><span class="sw" style="background:#91f4f4"></span>reference</div><div class="li"><span class="dot"></span>null reference</div><div class="li"><span class="sw" style="background:#b6f8b6"></span>object/value</div><div class="li"><span class="sw" style="background:#c78cff"></span>reference to stack</div></div></div><div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
-<div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>ArrayStack&lt;T&gt;</h2><p>An <strong>ArrayStack</strong> stores references in Java array <span class="code">elements</span>. The field <span class="code">size</span> is the number of stack elements and the first free position. The top element is at <span class="code">elements[size - 1]</span>.</p><ul><li><strong>push</strong>: ensure capacity, store at <span class="code">elements[size]</span>, then increment <span class="code">size</span>.</li><li><strong>top</strong>: return <span class="code">elements[size - 1]</span> without removing it.</li><li><strong>pop</strong>: decrement <span class="code">size</span> and set <span class="code">elements[size]</span> to <span class="code">null</span>.</li><li><strong>clear</strong>: set used references to <span class="code">null</span> and leave the allocated array in place.</li></ul><h3>Complexity summary</h3><ul><li><strong>push</strong>: amortized O(1), O(n) when resizing.</li><li><strong>top</strong>, <strong>pop</strong>, <strong>isEmpty</strong>, <strong>size</strong>: O(1).</li><li><strong>clear</strong>: O(n).</li></ul></div></div>
-<script>
+</style>
+			</head>
+			<body>
+				<header>
+					<div class="top">
+						<h1>ArrayStack Visualizer</h1>
+						<button class="help" onclick="app.toggleModal()" title="Open the help panel for ArrayStack behavior and operation summaries.">?</button>
+					</div>
+					<div class="gui">
+						<div class="controls">
+							<label>Value 
+								<input id="val" type="number" placeholder="#" title="Numeric value used by Push." onkeydown="if(event.key==='Enter')app.push()">
+								</label>
+								<label>Initial capacity 
+									<input id="cap" class="idx" type="number" min="1" value="6" title="Capacity used when creating a new empty ArrayStack.">
+									</label>
+									<button class="green" onclick="app.push()" title="Push the value onto the top of the stack. The value is stored in the first free array position.">Push</button>
+									<button class="blue" onclick="app.top()" title="Read the current top element without removing it from the stack.">Top</button>
+									<button class="red" onclick="app.pop()" title="Remove the current top element and clear its array reference.">Pop</button>
+									<div class="sep"></div>
+									<button class="purple" onclick="app.isEmpty()" title="Check whether the stack currently contains no elements.">isEmpty</button>
+									<button class="purple" onclick="app.showSize()" title="Show the current number of elements stored in the stack.">Size</button>
+									<div class="sep"></div>
+									<button class="orange" onclick="app.reinit()" title="Create a new empty stack with the selected initial capacity.">Empty</button>
+									<button class="gray" onclick="app.clear()" title="Remove all elements by clearing the used array references.">Clear</button>
+									<div class="sep"></div>
+									<button class="orange" onclick="app.random()" title="Create a new sample stack with three random distinct values.">Build Random</button>
+									<div class="sep"></div>
+									<button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Restore the previous stack state.">Undo</button>
+								</div>
+								<div class="sub">
+									<label>Slowdown:</label>
+									<input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()" title="Slow down or speed up the current animation.">
+										<button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button>
+									</div>
+								</div>
+								<div id="status">
+									<span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span>
+								</div>
+							</header>
+							<div id="wrap">
+								<canvas id="cv"></canvas>
+								<div id="legend">
+									<div class="li">
+										<span class="sw" style="background:var(--c)"></span>reference
+									</div>
+									<div class="li">
+										<span class="dot"></span>null reference
+									</div>
+									<div class="li">
+										<span class="sw" style="background:var(--g)"></span>object/value
+									</div>
+									<div class="li">
+										<span class="sw" style="background:var(--p)"></span>reference to stack
+									</div>
+								</div>
+							</div>
+							<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+							<div id="helpModal" class="modal">
+								<div class="modal-content">
+									<span class="close" onclick="app.toggleModal()">&times;</span>
+									<h2>ArrayStack&lt;T&gt;</h2>
+									<p>An 
+										<strong>ArrayStack</strong> stores references in Java array 
+										<span class="code">elements</span>. The field 
+										<span class="code">size</span> is the number of stack elements and the first free position. The top element is at 
+										<span class="code">elements[size - 1]</span>.
+									</p>
+									<ul>
+										<li>
+											<strong>push</strong>: ensure capacity, store at 
+											<span class="code">elements[size]</span>, then increment 
+											<span class="code">size</span>.
+										</li>
+										<li>
+											<strong>top</strong>: return 
+											<span class="code">elements[size - 1]</span> without removing it.
+										</li>
+										<li>
+											<strong>pop</strong>: decrement 
+											<span class="code">size</span> and set 
+											<span class="code">elements[size]</span> to 
+											<span class="code">null</span>.
+										</li>
+										<li>
+											<strong>clear</strong>: set used references to 
+											<span class="code">null</span> and leave the allocated array in place.
+										</li>
+									</ul>
+									<h3>Complexity summary</h3>
+									<ul>
+										<li>
+											<strong>push</strong>: amortized O(1), O(n) when resizing.
+										</li>
+										<li>
+											<strong>top</strong>, 
+											<strong>pop</strong>, 
+											<strong>isEmpty</strong>, 
+											<strong>size</strong>: O(1).
+										</li>
+										<li>
+											<strong>clear</strong>: O(n).
+										</li>
+									</ul>
+								</div>
+							</div>
+							<script>
 const K = {
 	b: '#1565c0',
 	c: '#91f4f4',
@@ -19,6 +122,7 @@ const K = {
 	v: '#8d35c9',
 	k: '#111'
 };
+const GC_ANIMATION = { unreachableValueKey: 'garbageV' };
 class Viz {
 	constructor(id) {
 		this.cv = document.getElementById(id);
@@ -53,12 +157,18 @@ class Viz {
 		requestAnimationFrame(t => this.loop(t))
 	}
 	base() {
+		const arrayLeftX = 355;
+		const arrayTopY = 170;
+		const structLeftX = 210;
+		const structTopY = 170;
+		const cellPitch = 40;
+		const reallocOldArrayY = 115;
+		const reallocNewArrayY = 330;
+		const transientValueY = reallocOldArrayY - 70;
 		return {
-			x: 355,
-			y: 170,
-			structX: 210,
-			structY: 170,
-			gap: 46
+			arrayLeftX, arrayTopY, structLeftX, structTopY, cellPitch,
+			reallocOldArrayY, reallocNewArrayY, transientValueY,
+			x: arrayLeftX, y: arrayTopY, structX: structLeftX, structY: structTopY, gap: cellPitch
 		}
 	}
 	resize() {
@@ -132,26 +242,25 @@ class Viz {
 	layout(s) {
 		const b = this.base();
 		(s.cells || []).forEach((c, i) => {
-			if (c.x === undefined) c.x = b.x + i * b.gap;
-			if (c.y === undefined) c.y = b.y
+			if (c.x === undefined) c.x = b.arrayLeftX + i * b.cellPitch;
+			if (c.y === undefined) c.y = b.arrayTopY
+		});
+		(s.ghosts || []).forEach(g => {
+			if (g.x === undefined) g.x = b.arrayLeftX + (g.i ?? 0) * b.cellPitch;
+			if (g.y === undefined) g.y = b.transientValueY
 		});
 		(s.ptrs || []).forEach((p, i) => {
-			if (p.x === undefined) p.x = b.x + (p.i ?? 0) * b.gap - 10;
-			if (p.y === undefined) p.y = b.y - 78 - i * 62
+			if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
+			if (p.y === undefined) p.y = b.arrayTopY - 78 - i * 62
 		})
 	}
 	bounds(s) {
-		let b = {
-			minX: 20,
-			minY: 35,
-			maxX: 760,
-			maxY: 430
-		};
-		(s.cells || []).forEach(c => {
+		let b = { minX: 20, minY: 20, maxX: 760, maxY: 540 };
+		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
 			b.minX = Math.min(b.minX, c.x - 220);
-			b.maxX = Math.max(b.maxX, c.x + 80);
-			b.minY = Math.min(b.minY, c.y - 120);
-			b.maxY = Math.max(b.maxY, c.y + 150)
+			b.maxX = Math.max(b.maxX, c.x + 90);
+			b.minY = Math.min(b.minY, c.y - 130);
+			b.maxY = Math.max(b.maxY, c.y + 190)
 		});
 		return b
 	}
@@ -238,22 +347,18 @@ class Viz {
 	mix(a, b, t) {
 		const ma = new Map((a || []).map(o => [o.id, o])),
 			mb = new Map((b || []).map(o => [o.id, o])),
-			ids = new Set([...ma.keys(), ...mb.keys()]);
+			ids = new Set([...ma.keys(), ...mb.keys()]),
+			sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
 		let out = [];
 		ids.forEach(id => {
-			const A = ma.get(id),
-				B = mb.get(id);
-			if (A && B) out.push({
-				...B,
-				x: A.x + (B.x - A.x) * t,
-				y: A.y + (B.y - A.y) * t
-			});
-			else if (B) out.push({
-				...B
-			});
-			else if (A && t < .85) out.push({
-				...A
-			})
+			const A = ma.get(id), B = mb.get(id);
+			if (A && B) out.push({ ...B, x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t });
+			else if (B) {
+				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+				if (S) out.push({ ...B, x: S.x + (B.x - S.x) * t, y: S.y + (B.y - S.y) * t });
+				else out.push({ ...B })
+			}
+			else if (A && !sourceIds.has(id) && t < .85) out.push({ ...A })
 		});
 		return out
 	}
@@ -261,6 +366,7 @@ class Viz {
 		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? {
 			...this.sn[this.idx + 1],
 			cells: this.mix(this.sn[this.idx].cells, this.sn[this.idx + 1].cells, this.ease(this.t)),
+			ghosts: this.mix(this.sn[this.idx].ghosts, this.sn[this.idx + 1].ghosts, this.ease(this.t)),
 			ptrs: this.mix(this.sn[this.idx].ptrs, this.sn[this.idx + 1].ptrs, this.ease(this.t))
 		} : this.sn[Math.max(this.idx, 0)]
 	}
@@ -268,19 +374,17 @@ class Viz {
 		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
 	}
 	draw() {
-		const s = this.current(),
-			c = this.ctx;
+		const s = this.current(), c = this.ctx;
 		c.clearRect(0, 0, this.cv.width, this.cv.height);
 		c.save();
 		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-		if (!s) {
-			c.restore();
-			return
-		}
+		if (!s) { c.restore(); return }
 		this.lastHits = [];
 		this.drawStruct(s);
 		this.drawArrayPointer(s);
+		this.drawLabels(s);
 		(s.cells || []).forEach(cell => this.drawCell(cell, s));
+		(s.ghosts || []).forEach(g => this.drawGhost(g));
 		this.drawPtrs(s);
 		this.drawTopLabel(s);
 		this.drawStruct(s);
@@ -314,7 +418,7 @@ class Viz {
 			c.fillStyle = K.k;
 			c.fillText(r[0], x - 10, yy + h / 2);
 			c.fillStyle = r[1];
-			c.fillRect(x, yy, w, h);
+			c.fillRect(x, yy + i * h * 0.02, w, h - h * 0.02);
 			if (r[0] === 'elements') {
 				c.fillStyle = K.b;
 				c.beginPath();
@@ -329,32 +433,79 @@ class Viz {
 				c.textAlign = 'right'
 			}
 		});
-        this.arrow(x - 25, y - 40, x + 3, y + 12, K.v, 2.5);
+        this.arrow(x - 25, y - 40, x, y, K.v, 2.5);
 		c.restore()
 	}
 	drawArrayPointer(s) {
-		const b = this.base(),
-			f = (s.cells || [])[0];
-		if (f) this.arrow(b.structX + 20, b.structY + this.cell / 2, f.x, f.y + this.cell / 2, K.b, 2.5)
+		if (s.arrayPointer === false) return;
+		const b = this.base();
+		let firstCell = null;
+		if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
+		if (!firstCell) firstCell = (s.cells || [])[0];
+		if (firstCell) this.arrow(b.structX + this.cell / 2, b.structY + this.cell / 2, firstCell.x, firstCell.y + this.cell / 2, K.b, 2.5)
+	}
+	drawLabels(s) {
+		const c = this.ctx;
+		(s.labels || []).forEach(l => {
+			c.save();
+			c.fillStyle = l.color || K.k;
+			c.font = l.font || 'bold 19px Arial';
+			c.textAlign = l.align || 'center';
+			c.fillText(l.text, l.x, l.y);
+			c.restore()
+		})
+	}
+	drawReferenceValuePair(x, y, value, drawReferenceCell = true) {
+		const c = this.ctx, w = this.cell, valueY = y + w + 40;
+		c.save();
+		if (drawReferenceCell) {
+			c.fillStyle = K.c;
+			c.fillRect(x, y, w, w);
+			c.strokeStyle = '#fff';
+			c.lineWidth = 2;
+			c.strokeRect(x, y, w, w);
+			c.fillStyle = K.b;
+			c.beginPath();
+			c.arc(x + w / 2, y + w / 2, 6, 0, Math.PI * 2);
+			c.fill()
+		}
+		c.restore();
+		this.arrow(x + w / 2, y + w / 2 + 6, x + w / 2, valueY, K.b, 2.5);
+		c.save();
+		c.fillStyle = K.g;
+		c.fillRect(x, valueY, w, w);
+		c.strokeStyle = '#fff';
+		c.lineWidth = 2;
+		c.strokeRect(x, valueY, w, w);
+		c.fillStyle = K.r;
+		c.font = '24px Arial';
+		c.textAlign = 'center';
+		c.textBaseline = 'middle';
+		c.fillText(String(value), x + w / 2, valueY + w / 2 + 1);
+		c.restore()
+	}
+	drawGhost(g) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = .82;
+		this.drawReferenceValuePair(g.x, g.y, g.v, false);
+		c.restore()
 	}
 	drawCell(cell, s) {
 		const c = this.ctx,
 			w = this.cell,
-			active = cell.i < s.size,
-			isNull = cell.v === null;
+			active = cell.active !== undefined ? cell.active : cell.i < s.size,
+			isNull = cell.v === null,
+			hasReferencedValue = active && !isNull,
+			hasUnreachableValue = cell[GC_ANIMATION.unreachableValueKey] !== undefined,
+			displayedValue = hasReferencedValue ? cell.v : cell[GC_ANIMATION.unreachableValueKey];
 		c.save();
 		c.fillStyle = K.c;
 		c.fillRect(cell.x, cell.y, w, w);
 		c.strokeStyle = '#fff';
 		c.lineWidth = 2;
 		c.strokeRect(cell.x, cell.y, w, w);
-		this.lastHits.push({
-			x: cell.x,
-			y: cell.y,
-			w: w,
-			h: w,
-			v: cell.v
-		});
+		this.lastHits.push({ x: cell.x, y: cell.y, w: w, h: w, v: cell.v });
 		c.fillStyle = K.k;
 		c.font = '18px monospace';
 		c.textAlign = 'center';
@@ -364,28 +515,22 @@ class Viz {
 		c.beginPath();
 		c.arc(cell.x + w / 2, cell.y + w / 2, 6, 0, Math.PI * 2);
 		c.fill();
-		if (active && !isNull) {
+		if (hasReferencedValue || hasUnreachableValue) {
 			const vy = cell.y + w + 40;
 			c.restore();
-			this.arrow(cell.x + w / 2, cell.y + w / 2 + 6, cell.x + w / 2, vy, K.b, 2.5);
+			if (hasReferencedValue) this.arrow(cell.x + w / 2, cell.y + w / 2 + 6, cell.x + w / 2, vy, K.b, 2.5);
 			c.save();
 			c.fillStyle = K.g;
 			c.fillRect(cell.x, vy, w, w);
 			c.strokeStyle = '#fff';
 			c.lineWidth = 2;
 			c.strokeRect(cell.x, vy, w, w);
-			this.lastHits.push({
-				x: cell.x,
-				y: vy,
-				w: w,
-				h: w,
-				v: cell.v
-			});
+			this.lastHits.push({ x: cell.x, y: vy, w: w, h: w, v: displayedValue });
 			c.fillStyle = K.r;
 			c.font = '24px Arial';
 			c.textAlign = 'center';
 			c.textBaseline = 'middle';
-			c.fillText(String(cell.v), cell.x + w / 2, vy + w / 2 + 1)
+			c.fillText(String(displayedValue), cell.x + w / 2, vy + w / 2 + 1)
 		}
 		c.restore()
 	}
@@ -398,14 +543,14 @@ class Viz {
 			c.textAlign = 'center';
 			c.fillText(p.label, p.x + 30, p.y - 8);
 			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, 60, 40);
+			c.fillRect(p.x, p.y, 40, 40);
 			c.fillStyle = K.b;
 			c.beginPath();
-			c.arc(p.x + 30, p.y + 20, 6, 0, Math.PI * 2);
+			c.arc(p.x + 20, p.y + 20, 6, 0, Math.PI * 2);
 			c.fill();
 			c.restore();
 			const target = (s.cells || []).find(c => c.i === p.i);
-			if (target) this.arrow(p.x + 30, p.y + 20, target.x + this.cell / 2, target.y, K.b, 2.5)
+			if (target) this.arrow(p.x + 20, p.y + 20, target.x + this.cell / 2, target.y, K.b, 2.5)
 		})
 	}
 	drawTopLabel(s) {
@@ -424,11 +569,15 @@ class Viz {
 		if (s.flashSize) this.flashStruct(1);
 		if (s.flashElements) this.flashStruct(0);
 		(s.flashCells || []).forEach(i => {
-			const cell = (s.cells || []).find(c => c.i === i);
+			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
+			if (cell) this.roundFlash(cell.x - 4, cell.y - 4, this.cell + 8, this.cell + 8)
+		});
+		(s.flashCellIds || []).forEach(id => {
+			const cell = (s.cells || []).find(c => c.id === id);
 			if (cell) this.roundFlash(cell.x - 4, cell.y - 4, this.cell + 8, this.cell + 8)
 		});
 		(s.crossCells || []).forEach(i => {
-			const cell = (s.cells || []).find(c => c.i === i);
+			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
 			if (cell) this.cross(cell.x, cell.y + this.cell + 40, this.cell, this.cell)
 		})
 	}
@@ -524,24 +673,25 @@ const app = {
 			length: cap
 		}, (_, i) => i < vals.length ? vals[i] : null)
 	},
-	cells(vals = this.values, cap = this.capacity, storage = this.storage) {
-		return Array.from({
-			length: cap
-		}, (_, i) => ({
+	cells(vals = this.values, cap = this.capacity, storage = this.storage, garbageValues = {}) {
+		return Array.from({ length: cap }, (_, i) => ({
 			id: 'c' + i,
 			v: i < storage.length ? storage[i] : null,
+			[GC_ANIMATION.unreachableValueKey]: Object.prototype.hasOwnProperty.call(garbageValues, i) ? garbageValues[i] : undefined,
 			i
 		}))
 	},
 	snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
 		const st = extra.storage ?? this.makeStorage(vals, cap);
+		const garbageValues = extra.garbageValues ?? {};
 		return {
-			cells: this.cells(vals, cap, st),
+			cells: this.cells(vals, cap, st, garbageValues),
 			size: extra.size ?? vals.length,
 			capacity: cap,
 			text,
 			...extra,
-			storage: st
+			storage: st,
+			garbageValues
 		}
 	},
 	showCurrent(text = 'Ready.') {
@@ -565,30 +715,64 @@ const app = {
 		});
 		if (this.history.length > 30) this.history.shift()
 	},
+	reallocCells(vals, oldCap, newCap, copiedCount = 0) {
+		const b = this.viz.base(), oldStorage = this.makeStorage(vals, oldCap), newStorage = this.makeStorage(vals.slice(0, copiedCount), newCap);
+		const oldCells = Array.from({ length: oldCap }, (_, i) => ({
+			id: 'old' + i, fromId: 'c' + i, i,
+			v: oldStorage[i], x: b.arrayLeftX + i * b.cellPitch, y: b.reallocOldArrayY, active: i < vals.length
+		}));
+		const newCells = Array.from({ length: newCap }, (_, i) => ({
+			id: 'new' + i, i,
+			v: newStorage[i], x: b.arrayLeftX + i * b.cellPitch, y: b.reallocNewArrayY, active: i < copiedCount
+		}));
+		return [...oldCells, ...newCells]
+	},
+	reallocLabels(oldCap, newCap) {
+		const b = this.viz.base();
+		const centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + this.viz.cell / 2;
+		return [
+			{ text: 'old elements', x: centeredLabelX(oldCap), y: b.reallocOldArrayY - 30, color: '#777' },
+			{ text: 'new elements', x: centeredLabelX(newCap), y: b.reallocNewArrayY - 30, color: '#2E7D32' }
+		]
+	},
+	reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
+		return this.snapshot(text, vals, oldCap, {
+			size: vals.length, capacity: oldCap,
+			cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
+			labels: this.reallocLabels(oldCap, newCap), arrayPointerId: 'old0', ...extra
+		})
+	},
+	reallocFinalSnapshot(text, vals, newCap, extra = {}) {
+		const finalStorage = this.makeStorage(vals, newCap);
+		const finalCells = this.cells(vals, newCap, finalStorage).map(c => ({ ...c, fromId: 'new' + c.i }));
+		return this.snapshot(text, vals, newCap, { size: vals.length, capacity: newCap, storage: finalStorage, cells: finalCells, ...extra })
+	},
+
 	ensureSnaps(vals, cap, need, lead) {
 		let snaps = [];
-		if (vals.length + need <= cap) return {
-			cap,
-			snaps
-		};
+		if (vals.length + need <= cap) return { cap, snaps };
 		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
-			size: vals.length,
-			storage: this.makeStorage(vals, cap),
-			flashSize: true,
-			pause: true
+			size: vals.length, storage: this.makeStorage(vals, cap), flashSize: true, pause: true
 		}));
 		let newCap = Math.max(1, cap * 2);
 		while (vals.length + need > newCap) newCap *= 2;
-		snaps.push(this.snapshot('Arrays.copyOf creates a larger array and preserves the references', vals, newCap, {
-			size: vals.length,
-			storage: this.makeStorage(vals, newCap),
-			flashElements: true,
-			pause: true
-		}));
-		return {
-			cap: newCap,
-			snaps
+		snaps.push(this.reallocSnapshot('A new larger array is allocated; the current array moves smoothly to become the old array', vals, cap, newCap, 0, { pause: true }));
+		for (let i = 0; i < vals.length; i++) {
+			const b = this.viz.base();
+			const copyX = b.arrayLeftX + i * b.cellPitch;
+			snaps.push(this.reallocSnapshot('Copying the reference at index ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
+				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocOldArrayY, border: false }]
+			}));
+			snaps.push(this.reallocSnapshot('The copied reference, with its blue arrow and value, reaches the destination cell', vals, cap, newCap, i, {
+				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocNewArrayY, border: false }]
+			}));
+			snaps.push(this.reallocSnapshot('The destination cell in the new array is filled and its border flashes', vals, cap, newCap, i + 1, {
+				flashCellIds: ['new' + i], pause: true
+			}));
 		}
+		snaps.push(this.reallocSnapshot('All references have been copied; elements will now point to the new array', vals, cap, newCap, vals.length, { pause: true }));
+		snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the ArrayStack structure', vals, newCap, { pause: true }));
+		return { cap: newCap, snaps }
 	},
 	push() {
 		const e = this.v();
@@ -669,53 +853,22 @@ const app = {
 	},
 	pop() {
 		if (this.values.length === 0) {
-			this.viz.enqueue([this.snapshot('The stack is empty: pop() would throw EmptyStackException', this.values, this.capacity, {
-				size: 0,
-				storage: this.storage,
-				flashSize: true,
-				pause: true
-			}), this.snapshot('The operation is complete', this.values, this.capacity, {
-				size: 0,
-				storage: this.storage
-			})]);
+			this.viz.enqueue([this.snapshot('The stack is empty: pop() would throw EmptyStackException', this.values, this.capacity, { size: 0, storage: this.storage, flashSize: true, pause: true }), this.snapshot('The operation is complete', this.values, this.capacity, { size: 0, storage: this.storage })]);
 			return
 		}
 		this.save();
-		let old = [...this.values],
-			cap = this.capacity,
-			i = old.length - 1,
-			st = [...this.storage];
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayStack state', old, cap, {
-			size: old.length,
-			storage: st
-		}), this.snapshot('The top element at index size - 1 is selected for removal', old, cap, {
-			size: old.length,
-			storage: st,
-			flashCells: [i],
-			crossCells: [i],
-			pause: true
-		})];
-		let vals = old.slice(0, -1);
-		snaps.push(this.snapshot('size is decremented, so the old top leaves the logical stack', vals, cap, {
-			size: vals.length,
-			storage: st,
-			flashSize: true,
-			flashCells: [i],
-			pause: true
-		}));
-		st[i] = null;
-		snaps.push(this.snapshot('elements[size] is set to null; the null pointer is shown only as a blue circle', vals, cap, {
-			size: vals.length,
-			storage: st,
-			flashCells: [i],
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', vals, cap, {
-			size: vals.length,
-			storage: st
-		}));
+		let old = [...this.values], cap = this.capacity, i = old.length - 1, removedValue = old[i], stBeforeNull = [...this.storage], stAfterNull = [...this.storage];
+		stAfterNull[i] = null;
+		let vals = old.slice(0, -1), unreachable = { [i]: removedValue }, snaps = [
+			this.snapshot('The algorithm starts from the current ArrayStack state', old, cap, { size: old.length, storage: stBeforeNull }),
+			this.snapshot('First, elements[size - 1] is set to null. The top value is still visible, but the array reference no longer points to it', old, cap, { size: old.length, storage: stAfterNull, garbageValues: unreachable, flashCells: [i], pause: true }),
+			this.snapshot('Then size is decremented. The old top is outside the logical stack and is eligible for Java garbage collection', vals, cap, { size: vals.length, storage: stAfterNull, garbageValues: unreachable, flashSize: true, flashCells: [i], pause: true }),
+			this.snapshot('There is no reference to the old top value hence its memory is eligible for Java garbage collection', vals, cap, { size: vals.length, storage: stAfterNull, garbageValues: unreachable, crossCells: [i], pause: true }),
+			this.snapshot('Finally, the unreachable value is deallocated by the garbage collector', vals, cap, { size: vals.length, storage: stAfterNull, pause: true }),
+			this.snapshot('The operation is complete', vals, cap, { size: vals.length, storage: stAfterNull })
+		];
 		this.values = vals;
-		this.storage = st;
+		this.storage = stAfterNull;
 		this.viz.enqueue(snaps);
 		this.updateUI()
 	},
@@ -756,22 +909,39 @@ const app = {
 		this.save();
 		let old = [...this.values],
 			st = [...this.storage],
+			oldSize = old.length,
 			snaps = [this.snapshot('The algorithm starts from the current ArrayStack state', old, this.capacity, {
-				size: old.length,
+				size: oldSize,
 				storage: st
 			})];
-		for (let j = old.length - 1; j >= 0; j--) {
+		for (let j = 0; j < st.length; j++) {
+			if (st[j] === null || st[j] === undefined) continue;
+			const removedValue = st[j];
 			st[j] = null;
-			snaps.push(this.snapshot('elements[' + j + '] is set to null', old.slice(0, j), this.capacity, {
-				size: j,
+			const garbage = { [j]: removedValue };
+			snaps.push(this.snapshot('elements[' + j + '] is set to null.', old, this.capacity, {
+				size: oldSize,
 				storage: [...st],
+				garbageValues: garbage,
 				flashCells: [j],
+				pause: true
+			}));
+			snaps.push(this.snapshot('The former value at index ' + j + ' is eligible for garbage collection as no reference points to it.', old, this.capacity, {
+				size: oldSize,
+				storage: [...st],
+				garbageValues: garbage,
+				crossCells: [j],
+				pause: true
+			}));
+			snaps.push(this.snapshot('The memory of the unreachable value at index ' + j + ' is reclaimed by the garbage collector.', old, this.capacity, {
+				size: oldSize,
+				storage: [...st],
 				pause: true
 			}))
 		}
 		this.values = [];
 		this.storage = st;
-		snaps.push(this.snapshot('The ArrayStack is now empty; size is 0', [], this.capacity, {
+		snaps.push(this.snapshot('All used references are null; now size is updated to 0', [], this.capacity, {
 			size: 0,
 			storage: st,
 			flashSize: true,
@@ -788,7 +958,8 @@ const app = {
 		this.save();
 		this.capacity = 6;
 		this.values = [];
-		while (this.values.length < 3) {
+		let sz = Math.floor(Math.random() * 4) + 1;
+		while (this.values.length < sz) {
 			let v = Math.floor(Math.random() * 9) + 1;
 			if (!this.values.includes(v)) this.values.push(v)
 		}
