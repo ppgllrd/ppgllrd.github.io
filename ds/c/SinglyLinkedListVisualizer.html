@@ -360,7 +360,7 @@
 											<span class="code">O(n)</span>. It follows the C algorithm 
 											<span class="code">clear(struct Node** p_p_first)</span>, advancing 
 											<span class="code">p</span>, storing each node in 
-											<span class="code">p_toDelete</span>, freeing it, and finally setting 
+											<span class="code">p_delete</span>, freeing it, and finally setting 
 											<span class="code">p_first</span> to 
 											<span class="code">NULL</span>.
 										</li>
@@ -2555,13 +2555,13 @@ snaps.push(this.snapshot(
             return this._ptr(label, target, nodes, fixed, fallback)
         };
 
-        // p_toDelete is visualized as a function-scope local variable.
-        // It is never set to NULL by the animation. After Node_free(&p_toDelete),
+        // p_delete is visualized as a function-scope local variable.
+        // It is never set to NULL by the animation. After Node_free(&p_delete),
         // it deliberately stays as a dangling pointer to the freed node until the
-        // next assignment p_toDelete = p, or until the function exits.
+        // next assignment p_delete = p, or until the function exits.
         // It is always drawn at the same vertical height as p, and clearly to its left.
         const pToDeleteAt = (pPtr, target, nodes) => {
-            const ptr = makePtr('p_toDelete', target, nodes, { x: pPtr.x - GEOMETRY.CLEAR_P_TO_DELETE_LEFT_OF_CURRENT, y: pPtr.y });
+            const ptr = makePtr('p_delete', target, nodes, { x: pPtr.x - GEOMETRY.CLEAR_P_TO_DELETE_LEFT_OF_CURRENT, y: pPtr.y });
             const stillVisible = (nodes || []).some(n => n.id === target);
             const oldNode = oldNodeMap.get(target);
             if (target !== undefined && target !== null && !stillVisible && oldNode) {
@@ -2580,13 +2580,13 @@ snaps.push(this.snapshot(
         let pToDeleteCurrentValue = undefined;
         let pToDeletePtr = pToDeleteAt(pPtr, pToDeleteCurrentValue, originalNodes);
 
-        snaps.push(this.snapshot('The function-local pointers p and p_toDelete are created; p_toDelete is uninitialized', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], pause: true }));
+        snaps.push(this.snapshot('The function-local pointers p and p_delete are created; p_delete is uninitialized', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], pause: true }));
         snaps.push(this.snapshot('p_current is initialized with p_first', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], flashPtrs: ['p_current'], pause: true }));
 
         if (oldSize === 0) {
             snaps.push(this.snapshot('p_current is NULL, so the loop is not entered', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], pause: true }));
             snaps.push(this.snapshot('p_first is already NULL', originalNodes, { firstId: null, flashPFirst: true, ptrs: [pPtr, pToDeletePtr], pause: true }));
-            snaps.push(this.snapshot('The function-local pointers are deallocated after exiting the function', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], flashPtrCross: ['p_current', 'p_toDelete'], pause: true }));
+            snaps.push(this.snapshot('The function-local pointers are deallocated after exiting the function', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
             snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
             this.values = [];
             this.ids = [];
@@ -2607,7 +2607,7 @@ snaps.push(this.snapshot(
 
             pToDeleteCurrentValue = curId;
             const pToDeleteAssigned = pToDeleteAt(pCurrent, pToDeleteCurrentValue, visibleNodes);
-            snaps.push(this.snapshot('p_toDelete points to p_current', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteAssigned], flashPtrs: ['p_toDelete'], pause: true }));
+            snaps.push(this.snapshot('p_delete points to p_current', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteAssigned], flashPtrs: ['p_delete'], pause: true }));
 
             const pNextMoving = makePtr('p_current', nextId, visibleNodes, pCurrent);
             snaps.push(this.snapshot('p_current is advanced before freeing the node', visibleNodes, { ...firstState, ptrs: [pNextMoving, pToDeleteAssigned], flashPtrs: ['p_current'], pause: true }));
@@ -2617,24 +2617,24 @@ snaps.push(this.snapshot(
             snaps.push(this.snapshot(nextId === null ? 'p_current is now NULL; this is the last node to free' : 'p now points to the next node', visibleNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], pause: true }));
 
             const crossedNodes = visibleNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
-            // Only the node is flashed/crossed here. p_toDelete is not crossed during the loop.
-            snaps.push(this.snapshot('free the selected node; p_toDelete becomes dangling', crossedNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], preserveLinks: true, pause: true }));
+            // Only the node is flashed/crossed here. p_delete is not crossed during the loop.
+            snaps.push(this.snapshot('free the selected node; p_delete becomes dangling', crossedNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], preserveLinks: true, pause: true }));
 
             const remainingNodes = compactRemaining(k + 1);
             const pAfterFree = makePtr('p_current', nextId, remainingNodes);
             const pToDeleteAfterFree = pToDeleteAt(pAfterFree, pToDeleteCurrentValue, remainingNodes);
             // p_first is not made NULL here. After the first node is freed it is dangling,
             // and it stays dangling until the final explicit assignment *p_p_first = NULL.
-            snaps.push(this.snapshot('The freed node is removed; p_toDelete remains dangling until the next assignment', remainingNodes, { ...firstDanglingRef(), ptrs: [pAfterFree, pToDeleteAfterFree], preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The freed node is removed; p_delete remains dangling until the next assignment', remainingNodes, { ...firstDanglingRef(), ptrs: [pAfterFree, pToDeleteAfterFree], preserveLinks: true, pause: true }));
         }
 
         // p_first is intentionally kept dangling until the explicit final assignment *p_p_first = NULL.
         const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST });
         const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteCurrentValue, []);
-        snaps.push(this.snapshot('All nodes have been freed; p_current is NULL and p_toDelete is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+        snaps.push(this.snapshot('All nodes have been freed; p_current is NULL and p_delete is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
         snaps.push(this.snapshot('p_first is set to NULL', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], flashPFirst: true, pause: true }));
         snaps.push(this.snapshot('p_first now contains NULL', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
-        snaps.push(this.snapshot('The function-local pointers p_current and p_toDelete are deallocated after exiting the function', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], flashPtrCross: ['p_current', 'p_toDelete'], pause: true }));
+        snaps.push(this.snapshot('The function-local pointers p_current and p_delete are deallocated after exiting the function', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
         snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
 
         this.values = [];
