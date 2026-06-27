@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>LinkedQueue Visualizer</title>
+    <title>LinkedStack Visualizer</title>
     <style>
         :root {
             --b: #1565c0;
@@ -100,16 +100,16 @@
             background: #2E7D32
         }
 
-        .blue {
-            background: #1668BD
-        }
-
         .red {
             background: #c62828
         }
 
         .purple {
             background: #6A1B9A
+        }
+
+        .blue {
+            background: #1668BD
         }
 
         .gray {
@@ -245,27 +245,25 @@
 <body>
     <header>
         <div class="top">
-            <h1>LinkedQueue Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
+            <h1>LinkedStack Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
         </div>
         <div class="gui">
             <div class="controls"><label>Element <input id="val" type="number" placeholder="#"
-                        onkeydown="if(event.key==='Enter')app.enqueue()"></label><button class="green"
-                    onclick="app.enqueue()" title="Enqueue the element at the end of the queue." aria-label="Enqueue the element at the end of the queue.">Enqueue</button>
+                        onkeydown="if(event.key==='Enter')app.push()"></label><button class="green"
+                    onclick="app.push()" title="Push the element onto the top of the stack." aria-label="Push the element onto the top of the stack.">Push</button>
                     <button class="red"
-                    onclick="app.dequeue()" title="Dequeue (remove) the first element of the queue." aria-label="Dequeue (remove) the first element of the queue.">Dequeue</button>
-                    <button class="purple" onclick="app.first()" title="Get the first element of the queue without removing it." aria-label="Get the first element of the queue without removing it.">First</button>
+                    onclick="app.pop()" title="Pop (remove) the top element of the stack." aria-label="Pop (remove) the top element of the stack.">Pop</button>
+                    <button class="purple" onclick="app.getTop()" title="Get the top element of the stack without removing it." aria-label="Get the top element of the stack without removing it.">Top</button>
                 <div class="sep"></div>
-					<button class="orange" onclick="app.newList()" title="Create a new empty queue." aria-label="Create a new empty queue.">Empty</button>
-					
-					<button class="gray" onclick="app.clear()" title="Clear the queue." aria-label="Clear the queue.">Clear</button>
+					<button class="orange" onclick="app.newList()" title="Create a new empty stack." aria-label="Create a new empty stack.">Empty</button>
+										<button class="gray" onclick="app.clear()" title="Clear the stack." aria-label="Clear the stack.">Clear</button>
+				<div class="sep"></div>
+					<button class="orange"
+                    onclick="app.random()" title="Build a random sample stack." aria-label="Build a random sample stack.">Build Random</button>
                 <div class="sep"></div>
-				<button class="orange"
-                    onclick="app.random()" title="Build a random sample queue." aria-label="Build a random sample queue.">Build Random</button>
-				<div class="sep"></div>					
-	
 				<button class="purple" onclick="app.undo()" id="btnUndo"
-                    disabled title="Undo the last operation that modified the queue." aria-label="Undo the last operation that modified the queue.">Undo</button>
-                <div class="sep"></div>					
+                    disabled title="Undo the last operation that modified the stack." aria-label="Undo the last operation that modified the stack.">Undo</button>
+					
             </div>
             <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1"
                     oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button></div>
@@ -276,21 +274,21 @@
         <div id="legend">
             <div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div>
             <div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div>
-            <div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div>
+            <div class="li"><span class="sw" style="background:#c78cff"></span>stack reference</div>
             <div class="li"><span class="dot"></span>null reference</div>
         </div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
     <div id="helpModal" class="modal">
         <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
-            <h2>LinkedQueue</h2>
-            <p>A <strong>LinkedQueue</strong> stores a sequence of elements using a First-In-First-Out (FIFO) policy as nodes connected by references. Each node contains an <span class="code">element</span> reference that points to the stored object, and a <span class="code">next</span> reference that points to the next node, or to <span class="code">null</span> when there is no next node.</p>
-            <p>The queue object keeps three pieces of information: <span class="code">first</span>, a reference to the front node; <span class="code">last</span>, a reference to the rear node; and <span class="code">size</span>, the number of elements currently stored. Keeping <span class="code">last</span> allows the Enqueue operation to run without traversing from the beginning.</p>
+            <h2>LinkedStack</h2>
+            <p>A <strong>LinkedStack</strong> stores a sequence of elements using a Last-In-First-Out (LIFO) policy as nodes connected by references. Each node contains an <span class="code">element</span> reference that points to the stored object, and a <span class="code">next</span> reference that points to the next node, or to <span class="code">null</span> when there is no next node.</p>
+            <p>The stack object keeps two pieces of information: <span class="code">top</span>, a reference to the topmost node; and <span class="code">size</span>, the number of elements currently stored. In a stack, elements are always inserted and removed from the <span class="code">top</span>.</p>
             <h3>Operations and asymptotic complexity</h3>
             <ul>
-                <li><strong>Enqueue</strong>: adds a new node at the end (rear). Complexity: <span class="code">O(1)</span>, because the algorithm uses <span class="code">last</span>.</li>
-                <li><strong>Dequeue</strong>: removes the node at the beginning (front). Complexity: <span class="code">O(1)</span>, because the algorithm updates <span class="code">first</span>.</li>
-                <li><strong>First</strong>: reads the element at the beginning without removing it. Complexity: <span class="code">O(1)</span>.</li>
+                <li><strong>Push</strong>: adds a new node at the top. Complexity: <span class="code">O(1)</span>, because the algorithm updates <span class="code">top</span> directly.</li>
+                <li><strong>Pop</strong>: removes the node at the top. Complexity: <span class="code">O(1)</span>, because the algorithm updates <span class="code">top</span>.</li>
+                <li><strong>Top</strong>: reads the element at the top without removing it. Complexity: <span class="code">O(1)</span>.</li>
             </ul>
             <p>The visualization shows how links and temporary references change while each algorithm progresses, including how the Java Garbage Collector frees nodes that become unreachable.</p>
         </div>
@@ -356,17 +354,15 @@
                 rowHeightFactor: 0.95,
                 labelOffsetX: 16,
                 listLabelOffsetX: 130,
-                listLabelOffsetY: 70,
+                listLabelOffsetY: 40,
                 listPointerBoxOffsetX: 125,
-                listPointerBoxOffsetY: 108,
+                listPointerBoxOffsetY: 79, // Adjusted for 2-row struct
                 listPointerDotOffsetX: 125 - CELL / 2,
-                listPointerDotOffsetY: 108 - CELL / 2,
+                listPointerDotOffsetY: 79 - CELL / 2,
                 listPointerArrowTargetYOffset: 8,
-                firstRow: 0,
-                lastRow: 1,
-                sizeRow: 2,
-                pointerDotRadius: 8,
-                lastArrowTargetYFactor: 0.75
+                topRow: 0,
+                sizeRow: 1,
+                pointerDotRadius: 8
             }),
             pointerBox: Object.freeze({
                 width: POINTER_BOX_WIDTH,
@@ -809,14 +805,14 @@
                 iterator = B.iterator || A.iterator || null;
             }
 
-    		const firstDetourAmount = (A.firstDetourAmount !== undefined || B.firstDetourAmount !== undefined) ? ((A.firstDetourAmount ?? (A.detourFirst ? 1 : 0)) + ((B.firstDetourAmount ?? (B.detourFirst ? 1 : 0)) - (A.firstDetourAmount ?? (A.detourFirst ? 1 : 0))) * t) : B.firstDetourAmount;
+    		const topDetourAmount = (A.topDetourAmount !== undefined || B.topDetourAmount !== undefined) ? ((A.topDetourAmount ?? (A.detourTop ? 1 : 0)) + ((B.topDetourAmount ?? (B.detourTop ? 1 : 0)) - (A.topDetourAmount ?? (A.detourTop ? 1 : 0))) * t) : B.topDetourAmount;
     		return {
     			...B,
     			nodes,
     			pnode,
     			ptrs,
                 iterator,
-    			firstDetourAmount
+    			topDetourAmount
     		}
     	}
     	current() {
@@ -899,7 +895,7 @@
     		c.fillStyle = K.k;
     		c.font = VISUAL.fonts.structLabel;
     		c.textAlign = 'right';
-    		c.fillText('queue', x - VISUAL.struct.listLabelOffsetX, y - VISUAL.struct.listLabelOffsetY);
+    		c.fillText('stack', x - VISUAL.struct.listLabelOffsetX, y - VISUAL.struct.listLabelOffsetY);
     		c.fillStyle = K.p;
     		c.fillRect(x - VISUAL.struct.listPointerBoxOffsetX, y - VISUAL.struct.listPointerBoxOffsetY, w, h);
     		c.fillStyle = K.v;
@@ -907,8 +903,7 @@
     		c.arc(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
     		c.fill();
     		[
-    			['first', K.c, s.firstId],
-    			['last', K.c, s.lastId],
+    			['top', K.c, s.topId],
     			['size', K.g, s.size]
     		].forEach((r, i) => {
     			const yy = y + i * h;
@@ -925,9 +920,7 @@
     				c.textAlign = 'center';
     				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + VISUAL.node.valueBaselineCorrection)
     			} else {
-				const isDanglingStructPointer = r[0] === 'first'
-					? (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined)
-					: (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.lastTargetX !== undefined && s.lastTargetY !== undefined);
+				const isDanglingStructPointer = r[0] === 'top' && (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.topTargetX !== undefined && s.topTargetY !== undefined);
     				c.fillStyle = isDanglingStructPointer ? K.d : K.b;
     				c.beginPath();
     				c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
@@ -945,20 +938,15 @@
     			w = VISUAL.struct.fieldWidth,
     			h = this.cell;
     		this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
-    		const f = this.nodeById(s, s.firstId),
-    			l = this.nodeById(s, s.lastId);
+    		const f = this.nodeById(s, s.topId);
     		if (f) { 
-                const firstAmount = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0); 
-                const firstCol = s.markFirstArrow ? K.r : K.b;
-                if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstCol, VISUAL.stroke.normalWidth, firstAmount); 
-                else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstCol, VISUAL.stroke.normalWidth) 
+                const topAmount = s.topDetourAmount ?? (s.detourTop ? 1 : 0); 
+                const topCol = s.markTopArrow ? K.r : K.b;
+                if (topAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, topCol, VISUAL.stroke.normalWidth, topAmount); 
+                else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, topCol, VISUAL.stroke.normalWidth) 
+            } else if (s.topTargetX !== undefined && s.topTargetY !== undefined) {
+                this.arrow(x + w / 2, y + h / 2, s.topTargetX, s.topTargetY, K.d, VISUAL.stroke.normalWidth);
             }
-    		if (l) {
-    			const targetY = l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor,
-    				lastCol = s.markLastArrow ? K.r : K.b;
-    			if (((s.nodes && s.nodes.length === 1) || s.straightLastArrow) && !s.keepCurvedLastArrow) this.arrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3);
-    			else this.lastArrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3)
-    		}
     	}
     	drawLinks(s) {
 		(s.nodes || []).forEach(n => {
@@ -1095,9 +1083,8 @@ ptr(n) {
             }
         }
     	drawOverlays(s) {
-    		if (s.flashFirst) this.flashStruct(0);
-    		if (s.flashLast) this.flashStruct(1);
-    		if (s.flashSize) this.flashStruct(2);
+    		if (s.flashTop) this.flashStruct(0);
+    		if (s.flashSize) this.flashStruct(1);
     		(s.nodes || []).forEach(n => {
     			if (n.flashNew) this.lShapeFlash(n.x, n.y, this.cell, n.y + VISUAL.node.elementYOffset);
     			if (n.flashNext || s.flashNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, VISUAL.overlay.pNextFlashRadius);
@@ -1251,7 +1238,7 @@ ptr(n) {
     		this.viz = new Viz('cv');
     		this.randomFill();
     		this.ids = this.values.map(_ => nextId++);
-    		this.showCurrent('The queue is initialized with sample elements');
+    		this.showCurrent('The stack is initialized with sample elements');
     		this.updateUI()
     	},
     	baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
@@ -1270,12 +1257,10 @@ ptr(n) {
     			...n
     		}));
     		if (!extra.preserveLinks) relink(nodes);
-            // Queues traditionally don't show indices, enforce removing them
             nodes.forEach(n => n.index = undefined);
     		return {
     			nodes,
-    			firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
-    			lastId: extra.lastId !== undefined ? extra.lastId : (nodes[nodes.length - 1]?.id ?? null),
+    			topId: extra.topId !== undefined ? extra.topId : (nodes[0]?.id ?? null),
     			size: extra.size ?? nodes.length,
     			text,
     			...extra
@@ -1298,7 +1283,7 @@ ptr(n) {
     		});
     		if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift()
     	},
-    	enqueue() {
+    	push() {
     		const e = this.v();
     		if (isNaN(e)) return;
     		this.save();
@@ -1306,235 +1291,120 @@ ptr(n) {
     			oldIds = [...this.ids],
     			oldSize = oldVals.length,
     			newId = nextId++;
-    		const b = this.viz.base();
+    		const b = this.viz.base(),
+    			gap = VISUAL.node.step,
+    			oldTop = oldIds[0] ?? null;
     		let snaps = [];
     		let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-    		snaps.push(this.snapshot('The algorithm starts from the current queue state', oldNodes, {
+    		snaps.push(this.snapshot('The algorithm starts from the current stack state', oldNodes, {
     			size: oldSize
     		}));
-    		let x = b.x + oldSize * (VISUAL.node.step),
-    			y = b.up,
-    			pnode = {
-    				x: x - VISUAL.list.tempPointerXOffset,
-    				y,
-    				target: newId,
-                    label: 'newNode'
-    			};
-    		let newNode = {
-    			id: newId,
-    			e,
-    			x,
-    			y,
-    			next: null,
-    			flashNew: true
-    		};
-    		snaps.push(this.snapshot('A new node is allocated with no successor', [...oldNodes, newNode], {
+    		let shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
+    		snaps.push(this.snapshot('Existing nodes are pushed right to make room for the new top node', shiftedOld, {
     			size: oldSize,
-    			pnode,
-    			firstId: oldIds[0] ?? null,
-    			lastId: oldIds.at(-1) ?? null,
-    			straightLastArrow: oldSize === 1,
-    			preserveLinks: true,
+    			topId: oldTop,
     			pause: true
     		}));
-    		newNode = {
-    			...newNode,
+    		let pnode = {
+    			x: b.x - VISUAL.list.tempPointerXOffset,
+    			y: b.up,
+    			target: newId,
+                label: 'newNode'
+    		};
+    		let newUp = {
+    			id: newId,
+    			e,
+    			x: b.x,
+    			y: b.up,
+    			next: oldTop,
+    			flashNew: true
+    		};
+    		snaps.push(this.snapshot('A new node is allocated and linked to the former top node', [newUp, ...shiftedOld], {
+    			size: oldSize,
+    			pnode,
+    			topId: oldTop,
+    			pause: true
+    		}));
+    		newUp = {
+    			...newUp,
     			flashNew: false
     		};
-    		if (oldSize === 0) {
-    			snaps.push(this.snapshot('The empty queue will make the new node both first and last', [newNode], {
-    				size: 0,
-    				pnode,
-    				firstId: null,
-    				lastId: null,
-    				flashFirst: true,
-    				flashLast: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			let nd = {
-    				...newNode,
-    				y: b.y
-    			};
-    			snaps.push(this.snapshot('The new node becomes both the front and rear node', [nd], {
-    				size: 0,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The stored queue size is about to change', [nd], {
-    				size: 0,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				flashSize: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The queue size increases by one', [nd], {
-    				size: 1,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The temporary reference to the new node is discarded', [nd], {
-    				size: 1,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				flashPNodeCross: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The operation is complete', [nd], {
-    				size: 1,
-    				firstId: newId,
-    				lastId: newId,
-    				preserveLinks: true
-    			}));
-    		} else {
-    			let last = oldNodes[oldNodes.length - 1];
-    			snaps.push(this.snapshot('The algorithm uses the last reference to reach the current rear', [...oldNodes, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				markLastArrow: true,
-    				straightLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The current rear node is ready to link to the new node', [...oldNodes, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				markLastArrow: true,
-    				straightLastArrow: oldSize === 1,
-    				flashNext: last.id,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			let linkedOld = oldNodes.map(n => ({
-    				...n
-    			}));
-    			linkedOld[linkedOld.length - 1].next = newId;
-    			snaps.push(this.snapshot('The former rear node now points to the new node', [...linkedOld, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				markLastArrow: true,
-    				straightLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The link from the former rear node has been established', [...linkedOld, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				straightLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			let nd = {
-    				...newNode,
-    				y: b.y
-    			};
-    			snaps.push(this.snapshot('The new node is placed in its final queue position', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				straightLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The queue is ready to update its last reference', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				flashLast: true,
-    				straightLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The new node becomes the rear node of the queue', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The stored queue size is about to change', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				flashSize: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The queue size increases by one', [...linkedOld, nd], {
-    				size: oldSize + 1,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The temporary reference to the new node is discarded', [...linkedOld, nd], {
-    				size: oldSize + 1,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				flashPNodeCross: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The operation is complete', [...linkedOld, nd], {
-    				size: oldSize + 1,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				preserveLinks: true
-    			}));
-    		}
-    		this.values = [...oldVals, e];
-    		this.ids = [...oldIds, newId];
+    		snaps.push(this.snapshot(oldSize === 0 ? 'The stack is empty, so the new node will become the top' : 'The stack is ready to update its top reference', [newUp, ...shiftedOld], {
+    			size: oldSize,
+    			pnode,
+    			topId: oldTop,
+    			flashTop: true,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The new node becomes the top node of the stack', [newUp, ...shiftedOld], {
+    			size: oldSize,
+    			pnode,
+    			topId: newId,
+    			pause: true
+    		}));
+    		let newDown = {
+    			...newUp,
+    			y: b.y
+    		};
+    		snaps.push(this.snapshot('The new node is placed in its final stack position', [newDown, ...shiftedOld], {
+    			size: oldSize,
+    			pnode,
+    			topId: newId,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The stored stack size is about to change', [newDown, ...shiftedOld], {
+    			size: oldSize,
+    			pnode,
+    			topId: newId,
+    			flashSize: true,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The stack size increases by one', [newDown, ...shiftedOld], {
+    			size: oldSize + 1,
+    			pnode,
+    			topId: newId,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The temporary reference to the new node is discarded', [newDown, ...shiftedOld], {
+    			size: oldSize + 1,
+    			pnode,
+    			topId: newId,
+    			flashPNodeCross: true,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The operation is complete', [newDown, ...shiftedOld], {
+    			size: oldSize + 1,
+    			topId: newId
+    		}));
+    		this.values = [e, ...oldVals];
+    		this.ids = [newId, ...oldIds];
     		this.viz.enqueue(snaps);
     		this.updateUI()
     	},
-    	first() {
+    	getTop() {
     		if (this.values.length === 0) return;
     		const b = this.viz.base();
     		let snaps = [];
     		const nodes = this.baseNodes();
-    		snaps.push(this.snapshot('The algorithm starts from the current queue state', nodes, {
+    		snaps.push(this.snapshot('The algorithm starts from the current stack state', nodes, {
     			size: this.values.length
     		}));
 
-            const firstId = this.ids[0];
-            snaps.push(this.snapshot('The algorithm uses queue.first to access the front node directly', nodes, {
+            const topId = this.ids[0];
+            snaps.push(this.snapshot('The algorithm uses stack.top to access the top node directly', nodes, {
                 size: this.values.length,
-                markFirstArrow: true,
+                markTopArrow: true,
                 pause: true
             }));
 
-            let found = nodes.map(n => n.id === firstId ? {
+            let found = nodes.map(n => n.id === topId ? {
                 ...n,
                 flashElement: true
             } : n);
 
-            snaps.push(this.snapshot('The target element has been accessed: first() = ' + this.values[0], found, {
+            snaps.push(this.snapshot('The target element has been accessed: peek() = ' + this.values[0], found, {
                 size: this.values.length,
-                markFirstArrow: true,
+                markTopArrow: true,
                 pause: true
             }));
 
@@ -1545,7 +1415,7 @@ ptr(n) {
     		this.viz.enqueue(snaps);
     		this.updateUI()
     	},
-dequeue() {
+pop() {
     if (this.values.length === 0) return;
 
     this.save();
@@ -1555,61 +1425,42 @@ dequeue() {
     const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
 
     snaps.push(this.snapshot(
-        'The algorithm starts from the current queue state',
+        'The algorithm starts from the current stack state',
         oldNodes,
         { size: oldSize }
     ));
 
     let curId = oldIds[0];
-    let currentNext = oldIds[1] ?? null;
-    let firstAfterLink = currentNext;
-    let lastAfterLink = oldIds.at(-1);
+    let topAfterLink = oldIds[1] ?? null;
 
     let linkedNodes = oldNodes.map(n => ({ ...n }));
 
+    const needsDetour = topAfterLink !== null;
+
     snaps.push(this.snapshot(
-        'queue.first is updated to the node after the removed node',
+        'stack.top is updated to the node after the removed node',
         linkedNodes,
         {
             size: oldSize,
-            firstId: firstAfterLink,
-            lastId: lastAfterLink,
-			flashFirst: true,
-            detourFirst: true,
-            firstDetourAmount: 1,
+            topId: topAfterLink,
+			flashTop: true,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : 0,
             preserveLinks: true,
             pause: true
         }
     ));
 
-    if (oldSize === 1) {
-        lastAfterLink = null;
-        snaps.push(this.snapshot(
-            'The removed node was the only node, so queue.last must change to null',
-            linkedNodes,
-            {
-                size: oldSize,
-                firstId: firstAfterLink,
-                lastId: lastAfterLink,
-                flashLast: true,
-                preserveLinks: true,
-                pause: true
-            }
-        ));
-    }
-
     let listSized = linkedNodes.map(n => ({ ...n }));
     snaps.push(this.snapshot(
-        'The queue size decreases by one',
+        'The stack size decreases by one',
         listSized,
         {
             size: oldSize - 1,
-            firstId: firstAfterLink,
-            lastId: lastAfterLink,
+            topId: topAfterLink,
             flashSize: true,
-            detourFirst: true,
-            firstDetourAmount: 1,
-            keepCurvedLastArrow: oldSize === 1,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : 0,
             preserveLinks: true,
             pause: true
         }
@@ -1620,11 +1471,9 @@ dequeue() {
         listSized,
         {
             size: oldSize - 1,
-            firstId: firstAfterLink,
-            lastId: lastAfterLink,
-            detourFirst: true,
-            firstDetourAmount: 1,
-            keepCurvedLastArrow: oldSize === 1,
+            topId: topAfterLink,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : 0,
             preserveLinks: true,
             pause: true
         }
@@ -1639,11 +1488,9 @@ dequeue() {
         crossNodes,
         {
             size: oldSize - 1,
-            firstId: firstAfterLink,
-            lastId: lastAfterLink,
-            detourFirst: true,
-            firstDetourAmount: 1,
-            keepCurvedLastArrow: oldSize === 1,
+            topId: topAfterLink,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : undefined,
             preserveLinks: true,
             pause: true
         }
@@ -1658,11 +1505,23 @@ dequeue() {
         freedGoneNodes,
         {
             size: oldSize - 1,
-            firstId: firstAfterLink,
-            lastId: lastAfterLink,
-            detourFirst: true,
-            firstDetourAmount: 0,
-            keepCurvedLastArrow: oldSize === 1,
+            topId: topAfterLink,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : undefined,
+            preserveLinks: true,
+            pause: true
+        }
+    ));
+
+    let straightNodes = freedGoneNodes.map(n => ({ ...n }));
+    snaps.push(this.snapshot(
+        'The top reference settles into its final shape',
+        straightNodes,
+        {
+            size: oldSize - 1,
+            topId: topAfterLink,
+            detourTop: needsDetour,
+            topDetourAmount: 0,
             preserveLinks: true,
             pause: true
         }
@@ -1673,12 +1532,11 @@ dequeue() {
     const compactNodes = this.baseNodes(newVals, newIds, 0, b.y);
 
     snaps.push(this.snapshot(
-        'The remaining nodes shift to the front of the queue',
+        'The remaining nodes shift up the stack',
         compactNodes,
         {
             size: oldSize - 1,
-            firstId: firstAfterLink,
-            lastId: lastAfterLink,
+            topId: topAfterLink,
             preserveLinks: true,
             pause: true
         }
@@ -1689,8 +1547,7 @@ dequeue() {
         compactNodes,
         {
             size: oldSize - 1,
-            firstId: firstAfterLink,
-            lastId: lastAfterLink,
+            topId: topAfterLink,
             preserveLinks: true
         }
     ));
@@ -1700,7 +1557,6 @@ dequeue() {
     this.viz.enqueue(snaps);
     this.updateUI();
 },
-
     iterate() {
         this.save();
         const oldVals = [...this.values];
@@ -1710,7 +1566,7 @@ dequeue() {
         const nodes = this.baseNodes(oldVals, oldIds);
         let snaps = [];
         
-        snaps.push(this.snapshot('The algorithm starts from the current queue state', nodes, { size: oldSize }));
+        snaps.push(this.snapshot('The algorithm starts from the current stack state', nodes, { size: oldSize }));
         
         if (oldSize === 0) {
             const nullX = b.x + VISUAL.node.step - VISUAL.list.nullPointerXOffset;
@@ -1773,7 +1629,7 @@ dequeue() {
     		this.save();
     		this.values = [];
     		this.ids = [];
-    		this.showCurrent('A new empty queue has been created');
+    		this.showCurrent('A new empty stack has been created');
     		this.updateUI()
     	},
     	random() {
@@ -1781,7 +1637,7 @@ dequeue() {
     		this.values = [];
     		this.randomFill();
     		this.ids = this.values.map(_ => nextId++);
-    		this.showCurrent('A random sample queue has been created');
+    		this.showCurrent('A random sample stack has been created');
     		this.updateUI()
     	},
     	clear() {
@@ -1789,34 +1645,33 @@ dequeue() {
     		const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
     		const b = this.viz.base();
     		const originalNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-    		let snaps = [this.snapshot('The algorithm starts from the current queue state', originalNodes, { firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, size: oldSize })];
+    		let snaps = [this.snapshot('The algorithm starts from the current stack state', originalNodes, { topId: oldIds[0] ?? null, size: oldSize })];
 
     		if (oldSize === 0) {
-    			snaps.push(this.snapshot('The queue is already empty', originalNodes, { firstId: null, lastId: null, size: 0, pause: true }));
+    			snaps.push(this.snapshot('The stack is already empty', originalNodes, { topId: null, size: 0, pause: true }));
     			this.viz.enqueue(snaps);
     			this.updateUI();
     			return
     		}
 
-    		snaps.push(this.snapshot('queue.first is set to null', originalNodes, { firstId: null, lastId: oldIds.at(-1), size: oldSize, flashFirst: true, pause: true }));
-    		snaps.push(this.snapshot('queue.last is set to null', originalNodes, { firstId: null, lastId: null, size: oldSize, flashLast: true, pause: true }));
-    		snaps.push(this.snapshot('queue.size is set to 0', originalNodes, { firstId: null, lastId: null, size: 0, flashSize: true, pause: true }));
+    		snaps.push(this.snapshot('stack.top is set to null', originalNodes, { topId: null, size: oldSize, flashTop: true, pause: true }));
+    		snaps.push(this.snapshot('stack.size is set to 0', originalNodes, { topId: null, size: 0, flashSize: true, pause: true }));
 
     		let currentNodes = originalNodes.map(n => ({...n}));
     		for (let k = 0; k < oldSize; k++) {
     			const curId = oldIds[k];
     			const crossNodes = currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
     			const msgUnreachable = k === 0 
-                    ? 'Without references pointing to it, the first node becomes unreachable' 
+                    ? 'Without references pointing to it, the top node becomes unreachable' 
                     : 'As the previous node is collected, the next node loses its only incoming reference and becomes unreachable';
     			
-                snaps.push(this.snapshot(msgUnreachable, crossNodes, { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
+                snaps.push(this.snapshot(msgUnreachable, crossNodes, { topId: null, size: 0, preserveLinks: true, pause: true }));
     			
     			currentNodes = currentNodes.filter(n => n.id !== curId);
-    			snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', currentNodes, { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
+    			snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', currentNodes, { topId: null, size: 0, preserveLinks: true, pause: true }));
     		}
 
-    		snaps.push(this.snapshot('The operation is complete', [], { firstId: null, lastId: null, size: 0 }));
+    		snaps.push(this.snapshot('The operation is complete', [], { topId: null, size: 0 }));
 
     		this.values = [];
     		this.ids = [];
@@ -1828,7 +1683,7 @@ dequeue() {
     		const h = this.history.pop();
     		this.values = h.values;
     		this.ids = h.ids;
-    		this.showCurrent('The previous queue state has been restored');
+    		this.showCurrent('The previous stack state has been restored');
     		this.updateUI()
     	},
     	speed() {
