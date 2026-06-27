@@ -254,6 +254,7 @@
                     <button class="red"
                     onclick="app.del()" title="Delete the element from the set." aria-label="Delete the element from the set.">Delete</button>
                     <button class="purple" onclick="app.contains()" title="Check if the element is in the set." aria-label="Check if the element is in the set.">Contains</button>
+                    <button class="purple" onclick="app.iterate()" title="Iterate over the elements using an Iterator." aria-label="Iterate over the elements using an Iterator.">Iterate</button>
                 <div class="sep"></div>
 					<button class="orange" onclick="app.newList()" title="Create a new empty set." aria-label="Create a new empty set.">Empty</button>
                     <button class="gray" onclick="app.clear()" title="Clear the set." aria-label="Clear the set.">Clear</button>
@@ -291,6 +292,7 @@
                 <li><strong>Insert</strong>: searches using Finder and adds a new node if it doesn't exist. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Delete</strong>: searches using Finder and removes the node if it exists. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Contains</strong>: runs Finder and returns the <span class="code">found</span> field. Complexity: <span class="code">O(n)</span>.</li>
+                <li><strong>Iterate</strong>: creates an iterator whose <span class="code">current</span> reference visits each node in sorted order. Complexity: <span class="code">O(n)</span> for visiting all elements.</li>
             </ul>
         </div>
     </div>
@@ -394,7 +396,9 @@
             fonts: Object.freeze({
                 value: '30px Arial',
                 structValue: '32px Arial',
-                structLabel: '28px monospace'
+                structLabel: '28px monospace',
+                pointerLabel: '24px monospace',
+                auxPointerLabel: '22px monospace'
             }),
             overlay: Object.freeze({
                 nodeFlashExpansion: 16,
@@ -557,6 +561,12 @@
                 b.maxX = Math.max(b.maxX, s.finder.x + 100);
                 b.maxY = Math.max(b.maxY, s.finder.y + 250);
             }
+            if (s.iterator) {
+                b.minX = Math.min(b.minX, s.iterator.x - 130);
+                b.maxX = Math.max(b.maxX, s.iterator.x + 90);
+                b.minY = Math.min(b.minY, s.iterator.y - 130);
+                b.maxY = Math.max(b.maxY, s.iterator.y + 90);
+            }
     		return b
     	}
     	fit(snaps) {
@@ -641,9 +651,15 @@
             } else {
                 finder = B.finder || A.finder || null;
             }
+            let iterator = null;
+            if (A.iterator && B.iterator) {
+                iterator = { ...B.iterator, x: A.iterator.x + (B.iterator.x - A.iterator.x) * t, y: A.iterator.y + (B.iterator.y - A.iterator.y) * t };
+            } else {
+                iterator = B.iterator || A.iterator || null;
+            }
 
     		const firstDetourAmount = (A.firstDetourAmount !== undefined || B.firstDetourAmount !== undefined) ? ((A.firstDetourAmount ?? (A.detourFirst ? 1 : 0)) + ((B.firstDetourAmount ?? (B.detourFirst ? 1 : 0)) - (A.firstDetourAmount ?? (A.detourFirst ? 1 : 0))) * t) : B.firstDetourAmount;
-    		return { ...B, nodes, finder, firstDetourAmount }
+    		return { ...B, nodes, finder, iterator, firstDetourAmount }
     	}
     	current() {
     		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
@@ -665,6 +681,7 @@
     		this.drawStructArrows(s);
     		this.drawLinks(s);
             this.drawFinder(s);
+            if (s.iterator) this.drawIterator(s);
     		this.drawOverlays(s);
     		c.restore()
     	}
@@ -804,6 +821,52 @@
             }
         }
         
+        drawIterator(s) {
+            const it = s.iterator;
+            if (!it) return;
+            const c = this.ctx;
+            const w = VISUAL.pointerBox.width;
+            const h = VISUAL.pointerBox.height;
+            const cx = it.x;
+            const cy = it.y;
+            const ix = cx - 85;
+            const iy = cy - 60;
+            const dotR = VISUAL.struct.pointerDotRadius;
+            c.save();
+            // Purple box: external iterator reference
+            c.fillStyle = K.k;
+            c.font = VISUAL.fonts.pointerLabel;
+            c.textAlign = 'right';
+            c.textBaseline = 'alphabetic';
+            c.fillText('iterator', ix - 10, iy + 40);
+            c.fillStyle = K.p;
+            c.fillRect(ix, iy, w, h);
+            c.fillStyle = K.v;
+            c.beginPath();
+            c.arc(ix + w / 2, iy + h / 2, dotR, 0, Math.PI * 2);
+            c.fill();
+            // Cyan box: SortedLinkedSetIterator object, represented by its current field
+            c.fillStyle = K.k;
+            c.font = VISUAL.fonts.pointerLabel;
+            c.textAlign = 'center';
+            c.fillText('current', cx + w / 2, cy - 10);
+            c.fillStyle = K.c;
+            c.fillRect(cx, cy, w, h);
+            c.fillStyle = K.b;
+            c.beginPath();
+            c.arc(cx + w / 2, cy + h / 2, dotR, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+            // Arrow from the iterator reference to the iterator object
+            this.arrow(ix + w / 2, iy + h / 2, cx, cy + h / 2, K.v, VISUAL.stroke.normalWidth);
+            // If current is null, the null reference is represented by the dot inside the current box.
+            // Otherwise, current points to the target node.
+            const target = this.nodeById(s, it.target);
+            if (target) {
+                this.arrow(cx + w / 2, cy + h / 2, target.x, target.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth);
+            }
+        }
+
     	drawOverlays(s) {
     		if (s.flashFirst) this.flashStruct(0);
     		if (s.flashSize) this.flashStruct(1);
@@ -1090,6 +1153,52 @@
             this.updateUI();
         },
 
+        iterate() {
+            const oldVals = [...this.values];
+            const oldIds = [...this.ids];
+            const oldSize = oldVals.length;
+            const b = this.viz.base();
+            const nodes = this.baseNodes(oldVals, oldIds);
+            let snaps = [];
+            snaps.push(this.snapshot('The algorithm starts from the current sorted set state', nodes, { size: oldSize }));
+            if (oldSize === 0) {
+                const nullX = b.x + VISUAL.node.step - VISUAL.list.nullPointerXOffset;
+                const nullY = b.y - 150;
+                const iterator = { target: null, x: nullX, y: nullY };
+                snaps.push(this.snapshot('SortedLinkedSetIterator after initialization: current points to null', nodes, { size: oldSize, iterator, pause: true }));
+                snaps.push(this.snapshot('Iteration complete: hasNext() is false', nodes, { size: oldSize, iterator, pause: true }));
+                snaps.push(this.snapshot('The operation is complete', nodes, { size: oldSize }));
+                this.viz.enqueue(snaps);
+                this.updateUI();
+                return;
+            }
+            const ordinals = ['first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'];
+            let curId = oldIds[0];
+            let currentNode = nodes.find(n => n.id === curId);
+            let iteratorY = b.y - 150;
+            let iterator = { target: curId, x: currentNode.x - 100, y: iteratorY };
+            snaps.push(this.snapshot('SortedLinkedSetIterator after initialization: current points to the first node', nodes, { size: oldSize, iterator, pause: true }));
+            for (let k = 0; k < oldSize; k++) {
+                const nextCurId = oldIds[k + 1] ?? null;
+                const nextNode = nodes.find(n => n.id === nextCurId);
+                const nextX = nextNode ? nextNode.x - 100 : b.x + oldSize * VISUAL.node.step - VISUAL.list.nullPointerXOffset;
+                const nextIterator = {
+                    target: nextCurId,
+                    x: nextX,
+                    y: iteratorY
+                };
+                const ordinal = k < ordinals.length ? ordinals[k] : `${k + 1}th`;
+                const highlightedNodes = nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n);
+                snaps.push(this.snapshot(`Returning ${ordinal} element in sorted order: ${oldVals[k]}`, highlightedNodes, { size: oldSize, iterator, pause: true }));
+                snaps.push(this.snapshot('Advance iterator.current to the next node', nodes, { size: oldSize, iterator: nextIterator, pause: true }));
+                iterator = nextIterator;
+                curId = nextCurId;
+            }
+            snaps.push(this.snapshot('Iteration complete: current is null, hasNext() is false', nodes, { size: oldSize, iterator, pause: true }));
+            snaps.push(this.snapshot('The operation is complete', nodes, { size: oldSize }));
+            this.viz.enqueue(snaps);
+            this.updateUI();
+        },
 		randomFill() {
     		this.values = [];
 			let sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
