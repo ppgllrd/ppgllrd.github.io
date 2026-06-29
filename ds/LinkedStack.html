@@ -1,6 +1,5 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -241,1495 +240,916 @@
         }
     </style>
 </head>
-
 <body>
     <header>
-        <div class="top">
-            <h1>LinkedStack Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
-        </div>
+        <div class="top"><h1>LinkedStack Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button></div>
         <div class="gui">
-            <div class="controls"><label>Element <input id="val" type="number" placeholder="#"
-                        onkeydown="if(event.key==='Enter')app.push()"></label><button class="green"
-                    onclick="app.push()" title="Push the element onto the top of the stack." aria-label="Push the element onto the top of the stack.">Push</button>
-                    <button class="red"
-                    onclick="app.pop()" title="Pop (remove) the top element of the stack." aria-label="Pop (remove) the top element of the stack.">Pop</button>
-                    <button class="purple" onclick="app.getTop()" title="Get the top element of the stack without removing it." aria-label="Get the top element of the stack without removing it.">Top</button>
-                <div class="sep"></div>
-					<button class="orange" onclick="app.newList()" title="Create a new empty stack." aria-label="Create a new empty stack.">Empty</button>
-										<button class="gray" onclick="app.clear()" title="Clear the stack." aria-label="Clear the stack.">Clear</button>
-				<div class="sep"></div>
-					<button class="orange"
-                    onclick="app.random()" title="Build a random sample stack." aria-label="Build a random sample stack.">Build Random</button>
-                <div class="sep"></div>
-				<button class="purple" onclick="app.undo()" id="btnUndo"
-                    disabled title="Undo the last operation that modified the stack." aria-label="Undo the last operation that modified the stack.">Undo</button>
-					
-            </div>
-            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1"
-                    oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button></div>
+            <div class="controls"><label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.push()"></label><button class="green" onclick="app.push()" title="Push the element onto the top of the stack." aria-label="Push the element onto the top of the stack.">Push</button><button class="red" onclick="app.pop()" title="Pop (remove) the top element of the stack." aria-label="Pop (remove) the top element of the stack.">Pop</button><button class="purple" onclick="app.getTop()" title="Get the top element of the stack without removing it." aria-label="Get the top element of the stack without removing it.">Top</button><div class="sep"></div><button class="orange" onclick="app.newList()" title="Create a new empty stack." aria-label="Create a new empty stack.">Empty</button><button class="gray" onclick="app.clear()" title="Clear the stack." aria-label="Clear the stack.">Clear</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sample stack." aria-label="Build a random sample stack.">Build Random</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the stack." aria-label="Undo the last operation that modified the stack.">Undo</button></div>
+            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button></div>
         </div>
         <div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span></div>
     </header>
-    <div id="wrap"><canvas id="cv"></canvas>
-        <div id="legend">
-            <div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div>
-            <div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div>
-            <div class="li"><span class="sw" style="background:#c78cff"></span>stack reference</div>
-            <div class="li"><span class="dot"></span>null reference</div>
-        </div>
-    </div>
+    <div id="wrap"><canvas id="cv"></canvas><div id="legend"><div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div><div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div><div class="li"><span class="sw" style="background:#c78cff"></span>stack reference</div><div class="li"><span class="dot"></span>null reference</div></div></div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
-    <div id="helpModal" class="modal">
-        <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
-            <h2>LinkedStack</h2>
-            <p>A <strong>LinkedStack</strong> stores a sequence of elements using a Last-In-First-Out (LIFO) policy as nodes connected by references. Each node contains an <span class="code">element</span> reference that points to the stored object, and a <span class="code">next</span> reference that points to the next node, or to <span class="code">null</span> when there is no next node.</p>
-            <p>The stack object keeps two pieces of information: <span class="code">top</span>, a reference to the topmost node; and <span class="code">size</span>, the number of elements currently stored. In a stack, elements are always inserted and removed from the <span class="code">top</span>.</p>
-            <h3>Operations and asymptotic complexity</h3>
-            <ul>
-                <li><strong>Push</strong>: adds a new node at the top. Complexity: <span class="code">O(1)</span>, because the algorithm updates <span class="code">top</span> directly.</li>
-                <li><strong>Pop</strong>: removes the node at the top. Complexity: <span class="code">O(1)</span>, because the algorithm updates <span class="code">top</span>.</li>
-                <li><strong>Top</strong>: reads the element at the top without removing it. Complexity: <span class="code">O(1)</span>.</li>
-            </ul>
-            <p>The visualization shows how links and temporary references change while each algorithm progresses, including how the Java Garbage Collector frees nodes that become unreachable.</p>
-        </div>
-    </div>
+    <div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>LinkedStack</h2><p>A <strong>LinkedStack</strong> stores elements using a Last-In-First-Out (LIFO) policy as nodes connected by references.</p><p>The stack object keeps two fields: <span class="code">top</span> and <span class="code">size</span>. All insertions and removals happen at <span class="code">top</span>.</p><h3>Operations and asymptotic complexity</h3><ul><li><strong>Push</strong>: adds a new node at the top. Complexity: <span class="code">O(1)</span>.</li><li><strong>Pop</strong>: removes the node at the top. Complexity: <span class="code">O(1)</span>.</li><li><strong>Top</strong>: reads the top element without removing it. Complexity: <span class="code">O(1)</span>.</li></ul></div></div>
     <script>
-    const K = {
-    	b: '#1565c0',
-    	c: '#91f4f4',
-    	g: '#b6f8b6',
-    	r: '#e60000',
-    	p: '#c78cff',
-    	v: '#8d35c9',
-		d: '#EF6C00',
-    	k: '#111'
-    };
+'use strict';
 
-    const VISUAL = (() => {
-        const CELL = 58;
-        const NODE_WIDTH = CELL * 2;
-        const NODE_GAP = CELL;
-        const NODE_STEP = NODE_WIDTH + NODE_GAP;
-        const STRUCT_X = 205;
-        const STRUCT_Y = 250;
-        const STRUCT_FIELD_WIDTH = 58;
-        const POINTER_BOX_WIDTH = 60;
-        const POINTER_BOX_HEIGHT = CELL;
-        const POINTER_CENTER_X = POINTER_BOX_WIDTH / 2;
-        const POINTER_CENTER_Y = POINTER_BOX_HEIGHT / 2;
-        return Object.freeze({
-            node: Object.freeze({
-                cell: CELL,
-                width: NODE_WIDTH,
-                gap: NODE_GAP,
-                step: NODE_STEP,
-                elementCellIndex: 0,
-                pointerCellIndex: 1,
-                pointerDotRadius: 7.5,
-                indexLabelOffsetX: 4,
-                indexLabelOffsetY: 12,
-                elementYOffset: -85,
-                valueBaselineCorrection: 2,
-                flashPadding: 8,
-                elementFlashPadding: 1
+const K = {
+    b: '#1565c0',
+    c: '#91f4f4',
+    g: '#b6f8b6',
+    r: '#e60000',
+    p: '#c78cff',
+    v: '#8d35c9',
+    d: '#EF6C00',
+    k: '#111'
+};
+const LAYER = Object.freeze({
+    background: 0,
+    box: 10,
+    arrow: 20,
+    dot: 30,
+    text: 40,
+    overlay: 100
+});
+
+const VISUAL = (() => {
+    const CELL = 60;
+    const NODE_WIDTH = CELL * 2;
+    const NODE_GAP = CELL;
+    const STRUCT_X = 205;
+    const STRUCT_Y = 250;
+    const POINTER_BOX_WIDTH = CELL;
+    const POINTER_BOX_HEIGHT = CELL;
+    const BOX_TRANSPARENT_BORDER = 1;
+    return Object.freeze({
+        node: Object.freeze({
+            cell: CELL,
+            width: NODE_WIDTH,
+            step: NODE_WIDTH + NODE_GAP,
+            elementYOffset: -85
+        }),
+        list: Object.freeze({
+            originX: 360,
+            tempNodeYOffset: 160,
+            tempPointerXOffset: 100,
+            insertPointerXOffset: 120,
+            pointerTraversalYOffset: 190,
+            pointerTraversalLevelGap: 0,
+            pointerFallbackXOffset: 200,
+            nullPointerXOffset: 50
+        }),
+        struct: Object.freeze({
+            x: STRUCT_X,
+            y: STRUCT_Y
+        }),
+        pointerBox: Object.freeze({
+            width: POINTER_BOX_WIDTH,
+            height: POINTER_BOX_HEIGHT,
+            auxTargetXOffset: CELL,
+            transparentBorder: BOX_TRANSPARENT_BORDER
+        }),
+        stroke: Object.freeze({
+            detourOffset: 46
+        }),
+        fonts: Object.freeze({
+            value: '30px Arial',
+            structValue: '32px Arial',
+            structLabel: '28px monospace',
+            index: '25px monospace',
+            pointerLabel: '24px monospace',
+            auxPointerLabel: '22px monospace'
+        }),
+        random: Object.freeze({
+            minSize: 2,
+            sizeRange: 4,
+            minValue: 1,
+            valueRange: 9,
+            sortedProbability: 0.33
+        }),
+        undo: Object.freeze({
+            maxHistoryEntries: 30
+        }),
+        layers: Object.freeze({
+            // Complete groups that must travel behind the data structure can use
+            // these layers. They are all strictly below LAYER.box, while still
+            // preserving the internal visual order: arrow < box < dot < text.
+            underBox: Object.freeze({
+                box: LAYER.box - 4,
+                dot: LAYER.box - 3,
+                text: LAYER.box - 2,
+                arrow: LAYER.box - 1
             }),
-            list: Object.freeze({
-                originX: 360,
-                originY: STRUCT_Y,
-                tempY: 110,
-                tempNodeYOffset: 160,
-                tempPointerXOffset: 100,
-                insertPointerXOffset: 120,
-                pointerTraversalYOffset: 190,
-                pointerTraversalLevelGap: 0,
-                pointerFallbackXOffset: 200,
-                toDeleteXOffsetFromCurrent: 165,
-                nullPointerXOffset: 50,
-                nullPointerFallbackXOffset: 220
+            overArrow: Object.freeze({
+                box: LAYER.arrow + 1,
+                dot: LAYER.arrow + 2,
+                text: LAYER.arrow + 3,
+                arrow: LAYER.arrow + 4
             }),
-            struct: Object.freeze({
-                x: STRUCT_X,
-                y: STRUCT_Y,
-                fieldWidth: STRUCT_FIELD_WIDTH,
-                rowHeightFactor: 0.95,
-                labelOffsetX: 16,
-                listLabelOffsetX: 130,
-                listLabelOffsetY: 40,
-                listPointerBoxOffsetX: 125,
-                listPointerBoxOffsetY: 79, // Adjusted for 2-row struct
-                listPointerDotOffsetX: 125 - CELL / 2,
-                listPointerDotOffsetY: 79 - CELL / 2,
-                listPointerArrowTargetYOffset: 8,
-                topRow: 0,
-                sizeRow: 1,
-                pointerDotRadius: 8
-            }),
-            pointerBox: Object.freeze({
-                width: POINTER_BOX_WIDTH,
-                height: POINTER_BOX_HEIGHT,
-                centerX: POINTER_CENTER_X,
-                centerY: POINTER_CENTER_Y,
-                dotRadius: 8,
-                labelOffsetX: 12,
-                labelBaselineOffsetY: 40,
-                auxLabelYOffset: 10,
-                auxTargetXOffset: 60
-            }),
-            bounds: Object.freeze({
-                defaultMinX: 20,
-                defaultMinY: 35,
-                defaultMaxX: 760,
-                defaultMaxY: 560,
-                nodeLeftPadding: 170,
-                nodeRightPadding: 230,
-                nodeTopPadding: 200,
-                nodeBottomPadding: 210,
-                pnodeLeftPadding: 30,
-                pnodeRightPadding: 220,
-                pnodeTopPadding: 40,
-                pnodeBottomPadding: 120,
-                pointerLeftPadding: 80,
-                pointerRightPadding: 120,
-                pointerTopPadding: 50,
-                pointerBottomPadding: 100,
-                fitPadding: 150
-            }),
-            camera: Object.freeze({
-                minScale: 0.2,
-                maxScale: 5,
-                defaultMaxFitScale: 1.25,
-                wheelSensitivity: 0.001,
-                smoothingFactor: 10,
-                snapDistance: 5,
-                snapScaleDelta: 0.01
-            }),
-            animation: Object.freeze({
-                maxFrameDeltaSeconds: 0.1,
-                morphSpeed: 2.5,
-                waitSeconds: 0.75,
-                deleteFadeCutoff: 0.85,
-                flashMinAlpha: 0.3,
-                flashMaxAlphaDelta: 0.7,
-                flashPeriodMs: 110
-            }),
-            stroke: Object.freeze({
-                normalWidth: 3,
-                flashWidth: 5,
-                crossWidth: 6,
-                arrowHeadLength: 17,
-                arrowHeadHalfAngle: Math.PI / 6,
-                detourOffset: 46,
-                lastArrowHorizontalOffset: 24,
-                detourThreshold: 0.001
-            }),
-            fonts: Object.freeze({
-                value: '30px Arial',
-                structValue: '32px Arial',
-                structLabel: '28px monospace',
-                index: '25px monospace',
-                pointerLabel: '24px monospace',
-                auxPointerLabel: '22px monospace'
-            }),
-            overlay: Object.freeze({
-                nodeFlashExpansion: 16,
-                elementFlashExpansion: 2,
-                nodeFlashCornerRadius: 8,
-                structFlashRadius: 28,
-                pNextFlashRadius: 29,
-                pointerFlashRadius: 28,
-                crossExpansion: 7
-            }),
-            random: Object.freeze({
-                minSize: 2,
-                sizeRange: 4,
-                minValue: 1,
-                valueRange: 9,
-                sortedProbability: 0.25
-            }),
-            undo: Object.freeze({ maxHistoryEntries: 30 })
+
+        })
+    });
+})();
+let nextId = 0;
+class VisualizationEngine {
+    constructor({
+        canvasId,
+        wrapId,
+        statusId,
+        onHit = null,
+        options = {}
+    }) {
+        this.cv = document.getElementById(canvasId);
+        this.ctx = this.cv.getContext('2d');
+        this.wrap = document.getElementById(wrapId);
+        this.statusEl = document.getElementById(statusId);
+        this.onHit = onHit;
+        this.options = Object.assign({
+            minScale: .2,
+            maxScale: 5,
+            maxFitScale: 1.22,
+            wheelSensitivity: .001,
+            cameraSmoothing: 10,
+            cameraSnapPx: 5,
+            cameraSnapScale: .01,
+            maxFrameDelta: .1,
+            morphSpeed: 2.5,
+            waitSeconds: .75,
+            fadeCutoff: .95,
+            fitPadding: 150,
+            worldFallback: {
+                minX: 20,
+                minY: 35,
+                maxX: 760,
+                maxY: 470
+            }
+        }, options);
+
+        this.cam = {
+            scale: 1,
+            targetScale: 1,
+            x: 0,
+            targetX: 0,
+            y: 0,
+            targetY: 0
+        };
+        this.scenes = [];
+        this.pending = [];
+        this.idx = -1;
+        this.state = 'IDLE';
+        this.t = 0;
+        this.wait = 0;
+        this.speedFactor = 1;
+        this.paused = false;
+        this.last = 0;
+        this.drag = false;
+        this.hitObjects = [];
+
+        this.resize();
+        window.addEventListener('resize', () => this.resize());
+        this.cv.addEventListener('wheel', e => this.wheel(e), {
+            passive: false
         });
-    })();
-    let nextId = 0;
-    class Viz {
-    	constructor(id) {
-    		this.cv = document.getElementById(id);
-    		this.ctx = this.cv.getContext('2d');
-    		this.cam = {
-    			scale: 1,
-    			targetScale: 1,
-    			x: 0,
-    			targetX: 0,
-    			y: 0,
-    			targetY: 0
-    		};
-    		this.sn = [];
-    		this.pending = [];
-    		this.idx = -1;
-    		this.state = 'IDLE';
-    		this.t = 0;
-    		this.speedFactor = 1;
-    		this.paused = false;
-    		this.last = 0;
-    		this.cell = VISUAL.node.cell;
-    		this.nodeW = VISUAL.node.width;
-    		this.gap = VISUAL.node.gap;
-    		this.lastNodes = [];
-    		this.resize();
-    		window.addEventListener('resize', () => this.resize());
-    		this.cv.addEventListener('wheel', e => this.wheel(e), {
-    			passive: false
-    		});
-    		this.cv.addEventListener('mousedown', e => this.down(e));
-    		this.cv.addEventListener('mousemove', e => this.move(e));
-    		this.cv.addEventListener('mouseup', () => this.up());
-    		this.cv.addEventListener('mouseleave', () => this.up());
-    		this.cv.addEventListener('touchstart', e => this.ts(e), {
-    			passive: false
-    		});
-    		this.cv.addEventListener('touchmove', e => this.tm(e), {
-    			passive: false
-    		});
-    		this.cv.addEventListener('touchend', () => this.up());
-    		requestAnimationFrame(t => this.loop(t))
-    	}
-    	base() {
-    		return {
-    			x: VISUAL.list.originX,
-    			y: VISUAL.list.originY,
-    			up: VISUAL.list.tempY
-    		}
-    	}
-    	resize() {
-    		const w = document.getElementById('wrap');
-    		this.cv.width = w.offsetWidth;
-    		this.cv.height = w.offsetHeight;
-    		if (this.sn.length) {
-    			this.fit([this.sn[Math.max(this.idx, 0)]]);
-    			this.cam.scale = this.cam.targetScale;
-    			this.cam.x = this.cam.targetX;
-    			this.cam.y = this.cam.targetY
-    		}
-    	}
-    	screenToWorld(x, y) {
-    		return {
-    			x: (x - this.cam.x) / this.cam.scale,
-    			y: (y - this.cam.y) / this.cam.scale
-    		}
-    	}
-    	wheel(e) {
-    		e.preventDefault();
-    		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
-    		let ns = this.cam.targetScale * (1 - e.deltaY * VISUAL.camera.wheelSensitivity);
-    		ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, ns));
-    		const wx = (x - this.cam.targetX) / this.cam.targetScale,
-    			wy = (y - this.cam.targetY) / this.cam.targetScale;
-    		this.cam.targetScale = ns;
-    		this.cam.targetX = x - wx * ns;
-    		this.cam.targetY = y - wy * ns
-    	}
-    	down(e) {
-    		const r = this.cv.getBoundingClientRect(),
-    			sx = e.clientX - r.left,
-    			sy = e.clientY - r.top,
-    			w = this.screenToWorld(sx, sy);
-    		for (const n of this.lastNodes) {
-    			if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y + VISUAL.node.elementYOffset && w.y <= n.y + this.cell) {
-    				document.getElementById('val').value = n.e;
-    				return
-    			}
-    		}
-    		this.drag = true;
-    		this.start = {
-    			x: sx,
-    			y: sy
-    		};
-    		this.c0 = {
-    			x: this.cam.targetX,
-    			y: this.cam.targetY
-    		};
-    		this.cv.style.cursor = 'grabbing'
-    	}
-    	move(e) {
-    		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
-    		if (this.drag) {
-    			this.cam.targetX = this.c0.x + x - this.start.x;
-    			this.cam.targetY = this.c0.y + y - this.start.y;
-    			return
-    		}
-    		const w = this.screenToWorld(x, y);
-    		this.cv.style.cursor = this.lastNodes.some(n => w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y + VISUAL.node.elementYOffset && w.y <= n.y + this.cell) ? 'pointer' : 'default'
-    	}
-    	up() {
-    		this.drag = false;
-    		this.cv.style.cursor = 'default'
-    	}
-    	td(t) {
-    		return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
-    	}
-    	tc(t, r) {
-    		return {
-    			x: (t[0].clientX + t[1].clientX) / 2 - r.left,
-    			y: (t[0].clientY + t[1].clientY) / 2 - r.top
-    		}
-    	}
-    	ts(e) {
-    		e.preventDefault();
-    		const r = this.cv.getBoundingClientRect();
-    		if (e.touches.length === 1) {
-    			const x = e.touches[0].clientX - r.left,
-    				y = e.touches[0].clientY - r.top,
-    				w = this.screenToWorld(x, y);
-    			for (const n of this.lastNodes) {
-    				if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y + VISUAL.node.elementYOffset && w.y <= n.y + this.cell) {
-    					document.getElementById('val').value = n.e;
-    					return
-    				}
-    			}
-    			this.drag = true;
-    			this.start = {
-    				x,
-    				y
-    			};
-    			this.c0 = {
-    				x: this.cam.targetX,
-    				y: this.cam.targetY
-    			}
-    		} else if (e.touches.length === 2) {
-    			this.drag = false;
-    			this.p0 = this.td(e.touches);
-    			this.s0 = this.cam.targetScale;
-    			const c = this.tc(e.touches, r);
-    			this.pw = {
-    				x: (c.x - this.cam.targetX) / this.cam.targetScale,
-    				y: (c.y - this.cam.targetY) / this.cam.targetScale
-    			}
-    		}
-    	}
-    	tm(e) {
-    		e.preventDefault();
-    		const r = this.cv.getBoundingClientRect();
-    		if (e.touches.length === 1 && this.drag) {
-    			const x = e.touches[0].clientX - r.left,
-    				y = e.touches[0].clientY - r.top;
-    			this.cam.targetX = this.c0.x + x - this.start.x;
-    			this.cam.targetY = this.c0.y + y - this.start.y
-    		} else if (e.touches.length === 2 && this.p0) {
-    			const ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, this.s0 * this.td(e.touches) / this.p0)),
-    				c = this.tc(e.touches, r);
-    			this.cam.targetScale = ns;
-    			this.cam.targetX = c.x - this.pw.x * ns;
-    			this.cam.targetY = c.y - this.pw.y * ns
-    		}
-    	}
-    	layout(s) {
-    		const b = this.base();
-    		(s.nodes || []).forEach((n, i) => {
-    			if (n.x === undefined) n.x = b.x + i * (this.nodeW + this.gap);
-    			if (n.y === undefined) n.y = b.y
-    		});
-    		if (s.pnode && s.pnode.x === undefined) {
-    			s.pnode.x = b.x - VISUAL.list.tempPointerXOffset;
-    			s.pnode.y = s.pnode.y ?? b.up
-    		}
-    	}
-    	bounds(s) {
-    		let b = {
-    			minX: VISUAL.bounds.defaultMinX,
-    			minY: VISUAL.bounds.defaultMinY,
-    			maxX: VISUAL.bounds.defaultMaxX,
-    			maxY: VISUAL.bounds.defaultMaxY
-    		};
-    		(s.nodes || []).forEach(n => {
-    			b.minX = Math.min(b.minX, n.x - VISUAL.bounds.nodeLeftPadding);
-    			b.maxX = Math.max(b.maxX, n.x + VISUAL.bounds.nodeRightPadding);
-    			b.minY = Math.min(b.minY, n.y - VISUAL.bounds.nodeTopPadding);
-    			b.maxY = Math.max(b.maxY, n.y + VISUAL.bounds.nodeBottomPadding)
-    		});
-    		if (s.pnode) {
-    			b.minX = Math.min(b.minX, s.pnode.x - VISUAL.bounds.pnodeLeftPadding);
-    			b.maxX = Math.max(b.maxX, s.pnode.x + VISUAL.bounds.pnodeRightPadding);
-    			b.minY = Math.min(b.minY, s.pnode.y - VISUAL.bounds.pnodeTopPadding);
-    			b.maxY = Math.max(b.maxY, s.pnode.y + VISUAL.bounds.pnodeBottomPadding)
-    		}
-            (s.ptrs || []).forEach(p => {
-    			b.minX = Math.min(b.minX, p.x - VISUAL.bounds.pointerLeftPadding);
-    			b.maxX = Math.max(b.maxX, p.x + VISUAL.bounds.pointerRightPadding);
-    			b.minY = Math.min(b.minY, p.y - VISUAL.bounds.pointerTopPadding);
-    			b.maxY = Math.max(b.maxY, p.y + VISUAL.bounds.pointerBottomPadding)
-    		});
-            if (s.iterator) {
-                b.minX = Math.min(b.minX, s.iterator.x - 120);
-                b.maxX = Math.max(b.maxX, s.iterator.x + 60);
-                b.minY = Math.min(b.minY, s.iterator.y - 120);
-                b.maxY = Math.max(b.maxY, s.iterator.y + 60);
-            }
-    		return b
-    	}
-    	fit(snaps) {
-    		let B = {
-    			minX: 1e9,
-    			minY: 1e9,
-    			maxX: -1e9,
-    			maxY: -1e9
-    		};
-    		snaps.forEach(s => {
-    			const b = this.bounds(s);
-    			B.minX = Math.min(B.minX, b.minX);
-    			B.maxX = Math.max(B.maxX, b.maxX);
-    			B.minY = Math.min(B.minY, b.minY);
-    			B.maxY = Math.max(B.maxY, b.maxY)
-    		});
-    		const sc = Math.min(VISUAL.camera.defaultMaxFitScale, this.cv.width / (B.maxX - B.minX + VISUAL.bounds.fitPadding), this.cv.height / (B.maxY - B.minY + VISUAL.bounds.fitPadding));
-    		this.cam.targetScale = sc;
-    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-    	}
-    	enqueue(snaps) {
-    		snaps.forEach(s => this.layout(s));
-    		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-    		if (!this.sn.length) {
-    			this.sn.push(snaps.shift());
-    			this.idx = 0
-    		}
-    		if (snaps.length) {
-    			this.pending = snaps;
-    			this.state = 'CAMERA'
-    		}
-    	}
-    	loop(ts) {
-    		if (!this.last) this.last = ts;
-    		const dt = Math.min((ts - this.last) / 1000, VISUAL.animation.maxFrameDeltaSeconds);
-    		this.last = ts;
-    		if (!this.paused) this.update(dt);
-    		this.draw();
-    		requestAnimationFrame(t => this.loop(t))
-    	}
-    	update(dt) {
-    		const f = 1 - Math.exp(-VISUAL.camera.smoothingFactor * dt);
-    		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-    		this.cam.x += (this.cam.targetX - this.cam.x) * f;
-    		this.cam.y += (this.cam.targetY - this.cam.y) * f;
-    		if (this.state === 'CAMERA') {
-    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VISUAL.camera.snapDistance && Math.abs(this.cam.scale - this.cam.targetScale) < VISUAL.camera.snapScaleDelta) this.next()
-    		} else if (this.state === 'MORPH') {
-    			this.t += VISUAL.animation.morphSpeed * this.speedFactor * dt;
-    			if (this.t >= 1) {
-    				this.t = 1;
-    				if (this.sn[this.idx + 1]?.pause) {
-    					this.state = 'WAIT';
-    					this.wait = VISUAL.animation.waitSeconds / this.speedFactor
-    				} else this.finish()
-    			}
-    		} else if (this.state === 'WAIT') {
-    			this.wait -= dt;
-    			if (this.wait <= 0) this.finish()
-    		}
-    	}
-    	next() {
-    		const s = this.pending.shift();
-    		this.sn.push(s);
-    		document.getElementById('status-text').innerText = s.text || 'Ready.';
-    		this.t = 0;
-    		this.state = 'MORPH'
-    	}
-    	finish() {
-    		this.idx++;
-    		if (this.pending.length) this.next();
-    		else {
-    			this.state = 'IDLE';
-    			document.getElementById('status-text').innerText = 'Ready.'
-				if (typeof app !== 'undefined' && app.clearInputs) {
-					app.clearInputs();
-				}
-    		}
-    	}
-    	ease(t) {
-    		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-    	}
-    	interp(A, B, t) {
-    		const ma = new Map((A.nodes || []).map(n => [n.id, n])),
-    			mb = new Map((B.nodes || []).map(n => [n.id, n])),
-    			ids = new Set([...ma.keys(), ...mb.keys()]),
-    			nodes = [];
-    		ids.forEach(id => {
-    			const a = ma.get(id),
-    				b = mb.get(id);
-    			if (a && b) nodes.push({
-    				...b,
-    				x: a.x + (b.x - a.x) * t,
-    				y: a.y + (b.y - a.y) * t,
-    				detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
-    			});
-    			else if (b && !a) nodes.push({
-    				...b
-    			});
-    			else if (a && !b && t < VISUAL.animation.deleteFadeCutoff) nodes.push({
-    				...a,
-    				deleted: true
-    			})
-    		});
-    		let pnode = null;
-    		if (A.pnode && B.pnode) pnode = {
-    			...B.pnode,
-    			x: A.pnode.x + (B.pnode.x - A.pnode.x) * t,
-    			y: A.pnode.y + (B.pnode.y - A.pnode.y) * t
-    		};
-    		else pnode = B.pnode || A.pnode || null;
-    		let ptrs = null;
-    		if (A.ptrs || B.ptrs) {
-    			const pa = new Map((A.ptrs || []).map(p => [p.label, p])),
-    				pb = new Map((B.ptrs || []).map(p => [p.label, p]));
-    			ptrs = [...new Set([...pa.keys(), ...pb.keys()])].map(label => {
-    				const a = pa.get(label),
-    					b = pb.get(label);
-    				if (a && b) return {
-    					...b,
-    					x: a.x + (b.x - a.x) * t,
-    					y: a.y + (b.y - a.y) * t
-    				};
-    				return b || a
-    			})
-    		}
-            let iterator = null;
-            if (A.iterator && B.iterator) {
-                iterator = {
-                    ...B.iterator,
-                    x: A.iterator.x + (B.iterator.x - A.iterator.x) * t,
-                    y: A.iterator.y + (B.iterator.y - A.iterator.y) * t
-                };
-            } else {
-                iterator = B.iterator || A.iterator || null;
-            }
-
-    		const topDetourAmount = (A.topDetourAmount !== undefined || B.topDetourAmount !== undefined) ? ((A.topDetourAmount ?? (A.detourTop ? 1 : 0)) + ((B.topDetourAmount ?? (B.detourTop ? 1 : 0)) - (A.topDetourAmount ?? (A.detourTop ? 1 : 0))) * t) : B.topDetourAmount;
-    		return {
-    			...B,
-    			nodes,
-    			pnode,
-    			ptrs,
-                iterator,
-    			topDetourAmount
-    		}
-    	}
-    	current() {
-    		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
-    		return this.sn[Math.max(this.idx, 0)]
-    	}
-    	flash() {
-    		return VISUAL.animation.flashMinAlpha + VISUAL.animation.flashMaxAlphaDelta * Math.abs(Math.sin(performance.now() / VISUAL.animation.flashPeriodMs))
-    	}
-    	draw() {
-    		const s = this.current();
-    		const c = this.ctx;
-    		c.clearRect(0, 0, this.cv.width, this.cv.height);
-    		c.save();
-    		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-    		if (!s) {
-    			c.restore();
-    			return
-    		}
-    		this.lastNodes = s.nodes || [];
-    		this.drawStructBoxes(s);
-    		(s.nodes || []).forEach(n => this.drawNode(n));
-    		if (s.pnode) this.drawPNodeBox(s);
-    		this.drawStructArrows(s);
-    		this.drawLinks(s);
-    		if (s.ptrs) this.drawAuxPointers(s);
-    		if (s.pnode) this.drawPNodeArrow(s);
-            if (s.iterator) this.drawIterator(s);
-    		this.drawOverlays(s);
-    		c.restore()
-    	}
-    	drawNode(n) {
-    		const c = this.ctx,
-    			w = this.cell,
-    			x = n.x,
-    			y = n.y,
-                elemY = y + VISUAL.node.elementYOffset;
-    		c.save();
-            
-            // Element Box (Green)
-            c.fillStyle = K.g;
-            c.fillRect(x, elemY, w, w);
-            
-            // Value inside Element
-            c.fillStyle = K.r;
-    		c.font = VISUAL.fonts.value;
-    		c.textAlign = 'center';
-    		c.textBaseline = 'middle';
-    		c.fillText(n.e, x + w / 2, elemY + w / 2 + VISUAL.node.valueBaselineCorrection);
-
-            // Left Node Box (Cyan)
-    		c.fillStyle = K.c;
-    		c.fillRect(x, y, w - 1, w);
-            // Right Node Box (Cyan)
-    		c.fillRect(x + w + 1, y, w - 1, w);
-    		
-            // Element Pointer Arrow
-            this.arrow(x + w / 2, y + w / 2, x + w / 2, elemY + w, K.b, VISUAL.stroke.normalWidth);
-
-            // Element Pointer Dot
-            c.fillStyle = K.b;
-    		c.beginPath();
-    		c.arc(x + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-
-            // Next Pointer Dot
-            c.beginPath();
-    		c.arc(x + w + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-
-    		c.restore()
-    	}
-    	drawStructBoxes(s) {
-    		const c = this.ctx,
-    			x = VISUAL.struct.x,
-    			y = VISUAL.struct.y,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell;
-    		c.save();
-    		c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.structLabel;
-    		c.textAlign = 'right';
-    		c.fillText('stack', x - VISUAL.struct.listLabelOffsetX, y - VISUAL.struct.listLabelOffsetY);
-    		c.fillStyle = K.p;
-    		c.fillRect(x - VISUAL.struct.listPointerBoxOffsetX, y - VISUAL.struct.listPointerBoxOffsetY, w, h);
-    		c.fillStyle = K.v;
-    		c.beginPath();
-    		c.arc(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-    		[
-    			['top', K.c, s.topId],
-    			['size', K.g, s.size]
-    		].forEach((r, i) => {
-    			const yy = y + i * h;
-    			c.fillStyle = K.k;
-    			c.font = VISUAL.fonts.structLabel;
-    			c.textAlign = 'right';
-    			c.textBaseline = 'middle';
-    			c.fillText(r[0], x - VISUAL.struct.labelOffsetX, yy + h / 2);
-    			c.fillStyle = r[1];
-    			c.fillRect(x, yy, w, h * VISUAL.struct.rowHeightFactor);
-    			if (r[0] === 'size') {
-    				c.fillStyle = K.r;
-    				c.font = VISUAL.fonts.structValue;
-    				c.textAlign = 'center';
-    				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + VISUAL.node.valueBaselineCorrection)
-    			} else {
-				const isDanglingStructPointer = r[0] === 'top' && (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.topTargetX !== undefined && s.topTargetY !== undefined);
-    				c.fillStyle = isDanglingStructPointer ? K.d : K.b;
-    				c.beginPath();
-    				c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    				c.fill()
-    			}
-    		});
-    		c.restore()
-    	}
-    	nodeById(s, id) {
-    		return (s.nodes || []).find(n => n.id === id)
-    	}
-    	drawStructArrows(s) {
-    		const x = VISUAL.struct.x,
-    			y = VISUAL.struct.y,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell;
-    		this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
-    		const f = this.nodeById(s, s.topId);
-    		if (f) { 
-                const topAmount = s.topDetourAmount ?? (s.detourTop ? 1 : 0); 
-                const topCol = s.markTopArrow ? K.r : K.b;
-                if (topAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, topCol, VISUAL.stroke.normalWidth, topAmount); 
-                else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, topCol, VISUAL.stroke.normalWidth) 
-            } else if (s.topTargetX !== undefined && s.topTargetY !== undefined) {
-                this.arrow(x + w / 2, y + h / 2, s.topTargetX, s.topTargetY, K.d, VISUAL.stroke.normalWidth);
-            }
-    	}
-    	drawLinks(s) {
-		(s.nodes || []).forEach(n => {
-			if (n.next !== null && n.next !== undefined) {
-				const to = this.nodeById(s, n.next);
-				if (to) {
-					const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
-					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
-					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
-				}
-			}
-		})
-	}
-	detourArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth, amount = 1) {
-		const c = this.ctx;
-		c.save();
-		c.strokeStyle = col;
-		c.fillStyle = col;
-		c.lineWidth = lw;
-		const d = VISUAL.stroke.detourOffset * amount, midY = y1 + d;
-		c.beginPath();
-		c.moveTo(x1, y1);
-		c.lineTo(x1 + d, midY);
-		c.lineTo(x2 - d, midY);
-		c.lineTo(x2, y2);
-		c.stroke();
-		this.head(x2 - d, midY, x2, y2, col);
-		c.restore()
-	}
-ptr(n) {
-    		return {
-    			x: n.x + this.cell + this.cell / 2,
-    			y: n.y + this.cell / 2
-    		}
-    	}
-    	drawPNodeBox(s) {
-    		const p = s.pnode,
-    			c = this.ctx;
-    		c.save();
-    		c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.pointerLabel;
-    		c.textAlign = 'right';
-    		c.textBaseline = 'alphabetic';
-    		c.fillText(p.label || 'newNode', p.x - VISUAL.pointerBox.labelOffsetX, p.y + VISUAL.pointerBox.labelBaselineOffsetY);
-    		c.fillStyle = K.c;
-    		c.fillRect(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-    		c.fillStyle = K.b;
-    		c.beginPath();
-    		c.arc(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
-    		c.fill();
-    		c.restore()
-    	}
-    	drawAuxPointers(s) {
-		const c = this.ctx;
-		(s.ptrs || []).forEach(p => {
-			const t = this.nodeById(s, p.target);
-			const isDanglingAuxPointer = p.target !== null && p.target !== undefined && !t && p.targetX !== undefined && p.targetY !== undefined;
-			const pointerColor = isDanglingAuxPointer ? K.d : K.b;
-			c.save();
-			c.fillStyle = K.k;
-			c.font = VISUAL.fonts.auxPointerLabel;
-			c.textAlign = 'center';
-			c.textBaseline = 'alphabetic';
-			c.fillText(p.label, p.x + VISUAL.pointerBox.centerX, p.y - VISUAL.pointerBox.auxLabelYOffset);
-			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-			c.fillStyle = pointerColor;
-			c.beginPath();
-			c.arc(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
-			c.fill();
-			c.restore();
-			if (t) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x, t.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth);
-			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, p.targetX, p.targetY, pointerColor, 3)
-		})
-	}
-	drawPNodeArrow(s) {
-    		const p = s.pnode,
-    			t = this.nodeById(s, p.target);
-    		if (t) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x, t.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
-    	}
-        drawIterator(s) {
-            const it = s.iterator;
-            if (!it) return;
-            const c = this.ctx;
-            
-            const cx = it.x;
-            const cy = it.y;
-            const ix = cx - 75;
-            const iy = cy - 60;
-            
-            c.save();
-            
-            // Purple box (iterator reference)
-            c.fillStyle = K.k;
-            c.font = VISUAL.fonts.pointerLabel;
-            c.textAlign = 'right';
-            c.textBaseline = 'alphabetic';
-            c.fillText('iterator', ix - 10, iy + VISUAL.pointerBox.labelBaselineOffsetY);
-            
-            c.fillStyle = K.p;
-            c.fillRect(ix, iy, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-            
-            c.fillStyle = K.v;
-            c.beginPath();
-            c.arc(ix + VISUAL.pointerBox.centerX, iy + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
-            c.fill();
-            
-            // Cyan box (Iterator object / current field)
-            c.fillStyle = K.k;
-            c.font = VISUAL.fonts.pointerLabel;
-            c.textAlign = 'center';
-            c.textBaseline = 'alphabetic';
-            c.fillText('current', cx + VISUAL.pointerBox.centerX, cy - 10);
-            
-            c.fillStyle = K.c;
-            c.fillRect(cx, cy, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-            
-            c.fillStyle = K.b;
-            c.beginPath();
-            c.arc(cx + VISUAL.pointerBox.centerX, cy + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
-            c.fill();
-            
-            c.restore();
-            
-            // Arrow from Purple to Cyan
-            this.arrow(ix + VISUAL.pointerBox.centerX, iy + VISUAL.pointerBox.centerY, cx, cy + VISUAL.pointerBox.centerY, K.v, VISUAL.stroke.normalWidth);
-            
-            // Arrow from Cyan to target node (or null)
-            const t = this.nodeById(s, it.target);
-            if (t) {
-                this.arrow(cx + VISUAL.pointerBox.centerX, cy + VISUAL.pointerBox.centerY, t.x, t.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth);
-            } else if (it.targetX !== undefined && it.targetY !== undefined) {
-                this.arrow(cx + VISUAL.pointerBox.centerX, cy + VISUAL.pointerBox.centerY, it.targetX, it.targetY, K.b, VISUAL.stroke.normalWidth);
-            }
-        }
-    	drawOverlays(s) {
-    		if (s.flashTop) this.flashStruct(0);
-    		if (s.flashSize) this.flashStruct(1);
-    		(s.nodes || []).forEach(n => {
-    			if (n.flashNew) this.lShapeFlash(n.x, n.y, this.cell, n.y + VISUAL.node.elementYOffset);
-    			if (n.flashNext || s.flashNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, VISUAL.overlay.pNextFlashRadius);
-    			if (n.flashElement) this.roundFlash(n.x - VISUAL.node.elementFlashPadding, n.y + VISUAL.node.elementYOffset - VISUAL.node.elementFlashPadding, this.cell + VISUAL.overlay.elementFlashExpansion * 2, this.cell + VISUAL.overlay.elementFlashExpansion * 2);
-			    if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
-    		});
-    		if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-    		if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height));
-    		if (s.flashPtrs)(s.ptrs || []).forEach(p => {
-    			if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, 28)
-    		})
-    	}
-    	flashStruct(row) {
-    		const x = VISUAL.struct.x,
-    			y = VISUAL.struct.y + row * this.cell,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell;
-    		this.flashCircle(x + w / 2, y + h / 2, VISUAL.overlay.structFlashRadius)
-    	}
-    	flashCircle(x, y, r) {
-    		const c = this.ctx;
-    		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = VISUAL.stroke.flashWidth;
-    		c.beginPath();
-    		c.arc(x, y, r, 0, Math.PI * 2);
-    		c.stroke();
-    		c.restore()
-    	}
-    	roundFlash(x, y, w, h) {
-    		const c = this.ctx;
-    		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = VISUAL.stroke.flashWidth;
-    		c.beginPath();
-    		c.roundRect(x, y, w, h, VISUAL.overlay.nodeFlashCornerRadius);
-    		c.stroke();
-    		c.restore()
-    	}
-        lShapeFlash(x, y, w, elemY) {
-            const c = this.ctx;
-            const p = VISUAL.node.flashPadding;
-            const r = VISUAL.overlay.nodeFlashCornerRadius;
-            c.save();
-            c.globalAlpha = this.flash();
-            c.strokeStyle = K.r;
-            c.lineWidth = VISUAL.stroke.flashWidth;
-            c.beginPath();
-            
-            c.moveTo(x - p + r, elemY - p);
-            c.lineTo(x + w + p - r, elemY - p);
-            c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
-            
-            c.lineTo(x + w + p, y - p - r);
-            c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
-            
-            c.lineTo(x + this.nodeW + p - r, y - p);
-            c.arcTo(x + this.nodeW + p, y - p, x + this.nodeW + p, y - p + r, r);
-            
-            c.lineTo(x + this.nodeW + p, y + w + p - r);
-            c.arcTo(x + this.nodeW + p, y + w + p, x + this.nodeW + p - r, y + w + p, r);
-            
-            c.lineTo(x - p + r, y + w + p);
-            c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
-            
-            c.lineTo(x - p, elemY - p + r);
-            c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
-            
-            c.closePath();
-            c.stroke();
-            c.restore();
-        }
-    	cross(x, y, w, h) {
-    		const c = this.ctx;
-    		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = VISUAL.stroke.crossWidth;
-    		c.beginPath();
-    		c.moveTo(x - VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion);
-    		c.lineTo(x + w + VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
-    		c.moveTo(x + w + VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion);
-    		c.lineTo(x - VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
-    		c.stroke();
-    		c.restore()
-    	}
-    	arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
-    		const c = this.ctx;
-    		c.save();
-    		c.strokeStyle = col;
-    		c.fillStyle = col;
-    		c.lineWidth = lw;
-    		c.beginPath();
-    		c.moveTo(x1, y1);
-    		c.lineTo(x2, y2);
-    		c.stroke();
-    		this.head(x1, y1, x2, y2, col);
-    		c.restore()
-    	}
-    	head(x1, y1, x2, y2, col = K.b) {
-    		const c = this.ctx,
-    			a = Math.atan2(y2 - y1, x2 - x1),
-    			h = VISUAL.stroke.arrowHeadLength;
-    		c.fillStyle = col;
-    		c.beginPath();
-    		c.moveTo(x2, y2);
-    		c.lineTo(x2 - h * Math.cos(a - VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a - VISUAL.stroke.arrowHeadHalfAngle));
-    		c.lineTo(x2 - h * Math.cos(a + VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a + VISUAL.stroke.arrowHeadHalfAngle));
-    		c.closePath();
-    		c.fill()
-    	}
-    	lastArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
-    		const c = this.ctx;
-    		c.save();
-    		c.strokeStyle = col;
-    		c.fillStyle = col;
-    		c.lineWidth = lw;
-    		c.beginPath();
-    		c.moveTo(x1, y1);
-    		const d = VISUAL.stroke.lastArrowHorizontalOffset,
-    			midY = y1;
-    		c.lineTo(x2 - d, midY);
-    		c.lineTo(x2, y2);
-    		c.stroke();
-    		this.head(x2 - d, midY, x2, y2, col);
-    		c.restore()
-    	}
-    	setSpeed(v) {
-    		this.speedFactor = 1 / v
-    	}
-    	togglePause() {
-    		this.paused = !this.paused;
-    		return this.paused
-    	}
+        this.cv.addEventListener('mousedown', e => this.pointerStart(e));
+        this.cv.addEventListener('mousemove', e => this.pointerMove(e));
+        this.cv.addEventListener('mouseup', () => this.pointerEnd());
+        this.cv.addEventListener('mouseleave', () => this.pointerEnd());
+        this.cv.addEventListener('touchstart', e => this.touchStart(e), {
+            passive: false
+        });
+        this.cv.addEventListener('touchmove', e => this.touchMove(e), {
+            passive: false
+        });
+        this.cv.addEventListener('touchend', () => this.pointerEnd());
+        requestAnimationFrame(ts => this.loop(ts));
     }
 
-    function relink(nodes) {
-    	nodes.forEach((n, i) => {
-    		n.index = i;
-    		n.next = i < nodes.length - 1 ? nodes[i + 1].id : null
-    	})
+    resize() {
+        this.cv.width = this.wrap.offsetWidth;
+        this.cv.height = this.wrap.offsetHeight;
+        const cur = this.current();
+        if (cur) {
+            this.fit([cur]);
+            this.cam.scale = this.cam.targetScale;
+            this.cam.x = this.cam.targetX;
+            this.cam.y = this.cam.targetY;
+        }
     }
-    const app = {
-    	values: [],
-    	ids: [],
-    	history: [],
-    	viz: null,
-    	init() {
-    		this.viz = new Viz('cv');
-    		this.randomFill();
-    		this.ids = this.values.map(_ => nextId++);
-    		this.showCurrent('The stack is initialized with sample elements');
-    		this.updateUI()
-    	},
-    	baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
-    		const yy = y ?? this.viz.base().y;
-    		return vals.map((e, i) => ({
-    			id: ids[i],
-    			e,
-    			index: undefined,
-    			x: VISUAL.list.originX + shift + i * VISUAL.node.step,
-    			y: yy,
-    			next: i < ids.length - 1 ? ids[i + 1] : null
-    		}))
-    	},
-    	snapshot(text, nodes, extra = {}) {
-    		nodes = nodes.map(n => ({
-    			...n
-    		}));
-    		if (!extra.preserveLinks) relink(nodes);
-            nodes.forEach(n => n.index = undefined);
-    		return {
-    			nodes,
-    			topId: extra.topId !== undefined ? extra.topId : (nodes[0]?.id ?? null),
-    			size: extra.size ?? nodes.length,
-    			text,
-    			...extra
-    		}
-    	},
-    	showCurrent(text = 'Ready.') {
-    		this.viz.sn = [];
-    		this.viz.pending = [];
-    		this.viz.idx = -1;
-    		this.viz.state = 'IDLE';
-    		this.viz.enqueue([this.snapshot(text, this.baseNodes())])
-    	},
-    	v() {
-    		return parseInt(document.getElementById('val').value)
-    	},
-    	save() {
-    		this.history.push({
-    			values: [...this.values],
-    			ids: [...this.ids]
-    		});
-    		if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift()
-    	},
-    	push() {
-    		const e = this.v();
-    		if (isNaN(e)) return;
-    		this.save();
-    		const oldVals = [...this.values],
-    			oldIds = [...this.ids],
-    			oldSize = oldVals.length,
-    			newId = nextId++;
-    		const b = this.viz.base(),
-    			gap = VISUAL.node.step,
-    			oldTop = oldIds[0] ?? null;
-    		let snaps = [];
-    		let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-    		snaps.push(this.snapshot('The algorithm starts from the current stack state', oldNodes, {
-    			size: oldSize
-    		}));
-    		let shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
-    		snaps.push(this.snapshot('Existing nodes are pushed right to make room for the new top node', shiftedOld, {
-    			size: oldSize,
-    			topId: oldTop,
-    			pause: true
-    		}));
-    		let pnode = {
-    			x: b.x - VISUAL.list.tempPointerXOffset,
-    			y: b.up,
-    			target: newId,
-                label: 'newNode'
-    		};
-    		let newUp = {
-    			id: newId,
-    			e,
-    			x: b.x,
-    			y: b.up,
-    			next: oldTop,
-    			flashNew: true
-    		};
-    		snaps.push(this.snapshot('A new node is allocated and linked to the former top node', [newUp, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			topId: oldTop,
-    			pause: true
-    		}));
-    		newUp = {
-    			...newUp,
-    			flashNew: false
-    		};
-    		snaps.push(this.snapshot(oldSize === 0 ? 'The stack is empty, so the new node will become the top' : 'The stack is ready to update its top reference', [newUp, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			topId: oldTop,
-    			flashTop: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The new node becomes the top node of the stack', [newUp, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			topId: newId,
-    			pause: true
-    		}));
-    		let newDown = {
-    			...newUp,
-    			y: b.y
-    		};
-    		snaps.push(this.snapshot('The new node is placed in its final stack position', [newDown, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			topId: newId,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The stored stack size is about to change', [newDown, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			topId: newId,
-    			flashSize: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The stack size increases by one', [newDown, ...shiftedOld], {
-    			size: oldSize + 1,
-    			pnode,
-    			topId: newId,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The temporary reference to the new node is discarded', [newDown, ...shiftedOld], {
-    			size: oldSize + 1,
-    			pnode,
-    			topId: newId,
-    			flashPNodeCross: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The operation is complete', [newDown, ...shiftedOld], {
-    			size: oldSize + 1,
-    			topId: newId
-    		}));
-    		this.values = [e, ...oldVals];
-    		this.ids = [newId, ...oldIds];
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	},
-    	getTop() {
-    		if (this.values.length === 0) return;
-    		const b = this.viz.base();
-    		let snaps = [];
-    		const nodes = this.baseNodes();
-    		snaps.push(this.snapshot('The algorithm starts from the current stack state', nodes, {
-    			size: this.values.length
-    		}));
-
-            const topId = this.ids[0];
-            snaps.push(this.snapshot('The algorithm uses stack.top to access the top node directly', nodes, {
-                size: this.values.length,
-                markTopArrow: true,
-                pause: true
-            }));
-
-            let found = nodes.map(n => n.id === topId ? {
-                ...n,
-                flashElement: true
-            } : n);
-
-            snaps.push(this.snapshot('The target element has been accessed: peek() = ' + this.values[0], found, {
-                size: this.values.length,
-                markTopArrow: true,
-                pause: true
-            }));
-
-            snaps.push(this.snapshot('The operation is complete', nodes, {
-                size: this.values.length
-            }));
-
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	},
-pop() {
-    if (this.values.length === 0) return;
-
-    this.save();
-    const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
-    const b = this.viz.base();
-    let snaps = [];
-    const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-
-    snaps.push(this.snapshot(
-        'The algorithm starts from the current stack state',
-        oldNodes,
-        { size: oldSize }
-    ));
-
-    let curId = oldIds[0];
-    let topAfterLink = oldIds[1] ?? null;
-
-    let linkedNodes = oldNodes.map(n => ({ ...n }));
-
-    const needsDetour = topAfterLink !== null;
-
-    snaps.push(this.snapshot(
-        'stack.top is updated to the node after the removed node',
-        linkedNodes,
-        {
-            size: oldSize,
-            topId: topAfterLink,
-			flashTop: true,
-            detourTop: needsDetour,
-            topDetourAmount: needsDetour ? 1 : 0,
-            preserveLinks: true,
-            pause: true
-        }
-    ));
-
-    let listSized = linkedNodes.map(n => ({ ...n }));
-    snaps.push(this.snapshot(
-        'The stack size decreases by one',
-        listSized,
-        {
-            size: oldSize - 1,
-            topId: topAfterLink,
-            flashSize: true,
-            detourTop: needsDetour,
-            topDetourAmount: needsDetour ? 1 : 0,
-            preserveLinks: true,
-            pause: true
-        }
-    ));
-
-    snaps.push(this.snapshot(
-        'The method exits',
-        listSized,
-        {
-            size: oldSize - 1,
-            topId: topAfterLink,
-            detourTop: needsDetour,
-            topDetourAmount: needsDetour ? 1 : 0,
-            preserveLinks: true,
-            pause: true
-        }
-    ));
-
-    const crossNodes = listSized.map(n =>
-        n.id === curId ? { ...n, flashNodeCross: true } : n
-    );
-
-    snaps.push(this.snapshot(
-        'Without references pointing to it, the unlinked node becomes unreachable',
-        crossNodes,
-        {
-            size: oldSize - 1,
-            topId: topAfterLink,
-            detourTop: needsDetour,
-            topDetourAmount: needsDetour ? 1 : undefined,
-            preserveLinks: true,
-            pause: true
-        }
-    ));
-
-    let freedGoneNodes = listSized
-        .filter(n => n.id !== curId)
-        .map(n => ({ ...n }));
-
-    snaps.push(this.snapshot(
-        'The garbage collector reclaims the memory of the unreachable node',
-        freedGoneNodes,
-        {
-            size: oldSize - 1,
-            topId: topAfterLink,
-            detourTop: needsDetour,
-            topDetourAmount: needsDetour ? 1 : undefined,
-            preserveLinks: true,
-            pause: true
-        }
-    ));
-
-    let straightNodes = freedGoneNodes.map(n => ({ ...n }));
-    snaps.push(this.snapshot(
-        'The top reference settles into its final shape',
-        straightNodes,
-        {
-            size: oldSize - 1,
-            topId: topAfterLink,
-            detourTop: needsDetour,
-            topDetourAmount: 0,
-            preserveLinks: true,
-            pause: true
-        }
-    ));
-
-    const newVals = oldVals.slice(1);
-    const newIds = oldIds.slice(1);
-    const compactNodes = this.baseNodes(newVals, newIds, 0, b.y);
-
-    snaps.push(this.snapshot(
-        'The remaining nodes shift up the stack',
-        compactNodes,
-        {
-            size: oldSize - 1,
-            topId: topAfterLink,
-            preserveLinks: true,
-            pause: true
-        }
-    ));
-
-    snaps.push(this.snapshot(
-        'The operation is complete',
-        compactNodes,
-        {
-            size: oldSize - 1,
-            topId: topAfterLink,
-            preserveLinks: true
-        }
-    ));
-
-    this.values = newVals;
-    this.ids = newIds;
-    this.viz.enqueue(snaps);
-    this.updateUI();
-},
-    iterate() {
-        this.save();
-        const oldVals = [...this.values];
-        const oldIds = [...this.ids];
-        const oldSize = oldVals.length;
-        const b = this.viz.base();
-        const nodes = this.baseNodes(oldVals, oldIds);
-        let snaps = [];
-        
-        snaps.push(this.snapshot('The algorithm starts from the current stack state', nodes, { size: oldSize }));
-        
-        if (oldSize === 0) {
-            const nullX = b.x + VISUAL.node.step - VISUAL.list.nullPointerXOffset;
-            const nullY = b.y - 150;
-            const it = { target: null, x: nullX, y: nullY, targetX: nullX, targetY: b.y + this.viz.cell / 2 };
-            snaps.push(this.snapshot('Iterator after initialization: current points to null', nodes, { size: oldSize, iterator: it, pause: true }));
-            snaps.push(this.snapshot('Iteration complete: hasNext() is false', nodes, { size: oldSize, iterator: it, pause: true }));
-            snaps.push(this.snapshot('The operation is complete', nodes, { size: oldSize }));
-            this.viz.enqueue(snaps);
-            this.updateUI();
+    screenToWorld(x, y) {
+        return {
+            x: (x - this.cam.x) / this.cam.scale,
+            y: (y - this.cam.y) / this.cam.scale
+        };
+    }
+    wheel(e) {
+        e.preventDefault();
+        const r = this.cv.getBoundingClientRect(),
+            sx = e.clientX - r.left,
+            sy = e.clientY - r.top;
+        let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
+        ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+        const wx = (sx - this.cam.targetX) / this.cam.targetScale,
+            wy = (sy - this.cam.targetY) / this.cam.targetScale;
+        this.cam.targetScale = ns;
+        this.cam.targetX = sx - wx * ns;
+        this.cam.targetY = sy - wy * ns;
+    }
+    pointerStart(e) {
+        const r = this.cv.getBoundingClientRect(),
+            sx = e.clientX - r.left,
+            sy = e.clientY - r.top;
+        const w = this.screenToWorld(sx, sy),
+            hit = this.findHit(w.x, w.y);
+        if (hit && this.onHit) {
+            this.onHit(hit);
             return;
         }
-
-        const ordinals = ["first", "second", "third", "fourth", "fifth", "sixth", "seventh", "eighth", "ninth", "tenth"];
-        
-        let curId = oldIds[0];
-        let t = nodes.find(n => n.id === curId);
-        let itX = t.x - 20;
-        let itY = b.y - 150;
-        let it = { target: curId, x: itX, y: itY };
-        
-        snaps.push(this.snapshot('Iterator after initialization:', nodes, { size: oldSize, iterator: it, pause: true }));
-        
-        for (let k = 0; k < oldSize; k++) {
-            let nextCurId = oldIds[k+1] ?? null;
-            let nt = nodes.find(n => n.id === nextCurId);
-            
-            let nextX = nt ? nt.x - 20 : b.x + oldSize * VISUAL.node.step - VISUAL.list.nullPointerXOffset;
-            let nextY = itY;
-            let nextTargetX = nt ? undefined : nextX;
-            let nextTargetY = nt ? undefined : b.y + this.viz.cell / 2;
-            
-            let nextIt = { target: nextCurId, x: nextX, y: nextY, targetX: nextTargetX, targetY: nextTargetY };
-            
-            let ord = k < ordinals.length ? ordinals[k] : `${k+1}th`;
-            let txt = `After returning ${ord} element:`;
-            
-            let highlightNodes = nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n);
-            snaps.push(this.snapshot(txt, highlightNodes, { size: oldSize, iterator: nextIt, pause: true }));
-            
-            it = nextIt;
-            curId = nextCurId;
-        }
-        
-        snaps.push(this.snapshot('Iteration complete: hasNext() is false', nodes, { size: oldSize, iterator: it, pause: true }));
-        snaps.push(this.snapshot('The operation is complete', nodes, { size: oldSize }));
-        
-        this.viz.enqueue(snaps);
-        this.updateUI();
-    },
-		randomFill() {
-    		this.values = [];
-			let sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
-    		while (this.values.length < sz) {
-    			let v = Math.floor(Math.random() * VISUAL.random.valueRange) + VISUAL.random.minValue;
-    			if (!this.values.includes(v)) this.values.push(v)
-    		}
-    	},
-    	newList() {
-    		this.save();
-    		this.values = [];
-    		this.ids = [];
-    		this.showCurrent('A new empty stack has been created');
-    		this.updateUI()
-    	},
-    	random() {
-    		this.save();
-    		this.values = [];
-    		this.randomFill();
-    		this.ids = this.values.map(_ => nextId++);
-    		this.showCurrent('A random sample stack has been created');
-    		this.updateUI()
-    	},
-    	clear() {
-    		this.save();
-    		const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
-    		const b = this.viz.base();
-    		const originalNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-    		let snaps = [this.snapshot('The algorithm starts from the current stack state', originalNodes, { topId: oldIds[0] ?? null, size: oldSize })];
-
-    		if (oldSize === 0) {
-    			snaps.push(this.snapshot('The stack is already empty', originalNodes, { topId: null, size: 0, pause: true }));
-    			this.viz.enqueue(snaps);
-    			this.updateUI();
-    			return
-    		}
-
-    		snaps.push(this.snapshot('stack.top is set to null', originalNodes, { topId: null, size: oldSize, flashTop: true, pause: true }));
-    		snaps.push(this.snapshot('stack.size is set to 0', originalNodes, { topId: null, size: 0, flashSize: true, pause: true }));
-
-    		let currentNodes = originalNodes.map(n => ({...n}));
-    		for (let k = 0; k < oldSize; k++) {
-    			const curId = oldIds[k];
-    			const crossNodes = currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
-    			const msgUnreachable = k === 0 
-                    ? 'Without references pointing to it, the top node becomes unreachable' 
-                    : 'As the previous node is collected, the next node loses its only incoming reference and becomes unreachable';
-    			
-                snaps.push(this.snapshot(msgUnreachable, crossNodes, { topId: null, size: 0, preserveLinks: true, pause: true }));
-    			
-    			currentNodes = currentNodes.filter(n => n.id !== curId);
-    			snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', currentNodes, { topId: null, size: 0, preserveLinks: true, pause: true }));
-    		}
-
-    		snaps.push(this.snapshot('The operation is complete', [], { topId: null, size: 0 }));
-
-    		this.values = [];
-    		this.ids = [];
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	},
-    	undo() {
-    		if (!this.history.length) return;
-    		const h = this.history.pop();
-    		this.values = h.values;
-    		this.ids = h.ids;
-    		this.showCurrent('The previous stack state has been restored');
-    		this.updateUI()
-    	},
-    	speed() {
-    		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
-    	},
-    	pause() {
-    		const p = this.viz.togglePause();
-    		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
-    	},
-    	toggleModal() {
-    		const m = document.getElementById('helpModal');
-    		m.style.display = m.style.display === 'block' ? 'none' : 'block'
-    	},
-    	updateUI() {
-    		document.getElementById('btnUndo').disabled = this.history.length === 0
-    	},
-		clearInputs() {
-			document.getElementById('val').value = '';
-		}
-    };
-
-    if (!app._ptr) {
-        app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
-            const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
-            return { label, target, x: fixed?.x ?? (t ? t.x - VISUAL.pointerBox.auxTargetXOffset : (fallbackX ?? b.x - VISUAL.list.pointerFallbackXOffset)), y: fixed?.y ?? (b.y - VISUAL.list.pointerTraversalYOffset) }
-        }
-    }
-
-    if (!Viz.prototype._drawOverlaysSupportsPtrCross) {
-        const previousDrawOverlaysForPtrCross = Viz.prototype.drawOverlays;
-        Viz.prototype.drawOverlays = function (s) {
-            previousDrawOverlaysForPtrCross.call(this, s);
-            if (s.flashPtrCross) {
-                (s.ptrs || []).forEach(p => {
-                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height)
-                })
-            }
+        this.drag = true;
+        this.start = {
+            x: sx,
+            y: sy
         };
-        Viz.prototype._drawOverlaysSupportsPtrCross = true
+        this.c0 = {
+            x: this.cam.targetX,
+            y: this.cam.targetY
+        };
+        this.cv.style.cursor = 'grabbing';
+    }
+    pointerMove(e) {
+        const r = this.cv.getBoundingClientRect(),
+            sx = e.clientX - r.left,
+            sy = e.clientY - r.top;
+        if (this.drag) {
+            this.cam.targetX = this.c0.x + sx - this.start.x;
+            this.cam.targetY = this.c0.y + sy - this.start.y;
+            return;
+        }
+        const w = this.screenToWorld(sx, sy);
+        this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default';
+    }
+    pointerEnd() {
+        this.drag = false;
+        this.cv.style.cursor = 'default';
+        this.pinch = null;
+    }
+    td(t) {
+        return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+    }
+    tc(t, r) {
+        return {
+            x: (t[0].clientX + t[1].clientX) / 2 - r.left,
+            y: (t[0].clientY + t[1].clientY) / 2 - r.top
+        };
+    }
+    touchStart(e) {
+        e.preventDefault();
+        const r = this.cv.getBoundingClientRect();
+        if (e.touches.length === 1) {
+            const x = e.touches[0].clientX - r.left,
+                y = e.touches[0].clientY - r.top;
+            const w = this.screenToWorld(x, y);
+            const hit = this.findHit(w.x, w.y);
+            if (hit && this.onHit) {
+                this.onHit(hit);
+                return;
+            }
+            this.drag = true;
+            this.start = {
+                x,
+                y
+            };
+            this.c0 = {
+                x: this.cam.targetX,
+                y: this.cam.targetY
+            };
+        } else if (e.touches.length === 2) {
+            this.drag = false;
+            const c = this.tc(e.touches, r);
+            this.pinch = {
+                d: this.td(e.touches),
+                s: this.cam.targetScale,
+                wx: (c.x - this.cam.targetX) / this.cam.targetScale,
+                wy: (c.y - this.cam.targetY) / this.cam.targetScale
+            };
+        }
+    }
+    touchMove(e) {
+        e.preventDefault();
+        const r = this.cv.getBoundingClientRect();
+        if (e.touches.length === 1 && this.drag) {
+            const x = e.touches[0].clientX - r.left,
+                y = e.touches[0].clientY - r.top;
+            this.cam.targetX = this.c0.x + x - this.start.x;
+            this.cam.targetY = this.c0.y + y - this.start.y;
+        } else if (e.touches.length === 2 && this.pinch) {
+            const c = this.tc(e.touches, r);
+            let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
+            ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+            this.cam.targetScale = ns;
+            this.cam.targetX = c.x - this.pinch.wx * ns;
+            this.cam.targetY = c.y - this.pinch.wy * ns;
+        }
+    }
+    findHit(x, y) {
+        for (let i = this.hitObjects.length - 1; i >= 0; i--) {
+            const o = this.hitObjects[i];
+            if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o.hit;
+        }
+        return null;
     }
 
-    window.onload = () => app.init();
-    window.onclick = e => {
-    	if (e.target === document.getElementById('helpModal')) app.toggleModal()
-    }; 
-</script>
-</body>
+    reset() {
+        this.scenes = [];
+        this.pending = [];
+        this.idx = -1;
+        this.state = 'IDLE';
+        this.t = 0;
+    }
+    enqueue(scenes) {
+        const copy = scenes.map(s => this.normalizeScene(s));
+        this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
+        if (!this.scenes.length && copy.length) {
+            this.scenes.push(copy.shift());
+            this.idx = 0;
+            this.setStatus(this.scenes[0].text || 'Ready.');
+        }
+        if (copy.length) {
+            this.pending = copy;
+            this.state = 'CAMERA';
+        }
+    }
+    normalizeScene(s) {
+        const scene = Object.assign({
+            objects: [],
+            pause: false
+        }, s);
+        scene.objects = this.normalizeObjects(scene.objects);
+        return scene;
+    }
+    normalizeObjects(objects = []) {
+        return objects.map((o, order) => this.normalizeObject(o, order));
+    }
+    normalizeObject(o, order = 0) {
+        const copy = Object.assign({}, o);
+        copy.layer = this.resolveLayer(copy);
+        copy.order = copy.order ?? order;
+        return copy;
+    }
+    resolveLayer(o) {
+        if (Number.isFinite(o.layer)) return o.layer;
+        if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
+        if (o.kind === 'text') return LAYER.text;
+        if (o.kind === 'circle') return LAYER.dot;
+        if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
+        if (o.kind === 'rect') return LAYER.box;
+        return Number.isFinite(o.z) ? o.z : LAYER.background;
+    }
+    sortObjects(objects = []) {
+        return [...objects].sort((a, b) =>
+            ((a.layer ?? LAYER.background) - (b.layer ?? LAYER.background)) ||
+            ((a.order ?? 0) - (b.order ?? 0))
+        );
+    }
+    setStatus(txt) {
+        if (this.statusEl) this.statusEl.innerText = txt;
+    }
+    loop(ts) {
+        if (!this.last) this.last = ts;
+        const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
+        this.last = ts;
+        if (!this.paused) this.update(dt);
+        this.draw();
+        requestAnimationFrame(t => this.loop(t));
+    }
+    update(dt) {
+        const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
+        this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+        this.cam.x += (this.cam.targetX - this.cam.x) * f;
+        this.cam.y += (this.cam.targetY - this.cam.y) * f;
+        if (this.state === 'CAMERA') {
+            if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next();
+        } else if (this.state === 'MORPH') {
+            this.t += this.options.morphSpeed * this.speedFactor * dt;
+            if (this.t >= 1) {
+                this.t = 1;
+                if (this.scenes[this.idx + 1]?.pause) {
+                    this.state = 'WAIT';
+                    this.wait = this.options.waitSeconds / this.speedFactor;
+                } else this.finish();
+            }
+        } else if (this.state === 'WAIT') {
+            this.wait -= dt;
+            if (this.wait <= 0) this.finish();
+        }
+    }
+    next() {
+        const s = this.pending.shift();
+        this.scenes.push(s);
+        if (s.fitCamera) this.fit([s]);
+        this.setStatus(s.text || 'Ready.');
+        this.t = 0;
+        this.state = 'MORPH';
+    }
+    finish() {
+        this.idx++;
+        if (this.pending.length) this.next();
+        else {
+            this.state = 'IDLE';
+            this.setStatus('Ready.');
+            if (window.app?.clearInputs) window.app.clearInputs();
+        }
+    }
+    ease(t) {
+        return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+    }
+    current() {
+        return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)];
+    }
+    interpolateScene(A, B, t) {
+        return Object.assign({}, B, {
+            objects: this.mixObjects(A.objects, B.objects, t)
+        });
+    }
+    mixObjects(a = [], b = [], t) {
+        const ma = new Map(a.map(o => [o.id, o])),
+            mb = new Map(b.map(o => [o.id, o])),
+            ids = new Set([...ma.keys(), ...mb.keys()]);
+        const sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined));
+        const out = [];
+        ids.forEach(id => {
+            const A = ma.get(id),
+                B = mb.get(id);
+            if (A && B) out.push(this.mixObject(A, B, t));
+            else if (B) {
+                const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+                out.push(S ? this.mixObject(S, B, t) : Object.assign({}, B, {
+                    alpha: B.alpha ?? 1
+                }));
+            } else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
+                alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
+            }));
+        });
+        return this.sortObjects(out);
+    }
+    mixObject(A, B, t) {
+        const o = Object.assign({}, B);
+        ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
+            if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t;
+        });
+        if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
+            x: A.points[i].x + (p.x - A.points[i].x) * t,
+            y: A.points[i].y + (p.y - A.points[i].y) * t
+        }));
+        return o;
+    }
+    bounds(scene) {
+        const fb = this.options.worldFallback;
+        let b = {
+            minX: fb.minX,
+            minY: fb.minY,
+            maxX: fb.maxX,
+            maxY: fb.maxY
+        };
+        for (const o of scene.objects || []) {
+            let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
+                maxX = (o.x !== undefined ? (o.x + (o.w ?? 0)) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity));
+            let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
+                maxY = (o.y !== undefined ? (o.y + (o.h ?? 0)) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity));
+            if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
+            b.minX = Math.min(b.minX, minX - 180);
+            b.maxX = Math.max(b.maxX, maxX + 180);
+            b.minY = Math.min(b.minY, minY - 135);
+            b.maxY = Math.max(b.maxY, maxY + 170);
+        }
+        return scene.bounds || b;
+    }
+    fit(scenes) {
+        let B = {
+            minX: 1e9,
+            minY: 1e9,
+            maxX: -1e9,
+            maxY: -1e9
+        };
+        scenes.forEach(s => {
+            const b = this.bounds(s);
+            B.minX = Math.min(B.minX, b.minX);
+            B.maxX = Math.max(B.maxX, b.maxX);
+            B.minY = Math.min(B.minY, b.minY);
+            B.maxY = Math.max(B.maxY, b.maxY);
+        });
+        const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
+        this.cam.targetScale = sc;
+        this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+        this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc;
+    }
+    flashAlpha() {
+        return .3 + .7 * Math.abs(Math.sin(performance.now() / 110));
+    }
+    draw() {
+        const s = this.current(),
+            c = this.ctx;
+        c.clearRect(0, 0, this.cv.width, this.cv.height);
+        this.hitObjects = [];
+        c.save();
+        c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+        if (!s) {
+            c.restore();
+            return;
+        }
+        for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
+        c.restore();
+    }
+    drawObject(o) {
+        const c = this.ctx;
+        c.save();
+        if (o.alpha !== undefined) c.globalAlpha *= o.alpha;
+        const st = o.style || {};
+        c.fillStyle = st.fill || '#fff';
+        c.strokeStyle = st.stroke || '#333';
+        c.lineWidth = o.lineWidth ?? st.lineWidth ?? 1;
+        c.font = st.font || '24px Arial';
+        c.textAlign = st.align || 'center';
+        c.textBaseline = st.baseline || 'middle';
+        if (o.kind === 'rect') {
+            this.roundOrRect(o, st);
+            if (st.stroke) c.stroke();
+            if (o.hit) this.hitObjects.push({
+                x: o.x,
+                y: o.y,
+                w: o.w,
+                h: o.h,
+                hit: o.hit,
+                layer: o.layer ?? LAYER.box,
+                order: o.order ?? 0
+            });
+        } else if (o.kind === 'text') {
+            c.fillStyle = st.fill || '#111';
+            c.fillText(String(o.text), o.x, o.y);
+        } else if (o.kind === 'circle') {
+            c.beginPath();
+            c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+            if (st.fill) c.fill();
+            if (st.stroke) c.stroke();
+        } else if (o.kind === 'line') {
+            c.beginPath();
+            c.moveTo(o.x1, o.y1);
+            c.lineTo(o.x2, o.y2);
+            c.stroke();
+        } else if (o.kind === 'arrow') {
+            this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || '#1565c0', o.lineWidth ?? st.lineWidth ?? 3);
+        } else if (o.kind === 'polylineArrow') {
+            this.polylineArrow(o.points, st.stroke || '#1565c0', o.lineWidth ?? 3);
+        } else if (o.kind === 'cross') {
+            this.cross(o.x, o.y, o.w, o.h);
+        } else if (o.kind === 'flashRect') {
+            this.flashRect(o.x, o.y, o.w, o.h, o.radius ?? 8);
+        } else if (o.kind === 'flashCircle') {
+            this.flashCircle(o.x, o.y, o.r);
+        } else if (o.kind === 'lFlash') {
+            this.lFlash(o);
+        }
+        c.restore();
+    }
+    roundOrRect(o, st) {
+        const c = this.ctx;
+        const border = o.transparentBorder ?? VISUAL.pointerBox.transparentBorder ?? 0;
+        const ix = o.x + border,
+            iy = o.y + border,
+            iw = Math.max(0, o.w - 2 * border),
+            ih = Math.max(0, o.h - 2 * border),
+            ir = Math.max(0, (o.radius ?? 0) - border);
+        c.beginPath();
+        if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
+        else c.rect(ix, iy, iw, ih);
+        if (st.fill !== false) c.fill();
+        if (st.stroke) {
+            c.beginPath();
+            if (o.radius && c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, o.radius);
+            else c.rect(o.x, o.y, o.w, o.h);
+        }
+    }
+    arrow(x1, y1, x2, y2, col = '#1565c0', lw = 3) {
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.fillStyle = col;
+        c.lineWidth = lw;
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.lineTo(x2, y2);
+        c.stroke();
+        this.head(x1, y1, x2, y2, col);
+        c.restore();
+    }
+    polylineArrow(points, col = '#1565c0', lw = 3) {
+        if (!points || points.length < 2) return;
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.fillStyle = col;
+        c.lineWidth = lw;
+        c.beginPath();
+        c.moveTo(points[0].x, points[0].y);
+        for (let i = 1; i < points.length; i++) c.lineTo(points[i].x, points[i].y);
+        c.stroke();
+        const a = points[points.length - 2],
+            b = points[points.length - 1];
+        this.head(a.x, a.y, b.x, b.y, col);
+        c.restore();
+    }
+    head(x1, y1, x2, y2, col) {
+        const c = this.ctx,
+            a = Math.atan2(y2 - y1, x2 - x1),
+            h = 17;
+        c.fillStyle = col;
+        c.beginPath();
+        c.moveTo(x2, y2);
+        c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
+        c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+        c.closePath();
+        c.fill();
+    }
+    flashRect(x, y, w, h, r = 8) {
+        const c = this.ctx;
+        c.save();
+        c.globalAlpha = this.flashAlpha();
+        c.strokeStyle = '#e60000';
+        c.lineWidth = 5;
+        c.beginPath();
+        if (c.roundRect) c.roundRect(x, y, w, h, r);
+        else c.rect(x, y, w, h);
+        c.stroke();
+        c.restore();
+    }
+    flashCircle(x, y, r) {
+        const c = this.ctx;
+        c.save();
+        c.globalAlpha = this.flashAlpha();
+        c.strokeStyle = '#e60000';
+        c.lineWidth = 5;
+        c.beginPath();
+        c.arc(x, y, r, 0, Math.PI * 2);
+        c.stroke();
+        c.restore();
+    }
+    cross(x, y, w, h) {
+        const c = this.ctx;
+        c.save();
+        c.globalAlpha = this.flashAlpha();
+        c.strokeStyle = '#e60000';
+        c.lineWidth = 6;
+        const p = 7;
+        c.beginPath();
+        c.moveTo(x - p, y - p);
+        c.lineTo(x + w + p, y + h + p);
+        c.moveTo(x + w + p, y - p);
+        c.lineTo(x - p, y + h + p);
+        c.stroke();
+        c.restore();
+    }
+    lFlash(o) {
+        const c = this.ctx,
+            p = o.padding ?? 8,
+            r = o.radius ?? 8,
+            w = o.cell ?? 58,
+            nodeW = o.nodeW ?? 116,
+            x = o.x,
+            y = o.y,
+            elemY = o.elemY;
+        c.save();
+        c.globalAlpha = this.flashAlpha();
+        c.strokeStyle = '#e60000';
+        c.lineWidth = o.lineWidth ?? 5;
+        c.beginPath();
+        c.moveTo(x - p + r, elemY - p);
+        c.lineTo(x + w + p - r, elemY - p);
+        c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
+        c.lineTo(x + w + p, y - p - r);
+        c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
+        c.lineTo(x + nodeW + p - r, y - p);
+        c.arcTo(x + nodeW + p, y - p, x + nodeW + p, y - p + r, r);
+        c.lineTo(x + nodeW + p, y + w + p - r);
+        c.arcTo(x + nodeW + p, y + w + p, x + nodeW + p - r, y + w + p, r);
+        c.lineTo(x - p + r, y + w + p);
+        c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
+        c.lineTo(x - p, elemY - p + r);
+        c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
+        c.closePath();
+        c.stroke();
+        c.restore();
+    }
+    setSpeed(v) {
+        this.speedFactor = 1 / v;
+    }
+    togglePause() {
+        this.paused = !this.paused;
+        return this.paused;
+    }
+}
 
+
+
+class LinkedStackView {
+    constructor() { this.c = VISUAL.node.cell; this.nw = VISUAL.node.width; }
+    n(s, id) { return (s.nodes || []).find(n => n.id === id); }
+    obj(o, x) { o.push(x); }
+    txt(o, id, text, x, y, font = VISUAL.fonts.value, fill = K.k, align = 'center', base = 'middle', layer = LAYER.text) {
+        this.obj(o, { id, kind: 'text', text, x, y, style: { font, fill, align, baseline: base }, layer });
+    }
+    rect(o, id, x, y, w, h, fill, hit = null, layer = LAYER.box) {
+        this.obj(o, { id, kind: 'rect', x, y, w, h, style: { fill }, hit, layer });
+    }
+    cir(o, id, x, y, r, fill, layer = LAYER.dot) {
+        this.obj(o, { id, kind: 'circle', x, y, r, style: { fill }, layer });
+    }
+    ar(o, id, x1, y1, x2, y2, col = K.b, layer = LAYER.arrow) {
+        this.obj(o, { id, kind: 'arrow', x1, y1, x2, y2, style: { stroke: col, fill: col }, lineWidth: 3, layer });
+    }
+    poly(o, id, points, col = K.b, layer = LAYER.arrow) {
+        this.obj(o, { id, kind: 'polylineArrow', points, style: { stroke: col }, lineWidth: 3, layer });
+    }
+    det(o, id, x1, y1, x2, y2, col = K.b, amount = 1) {
+        const d = VISUAL.stroke.detourOffset * amount, my = y1 + d;
+        this.poly(o, id, [{ x: x1, y: y1 }, { x: x1 + d, y: my }, { x: x2 - d, y: my }, { x: x2, y: y2 }], col);
+    }
+    ptr(n) { return { x: n.x + this.c + this.c / 2, y: n.y + this.c / 2 }; }
+    scene(s) {
+        const o = [];
+        this.struct(o, s);
+        (s.nodes || []).forEach(n => this.node(o, s, n));
+        if (s.pnode) this.pnode(o, s);
+        this.structArrows(o, s);
+        this.links(o, s);
+        if (s.pnode) this.pnodeArrow(o, s);
+        this.over(o, s);
+        return { text: s.text, pause: !!s.pause, objects: o, bounds: this.bounds(o) };
+    }
+    node(o, s, n) {
+        const w = this.c, x = n.x, y = n.y, ey = y + VISUAL.node.elementYOffset, id = 'node:' + n.id;
+        this.rect(o, id + ':elem', x, ey, w, w, K.g, { value: n.e });
+        this.txt(o, id + ':val', n.e, x + w / 2, ey + w / 2 + 2, VISUAL.fonts.value, K.r);
+        if (n.id === s.topId) this.txt(o, id + ':top-label', 'top', x + w / 2, y + w + 30, VISUAL.fonts.pointerLabel, K.k);
+        if ((s.nodes || []).length > 1 && n.id === s.nodes[s.nodes.length - 1].id) this.txt(o, id + ':bottom-label', 'bottom', x + w / 2, y + w + 30, VISUAL.fonts.pointerLabel, K.k);
+        this.rect(o, id + ':left', x, y, w, w, K.c, { value: n.e });
+        this.rect(o, id + ':right', x + w, y, w, w, K.c, { value: n.e });
+        this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
+        this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, 7.5, K.b);
+        this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, 7.5, K.b);
+    }
+    struct(o, s) {
+        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
+        this.txt(o, 'stack:label', 'stack', x - 135, y - 70, VISUAL.fonts.structLabel, K.k, 'right');
+        this.rect(o, 'stack:box', x - 125, y - 108, w, h, K.p);
+        this.cir(o, 'stack:dot', x - 125 + w / 2, y - 108 + h / 2, 8, K.v);
+        [['top', K.c, s.topId], ['size', K.g, s.size]].forEach((r, i) => {
+            const yy = y + i * h, id = 'st:' + r[0];
+            this.txt(o, id + ':label', r[0], x - 16, yy + h / 2, VISUAL.fonts.structLabel, K.k, 'right');
+            this.rect(o, id + ':box', x, yy, w, h, r[1]);
+            if (r[0] === 'size') this.txt(o, id + ':value', String(r[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
+            else this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, K.b);
+        });
+    }
+    structArrows(o, s) {
+        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
+        this.ar(o, 'a:stack', x - 125 + w / 2, y - 108 + h / 2, x, y + 8, K.v);
+        const top = this.n(s, s.topId);
+        if (top) {
+            const a = s.topDetourAmount ?? (s.detourTop ? 1 : 0), col = s.markTopArrow ? K.r : K.b;
+            if (a > .001) this.det(o, 'a:top', x + w / 2, y + h / 2, top.x, top.y + h / 2, col, a);
+            else this.ar(o, 'a:top', x + w / 2, y + h / 2, top.x, top.y + h / 2, col);
+        }
+    }
+    links(o, s) {
+        (s.nodes || []).forEach(n => {
+            if (n.next != null) {
+                const t = this.n(s, n.next);
+                if (t) {
+                    const p = this.ptr(n), a = n.detourAmount ?? (n.detourNext ? 1 : 0);
+                    if (a > .001) this.det(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2, K.b, a);
+                    else this.ar(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2);
+                }
+            }
+        });
+    }
+    pnode(o, s) {
+        const p = s.pnode, under = VISUAL.layers.underBox;
+        this.txt(o, 'pn:label', p.label || 'newNode', p.x - 12, p.y + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic', under.text);
+        this.rect(o, 'pn:box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c, null, under.box);
+        this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, 8, K.b, under.dot);
+    }
+    pnodeArrow(o, s) {
+        const p = s.pnode, t = this.n(s, p.target), under = VISUAL.layers.underBox;
+        if (t) this.ar(o, 'pn:arrow', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, t.x, t.y + this.c / 2, K.b, under.arrow);
+    }
+    over(o, s) {
+        const x = VISUAL.struct.x, y = VISUAL.struct.y, h = this.c;
+        if (s.flashTop) this.obj(o, { id: 'fl:top', kind: 'flashCircle', x: x + h / 2, y: y + h / 2, r: 28, layer: LAYER.overlay });
+        if (s.flashSize) this.obj(o, { id: 'fl:size', kind: 'flashCircle', x: x + h / 2, y: y + h + h / 2, r: 28, layer: LAYER.overlay });
+        (s.nodes || []).forEach(n => {
+            const ey = n.y + VISUAL.node.elementYOffset;
+            if (n.flashNew) this.obj(o, { id: 'fl:new:' + n.id, kind: 'lFlash', x: n.x, y: n.y, elemY: ey, cell: this.c, nodeW: this.nw, layer: LAYER.overlay });
+            if (n.flashElement) this.obj(o, { id: 'fl:elem:' + n.id, kind: 'flashRect', x: n.x - 1, y: ey - 1, w: this.c, h: this.c, radius: 8, layer: LAYER.overlay });
+            if (n.flashNodeCross) this.obj(o, { id: 'cr:node:' + n.id, kind: 'cross', x: n.x, y: n.y, w: this.nw, h: this.c, layer: LAYER.overlay });
+        });
+        if (s.flashPNodeCross && s.pnode) this.obj(o, { id: 'cr:pnode', kind: 'cross', x: s.pnode.x, y: s.pnode.y, w: VISUAL.pointerBox.width, h: VISUAL.pointerBox.height, layer: LAYER.overlay });
+    }
+    bounds(o) {
+        let b = { minX: 20, minY: 35, maxX: 760, maxY: 560 };
+        for (const q of o) {
+            let xs = [], ys = [];
+            if (q.x !== undefined) { xs.push(q.x, q.x + (q.w || 0)); ys.push(q.y, q.y + (q.h || 0)); }
+            if (q.x1 !== undefined) { xs.push(q.x1, q.x2); ys.push(q.y1, q.y2); }
+            if (q.points) q.points.forEach(p => { xs.push(p.x); ys.push(p.y); });
+            if (xs.length) { b.minX = Math.min(b.minX, Math.min(...xs) - 180); b.maxX = Math.max(b.maxX, Math.max(...xs) + 230); b.minY = Math.min(b.minY, Math.min(...ys) - 200); b.maxY = Math.max(b.maxY, Math.max(...ys) + 210); }
+        }
+        return b;
+    }
+}
+class Viz extends VisualizationEngine {
+    constructor(id) {
+        super({ canvasId: id, wrapId: 'wrap', statusId: 'status-text', onHit: h => { document.getElementById('val').value = h.value; }, options: { worldFallback: { minX: 20, minY: 35, maxX: 760, maxY: 560 }, maxFitScale: 1.25 } });
+        this.view = new LinkedStackView(); this.cell = VISUAL.node.cell; this.nodeW = VISUAL.node.width; this.gap = VISUAL.node.cell;
+    }
+    get sn() { return this.scenes; } set sn(v) { this.scenes = v; }
+    base() { return { x: 360, y: 250, up: 110 }; }
+    enqueue(snaps) { super.enqueue(snaps.map(s => this.view.scene(s))); }
+}
+function relink(nodes) { nodes.forEach((n, i) => { n.index = undefined; n.next = i < nodes.length - 1 ? nodes[i + 1].id : null; }); }
+const app = {
+    values: [], ids: [], history: [], viz: null,
+    init() { this.viz = new Viz('cv'); this.randomFill(); this.ids = this.values.map(_ => nextId++); this.showCurrent('The stack is initialized with sample values'); this.updateUI(); },
+    baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) { const yy = y ?? this.viz.base().y; return vals.map((e, i) => ({ id: ids[i], e, x: VISUAL.list.originX + shift + i * VISUAL.node.step, y: yy, next: i < ids.length - 1 ? ids[i + 1] : null })); },
+    snapshot(text, nodes, extra = {}) { nodes = nodes.map(n => ({ ...n })); if (!extra.preserveLinks) relink(nodes); return { nodes, topId: extra.topId !== undefined ? extra.topId : (nodes[0]?.id ?? null), size: extra.size ?? nodes.length, text, ...extra }; },
+    showCurrent(text = 'Ready.') { this.viz.reset(); this.viz.enqueue([this.snapshot(text, this.baseNodes())]); },
+    v() { return parseInt(document.getElementById('val').value); },
+    save() { this.history.push({ values: [...this.values], ids: [...this.ids] }); if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift(); },
+    push() {
+        const e = this.v(); if (isNaN(e)) return; this.save();
+        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++, b = this.viz.base(), gap = VISUAL.node.step, oldTop = oldIds[0] ?? null;
+        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y), shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
+        let pnode = { x: b.x - VISUAL.list.tempPointerXOffset, y: b.up, target: newId, label: 'newNode' }, newUp = { id: newId, e, x: b.x, y: b.up, next: oldTop, flashNew: true };
+        const snaps = [
+            this.snapshot('The algorithm starts from the current stack state', oldNodes, { size: oldSize }),
+            this.snapshot('Existing nodes are moved aside to make room for the new top node', shiftedOld, { size: oldSize, topId: oldTop, pause: true }),
+            this.snapshot('A new node is allocated and linked to the former top node', [newUp, ...shiftedOld], { size: oldSize, pnode, topId: oldTop, preserveLinks: true, pause: true })
+        ];
+        newUp = { ...newUp, flashNew: false };
+        snaps.push(this.snapshot('The stack is ready to update its top reference', [newUp, ...shiftedOld], { size: oldSize, pnode, topId: oldTop, flashTop: true, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The new node becomes the top node of the stack', [newUp, ...shiftedOld], { size: oldSize, pnode, topId: newId, preserveLinks: true, pause: true }));
+        let newDown = { ...newUp, y: b.y };
+        snaps.push(this.snapshot('The new node is placed in its final stack position', [newDown, ...shiftedOld], { size: oldSize, pnode, topId: newId, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The stack size increases by one', [newDown, ...shiftedOld], { size: oldSize + 1, pnode, topId: newId, flashSize: true, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The temporary reference to the new node is discarded', [newDown, ...shiftedOld], { size: oldSize + 1, pnode, topId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The operation is complete', [newDown, ...shiftedOld], { size: oldSize + 1, topId: newId, preserveLinks: true }));
+        this.values = [e, ...oldVals]; this.ids = [newId, ...oldIds]; this.viz.enqueue(snaps); this.updateUI();
+    },
+    pop() {
+        if (this.values.length === 0) return; this.save();
+        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, b = this.viz.base(), removedId = oldIds[0], newTop = oldIds[1] ?? null, needsDetour = newTop !== null;
+        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        let snaps = [this.snapshot('The algorithm starts from the current stack state', oldNodes, { size: oldSize })];
+        snaps.push(this.snapshot('stack.top is updated to the node after the removed node', oldNodes, { size: oldSize, topId: newTop, flashTop: true, detourTop: needsDetour, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The stack size decreases by one', oldNodes, { size: oldSize - 1, topId: newTop, flashSize: true, detourTop: needsDetour, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('Without references pointing to it, the unlinked node becomes unreachable', oldNodes.map(n => n.id === removedId ? { ...n, flashNodeCross: true } : n), { size: oldSize - 1, topId: newTop, detourTop: needsDetour, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
+        let remaining = oldNodes.filter(n => n.id !== removedId);
+        snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', remaining, { size: oldSize - 1, topId: newTop, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
+        const newVals = oldVals.slice(1), newIds = oldIds.slice(1), compact = this.baseNodes(newVals, newIds, 0, b.y);
+        snaps.push(this.snapshot('The remaining nodes shift into their final stack positions', compact, { size: oldSize - 1, topId: newTop, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The operation is complete', compact, { size: oldSize - 1, topId: newTop, preserveLinks: true }));
+        this.values = newVals; this.ids = newIds; this.viz.enqueue(snaps); this.updateUI();
+    },
+    getTop() {
+        if (this.values.length === 0) return; const nodes = this.baseNodes(), topId = this.ids[0];
+        const snaps = [this.snapshot('The algorithm starts from the current stack state', nodes, { size: this.values.length }), this.snapshot('The algorithm uses stack.top to access the top node directly', nodes, { size: this.values.length, markTopArrow: true, pause: true }), this.snapshot('The top element has been accessed: top() = ' + this.values[0], nodes.map(n => n.id === topId ? { ...n, flashElement: true } : n), { size: this.values.length, markTopArrow: true, pause: true }), this.snapshot('The operation is complete', nodes, { size: this.values.length })];
+        this.viz.enqueue(snaps); this.updateUI();
+    },
+    randomFill() { this.values = []; const sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize; while (this.values.length < sz) { const v = Math.floor(Math.random() * VISUAL.random.valueRange) + VISUAL.random.minValue; if (!this.values.includes(v)) this.values.push(v); } },
+    newList() { this.save(); this.values = []; this.ids = []; this.showCurrent('A new empty stack has been created'); this.updateUI(); },
+    random() { this.save(); this.randomFill(); this.ids = this.values.map(_ => nextId++); this.showCurrent('A random sample stack has been created'); this.updateUI(); },
+    clear() {
+        this.save(); const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, originalNodes = this.baseNodes(oldVals, oldIds);
+        let snaps = [this.snapshot('The algorithm starts from the current stack state', originalNodes, { topId: oldIds[0] ?? null, size: oldSize })];
+        if (oldSize === 0) snaps.push(this.snapshot('The stack is already empty', originalNodes, { topId: null, size: 0, pause: true }));
+        else {
+            snaps.push(this.snapshot('stack.top is set to null', originalNodes, { topId: null, size: oldSize, flashTop: true, pause: true }));
+            snaps.push(this.snapshot('stack.size is set to 0', originalNodes, { topId: null, size: 0, flashSize: true, pause: true }));
+            let currentNodes = originalNodes.map(n => ({ ...n }));
+            for (let k = 0; k < oldSize; k++) { const curId = oldIds[k]; snaps.push(this.snapshot('An unreachable node is ready to be reclaimed', currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n), { topId: null, size: 0, preserveLinks: true, pause: true })); currentNodes = currentNodes.filter(n => n.id !== curId); snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', currentNodes, { topId: null, size: 0, preserveLinks: true, pause: true })); }
+            snaps.push(this.snapshot('The operation is complete', [], { topId: null, size: 0 })); this.values = []; this.ids = [];
+        }
+        this.viz.enqueue(snaps); this.updateUI();
+    },
+    undo() { if (!this.history.length) return; const h = this.history.pop(); this.values = h.values; this.ids = h.ids; this.showCurrent('The previous stack state has been restored'); this.updateUI(); },
+    speed() { this.viz.setSpeed(parseFloat(document.getElementById('speed').value)); },
+    pause() { const p = this.viz.togglePause(); document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'; },
+    toggleModal() { const m = document.getElementById('helpModal'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; },
+    updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; },
+    clearInputs() { document.getElementById('val').value = ''; }
+};
+window.onload = () => app.init();
+window.onclick = e => { if (e.target === document.getElementById('helpModal')) app.toggleModal(); };
+
+    </script>
+</body>
 </html>
