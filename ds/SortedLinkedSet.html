@@ -805,14 +805,29 @@
 
     		let iterator = null;
     		if (A.iterator && B.iterator) {
-    			iterator = { ...B.iterator, x: mix(A.iterator.x, B.iterator.x), y: mix(A.iterator.y, B.iterator.y) };
-			// IMPORTANT: drawIterator normally aims at target.x,target.y (top-left of the node),
-			// so the interpolated endpoint must use nodeTop, not nodeLeft/nodeCenter.
-			if (A.iterator.target !== B.iterator.target) {
-				const p = mixedTarget(A.iterator.target, B.iterator.target, 'nodeTop', 'nodeTop');
-				if (p) iterator.currentArrowTarget = p;
-			}
-    		} else iterator = B.iterator || A.iterator || null;
+				iterator = {
+					...B.iterator,
+					x: A.iterator.x + (B.iterator.x - A.iterator.x) * t,
+					y: A.iterator.y + (B.iterator.y - A.iterator.y) * t
+				};
+
+				if (A.iterator.target !== B.iterator.target) {
+					const from = A.iterator.target !== null && A.iterator.target !== undefined
+						? (ma.get(A.iterator.target) || mb.get(A.iterator.target))
+						: null;
+
+					const to = B.iterator.target !== null && B.iterator.target !== undefined
+						? (mb.get(B.iterator.target) || ma.get(B.iterator.target))
+						: null;
+
+					if (from && to) {
+						iterator.currentArrowTarget = {
+							x: from.x + (to.x - from.x) * t,
+							y: from.y + (to.y - from.y) * t
+						};
+					}
+				}
+			}else iterator = B.iterator || A.iterator || null;
 
     		const firstDetourAmount = (A.firstDetourAmount !== undefined || B.firstDetourAmount !== undefined) ? ((A.firstDetourAmount ?? (A.detourFirst ? 1 : 0)) + ((B.firstDetourAmount ?? (B.detourFirst ? 1 : 0)) - (A.firstDetourAmount ?? (A.detourFirst ? 1 : 0))) * t) : B.firstDetourAmount;
 		const firstArrowTarget = A.firstId !== B.firstId ? mixedTarget(A.firstId, B.firstId, 'nodeLeft', 'nodeLeft') : null;
@@ -1268,12 +1283,27 @@
     		this.arrow(ix + w / 2, iy + h / 2, cx, cy + h / 3, K.v, VISUAL.stroke.normalWidth);
     		// If current is null, the null reference is represented by the dot inside the current box.
     		// Otherwise, current points to the target node.
-    		const target = this.nodeById(s, it.target);
-    		if (it.currentArrowTarget) {
-    			this.arrow(cx + w / 2, cy + h / 2, it.currentArrowTarget.x, it.currentArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
-    		} else if (target) {
-    			this.arrow(cx + w / 2, cy + h / 2, target.x, target.y, K.b, VISUAL.stroke.normalWidth);
-    		}
+			const target = this.nodeById(s, it.target);
+
+			if (it.currentArrowTarget) {
+				this.arrow(
+					cx + w / 2,
+					cy + h / 2,
+					it.currentArrowTarget.x,
+					it.currentArrowTarget.y,
+					K.b,
+					VISUAL.stroke.normalWidth
+				);
+			} else if (target) {
+				this.arrow(
+					cx + w / 2,
+					cy + h / 2,
+					target.x,
+					target.y,
+					K.b,
+					VISUAL.stroke.normalWidth
+				);
+			}
     	}
 
     	drawOverlays(s) {
@@ -1843,11 +1873,20 @@
     				iterator,
     				pause: true
     			}));
-    			snaps.push(this.snapshot('Advance iterator.current to the next node', nodes, {
-    				size: oldSize,
-    				iterator: nextIterator,
-    				pause: true
-    			}));
+				const iteratorWithUpdatedCurrent = {
+					...iterator,
+					target: nextCurId
+				};
+				snaps.push(this.snapshot('iterator.current is updated to point to the next node', nodes, {
+					size: oldSize,
+					iterator: iteratorWithUpdatedCurrent,
+					pause: true
+				}));
+				snaps.push(this.snapshot('The iterator object moves to stay visually aligned with current', nodes, {
+					size: oldSize,
+					iterator: nextIterator,
+					pause: true
+				}));	
     			iterator = nextIterator;
     			curId = nextCurId;
     		}
