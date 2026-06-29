@@ -298,6 +298,9 @@
                 <li><strong>Delete</strong>: searches using Finder and removes the node if it exists. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Contains</strong>: runs Finder and returns the <span class="code">found</span> field. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Iterate</strong>: creates an iterator whose <span class="code">current</span> reference visits each node in sorted order. Complexity: <span class="code">O(n)</span> for visiting all elements.</li>
+                <li><strong>Union</strong>: traverses the two sorted sets using <span class="code">elem1</span> and <span class="code">elem2</span>. The smaller current element is appended to a temporary builder; when both current elements are equal, the value is appended once and both references advance. Complexity: <span class="code">O(n + m)</span>.</li>
+                <li><strong>Intersection</strong>: traverses both sorted sets in parallel. If one current element is smaller, only that reference advances; equal elements are appended to the builder and both references advance. Complexity: <span class="code">O(n + m)</span>.</li>
+                <li><strong>Difference</strong>: traverses this set and the other set in parallel. Elements from this set are appended only when they are not present in the other set; equal elements are skipped. Complexity: <span class="code">O(n + m)</span>.</li>
             </ul>
         </div>
     </div>
@@ -750,63 +753,121 @@
     			mb = new Map((B.nodes || []).map(n => [n.id, n])),
     			ids = new Set([...ma.keys(), ...mb.keys()]),
     			nodes = [];
+
+		const mix = (a, b) => a + (b - a) * t;
+		const pointIn = (map, id, where = 'nodeLeft') => {
+			if (id === null || id === undefined) return null;
+			const n = map.get(id);
+			if (!n) return null;
+			if (where === 'nodeTop') return { x: n.x, y: n.y };
+			if (where === 'nodeCenter') return { x: n.x, y: n.y + this.cell / 2 };
+			if (where === 'nodeBottom') return { x: n.x, y: n.y + this.cell };
+			if (where === 'element') return { x: n.x + this.cell / 2, y: n.y + VISUAL.node.elementYOffset };
+			return { x: n.x, y: n.y + this.cell / 2 };
+		};
+		const mixedTarget = (oldId, newId, oldWhere = 'nodeLeft', newWhere = oldWhere) => {
+			const a = pointIn(ma, oldId, oldWhere) || pointIn(mb, oldId, oldWhere);
+			const b = pointIn(mb, newId, newWhere) || pointIn(ma, newId, newWhere);
+			if (!a || !b) return null;
+			return { x: mix(a.x, b.x), y: mix(a.y, b.y) };
+		};
+
     		ids.forEach(id => {
-    			const a = ma.get(id),
-    				b = mb.get(id);
-    			if (a && b) nodes.push({
-    				...b,
-    				x: a.x + (b.x - a.x) * t,
-    				y: a.y + (b.y - a.y) * t,
-    				detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
-    			});
-    			else if (b && !a) nodes.push({
-    				...b
-    			});
-    			else if (a && !b && t < VISUAL.animation.deleteFadeCutoff) nodes.push({
-    				...a,
-    				deleted: true
-    			})
+    			const a = ma.get(id), b = mb.get(id);
+    			if (a && b) {
+				const node = {
+    					...b,
+    					x: mix(a.x, b.x),
+    					y: mix(a.y, b.y),
+    					detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
+    				};
+				if (a.next !== b.next) {
+					const nt = mixedTarget(a.next, b.next, 'nodeLeft', 'nodeLeft');
+					if (nt) node.nextArrowTarget = nt;
+				}
+				nodes.push(node);
+			} else if (b && !a) nodes.push({ ...b });
+    			else if (a && !b && t < VISUAL.animation.deleteFadeCutoff) nodes.push({ ...a, deleted: true })
     		});
 
     		let finder = null;
     		if (A.finder && B.finder) {
-    			finder = {
-    				...B.finder,
-    				x: A.finder.x + (B.finder.x - A.finder.x) * t,
-    				y: A.finder.y + (B.finder.y - A.finder.y) * t
-    			};
-    		} else {
-    			finder = B.finder || A.finder || null;
-    		}
+    			finder = { ...B.finder, x: mix(A.finder.x, B.finder.x), y: mix(A.finder.y, B.finder.y) };
+			if (A.finder.previous !== B.finder.previous) {
+				const p = mixedTarget(A.finder.previous, B.finder.previous, 'nodeBottom', 'nodeBottom');
+				if (p) finder.previousArrowTarget = p;
+			}
+			if (A.finder.current !== B.finder.current) {
+				const c = mixedTarget(A.finder.current, B.finder.current, 'nodeBottom', 'nodeBottom');
+				if (c) finder.currentArrowTarget = c;
+			}
+    		} else finder = B.finder || A.finder || null;
+
     		let iterator = null;
     		if (A.iterator && B.iterator) {
-    			iterator = {
-    				...B.iterator,
-    				x: A.iterator.x + (B.iterator.x - A.iterator.x) * t,
-    				y: A.iterator.y + (B.iterator.y - A.iterator.y) * t
-    			};
-    		} else {
-    			iterator = B.iterator || A.iterator || null;
-    		}
+    			iterator = { ...B.iterator, x: mix(A.iterator.x, B.iterator.x), y: mix(A.iterator.y, B.iterator.y) };
+			// IMPORTANT: drawIterator normally aims at target.x,target.y (top-left of the node),
+			// so the interpolated endpoint must use nodeTop, not nodeLeft/nodeCenter.
+			if (A.iterator.target !== B.iterator.target) {
+				const p = mixedTarget(A.iterator.target, B.iterator.target, 'nodeTop', 'nodeTop');
+				if (p) iterator.currentArrowTarget = p;
+			}
+    		} else iterator = B.iterator || A.iterator || null;
 
     		const firstDetourAmount = (A.firstDetourAmount !== undefined || B.firstDetourAmount !== undefined) ? ((A.firstDetourAmount ?? (A.detourFirst ? 1 : 0)) + ((B.firstDetourAmount ?? (B.detourFirst ? 1 : 0)) - (A.firstDetourAmount ?? (A.detourFirst ? 1 : 0))) * t) : B.firstDetourAmount;
-    		let nextVars = B.nextVars || null;
-    		if (A.nextVars && B.nextVars && A.nextVars.length === B.nextVars.length) {
-    			nextVars = B.nextVars.map((v, i) => ({
-    				...v,
-    				x: A.nextVars[i].x + (v.x - A.nextVars[i].x) * t,
-    				y: A.nextVars[i].y + (v.y - A.nextVars[i].y) * t
-    			}));
-    		}
-    		return {
-    			...B,
-    			nodes,
-    			finder,
-    			iterator,
-    			firstDetourAmount,
-    			nextVars
-    		}
+		const firstArrowTarget = A.firstId !== B.firstId ? mixedTarget(A.firstId, B.firstId, 'nodeLeft', 'nodeLeft') : null;
+
+		const mixPointerArray = (arrA, arrB) => {
+			let out = arrB || null;
+			if (arrA && arrB && arrA.length === arrB.length) {
+				out = arrB.map((v, i) => {
+					const av = arrA[i];
+					const nv = { ...v, x: mix(av.x, v.x), y: mix(av.y, v.y) };
+					if (av.target !== v.target || av.targetPart !== v.targetPart) {
+						const oldWhere = av.targetPart === 'node' ? 'nodeCenter' : 'element';
+						const newWhere = v.targetPart === 'node' ? 'nodeCenter' : 'element';
+						const p = mixedTarget(av.target, v.target, oldWhere, newWhere);
+						if (p) nv.arrowTarget = p;
+					}
+					return nv;
+				});
+			}
+			return out;
+		};
+
+    		let nextVars = mixPointerArray(A.nextVars, B.nextVars);
+		let localVars = mixPointerArray(A.localVars, B.localVars);
+
+		let opSetStructs = B.opSetStructs || null;
+		if (A.opSetStructs && B.opSetStructs && A.opSetStructs.length === B.opSetStructs.length) {
+			opSetStructs = B.opSetStructs.map((st, i) => {
+				const as = A.opSetStructs[i], ns = { ...st };
+				['x', 'y', 'refX', 'refY'].forEach(k => { if (as[k] !== undefined && st[k] !== undefined) ns[k] = mix(as[k], st[k]); });
+				if (as.firstId !== st.firstId) {
+					const p = mixedTarget(as.firstId, st.firstId, 'nodeLeft', 'nodeLeft');
+					if (p) ns.firstArrowTarget = p;
+				}
+				return ns;
+			});
+		}
+
+		let builderStruct = B.builderStruct || null;
+		if (A.builderStruct && B.builderStruct) {
+			builderStruct = { ...B.builderStruct };
+			['x', 'y'].forEach(k => { if (A.builderStruct[k] !== undefined && B.builderStruct[k] !== undefined) builderStruct[k] = mix(A.builderStruct[k], B.builderStruct[k]); });
+			if (A.builderStruct.firstId !== B.builderStruct.firstId) {
+				const p = mixedTarget(A.builderStruct.firstId, B.builderStruct.firstId, 'nodeLeft', 'nodeLeft');
+				if (p) builderStruct.firstArrowTarget = p;
+			}
+			if (A.builderStruct.lastId !== B.builderStruct.lastId) {
+				const p = mixedTarget(A.builderStruct.lastId, B.builderStruct.lastId, 'nodeLeft', 'nodeLeft');
+				if (p) builderStruct.lastArrowTarget = p;
+			}
+		}
+
+    		return { ...B, nodes, finder, iterator, firstDetourAmount, firstArrowTarget, nextVars, localVars, opSetStructs, builderStruct }
     	}
+
     	current() {
     		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
     		return this.sn[Math.max(this.idx, 0)]
@@ -916,29 +977,34 @@
     	}
 
     	drawStructArrows(s) {
-    		const x = VISUAL.struct.x,
-    			y = VISUAL.struct.y,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell;
+    		const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.cell;
     		this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
+		if (s.firstArrowTarget) {
+			this.arrow(x + w / 2, y + h / 2, s.firstArrowTarget.x, s.firstArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
+			return;
+		}
     		const f = this.nodeById(s, s.firstId);
     		if (f) {
     			const amount = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
     			if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth, amount);
     			else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth)
-    		} else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
-    			this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, VISUAL.stroke.normalWidth);
-    		}
+    		} else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, VISUAL.stroke.normalWidth);
     	}
 
     	drawLinks(s) {
     		(s.nodes || []).forEach(n => {
+			const p = this.ptr(n);
+			if (n.nextArrowTarget) {
+				const amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
+				if (amount > 0.001) this.detourArrow(p.x, p.y, n.nextArrowTarget.x, n.nextArrowTarget.y, K.b, VISUAL.stroke.normalWidth, amount);
+				else this.arrow(p.x, p.y, n.nextArrowTarget.x, n.nextArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
+				return;
+			}
     			if (n.next !== null && n.next !== undefined) {
     				const to = this.nodeById(s, n.next);
     				if (to) {
-    					const p = this.ptr(n),
-    						amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
-    					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
+    					const amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
+    					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth, amount);
     					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
     				}
     			}
@@ -987,90 +1053,44 @@
 		if (s.localVars) s.localVars.forEach(v => this.drawElemBox(s, v));
     	}
     	drawOpSetStruct(s, st) {
-    		const c = this.ctx,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell,
-    			x = st.x,
-    			y = st.y,
-    			refX = st.refX,
-    			refY = st.refY;
+    		const c = this.ctx, w = VISUAL.struct.fieldWidth, h = this.cell, x = st.x, y = st.y, refX = st.refX, refY = st.refY;
     		c.save();
-    		c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.structLabel;
-    		c.textAlign = 'right';
-    		c.textBaseline = 'middle';
+    		c.fillStyle = K.k; c.font = VISUAL.fonts.structLabel; c.textAlign = 'right'; c.textBaseline = 'middle';
     		c.fillText(st.refLabel, refX - 16, refY + h / 2);
-    		c.fillStyle = K.p;
-    		c.fillRect(refX, refY, w, h);
-    		c.fillStyle = K.v;
-    		c.beginPath();
-    		c.arc(refX + w / 2, refY + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-
-            const bx = x - 80
-            const by = y - 80
-
-    		c.fillStyle = K.p;
-            c.fillRect(bx, by, w, h);
-
-  		    c.fillStyle = K.v;
-    		c.save();
-    		c.beginPath();
-    		c.arc(bx + w / 2, by + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-    		c.restore();
+    		c.fillStyle = K.p; c.fillRect(refX, refY, w, h);
+    		c.fillStyle = K.v; c.beginPath(); c.arc(refX + w / 2, refY + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill();
+		const bx = x - 80, by = y - 80;
+    		c.fillStyle = K.p; c.fillRect(bx, by, w, h);
+  		c.fillStyle = K.v; c.beginPath(); c.arc(bx + w / 2, by + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill();
     		this.arrow(bx + w / 2, by + h / 2, x, y, K.v, VISUAL.stroke.normalWidth);
-
-
-    		c.fillStyle = K.k;
-    		c.fillText(st.label, bx - 12, by + h / 2);
-    		[
-    			['first', st.firstId, K.c],
-    			['size', st.size, K.g]
-    		].forEach((row, i) => {
+    		c.fillStyle = K.k; c.fillText(st.label, bx - 12, by + h / 2);
+    		[['first', st.firstId, K.c], ['size', st.size, K.g]].forEach((row, i) => {
     			const yy = y + i * h;
-    			c.fillStyle = K.k;
-    			c.textAlign = 'right';
-    			c.font = VISUAL.fonts.structLabel;
-    			c.fillText(row[0], x - 16, yy + h / 2);
-    			c.fillStyle = row[2];
-    			c.fillRect(x, yy, w, h * .95);
-    			if (row[0] === 'size') {
-    				c.fillStyle = K.r;
-    				c.font = VISUAL.fonts.structValue;
-    				c.textAlign = 'center';
-    				c.fillText(String(row[1]), x + w / 2, yy + h / 2 + 2)
-    			} else {
-    				c.fillStyle = K.b;
-    				c.beginPath();
-    				c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    				c.fill()
-    			}
+    			c.fillStyle = K.k; c.textAlign = 'right'; c.font = VISUAL.fonts.structLabel; c.fillText(row[0], x - 16, yy + h / 2);
+    			c.fillStyle = row[2]; c.fillRect(x, yy, w, h * .95);
+    			if (row[0] === 'size') { c.fillStyle = K.r; c.font = VISUAL.fonts.structValue; c.textAlign = 'center'; c.fillText(String(row[1]), x + w / 2, yy + h / 2 + 2) }
+			else { c.fillStyle = K.b; c.beginPath(); c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill() }
     		});
     		c.restore();
     		this.arrow(refX + w / 2, refY + h / 2, x, y + h / 2, K.v, VISUAL.stroke.normalWidth);
-    		const first = this.nodeById(s, st.firstId);
-    		if (first) this.arrow(x + w / 2, y + h / 2, first.x, first.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth);
+		if (st.firstArrowTarget) this.arrow(x + w / 2, y + h / 2, st.firstArrowTarget.x, st.firstArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
+    		else {
+			const first = this.nodeById(s, st.firstId);
+    			if (first) this.arrow(x + w / 2, y + h / 2, first.x, first.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth);
+		}
     	}
+
     	drawElemBox(s, v) {
-    		const c = this.ctx,
-    			w = VISUAL.pointerBox.width,
-    			h = VISUAL.pointerBox.height;
+    		const c = this.ctx, w = VISUAL.pointerBox.width, h = VISUAL.pointerBox.height;
     		c.save();
-            c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.auxPointerLabel;
-    		c.textAlign = 'right';
-    		c.textBaseline = 'middle';
+        c.fillStyle = K.k; c.font = VISUAL.fonts.auxPointerLabel; c.textAlign = 'right'; c.textBaseline = 'middle';
     		c.fillText(v.label, v.x - 16, v.y + this.cell / 2);
-    		c.fillStyle = K.c;
-    		c.fillRect(v.x, v.y, w, h);
-    		c.fillStyle = K.b;
-    		c.beginPath();
-    		c.arc(v.x + w / 2, v.y + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
+    		c.fillStyle = K.c; c.fillRect(v.x, v.y, w, h);
+    		c.fillStyle = K.b; c.beginPath(); c.arc(v.x + w / 2, v.y + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill();
     		c.restore();
     		if (v.flash) this.flashCircle(v.x + w / 2, v.y + h / 2, 26);
 		if (v.cross) this.cross(v.x, v.y, w, h);
+		if (v.arrowTarget) { this.arrow(v.x + w / 2, v.y + h / 2, v.arrowTarget.x, v.arrowTarget.y, K.b, VISUAL.stroke.normalWidth); return; }
     		if (v.target !== null && v.target !== undefined) {
     			const t = this.nodeById(s, v.target);
     			if (t) {
@@ -1080,79 +1100,34 @@
 			}
     		}
     	}
+
     	drawBuilderStruct(s) {
-    		const bs = s.builderStruct,
-    			c = this.ctx,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell,
-    			x = bs.x,
-    			y = bs.y,
-    			refX = x - 80,
-    			refY = y - 80;
+    		const bs = s.builderStruct, c = this.ctx, w = VISUAL.struct.fieldWidth, h = this.cell, x = bs.x, y = bs.y, refX = x - 80, refY = y - 80;
     		c.save();
-    		c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.structLabel;
-    		c.textAlign = 'right';
-    		c.textBaseline = 'middle';
-    		c.fillText('builder', refX - 16, refY + h / 2);
-    		c.fillStyle = K.p;
-    		c.fillRect(refX, refY, w, h);
-    		c.fillStyle = K.v;
-    		c.beginPath();
-    		c.arc(refX + w / 2, refY + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-    		c.restore();
+    		c.fillStyle = K.k; c.font = VISUAL.fonts.structLabel; c.textAlign = 'right'; c.textBaseline = 'middle'; c.fillText('builder', refX - 16, refY + h / 2);
+    		c.fillStyle = K.p; c.fillRect(refX, refY, w, h);
+    		c.fillStyle = K.v; c.beginPath(); c.arc(refX + w / 2, refY + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill(); c.restore();
     		this.arrow(refX + w / 2, refY + h / 2, x, y, K.v, VISUAL.stroke.normalWidth);
-    		c.save();
-    		c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.structLabel;
-    		[
-    			['first', bs.firstId, K.c],
-    			['last', bs.lastId, K.c],
-    			['size', bs.size, K.g]
-    		].forEach((row, i) => {
+    		c.save(); c.fillStyle = K.k; c.font = VISUAL.fonts.structLabel;
+    		[['first', bs.firstId, K.c], ['last', bs.lastId, K.c], ['size', bs.size, K.g]].forEach((row, i) => {
     			const yy = y + i * h;
-    			c.fillStyle = K.k;
-    			c.textAlign = 'right';
-    			c.font = VISUAL.fonts.structLabel;
-    			c.fillText(row[0], x - 16, yy + h / 2);
-    			c.fillStyle = row[2];
-    			c.fillRect(x, yy, w, h * .95);
+    			c.fillStyle = K.k; c.textAlign = 'right'; c.font = VISUAL.fonts.structLabel; c.fillText(row[0], x - 16, yy + h / 2);
+    			c.fillStyle = row[2]; c.fillRect(x, yy, w, h * .95);
     			if ((bs.flashFirst && row[0] === 'first') || (bs.flashLast && row[0] === 'last') || (bs.flashSize && row[0] === 'size')) this.flashCircle(x + w / 2, yy + h / 2, 28);
-    			if (row[0] === 'size') {
-    				c.fillStyle = K.r;
-    				c.font = VISUAL.fonts.structValue;
-    				c.textAlign = 'center';
-    				c.fillText(String(row[1]), x + w / 2, yy + h / 2 + 8)
-    			} else {
-    				c.fillStyle = K.b;
-    				c.beginPath();
-    				c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    				c.fill()
-    			}
+    			if (row[0] === 'size') { c.fillStyle = K.r; c.font = VISUAL.fonts.structValue; c.textAlign = 'center'; c.fillText(String(row[1]), x + w / 2, yy + h / 2 + 8) }
+			else { c.fillStyle = K.b; c.beginPath(); c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2); c.fill() }
     		});
     		c.restore();
-    		const first = this.nodeById(s, bs.firstId);
-    		if (first) this.arrow(x + w / 2, y + h / 2, first.x, first.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth);
-    		const last = this.nodeById(s, bs.lastId);
-    		if (last) {
-    			const sx = x + w / 2,
-    				sy = y + h + h / 2,
-    				tx = last.x,
-    				ty = last.y + this.cell / 2,
-    				kx = Math.max(sx + 30, tx - 70);
-    			this.polylineArrow([{
-    				x: sx,
-    				y: sy
-    			}, {
-    				x: kx,
-    				y: sy
-    			}, {
-    				x: tx,
-    				y: ty
-    			}], K.b, VISUAL.stroke.normalWidth)
+		if (bs.firstArrowTarget) this.arrow(x + w / 2, y + h / 2, bs.firstArrowTarget.x, bs.firstArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
+		else { const first = this.nodeById(s, bs.firstId); if (first) this.arrow(x + w / 2, y + h / 2, first.x, first.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth); }
+		const lastTarget = bs.lastArrowTarget || null;
+    		const last = lastTarget ? null : this.nodeById(s, bs.lastId);
+    		if (lastTarget || last) {
+    			const sx = x + w / 2, sy = y + h + h / 2, tx = lastTarget ? lastTarget.x : last.x, ty = lastTarget ? lastTarget.y : last.y + this.cell / 2, kx = Math.max(sx + 30, tx - 70);
+    			this.polylineArrow([{ x: sx, y: sy }, { x: kx, y: sy }, { x: tx, y: ty }], K.b, VISUAL.stroke.normalWidth)
     		}
     	}
+
     	polylineArrow(points, col = K.b, lw = VISUAL.stroke.normalWidth) {
     		const c = this.ctx;
     		if (!points || points.length < 2) return;
@@ -1240,12 +1215,15 @@
     		if (s.crossFinder) this.cross(refX, refY, w, h);
 		// Draw arrows to nodes
     		const pTarget = this.nodeById(s, s.finder.previous);
-    		if (pTarget) {
+    		if (s.finder.previousArrowTarget) {
+    			this.arrow(fx + w / 2, fy + h / 2, s.finder.previousArrowTarget.x, s.finder.previousArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
+    		} else if (pTarget) {
     			this.arrow(fx + w / 2, fy + h / 2, pTarget.x, pTarget.y + h, K.b, VISUAL.stroke.normalWidth);
     		}
-
     		const cTarget = this.nodeById(s, s.finder.current);
-    		if (cTarget) {
+    		if (s.finder.currentArrowTarget) {
+    			this.arrow(fx + w / 2, fy + h + h / 2, s.finder.currentArrowTarget.x, s.finder.currentArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
+    		} else if (cTarget) {
     			this.arrow(fx + w / 2, fy + h + h / 2, cTarget.x, cTarget.y + h, K.b, VISUAL.stroke.normalWidth);
     		}
     	}
@@ -1291,7 +1269,9 @@
     		// If current is null, the null reference is represented by the dot inside the current box.
     		// Otherwise, current points to the target node.
     		const target = this.nodeById(s, it.target);
-    		if (target) {
+    		if (it.currentArrowTarget) {
+    			this.arrow(cx + w / 2, cy + h / 2, it.currentArrowTarget.x, it.currentArrowTarget.y, K.b, VISUAL.stroke.normalWidth);
+    		} else if (target) {
     			this.arrow(cx + w / 2, cy + h / 2, target.x, target.y, K.b, VISUAL.stroke.normalWidth);
     		}
     	}
