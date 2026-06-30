@@ -978,10 +978,33 @@ class LinkedQueueView {
     poly(o, id, points, col = K.b, layer = LAYER.arrow, lw = 3) {
         this.obj(o, { id, kind: 'polylineArrow', points, style: { stroke: col }, lineWidth: lw, layer });
     }
-    det(o, id, x1, y1, x2, y2, col = K.b, amount = 1, layer = LAYER.arrow) {
-        const d = VISUAL.stroke.detourOffset * amount, my = y1 + d;
-        this.poly(o, id, [{ x: x1, y: y1 }, { x: x1 + d, y: my }, { x: x2 - d, y: my }, { x: x2, y: y2 }], col, layer);
-    }
+	det(o, id, x1, y1, x2, y2, col = K.b, amount = 1, layer = LAYER.arrow) {
+		if (Math.abs(amount) < .001) {
+			this.poly(o, id, [
+				{ x: x1, y: y1 },
+				{
+					x: x1 + (x2 - x1) / 3,
+					y: y1 + (y2 - y1) / 3
+				},
+				{
+					x: x1 + 2 * (x2 - x1) / 3,
+					y: y1 + 2 * (y2 - y1) / 3
+				},
+				{ x: x2, y: y2 }
+			], col, layer);
+			return;
+		}
+
+		const d = VISUAL.stroke.detourOffset * amount;
+		const my = y1 + d;
+
+		this.poly(o, id, [
+			{ x: x1, y: y1 },
+			{ x: x1 + d, y: my },
+			{ x: x2 - d, y: my },
+			{ x: x2, y: y2 }
+		], col, layer);
+	}
     ptr(n) { return { x: n.x + this.c + this.c / 2, y: n.y + this.c / 2 }; }
     scene(s) {
         const o = [];
@@ -1025,11 +1048,21 @@ class LinkedQueueView {
         const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
         this.ar(o, 'a:queue', x - 125 + w / 2, y - 108 + h / 2, x, y + 8, K.v);
         const first = this.n(s, s.firstId), last = this.n(s, s.lastId);
-        if (first) {
-            const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0), col = s.markFirstArrow ? K.r : K.b;
-            if (a > .001) this.det(o, 'a:first', x + w / 2, y + h / 2, first.x, first.y + h / 2, col, a);
-            else this.ar(o, 'a:first', x + w / 2, y + h / 2, first.x, first.y + h / 2, col);
-        }
+		if (first) {
+			const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
+			const col = s.markFirstArrow ? K.r : K.b;
+
+			this.det(
+				o,
+				'a:first',
+				x + w / 2,
+				y + h / 2,
+				first.x,
+				first.y + h / 2,
+				col,
+				a
+			);
+		}
         if (last) {
             const col = s.markLastArrow ? K.r : K.b;
             const startY = y + h + h / 2, targetY = last.y + h * .75;
@@ -1046,8 +1079,16 @@ class LinkedQueueView {
                 const t = this.n(s, n.next);
                 if (t) {
                     const p = this.ptr(n), a = n.detourAmount ?? (n.detourNext ? 1 : 0);
-                    if (a > .001) this.det(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2, K.b, a);
-                    else this.ar(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2);
+                    this.det(
+						o,
+						'link:' + n.id,
+						p.x,
+						p.y,
+						t.x,
+						t.y + this.c / 2,
+						K.b,
+						a
+					);
                 }
             }
         });
