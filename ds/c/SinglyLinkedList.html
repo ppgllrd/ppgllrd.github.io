@@ -711,19 +711,114 @@ const VIEW = Object.freeze({
     		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
     		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
     	}
-    	enqueue(snaps) {
-    		snaps.forEach(s => this.layout(s));
-    		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-    		if (!this.sn.length) {
-    			this.sn.push(snaps.shift());
-    			this.idx = 0
-    		}
-    		if (snaps.length) {
-    			this.pending = snaps;
-    			this.state = 'CAMERA'
-    		}
-    	}
-    	loop(ts) {
+
+    hasFlash(s) {
+        if (!s) return false;
+        if (s.flashPFirst || s.flashPLast || s.flashSize || s.flashPNodeCross || s.flashAuxCross) return true;
+        if ((s.flashPtrs && s.flashPtrs.length) || (s.flashPtrCross && s.flashPtrCross.length)) return true;
+        if (s.flashPNext !== undefined || s.flashElement !== undefined) return true;
+        return (s.nodes || []).some(n => n.flashNew || n.flashPNext || n.flashElement || n.flashNodeCross);
+    }
+    visualSignature(s) {
+        const nodes = (s.nodes || []).map(n => [n.id, n.x, n.y, n.next, n.e, n.index]);
+        const ptrs = (s.ptrs || []).map(p => [p.label, p.x, p.y, p.target, p.targetX, p.targetY, !!p.dangling]);
+        const pnode = s.pnode ? [s.pnode.x, s.pnode.y, s.pnode.target, s.pnode.targetX, s.pnode.targetY] : null;
+        const lengthBox = s.lengthBox ? [s.lengthBox.x, s.lengthBox.y, s.lengthBox.value] : null;
+        return JSON.stringify({ nodes, ptrs, pnode, lengthBox, firstId: s.firstId, firstDangling: !!s.firstDangling, firstTargetX: s.firstTargetX, firstTargetY: s.firstTargetY });
+    }
+    removeFlashFlags(s) {
+        const copy = {
+            ...s,
+            nodes: (s.nodes || []).map(n => {
+                const m = { ...n };
+                delete m.flashNew;
+                delete m.flashPNext;
+                delete m.flashElement;
+                delete m.flashNodeCross;
+                return m;
+            })
+        };
+        delete copy.flashPFirst;
+        delete copy.flashPLast;
+        delete copy.flashSize;
+        delete copy.flashPNodeCross;
+        delete copy.flashAuxCross;
+        delete copy.flashPtrCross;
+        delete copy.flashPtrs;
+        delete copy.flashPNext;
+        delete copy.flashElement;
+        return copy;
+    }
+    freezeForFlash(prev, cur) {
+        const frozen = {
+            ...cur,
+            nodes: (cur.nodes || []).map(n => ({ ...n })),
+            ptrs: cur.ptrs ? cur.ptrs.map(p => ({ ...p })) : cur.ptrs,
+            pnode: cur.pnode ? { ...cur.pnode } : cur.pnode,
+            lengthBox: cur.lengthBox ? { ...cur.lengthBox } : cur.lengthBox
+        };
+        const prevNodes = new Map((prev.nodes || []).map(n => [n.id, n]));
+        frozen.nodes = frozen.nodes.map(n => {
+            const old = prevNodes.get(n.id);
+            if (!old) return n;
+            return { ...n, x: old.x, y: old.y, next: old.next, e: old.e, index: old.index };
+        });
+        if (cur.ptrs && prev.ptrs) {
+            const prevPtrs = new Map(prev.ptrs.map(p => [p.label, p]));
+            frozen.ptrs = cur.ptrs.map(p => {
+                const old = prevPtrs.get(p.label);
+                if (!old) return p;
+                return { ...p, x: old.x, y: old.y, target: old.target, targetX: old.targetX, targetY: old.targetY, dangling: old.dangling };
+            });
+        }
+        if (cur.pnode && prev.pnode) {
+            frozen.pnode = { ...cur.pnode, x: prev.pnode.x, y: prev.pnode.y, target: prev.pnode.target, targetX: prev.pnode.targetX, targetY: prev.pnode.targetY };
+        }
+        if (cur.flashPFirst) {
+            frozen.firstId = prev.firstId;
+            frozen.firstDangling = prev.firstDangling;
+            frozen.firstTargetX = prev.firstTargetX;
+            frozen.firstTargetY = prev.firstTargetY;
+            frozen.pFirstDetourAmount = prev.pFirstDetourAmount;
+            frozen.detourPFirst = prev.detourPFirst;
+        }
+        if (cur.lengthBox && prev.lengthBox) {
+            frozen.lengthBox = { ...cur.lengthBox, x: prev.lengthBox.x, y: prev.lengthBox.y, value: prev.lengthBox.value };
+        }
+        return frozen;
+    }
+    expandFlashScenes(snaps) {
+        if (!snaps || snaps.length < 2) return snaps;
+        const out = [snaps[0]];
+        for (let i = 1; i < snaps.length; i++) {
+            const prev = snaps[i - 1];
+            const cur = snaps[i];
+            if (this.hasFlash(cur) && this.visualSignature(prev) !== this.visualSignature(cur)) {
+                const frozen = this.freezeForFlash(prev, cur);
+                frozen.pause = true;
+                out.push(frozen);
+                out.push(this.removeFlashFlags(cur));
+            } else {
+                out.push(cur);
+            }
+        }
+        return out;
+    }
+    enqueue(snaps) {
+        snaps.forEach(s => this.layout(s));
+        snaps = this.expandFlashScenes(snaps);
+        snaps.forEach(s => this.layout(s));
+        this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+        if (!this.sn.length) {
+            this.sn.push(snaps.shift());
+            this.idx = 0
+        }
+        if (snaps.length) {
+            this.pending = snaps;
+            this.state = 'CAMERA'
+        }
+    }
+loop(ts) {
     		if (!this.last) this.last = ts;
     		const dt = Math.min((ts - this.last) / 1000, VIEW.MAX_FRAME_DELTA_SECONDS);
     		this.last = ts;
