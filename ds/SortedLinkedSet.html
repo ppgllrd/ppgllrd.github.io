@@ -679,6 +679,8 @@ class VisualizationEngine {
 		this.idx++;
 		if (this.pending.length) this.next();
 		else {
+			const finalScene = this.scenes[this.idx];
+			if (finalScene) this.fit([finalScene]);
 			this.state = 'IDLE';
 			this.setStatus('Ready.');
 			if (app?.clearInputs) app.clearInputs()
@@ -707,9 +709,13 @@ class VisualizationEngine {
 			if (A && B) out.push(this.mixObject(A, B, t));
 			else if (B) {
 				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-				out.push(S ? this.mixObject(S, B, t) : Object.assign({}, B, {
-					alpha: B.alpha ?? 1
-				}))
+				if (S) out.push(this.mixObject(S, B, t));
+				else {
+					const fadeT = Math.min(1, t / this.options.fadeCutoff);
+					out.push(Object.assign({}, B, {
+						alpha: (B.alpha ?? 1) * fadeT
+					}))
+				}
 			} else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
 				alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
 			}))
@@ -1233,6 +1239,14 @@ class SortedLinkedSetView {
 			r: 28,
 			layer: LAYER.overlay
 		});
+		if (v.flashCell) this.obj(o, {
+			id: id + ':flcell',
+			kind: 'flashCircle',
+			x: v.x + w / 2,
+			y: v.y + h / 2,
+			r: 28,
+			layer: LAYER.overlay
+		});
 		if (v.cross) this.obj(o, {
 			id: id + ':cr',
 			kind: 'cross',
@@ -1250,16 +1264,22 @@ class SortedLinkedSetView {
 			ix = cx - 85,
 			iy = cy - 60,
 			w = this.c,
-			h = this.c;
-		this.txt(o, 'it:lab', 'iterator', ix - 10, iy + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic');
-		this.rect(o, 'it:ref', ix, iy, w, h, K.p);
-		this.cir(o, 'it:rd', ix + w / 2, iy + h / 2, 8, K.v);
-		this.txt(o, 'it:cl', 'current', cx + 30, cy - 10, VISUAL.fonts.pointerLabel, K.k, 'center', 'alphabetic');
-		this.rect(o, 'it:cur', cx, cy, w, h, K.c);
-		this.cir(o, 'it:cd', cx + w / 2, cy + h / 2, 8, K.b);
-		this.ar(o, 'it:a1', ix + w / 2, iy + h / 2, cx, cy + h / 2, K.v);
+			h = this.c,
+			itLayer = {
+				box: LAYER.background + 1,
+				arrow: LAYER.background + 2,
+				dot: LAYER.background + 3,
+				text: LAYER.background + 4
+			};
+		this.txt(o, 'it:lab', 'iterator', ix - 10, iy + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic', itLayer.text);
+		this.rect(o, 'it:ref', ix, iy, w, h, K.p, null, itLayer.box);
+		this.cir(o, 'it:rd', ix + w / 2, iy + h / 2, 8, K.v, itLayer.dot);
+		this.txt(o, 'it:cl', 'current', cx + 30, cy - 10, VISUAL.fonts.pointerLabel, K.k, 'center', 'alphabetic', itLayer.text);
+		this.rect(o, 'it:cur', cx, cy, w, h, K.c, null, itLayer.box);
+		this.cir(o, 'it:cd', cx + w / 2, cy + h / 2, 8, K.b, itLayer.dot);
+		this.ar(o, 'it:a1', ix + w / 2, iy + h / 2, cx, cy + h / 2, K.v, itLayer.arrow);
 		const t = this.nodeById(s, it.target);
-		if (t) this.ar(o, 'it:a2', cx + w / 2, cy + h / 2, t.x, t.y)
+		if (t) this.ar(o, 'it:a2', cx + w / 2, cy + h / 2, t.x, t.y, K.b, itLayer.arrow)
 	}
 	setOperationExtras(o, s) {
 		if (s.opLabels)(s.opLabels || []).forEach((l, i) => this.txt(o, 'oplab:' + i, l.text, l.x, l.y, VISUAL.fonts.small, K.k, 'left'));
@@ -1311,6 +1331,18 @@ class SortedLinkedSetView {
 		const x = VISUAL.struct.x,
 			y = VISUAL.struct.y,
 			h = this.c;
+		(s.opSetStructs || []).forEach((st, i) => {
+			if (st.flashFirst) this.obj(o, { id: 'opset:' + i + ':fl:first', kind: 'flashCircle', x: st.x + h / 2, y: st.y + h / 2, r: 28, layer: LAYER.overlay });
+			if (st.flashSize) this.obj(o, { id: 'opset:' + i + ':fl:size', kind: 'flashCircle', x: st.x + h / 2, y: st.y + h + h / 2, r: 28, layer: LAYER.overlay })
+		});
+		if (s.builderStruct) {
+			const b = s.builderStruct;
+			if (b.flashFirst) this.obj(o, { id: 'builder:fl:first', kind: 'flashCircle', x: b.x + h / 2, y: b.y + h / 2, r: 28, layer: LAYER.overlay });
+			if (b.flashLast) this.obj(o, { id: 'builder:fl:last', kind: 'flashCircle', x: b.x + h / 2, y: b.y + h + h / 2, r: 28, layer: LAYER.overlay });
+			if (b.flashSize) this.obj(o, { id: 'builder:fl:size', kind: 'flashCircle', x: b.x + h / 2, y: b.y + 2 * h + h / 2, r: 28, layer: LAYER.overlay });
+			if (s.crossBuilder) this.obj(o, { id: 'builder:cross', kind: 'cross', x: b.x - 125, y: b.y - 108, w: 205, h: 288, layer: LAYER.overlay })
+		}
+		if (s.flashIteratorCurrent && s.iterator) this.obj(o, { id: 'it:cur:flcell', kind: 'flashCircle', x: s.iterator.x + h / 2, y: s.iterator.y + h / 2, r: 28, layer: LAYER.overlay });
 		if (s.flashFirst) this.obj(o, {
 			id: 'fl:first',
 			kind: 'flashCircle',
@@ -1385,12 +1417,10 @@ class SortedLinkedSetView {
 		});
 		if (s.flashFinderFound && s.finder) this.obj(o, {
 			id: 'fl:ff',
-			kind: 'flashRect',
-			x: s.finder.x,
-			y: s.finder.y + 2 * this.c,
-			w: this.c,
-			h: this.c,
-			radius: 8,
+			kind: 'flashCircle',
+			x: s.finder.x + this.c / 2,
+			y: s.finder.y + 2 * this.c + this.c / 2,
+			r: 28,
 			layer: LAYER.overlay
 		})
 	}
@@ -1550,16 +1580,29 @@ const app = {
 		while (true) {
 			const cn = nodes.find(n => n.id === cur);
 			if (!cn || cn.e >= val) break;
+			snaps.push(this.snapshot('Finder.previous cell is highlighted before updating the reference', nodes, {
+				firstId,
+				size,
+				finder,
+				flashFinderPrev: true,
+				pause: true
+			}));
 			prev = cur;
 			finder = {
 				...finder,
 				previous: prev
 			};
-			snaps.push(this.snapshot('previous advances to current', nodes, {
+			snaps.push(this.snapshot('Finder.previous reference is updated to current', nodes, {
 				firstId,
 				size,
 				finder,
-				flashFinderPrev: true,
+				pause: true
+			}));
+			snaps.push(this.snapshot('Finder.current cell is highlighted before updating the reference', nodes, {
+				firstId,
+				size,
+				finder,
+				flashFinderCur: true,
 				pause: true
 			}));
 			cur = cn.next;
@@ -1567,11 +1610,10 @@ const app = {
 				...finder,
 				current: cur
 			};
-			snaps.push(this.snapshot('current advances to next', nodes, {
+			snaps.push(this.snapshot('Finder.current reference is updated to next', nodes, {
 				firstId,
 				size,
 				finder,
-				flashFinderCur: true,
 				pause: true
 			}));
 			finder = {
@@ -1582,7 +1624,6 @@ const app = {
 				firstId,
 				size,
 				finder,
-				flashFinderCur: true,                
 				pause: true
 			}))
 		}
@@ -1939,13 +1980,29 @@ const app = {
 				iterator,
 				pause: true
 			}));
-			const nextNode = nodes.find(n => n.id === next);
+			const nextNode = nodes.find(n => n.id === next),
+				nextIteratorX = (nextNode ? nextNode.x : b.x + size * VISUAL.node.step - VISUAL.list.nullPointerXOffset) - 100;
+			snaps.push(this.snapshot('iterator.current cell is highlighted before updating the reference', nodes, {
+				size,
+				iterator,
+				flashIteratorCurrent: true,
+				pause: true
+			}));
 			iterator = {
-				target: next,
-				x: (nextNode ? nextNode.x : b.x + size * VISUAL.node.step - VISUAL.list.nullPointerXOffset) - 100,
+				...iterator,
+				target: next
+			};
+			snaps.push(this.snapshot('iterator.current reference is updated to the next node', nodes, {
+				size,
+				iterator,
+				pause: true
+			}));
+			iterator = {
+				...iterator,
+				x: nextIteratorX,
 				y: b.y - 150
 			};
-			snaps.push(this.snapshot('iterator.current advances to the next node', nodes, {
+			snaps.push(this.snapshot('The iterator box follows the updated current reference', nodes, {
 				size,
 				iterator,
 				pause: true
@@ -1992,6 +2049,7 @@ const app = {
 				x: VISUAL.list.originX - 70 + Math.max(boxI, 0) * VISUAL.node.step,
 				y: y1 + VISUAL.node.elementYOffset - 80,
 				flash: extra.flashNext1,
+				flashCell: extra.flashCell1,
 				targetPart: 'element'
 			}, {
 				label: 'elem2',
@@ -1999,6 +2057,7 @@ const app = {
 				x: VISUAL.list.originX - 70 + Math.max(boxJ, 0) * VISUAL.node.step,
 				y: y2 + VISUAL.node.elementYOffset - 80,
 				flash: extra.flashNext2,
+				flashCell: extra.flashCell2,
 				targetPart: 'element'
 			}],
 			opSetStructs = [{
@@ -2019,7 +2078,10 @@ const app = {
 				y: yb,
 				firstId: resultIds[0] ?? null,
 				lastId: resultIds.at(-1) ?? null,
-				size: resultVals.length
+				size: resultVals.length,
+				flashFirst: extra.flashBuilderFirst,
+				flashLast: extra.flashBuilderLast,
+				flashSize: extra.flashBuilderSize
 			};
 		let all = [...left, ...right, ...res];
 		if (extra.flashPrevNext) all = all.map(n => n.id === extra.flashPrevNext ? {
@@ -2039,6 +2101,11 @@ const app = {
 			flashNext2: _flashNext2,
 			flashPrevNext: _flashPrevNext,
 			flashNewId: _flashNewId,
+			flashBuilderFirst: _flashBuilderFirst,
+			flashBuilderLast: _flashBuilderLast,
+			flashBuilderSize: _flashBuilderSize,
+			flashCell1: _flashCell1,
+			flashCell2: _flashCell2,
 			...cleanExtra
 		} = extra;
 		return this.snapshot(text, all, {
@@ -2079,30 +2146,38 @@ const app = {
 			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: append ${value} because ${reason}`, {
 				pause: true,
 				flashPrevNext: prev,
-				flashNewId: id
+				flashNewId: id,
+				flashBuilderFirst: prev === null,
+				flashBuilderLast: true,
+				flashBuilderSize: true
 			}))
 		};
 		const advance = (oldI, oldJ) => {
 			const move1 = oldI !== i,
 				move2 = oldJ !== j;
 			if (!move1 && !move2) return;
+			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, oldI, oldJ, `${kind}: elem pointer cell is highlighted before updating the reference`, {
+				pause: true,
+				boxI: oldI,
+				boxJ: oldJ,
+				targetI: oldI,
+				targetJ: oldJ,
+				flashCell1: move1,
+				flashCell2: move2
+			}));
 			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: elem reference target is updated`, {
 				pause: true,
 				boxI: oldI,
 				boxJ: oldJ,
 				targetI: i,
-				targetJ: j,
-				flashNext1: move1,
-				flashNext2: move2
+				targetJ: j
 			}));
 			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: elem box follows the updated reference`, {
 				pause: true,
 				boxI: i,
 				boxJ: j,
 				targetI: i,
-				targetJ: j,
-				flashNext1: move1,
-				flashNext2: move2
+				targetJ: j
 			}))
 		};
 		while ((kind === 'Union' && (i < leftVals.length || j < rightVals.length)) || (kind === 'Intersection' && i < leftVals.length && j < rightVals.length) || (kind === 'Difference' && i < leftVals.length)) {
@@ -2154,19 +2229,40 @@ const app = {
 			}
 			advance(oldI, oldJ)
 		}
-		snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: builder becomes the new current set`, {
+		snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: final result has been calculated in builder`, {
 			pause: true
 		}));
+		const y1 = VISUAL.list.originY,
+			yb = VISUAL.list.originY + 560,
+			makeTransition = (text, nodeY, {
+				newFirstId = null,
+				newSize = 0,
+				flashNewFirst = false,
+				flashNewSize = false,
+				crossBuilder = false
+			} = {}) => {
+				const moved = this.opNodes(resultVals, resultIds, nodeY);
+				return this.snapshot(text, moved, {
+					hideMainStruct: true,
+					firstId: null,
+					size: 0,
+					opLabels: [{ text: kind, x: VISUAL.struct.x - 160, y: y1 - 150 }],
+					opSetStructs: [{ label: 'set', x: VISUAL.struct.x, y: y1, firstId: newFirstId, size: newSize, flashFirst: flashNewFirst, flashSize: flashNewSize }],
+					nextVars: [],
+					builderStruct: { x: VISUAL.struct.x, y: yb, firstId: resultIds[0] ?? null, lastId: resultIds.at(-1) ?? null, size: resultVals.length },
+					crossBuilder,
+					preserveLinks: true,
+					pause: true
+				})
+			};
+		snaps.push(makeTransition(`${kind}: the two original sets are removed and a new empty set is created in the position of the first one`, yb));
+		snaps.push(makeTransition(`${kind}: builder.first is copied to the new set.first`, yb, { newFirstId: resultIds[0] ?? null, flashNewFirst: true }));
+		snaps.push(makeTransition(`${kind}: builder.size is copied to the new set.size`, yb, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, flashNewSize: true }));
+		snaps.push(makeTransition(`${kind}: the linked result nodes move vertically to the new set`, y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length }));
+		snaps.push(makeTransition(`${kind}: builder is destroyed`, y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, crossBuilder: true }));
 		this.values = [...resultVals];
-		this.ids = resultIds.map(_ => nextId++);
+		this.ids = [...resultIds];
 		const final = this.baseNodes(this.values, this.ids);
-		snaps.push(this.snapshot(`${kind}: the result is now the current set`, final, {
-			firstId: this.ids[0] ?? null,
-			size: this.values.length,
-			flashFirst: true,
-			flashSize: true,
-			pause: true
-		}));
 		snaps.push(this.snapshot('The operation is complete', final, {
 			firstId: this.ids[0] ?? null,
 			size: this.values.length
