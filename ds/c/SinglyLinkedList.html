@@ -778,58 +778,94 @@ class VisualizationEngine {
         		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
         	}
     interp(A, B, t) {
-        		const ma = new Map((A.nodes || []).map(n => [n.id, n])),
-        			mb = new Map((B.nodes || []).map(n => [n.id, n])),
-        			ids = new Set([...ma.keys(), ...mb.keys()]),
-        			nodes = [];
-        		ids.forEach(id => {
-        			const a = ma.get(id),
-        				b = mb.get(id);
-        			if (a && b) nodes.push({
-        				...b,
-        				x: a.x + (b.x - a.x) * t,
-        				y: a.y + (b.y - a.y) * t,
-        				detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
-        			});
-        			else if (b && !a) nodes.push({
-        				...b
-        			});
-        			else if (a && !b && t < .85) nodes.push({
-        				...a,
-        				deleted: true
-        			})
-        		});
-        		let pnode = null;
-        		if (A.pnode && B.pnode) pnode = {
-        			...B.pnode,
-        			x: A.pnode.x + (B.pnode.x - A.pnode.x) * t,
-        			y: A.pnode.y + (B.pnode.y - A.pnode.y) * t
-        		};
-        		else pnode = B.pnode || A.pnode || null;
-        		let ptrs = null;
-        		if (A.ptrs || B.ptrs) {
-        			const pa = new Map((A.ptrs || []).map(p => [p.label, p])),
-        				pb = new Map((B.ptrs || []).map(p => [p.label, p]));
-        			ptrs = [...new Set([...pa.keys(), ...pb.keys()])].map(label => {
-        				const a = pa.get(label),
-        					b = pb.get(label);
-        				if (a && b) return {
-        					...b,
-        					x: a.x + (b.x - a.x) * t,
-        					y: a.y + (b.y - a.y) * t
-        				};
-        				return b || a
-        			})
-        		}
-        		const pFirstDetourAmount = (A.pFirstDetourAmount !== undefined || B.pFirstDetourAmount !== undefined) ? ((A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0)) + ((B.pFirstDetourAmount ?? (B.detourPFirst ? 1 : 0)) - (A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0))) * t) : B.pFirstDetourAmount;
-        		return {
-        			...B,
-        			nodes,
-        			pnode,
-        			ptrs,
-        			pFirstDetourAmount
-        		}
-        	}
+                const lerp = (x, y) => x + (y - x) * t;
+                const nodeMap = s => new Map((s.nodes || []).map(n => [n.id, n]));
+                const nodeTip = (s, id, mode = 'middle') => {
+                    const n = nodeMap(s).get(id);
+                    if (!n) return null;
+                    return {
+                        x: n.x,
+                        y: mode === 'corner' ? n.y : n.y + this.cell / 2
+                    };
+                };
+                const explicitTip = (o) => (o && o.targetX !== undefined && o.targetY !== undefined)
+                    ? { x: o.targetX, y: o.targetY }
+                    : null;
+                const pointerTip = (s, p, mode = 'corner') => {
+                    if (!p) return null;
+                    return nodeTip(s, p.target, mode) || explicitTip(p);
+                };
+                const interpolateTip = (ta, tb) => {
+                    if (ta && tb) return { tipX: lerp(ta.x, tb.x), tipY: lerp(ta.y, tb.y) };
+                    return {};
+                };
+
+                const ma = new Map((A.nodes || []).map(n => [n.id, n])),
+                    mb = new Map((B.nodes || []).map(n => [n.id, n])),
+                    ids = new Set([...ma.keys(), ...mb.keys()]),
+                    nodes = [];
+                ids.forEach(id => {
+                    const a = ma.get(id),
+                        b = mb.get(id);
+                    if (a && b) {
+                        const linkTip = interpolateTip(nodeTip(A, a.next, 'middle'), nodeTip(B, b.next, 'middle'));
+                        nodes.push({
+                            ...b,
+                            x: lerp(a.x, b.x),
+                            y: lerp(a.y, b.y),
+                            ...linkTip,
+                            detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
+                        });
+                    }
+                    else if (b && !a) nodes.push({
+                        ...b
+                    });
+                    else if (a && !b && t < .85) nodes.push({
+                        ...a,
+                        deleted: true
+                    })
+                });
+                let pnode = null;
+                if (A.pnode && B.pnode) {
+                    const pnodeTip = interpolateTip(pointerTip(A, A.pnode, 'middle'), pointerTip(B, B.pnode, 'middle'));
+                    pnode = {
+                        ...B.pnode,
+                        x: lerp(A.pnode.x, B.pnode.x),
+                        y: lerp(A.pnode.y, B.pnode.y),
+                        ...pnodeTip
+                    };
+                }
+                else pnode = B.pnode || A.pnode || null;
+                let ptrs = null;
+                if (A.ptrs || B.ptrs) {
+                    const pa = new Map((A.ptrs || []).map(p => [p.label, p])),
+                        pb = new Map((B.ptrs || []).map(p => [p.label, p]));
+                    ptrs = [...new Set([...pa.keys(), ...pb.keys()])].map(label => {
+                        const a = pa.get(label),
+                            b = pb.get(label);
+                        if (a && b) {
+                            const tip = interpolateTip(pointerTip(A, a, 'corner'), pointerTip(B, b, 'corner'));
+                            return {
+                                ...b,
+                                x: lerp(a.x, b.x),
+                                y: lerp(a.y, b.y),
+                                ...tip
+                            };
+                        }
+                        return b || a
+                    })
+                }
+                const pFirstTip = interpolateTip(nodeTip(A, A.firstId, 'middle') || explicitTip(A), nodeTip(B, B.firstId, 'middle') || explicitTip(B));
+                const pFirstDetourAmount = (A.pFirstDetourAmount !== undefined || B.pFirstDetourAmount !== undefined) ? ((A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0)) + ((B.pFirstDetourAmount ?? (B.detourPFirst ? 1 : 0)) - (A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0))) * t) : B.pFirstDetourAmount;
+                return {
+                    ...B,
+                    nodes,
+                    pnode,
+                    ptrs,
+                    ...pFirstTip,
+                    pFirstDetourAmount
+                }
+            }
     current() {
         		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
         		return this.sn[Math.max(this.idx, 0)]
@@ -1004,17 +1040,16 @@ class SinglyLinkedListView extends VisualizationEngine {drawStructBoxes(s) {
     }
     drawStructArrows(s) {
             const x = GEOMETRY.STRUCT_X,
-        				y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell;
+                y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell;
             const firstColor = s.firstDangling ? K.d : K.b;
             const f = this.nodeById(s, s.firstId);
-            if (f) {
+            const tx = s.tipX ?? (f ? f.x : s.firstTargetX),
+                ty = s.tipY ?? (f ? f.y + h / 2 : s.firstTargetY);
+            if (tx !== undefined && ty !== undefined) {
                 const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-                if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3, amount);
-                else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3)
-            } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
-                this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, firstColor, 3)
+                if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, tx, ty, firstColor, 3, amount);
+                else this.arrow(x + w / 2, y + h / 2, tx, ty, firstColor, 3)
             }
-        
         }
     drawOverlays(s) {
             if (s.lengthBox) this.drawLengthBox(s.lengthBox);
@@ -1059,8 +1094,8 @@ drawNode(n) {
         const w = this.cell,
             x = n.x,
             y = n.y;
-        this.paintRect(x, y, w - w * 0.01, w, K.g);
-        this.paintRect(x + w + w * 0.01, y, w, w, K.c);
+        this.paintRect(x, y, w - w * 0.02, w, K.g);
+        this.paintRect(x + w + w * 0.02, y, w, w, K.c);
         this.paintText(n.e, x + w / 2, y + w / 2 + DRAW.NODE_VALUE_BASELINE_OFFSET, {
             font: DRAW.NODE_VALUE_FONT,
             fill: K.r
@@ -1097,15 +1132,18 @@ drawAuxPointers(s) {
             this.paintRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT, K.c);
             this.paintDot(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, pointerColor);
             const t = this.nodeById(s, p.target);
-            if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y, pointerColor, 3);
-            else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, p.targetX, p.targetY, pointerColor, 3);
+            const tx = p.tipX ?? (t ? t.x : p.targetX),
+                ty = p.tipY ?? (t ? t.y : p.targetY);
+            if (tx !== undefined && ty !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, tx, ty, pointerColor, 3);
         });
     }
     drawPNodeArrow(s) {
-        		const p = s.pnode,
-        			t = this.nodeById(s, p.target);
-        		if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y + this.cell / 2, K.b, 3)
-        	}
+                const p = s.pnode,
+                    t = this.nodeById(s, p.target);
+                const tx = p.tipX ?? (t ? t.x : undefined),
+                    ty = p.tipY ?? (t ? t.y + this.cell / 2 : undefined);
+                if (tx !== undefined && ty !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, tx, ty, K.b, 3)
+            }
     flashStruct(row) {
         		const x = GEOMETRY.STRUCT_X,
         			y = GEOMETRY.STRUCT_Y + row * this.cell,
@@ -1117,17 +1155,19 @@ nodeById(s, id) {
         		return (s.nodes || []).find(n => n.id === id)
         	}
     drawLinks(s) {
-    		(s.nodes || []).forEach(n => {
-    			if (n.next !== null && n.next !== undefined) {
-    				const to = this.nodeById(s, n.next);
-    				if (to) {
-    					const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
-    					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
-    					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3)
-    				}
-    			}
-    		})
-    	}
+            (s.nodes || []).forEach(n => {
+                if (n.next !== null && n.next !== undefined) {
+                    const to = this.nodeById(s, n.next);
+                    const tx = n.tipX ?? (to ? to.x : undefined),
+                        ty = n.tipY ?? (to ? to.y + this.cell / 2 : undefined);
+                    if (tx !== undefined && ty !== undefined) {
+                        const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
+                        if (amount > 0.001) this.detourArrow(p.x, p.y, tx, ty, K.b, 3, amount);
+                        else this.arrow(p.x, p.y, tx, ty, K.b, 3)
+                    }
+                }
+            })
+        }
 ptr(n) {
         		return {
         			x: n.x + this.cell + this.cell / 2,
