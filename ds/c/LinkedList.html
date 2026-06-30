@@ -318,6 +318,15 @@
 		d: '#EF6C00',
     	k: '#111'
     };
+    const LAYER = Object.freeze({
+        background: 0,
+        box: 10,
+        arrow: 20,
+        dot: 30,
+        text: 40,
+        overlay: 100
+    });
+
 
     /*
      * Visual constants used by the canvas renderer.
@@ -471,10 +480,39 @@
         });
     })();
     let nextId = 0;
-    class Viz {
-    	constructor(id) {
-    		this.cv = document.getElementById(id);
+class VisualizationEngine {
+    	constructor({
+    		canvasId,
+    		wrapId,
+    		statusId,
+    		onHit = null,
+    		options = {}
+    	}) {
+    		this.cv = document.getElementById(canvasId);
     		this.ctx = this.cv.getContext('2d');
+    		this.wrap = document.getElementById(wrapId);
+    		this.statusEl = document.getElementById(statusId);
+    		this.onHit = onHit;
+    		this.options = Object.assign({
+    			minScale: .2,
+    			maxScale: 5,
+    			maxFitScale: 1.22,
+    			wheelSensitivity: .001,
+    			cameraSmoothing: 10,
+    			cameraSnapPx: 5,
+    			cameraSnapScale: .01,
+    			maxFrameDelta: .1,
+    			morphSpeed: 2.5,
+    			waitSeconds: .75,
+    			fadeCutoff: .95,
+    			fitPadding: 150,
+    			worldFallback: {
+    				minX: 20,
+    				minY: 35,
+    				maxX: 760,
+    				maxY: 650
+    			}
+    		}, options);
     		this.cam = {
     			scale: 1,
     			targetScale: 1,
@@ -483,49 +521,41 @@
     			y: 0,
     			targetY: 0
     		};
-    		this.sn = [];
+    		this.scenes = [];
     		this.pending = [];
     		this.idx = -1;
     		this.state = 'IDLE';
     		this.t = 0;
+    		this.wait = 0;
     		this.speedFactor = 1;
     		this.paused = false;
     		this.last = 0;
-    		this.cell = VISUAL.node.cell;
-    		this.nodeW = VISUAL.node.width;
-    		this.gap = VISUAL.node.gap;
-    		this.lastNodes = [];
+    		this.drag = false;
+    		this.hitObjects = [];
     		this.resize();
     		window.addEventListener('resize', () => this.resize());
     		this.cv.addEventListener('wheel', e => this.wheel(e), {
     			passive: false
     		});
-    		this.cv.addEventListener('mousedown', e => this.down(e));
-    		this.cv.addEventListener('mousemove', e => this.move(e));
-    		this.cv.addEventListener('mouseup', () => this.up());
-    		this.cv.addEventListener('mouseleave', () => this.up());
-    		this.cv.addEventListener('touchstart', e => this.ts(e), {
+    		this.cv.addEventListener('mousedown', e => this.pointerStart(e));
+    		this.cv.addEventListener('mousemove', e => this.pointerMove(e));
+    		this.cv.addEventListener('mouseup', () => this.pointerEnd());
+    		this.cv.addEventListener('mouseleave', () => this.pointerEnd());
+    		this.cv.addEventListener('touchstart', e => this.touchStart(e), {
     			passive: false
     		});
-    		this.cv.addEventListener('touchmove', e => this.tm(e), {
+    		this.cv.addEventListener('touchmove', e => this.touchMove(e), {
     			passive: false
     		});
-    		this.cv.addEventListener('touchend', () => this.up());
-    		requestAnimationFrame(t => this.loop(t))
-    	}
-    	base() {
-    		return {
-    			x: VISUAL.list.originX,
-    			y: VISUAL.list.originY,
-    			up: VISUAL.list.tempY
-    		}
+    		this.cv.addEventListener('touchend', () => this.pointerEnd());
+    		requestAnimationFrame(ts => this.loop(ts))
     	}
     	resize() {
-    		const w = document.getElementById('wrap');
-    		this.cv.width = w.offsetWidth;
-    		this.cv.height = w.offsetHeight;
-    		if (this.sn.length) {
-    			this.fit([this.sn[Math.max(this.idx, 0)]]);
+    		this.cv.width = this.wrap.offsetWidth;
+    		this.cv.height = this.wrap.offsetHeight;
+    		const cur = this.current();
+    		if (cur) {
+    			this.fit([cur]);
     			this.cam.scale = this.cam.targetScale;
     			this.cam.x = this.cam.targetX;
     			this.cam.y = this.cam.targetY
@@ -540,27 +570,25 @@
     	wheel(e) {
     		e.preventDefault();
     		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
-    		let ns = this.cam.targetScale * (1 - e.deltaY * VISUAL.camera.wheelSensitivity);
-    		ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, ns));
-    		const wx = (x - this.cam.targetX) / this.cam.targetScale,
-    			wy = (y - this.cam.targetY) / this.cam.targetScale;
+    			sx = e.clientX - r.left,
+    			sy = e.clientY - r.top;
+    		let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
+    		ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+    		const wx = (sx - this.cam.targetX) / this.cam.targetScale,
+    			wy = (sy - this.cam.targetY) / this.cam.targetScale;
     		this.cam.targetScale = ns;
-    		this.cam.targetX = x - wx * ns;
-    		this.cam.targetY = y - wy * ns
+    		this.cam.targetX = sx - wx * ns;
+    		this.cam.targetY = sy - wy * ns
     	}
-    	down(e) {
+    	pointerStart(e) {
     		const r = this.cv.getBoundingClientRect(),
     			sx = e.clientX - r.left,
     			sy = e.clientY - r.top,
-    			w = this.screenToWorld(sx, sy);
-    		for (const n of this.lastNodes) {
-    			if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) {
-    				document.getElementById('val').value = n.e;
-    				document.getElementById('idx').value = n.index ?? '';
-    				return
-    			}
+    			w = this.screenToWorld(sx, sy),
+    			hit = this.findHit(w.x, w.y);
+    		if (hit && this.onHit) {
+    			this.onHit(hit);
+    			return
     		}
     		this.drag = true;
     		this.start = {
@@ -573,21 +601,22 @@
     		};
     		this.cv.style.cursor = 'grabbing'
     	}
-    	move(e) {
+    	pointerMove(e) {
     		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
+    			sx = e.clientX - r.left,
+    			sy = e.clientY - r.top;
     		if (this.drag) {
-    			this.cam.targetX = this.c0.x + x - this.start.x;
-    			this.cam.targetY = this.c0.y + y - this.start.y;
+    			this.cam.targetX = this.c0.x + sx - this.start.x;
+    			this.cam.targetY = this.c0.y + sy - this.start.y;
     			return
     		}
-    		const w = this.screenToWorld(x, y);
-    		this.cv.style.cursor = this.lastNodes.some(n => w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) ? 'pointer' : 'default'
+    		const w = this.screenToWorld(sx, sy);
+    		this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default'
     	}
-    	up() {
+    	pointerEnd() {
     		this.drag = false;
-    		this.cv.style.cursor = 'default'
+    		this.cv.style.cursor = 'default';
+    		this.pinch = null
     	}
     	td(t) {
     		return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
@@ -598,19 +627,17 @@
     			y: (t[0].clientY + t[1].clientY) / 2 - r.top
     		}
     	}
-    	ts(e) {
+    	touchStart(e) {
     		e.preventDefault();
     		const r = this.cv.getBoundingClientRect();
     		if (e.touches.length === 1) {
     			const x = e.touches[0].clientX - r.left,
     				y = e.touches[0].clientY - r.top,
-    				w = this.screenToWorld(x, y);
-    			for (const n of this.lastNodes) {
-    				if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) {
-    					document.getElementById('val').value = n.e;
-    					document.getElementById('idx').value = n.index ?? '';
-    					return
-    				}
+    				w = this.screenToWorld(x, y),
+    				hit = this.findHit(w.x, w.y);
+    			if (hit && this.onHit) {
+    				this.onHit(hit);
+    				return
     			}
     			this.drag = true;
     			this.start = {
@@ -623,16 +650,16 @@
     			}
     		} else if (e.touches.length === 2) {
     			this.drag = false;
-    			this.p0 = this.td(e.touches);
-    			this.s0 = this.cam.targetScale;
     			const c = this.tc(e.touches, r);
-    			this.pw = {
-    				x: (c.x - this.cam.targetX) / this.cam.targetScale,
-    				y: (c.y - this.cam.targetY) / this.cam.targetScale
+    			this.pinch = {
+    				d: this.td(e.touches),
+    				s: this.cam.targetScale,
+    				wx: (c.x - this.cam.targetX) / this.cam.targetScale,
+    				wy: (c.y - this.cam.targetY) / this.cam.targetScale
     			}
     		}
     	}
-    	tm(e) {
+    	touchMove(e) {
     		e.preventDefault();
     		const r = this.cv.getBoundingClientRect();
     		if (e.touches.length === 1 && this.drag) {
@@ -640,104 +667,97 @@
     				y = e.touches[0].clientY - r.top;
     			this.cam.targetX = this.c0.x + x - this.start.x;
     			this.cam.targetY = this.c0.y + y - this.start.y
-    		} else if (e.touches.length === 2 && this.p0) {
-    			const ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, this.s0 * this.td(e.touches) / this.p0)),
-    				c = this.tc(e.touches, r);
+    		} else if (e.touches.length === 2 && this.pinch) {
+    			const c = this.tc(e.touches, r);
+    			let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
+    			ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
     			this.cam.targetScale = ns;
-    			this.cam.targetX = c.x - this.pw.x * ns;
-    			this.cam.targetY = c.y - this.pw.y * ns
+    			this.cam.targetX = c.x - this.pinch.wx * ns;
+    			this.cam.targetY = c.y - this.pinch.wy * ns
     		}
     	}
-    	layout(s) {
-    		const b = this.base();
-    		(s.nodes || []).forEach((n, i) => {
-    			if (n.x === undefined) n.x = b.x + i * (this.nodeW + this.gap);
-    			if (n.y === undefined) n.y = b.y
-    		});
-    		if (s.pnode && s.pnode.x === undefined) {
-    			s.pnode.x = b.x - VISUAL.list.tempPointerXOffset;
-    			s.pnode.y = s.pnode.y ?? b.up
+    	findHit(x, y) {
+    		for (let i = this.hitObjects.length - 1; i >= 0; i--) {
+    			const o = this.hitObjects[i];
+    			if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o.hit
     		}
+    		return null
     	}
-    	bounds(s) {
-    		let b = {
-    			minX: VISUAL.bounds.defaultMinX,
-    			minY: VISUAL.bounds.defaultMinY,
-    			maxX: VISUAL.bounds.defaultMaxX,
-    			maxY: VISUAL.bounds.defaultMaxY
-    		};
-    		(s.nodes || []).forEach(n => {
-    			b.minX = Math.min(b.minX, n.x - VISUAL.bounds.nodeLeftPadding);
-    			b.maxX = Math.max(b.maxX, n.x + VISUAL.bounds.nodeRightPadding);
-    			b.minY = Math.min(b.minY, n.y - VISUAL.bounds.nodeTopPadding);
-    			b.maxY = Math.max(b.maxY, n.y + VISUAL.bounds.nodeBottomPadding)
-    		});
-    		if (s.pnode) {
-    			b.minX = Math.min(b.minX, s.pnode.x - VISUAL.bounds.pnodeLeftPadding);
-    			b.maxX = Math.max(b.maxX, s.pnode.x + VISUAL.bounds.pnodeRightPadding);
-    			b.minY = Math.min(b.minY, s.pnode.y - VISUAL.bounds.pnodeTopPadding);
-    			b.maxY = Math.max(b.maxY, s.pnode.y + VISUAL.bounds.pnodeBottomPadding)
-    		}(s.ptrs || []).forEach(p => {
-    			b.minX = Math.min(b.minX, p.x - VISUAL.bounds.pointerLeftPadding);
-    			b.maxX = Math.max(b.maxX, p.x + VISUAL.bounds.pointerRightPadding);
-    			b.minY = Math.min(b.minY, p.y - VISUAL.bounds.pointerTopPadding);
-    			b.maxY = Math.max(b.maxY, p.y + VISUAL.bounds.pointerBottomPadding)
-    		});
-    		return b
+    	reset() {
+    		this.scenes = [];
+    		this.pending = [];
+    		this.idx = -1;
+    		this.state = 'IDLE';
+    		this.t = 0;
+    		this.wait = 0;
     	}
-    	fit(snaps) {
-    		let B = {
-    			minX: 1e9,
-    			minY: 1e9,
-    			maxX: -1e9,
-    			maxY: -1e9
-    		};
-    		snaps.forEach(s => {
-    			const b = this.bounds(s);
-    			B.minX = Math.min(B.minX, b.minX);
-    			B.maxX = Math.max(B.maxX, b.maxX);
-    			B.minY = Math.min(B.minY, b.minY);
-    			B.maxY = Math.max(B.maxY, b.maxY)
-    		});
-    		const sc = Math.min(VISUAL.camera.defaultMaxFitScale, this.cv.width / (B.maxX - B.minX + VISUAL.bounds.fitPadding), this.cv.height / (B.maxY - B.minY + VISUAL.bounds.fitPadding));
-    		this.cam.targetScale = sc;
-    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-    	}
-    	enqueue(snaps) {
-    		snaps.forEach(s => this.layout(s));
-    		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-    		if (!this.sn.length) {
-    			this.sn.push(snaps.shift());
-    			this.idx = 0
+    	enqueue(scenes) {
+    		const copy = scenes.map(s => this.normalizeScene(s));
+    		this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
+    		if (!this.scenes.length && copy.length) {
+    			this.scenes.push(copy.shift());
+    			this.idx = 0;
+    			this.setStatus(this.scenes[0].text || 'Ready.')
     		}
-    		if (snaps.length) {
-    			this.pending = snaps;
+    		if (copy.length) {
+    			this.pending = copy;
     			this.state = 'CAMERA'
     		}
     	}
+    	normalizeScene(s) {
+    		const scene = Object.assign({
+    			objects: [],
+    			pause: false
+    		}, s);
+    		scene.objects = this.normalizeObjects(scene.objects);
+    		return scene
+    	}
+    	normalizeObjects(objects = []) {
+    		return objects.map((o, order) => this.normalizeObject(o, order))
+    	}
+    	normalizeObject(o, order = 0) {
+    		const copy = Object.assign({}, o);
+    		copy.layer = this.resolveLayer(copy);
+    		copy.order = copy.order ?? order;
+    		return copy
+    	}
+    	resolveLayer(o) {
+    		if (Number.isFinite(o.layer)) return o.layer;
+    		if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
+    		if (o.kind === 'text') return LAYER.text;
+    		if (o.kind === 'circle') return LAYER.dot;
+    		if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
+    		if (o.kind === 'rect') return LAYER.box;
+    		return Number.isFinite(o.z) ? o.z : LAYER.background
+    	}
+    	sortObjects(objects = []) {
+    		return [...objects].sort((a, b) => ((a.layer ?? 0) - (b.layer ?? 0)) || ((a.order ?? 0) - (b.order ?? 0)))
+    	}
+    	setStatus(txt) {
+    		if (this.statusEl) this.statusEl.innerText = txt
+    	}
     	loop(ts) {
     		if (!this.last) this.last = ts;
-    		const dt = Math.min((ts - this.last) / 1000, VISUAL.animation.maxFrameDeltaSeconds);
+    		const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
     		this.last = ts;
     		if (!this.paused) this.update(dt);
     		this.draw();
     		requestAnimationFrame(t => this.loop(t))
     	}
     	update(dt) {
-    		const f = 1 - Math.exp(-VISUAL.camera.smoothingFactor * dt);
+    		const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
     		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
     		this.cam.x += (this.cam.targetX - this.cam.x) * f;
     		this.cam.y += (this.cam.targetY - this.cam.y) * f;
     		if (this.state === 'CAMERA') {
-    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VISUAL.camera.snapDistance && Math.abs(this.cam.scale - this.cam.targetScale) < VISUAL.camera.snapScaleDelta) this.next()
+    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next()
     		} else if (this.state === 'MORPH') {
-    			this.t += VISUAL.animation.morphSpeed * this.speedFactor * dt;
+    			this.t += this.options.morphSpeed * this.speedFactor * dt;
     			if (this.t >= 1) {
     				this.t = 1;
-    				if (this.sn[this.idx + 1]?.pause) {
+    				if (this.scenes[this.idx + 1]?.pause) {
     					this.state = 'WAIT';
-    					this.wait = VISUAL.animation.waitSeconds / this.speedFactor
+    					this.wait = this.options.waitSeconds / this.speedFactor
     				} else this.finish()
     			}
     		} else if (this.state === 'WAIT') {
@@ -747,8 +767,9 @@
     	}
     	next() {
     		const s = this.pending.shift();
-    		this.sn.push(s);
-    		document.getElementById('status-text').innerText = s.text || 'Ready.';
+    		this.scenes.push(s);
+    		if (s.fitCamera) this.fit([s]);
+    		this.setStatus(s.text || 'Ready.');
     		this.t = 0;
     		this.state = 'MORPH'
     	}
@@ -756,330 +777,190 @@
     		this.idx++;
     		if (this.pending.length) this.next();
     		else {
+    			const finalScene = this.scenes[this.idx];
+    			if (finalScene) this.fit([finalScene]);
     			this.state = 'IDLE';
-    			document.getElementById('status-text').innerText = 'Ready.'
-				if (typeof app !== 'undefined' && app.clearInputs) {
-					app.clearInputs();
-				}
+    			this.setStatus('Ready.');
+    			if (app?.clearInputs) app.clearInputs()
     		}
     	}
     	ease(t) {
     		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
     	}
-    	interp(A, B, t) {
-    		const ma = new Map((A.nodes || []).map(n => [n.id, n])),
-    			mb = new Map((B.nodes || []).map(n => [n.id, n])),
-    			ids = new Set([...ma.keys(), ...mb.keys()]),
-    			nodes = [];
-    		ids.forEach(id => {
-    			const a = ma.get(id),
-    				b = mb.get(id);
-    			if (a && b) nodes.push({
-    				...b,
-    				x: a.x + (b.x - a.x) * t,
-    				y: a.y + (b.y - a.y) * t,
-    				detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
-    			});
-    			else if (b && !a) nodes.push({
-    				...b
-    			});
-    			else if (a && !b && t < VISUAL.animation.deleteFadeCutoff) nodes.push({
-    				...a,
-    				deleted: true
-    			})
-    		});
-    		let pnode = null;
-    		if (A.pnode && B.pnode) pnode = {
-    			...B.pnode,
-    			x: A.pnode.x + (B.pnode.x - A.pnode.x) * t,
-    			y: A.pnode.y + (B.pnode.y - A.pnode.y) * t
-    		};
-    		else pnode = B.pnode || A.pnode || null;
-    		let ptrs = null;
-    		if (A.ptrs || B.ptrs) {
-    			const pa = new Map((A.ptrs || []).map(p => [p.label, p])),
-    				pb = new Map((B.ptrs || []).map(p => [p.label, p]));
-    			ptrs = [...new Set([...pa.keys(), ...pb.keys()])].map(label => {
-    				const a = pa.get(label),
-    					b = pb.get(label);
-    				if (a && b) return {
-    					...b,
-    					x: a.x + (b.x - a.x) * t,
-    					y: a.y + (b.y - a.y) * t
-    				};
-    				return b || a
-    			})
-    		}
-    		const pFirstDetourAmount = (A.pFirstDetourAmount !== undefined || B.pFirstDetourAmount !== undefined) ? ((A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0)) + ((B.pFirstDetourAmount ?? (B.detourPFirst ? 1 : 0)) - (A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0))) * t) : B.pFirstDetourAmount;
-    		return {
-    			...B,
-    			nodes,
-    			pnode,
-    			ptrs,
-    			pFirstDetourAmount
-    		}
-    	}
     	current() {
-    		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
-    		return this.sn[Math.max(this.idx, 0)]
+    		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
     	}
-    	flash() {
-    		return VISUAL.animation.flashMinAlpha + VISUAL.animation.flashMaxAlphaDelta * Math.abs(Math.sin(performance.now() / VISUAL.animation.flashPeriodMs))
-    	}
-    	draw() {
-    		const s = this.current();
-    		const c = this.ctx;
-    		c.clearRect(0, 0, this.cv.width, this.cv.height);
-    		c.save();
-    		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-    		if (!s) {
-    			c.restore();
-    			return
-    		}
-    		this.lastNodes = s.nodes || [];
-    		this.drawStructBoxes(s);
-    		(s.nodes || []).forEach(n => this.drawNode(n));
-    		if (s.pnode) this.drawPNodeBox(s);
-    		this.drawStructArrows(s);
-    		this.drawLinks(s);
-    		if (s.ptrs) this.drawAuxPointers(s);
-    		if (s.pnode) this.drawPNodeArrow(s);
-    		this.drawOverlays(s);
-    		c.restore()
-    	}
-    	drawNode(n) {
-    		const c = this.ctx,
-    			w = this.cell,
-    			x = n.x,
-    			y = n.y;
-    		c.save();
-    		c.fillStyle = K.g;
-    		c.fillRect(x, y, w - w * 0.01, w);
-    		c.fillStyle = K.c;
-    		c.fillRect(x + w + w * 0.01, y, w, w);
-    		c.fillStyle = K.r;
-    		c.font = VISUAL.fonts.value;
-    		c.textAlign = 'center';
-    		c.textBaseline = 'middle';
-    		c.fillText(n.e, x + w / 2, y + w / 2 + VISUAL.node.valueBaselineCorrection);
-    		c.fillStyle = K.b;
-    		c.beginPath();
-    		c.arc(x + w + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-    		if (n.index !== undefined) {
-    			c.fillStyle = K.k;
-    			c.font = VISUAL.fonts.index;
-    			c.textBaseline = 'alphabetic';
-    			c.fillText(n.index, x + w - VISUAL.node.indexLabelOffsetX, y - VISUAL.node.indexLabelOffsetY)
-    		}
-
-    		c.restore()
-    	}
-    	drawStructBoxes(s) {
-    		const c = this.ctx,
-    			x = VISUAL.struct.x,
-    			y = VISUAL.struct.y,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell;
-    		c.save();
-    		c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.structLabel;
-    		c.textAlign = 'right';
-    		c.fillText('p_list', x - VISUAL.struct.listLabelOffsetX, y - VISUAL.struct.listLabelOffsetY);
-    		c.fillStyle = K.p;
-    		c.fillRect(x - VISUAL.struct.listPointerBoxOffsetX, y - VISUAL.struct.listPointerBoxOffsetY, w, h);
-    		c.fillStyle = K.v;
-    		c.beginPath();
-    		c.arc(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    		c.fill();
-    		[
-    			['p_first', K.c, s.firstId],
-    			['p_last', K.c, s.lastId],
-    			['size', K.g, s.size]
-    		].forEach((r, i) => {
-    			const yy = y + i * h;
-    			c.fillStyle = K.k;
-    			c.font = VISUAL.fonts.structLabel;
-    			c.textAlign = 'right';
-    			c.textBaseline = 'middle';
-    			c.fillText(r[0], x - VISUAL.struct.labelOffsetX, yy + h / 2);
-    			c.fillStyle = r[1];
-    			c.fillRect(x, yy, w, h * VISUAL.struct.rowHeightFactor);
-    			if (r[0] === 'size') {
-    				c.fillStyle = K.r;
-    				c.font = VISUAL.fonts.structValue;
-    				c.textAlign = 'center';
-    				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + VISUAL.node.valueBaselineCorrection)
-    			} else {
-				const isDanglingStructPointer = r[0] === 'p_first'
-					? (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined)
-					: (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.lastTargetX !== undefined && s.lastTargetY !== undefined);
-    				c.fillStyle = isDanglingStructPointer ? K.d : K.b;
-    				c.beginPath();
-    				c.arc(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, 0, Math.PI * 2);
-    				c.fill()
-    			}
-    		});
-    		c.restore()
-    	}
-    	nodeById(s, id) {
-    		return (s.nodes || []).find(n => n.id === id)
-    	}
-    	drawStructArrows(s) {
-    		const x = VISUAL.struct.x,
-    			y = VISUAL.struct.y,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell;
-    		this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
-    		const f = this.nodeById(s, s.firstId),
-    			l = this.nodeById(s, s.lastId);
-    		if (f) { const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0); if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth, firstAmount); else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth) }
-    		if (l) {
-    			const targetY = l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor,
-    				lastCol = s.markPLastArrow ? K.r : K.b;
-    			if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3);
-    			else this.lastArrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3)
-    		}
-    	}
-    	drawLinks(s) {
-		(s.nodes || []).forEach(n => {
-			if (n.next !== null && n.next !== undefined) {
-				const to = this.nodeById(s, n.next);
-				if (to) {
-					const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
-					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
-					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
-				}
-			}
-		})
-	}
-	detourArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth, amount = 1) {
-		const c = this.ctx;
-		c.save();
-		c.strokeStyle = col;
-		c.fillStyle = col;
-		c.lineWidth = lw;
-		const d = VISUAL.stroke.detourOffset * amount, midY = y1 + d;
-		c.beginPath();
-		c.moveTo(x1, y1);
-		c.lineTo(x1 + d, midY);
-		c.lineTo(x2 - d, midY);
-		c.lineTo(x2, y2);
-		c.stroke();
-		this.head(x2 - d, midY, x2, y2, col);
-		c.restore()
-	}
-ptr(n) {
-    		return {
-    			x: n.x + this.cell + this.cell / 2,
-    			y: n.y + this.cell / 2
-    		}
-    	}
-    	drawPNodeBox(s) {
-    		const p = s.pnode,
-    			c = this.ctx;
-    		c.save();
-    		c.fillStyle = K.k;
-    		c.font = VISUAL.fonts.pointerLabel;
-    		c.textAlign = 'right';
-    		c.textBaseline = 'alphabetic';
-    		c.fillText(p.label || 'p_node', p.x - VISUAL.pointerBox.labelOffsetX, p.y + VISUAL.pointerBox.labelBaselineOffsetY);
-    		c.fillStyle = K.c;
-    		c.fillRect(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-    		c.fillStyle = K.b;
-    		c.beginPath();
-    		c.arc(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
-    		c.fill();
-    		c.restore()
-    	}
-    	drawAuxPointers(s) {
-		const c = this.ctx;
-		(s.ptrs || []).forEach(p => {
-			const t = this.nodeById(s, p.target);
-			const isDanglingAuxPointer = p.target !== null && p.target !== undefined && !t && p.targetX !== undefined && p.targetY !== undefined;
-			const pointerColor = isDanglingAuxPointer ? K.d : K.b;
-			c.save();
-			c.fillStyle = K.k;
-			c.font = VISUAL.fonts.auxPointerLabel;
-			c.textAlign = 'center';
-			c.textBaseline = 'alphabetic';
-			c.fillText(p.label, p.x + VISUAL.pointerBox.centerX, p.y - VISUAL.pointerBox.auxLabelYOffset);
-			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-			c.fillStyle = pointerColor;
-			c.beginPath();
-			c.arc(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, 0, Math.PI * 2);
-			c.fill();
-			c.restore();
-			if (t) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x + 0 * this.cell / 2, t.y, K.b, VISUAL.stroke.normalWidth);
-			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, p.targetX, p.targetY, pointerColor, 3)
-		})
-	}
-	drawPNodeArrow(s) {
-    		const p = s.pnode,
-    			t = this.nodeById(s, p.target);
-    		if (t) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x, t.y + this.cell / 2, K.b, VISUAL.stroke.normalWidth)
-    	}
-    	drawOverlays(s) {
-    		if (s.flashPFirst) this.flashStruct(0);
-    		if (s.flashPLast) this.flashStruct(1);
-    		if (s.flashSize) this.flashStruct(2);
-    		(s.nodes || []).forEach(n => {
-    			if (n.flashNew) this.roundFlash(n.x - VISUAL.node.flashPadding, n.y - VISUAL.node.flashPadding, this.nodeW + VISUAL.overlay.nodeFlashExpansion, this.cell + VISUAL.overlay.nodeFlashExpansion);
-    			if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, VISUAL.overlay.pNextFlashRadius);
-    			if (n.flashElement) this.roundFlash(n.x - VISUAL.node.elementFlashPadding, n.y - VISUAL.node.elementFlashPadding, this.cell + VISUAL.overlay.elementFlashExpansion, this.cell + VISUAL.overlay.elementFlashExpansion);
-			if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
-    		});
-    		if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height);
-    		if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height));
-    		if (s.flashPtrs)(s.ptrs || []).forEach(p => {
-    			if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, 28)
+    	interpolateScene(A, B, t) {
+    		return Object.assign({}, B, {
+    			objects: this.mixObjects(A.objects, B.objects, t)
     		})
     	}
-    	flashStruct(row) {
-    		const x = VISUAL.struct.x,
-    			y = VISUAL.struct.y + row * this.cell,
-    			w = VISUAL.struct.fieldWidth,
-    			h = this.cell;
-    		this.flashCircle(x + w / 2, y + h / 2, VISUAL.overlay.structFlashRadius)
+    	mixObjects(a = [], b = [], t) {
+    		const ma = new Map(a.map(o => [o.id, o])),
+    			mb = new Map(b.map(o => [o.id, o])),
+    			ids = new Set([...ma.keys(), ...mb.keys()]),
+    			sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined)),
+    			out = [];
+    		ids.forEach(id => {
+    			const A = ma.get(id),
+    				B = mb.get(id);
+    			if (A && B) out.push(this.mixObject(A, B, t));
+    			else if (B) {
+    				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+    				if (S) out.push(this.mixObject(S, B, t));
+    				else {
+    					const fadeT = Math.min(1, t / this.options.fadeCutoff);
+    					out.push(Object.assign({}, B, {
+    						alpha: (B.alpha ?? 1) * fadeT
+    					}))
+    				}
+    			} else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
+    				alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
+    			}))
+    		});
+    		return this.sortObjects(out)
     	}
-    	flashCircle(x, y, r) {
-    		const c = this.ctx;
+    	mixObject(A, B, t) {
+    		const o = Object.assign({}, B);
+    		['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
+    			if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t
+    		});
+    		if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
+    			x: A.points[i].x + (p.x - A.points[i].x) * t,
+    			y: A.points[i].y + (p.y - A.points[i].y) * t
+    		}));
+    		return o
+    	}
+    	bounds(scene) {
+    		const fb = this.options.worldFallback;
+    		let b = {
+    			minX: fb.minX,
+    			minY: fb.minY,
+    			maxX: fb.maxX,
+    			maxY: fb.maxY
+    		};
+    		for (const o of scene.objects || []) {
+    			let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
+    				maxX = o.x !== undefined ? o.x + (o.w ?? 0) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity);
+    			let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
+    				maxY = o.y !== undefined ? o.y + (o.h ?? 0) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity);
+    			if (o.points) {
+    				for (const p of o.points) {
+    					minX = Math.min(minX, p.x);
+    					maxX = Math.max(maxX, p.x);
+    					minY = Math.min(minY, p.y);
+    					maxY = Math.max(maxY, p.y)
+    				}
+    			}
+    			if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
+    			b.minX = Math.min(b.minX, minX - 180);
+    			b.maxX = Math.max(b.maxX, maxX + 230);
+    			b.minY = Math.min(b.minY, minY - 200);
+    			b.maxY = Math.max(b.maxY, maxY + 220)
+    		}
+    		return scene.bounds || b
+    	}
+    	fit(scenes) {
+    		let B = {
+    			minX: 1e9,
+    			minY: 1e9,
+    			maxX: -1e9,
+    			maxY: -1e9
+    		};
+    		scenes.forEach(s => {
+    			const b = this.bounds(s);
+    			B.minX = Math.min(B.minX, b.minX);
+    			B.maxX = Math.max(B.maxX, b.maxX);
+    			B.minY = Math.min(B.minY, b.minY);
+    			B.maxY = Math.max(B.maxY, b.maxY)
+    		});
+    		const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
+    		this.cam.targetScale = sc;
+    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+    	}
+    	flashAlpha() {
+    		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+    	}
+    	draw() {
+    		const s = this.current(),
+    			c = this.ctx;
+    		c.clearRect(0, 0, this.cv.width, this.cv.height);
+    		this.hitObjects = [];
     		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = VISUAL.stroke.flashWidth;
-    		c.beginPath();
-    		c.arc(x, y, r, 0, Math.PI * 2);
-    		c.stroke();
+    		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+    		if (s)
+    			for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
     		c.restore()
     	}
-    	roundFlash(x, y, w, h) {
+    	drawObject(o) {
     		const c = this.ctx;
     		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = VISUAL.stroke.flashWidth;
-    		c.beginPath();
-    		c.roundRect(x, y, w, h, VISUAL.overlay.nodeFlashCornerRadius);
-    		c.stroke();
+    		if (o.alpha !== undefined) c.globalAlpha *= o.alpha;
+    		const st = o.style || {};
+    		c.fillStyle = st.fill || '#fff';
+    		c.strokeStyle = st.stroke || '#333';
+    		c.lineWidth = o.lineWidth ?? st.lineWidth ?? 1;
+    		c.font = st.font || '24px Arial';
+    		c.textAlign = st.align || 'center';
+    		c.textBaseline = st.baseline || 'middle';
+    		if (o.kind === 'rect') {
+    			this.roundOrRect(o, st);
+    			if (st.stroke) c.stroke();
+    			if (o.hit) this.hitObjects.push({
+    				x: o.x,
+    				y: o.y,
+    				w: o.w,
+    				h: o.h,
+    				hit: o.hit
+    			})
+    		} else if (o.kind === 'text') {
+    			c.fillStyle = st.fill || '#111';
+    			c.fillText(String(o.text), o.x, o.y)
+    		} else if (o.kind === 'circle') {
+    			c.beginPath();
+    			c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+    			if (st.fill) c.fill();
+    			if (st.stroke) c.stroke()
+    		} else if (o.kind === 'line') {
+    			c.beginPath();
+    			c.moveTo(o.x1, o.y1);
+    			c.lineTo(o.x2, o.y2);
+    			c.stroke()
+    		} else if (o.kind === 'arrow') {
+    			this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || K.b, o.lineWidth ?? 3)
+    		} else if (o.kind === 'polylineArrow') {
+    			this.polylineArrow(o.points, st.stroke || K.b, o.lineWidth ?? 3)
+    		} else if (o.kind === 'cross') {
+    			this.cross(o.x, o.y, o.w, o.h)
+    		} else if (o.kind === 'flashRect') {
+    			this.flashRect(o.x, o.y, o.w, o.h, o.radius ?? 8)
+    		} else if (o.kind === 'flashCircle') {
+    			this.flashCircle(o.x, o.y, o.r)
+    		} else if (o.kind === 'lFlash') {
+    			this.lFlash(o)
+    		}
     		c.restore()
     	}
-    	cross(x, y, w, h) {
-    		const c = this.ctx;
-    		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = VISUAL.stroke.crossWidth;
+    	roundOrRect(o, st) {
+    		const c = this.ctx,
+    			b = o.transparentBorder ?? 1,
+    			ix = o.x + b,
+    			iy = o.y + b,
+    			iw = Math.max(0, o.w - 2 * b),
+    			ih = Math.max(0, o.h - 2 * b),
+    			ir = Math.max(0, (o.radius ?? 0) - b);
     		c.beginPath();
-    		c.moveTo(x - VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion);
-    		c.lineTo(x + w + VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
-    		c.moveTo(x + w + VISUAL.overlay.crossExpansion, y - VISUAL.overlay.crossExpansion);
-    		c.lineTo(x - VISUAL.overlay.crossExpansion, y + h + VISUAL.overlay.crossExpansion);
-    		c.stroke();
-    		c.restore()
+    		if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
+    		else c.rect(ix, iy, iw, ih);
+    		if (st.fill !== false) c.fill();
+    		if (st.stroke) {
+    			c.beginPath();
+    			if (o.radius && c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, o.radius);
+    			else c.rect(o.x, o.y, o.w, o.h)
+    		}
     	}
-    	arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
+    	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
     		const c = this.ctx;
     		c.save();
     		c.strokeStyle = col;
@@ -1092,32 +973,101 @@ ptr(n) {
     		this.head(x1, y1, x2, y2, col);
     		c.restore()
     	}
-    	head(x1, y1, x2, y2, col = K.b) {
-    		const c = this.ctx,
-    			a = Math.atan2(y2 - y1, x2 - x1),
-    			h = VISUAL.stroke.arrowHeadLength;
-    		c.fillStyle = col;
-    		c.beginPath();
-    		c.moveTo(x2, y2);
-    		c.lineTo(x2 - h * Math.cos(a - VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a - VISUAL.stroke.arrowHeadHalfAngle));
-    		c.lineTo(x2 - h * Math.cos(a + VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a + VISUAL.stroke.arrowHeadHalfAngle));
-    		c.closePath();
-    		c.fill()
-    	}
-    	lastArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
+    	polylineArrow(points, col = K.b, lw = 3) {
+    		if (!points || points.length < 2) return;
     		const c = this.ctx;
     		c.save();
     		c.strokeStyle = col;
     		c.fillStyle = col;
     		c.lineWidth = lw;
     		c.beginPath();
-    		c.moveTo(x1, y1);
-    		const d = VISUAL.stroke.lastArrowHorizontalOffset,
-    			midY = y1;
-    		c.lineTo(x2 - d, midY);
-    		c.lineTo(x2, y2);
+    		c.moveTo(points[0].x, points[0].y);
+    		for (let i = 1; i < points.length; i++) c.lineTo(points[i].x, points[i].y);
     		c.stroke();
-    		this.head(x2 - d, midY, x2, y2, col);
+    		const a = points[points.length - 2],
+    			b = points[points.length - 1];
+    		this.head(a.x, a.y, b.x, b.y, col);
+    		c.restore()
+    	}
+    	head(x1, y1, x2, y2, col) {
+    		const c = this.ctx,
+    			a = Math.atan2(y2 - y1, x2 - x1),
+    			h = 17;
+    		c.fillStyle = col;
+    		c.beginPath();
+    		c.moveTo(x2, y2);
+    		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
+    		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+    		c.closePath();
+    		c.fill()
+    	}
+    	flashRect(x, y, w, h, r = 8) {
+    		const c = this.ctx;
+    		c.save();
+    		c.globalAlpha = this.flashAlpha();
+    		c.strokeStyle = K.r;
+    		c.lineWidth = 5;
+    		c.beginPath();
+    		if (c.roundRect) c.roundRect(x, y, w, h, r);
+    		else c.rect(x, y, w, h);
+    		c.stroke();
+    		c.restore()
+    	}
+    	flashCircle(x, y, r) {
+    		const c = this.ctx;
+    		c.save();
+    		c.globalAlpha = this.flashAlpha();
+    		c.strokeStyle = K.r;
+    		c.lineWidth = 5;
+    		c.beginPath();
+    		c.arc(x, y, r, 0, Math.PI * 2);
+    		c.stroke();
+    		c.restore()
+    	}
+    	cross(x, y, w, h) {
+    		const c = this.ctx;
+    		c.save();
+    		c.globalAlpha = this.flashAlpha();
+    		c.strokeStyle = K.r;
+    		c.lineWidth = 6;
+    		const p = 7;
+    		c.beginPath();
+    		c.moveTo(x - p, y - p);
+    		c.lineTo(x + w + p, y + h + p);
+    		c.moveTo(x + w + p, y - p);
+    		c.lineTo(x - p, y + h + p);
+    		c.stroke();
+    		c.restore()
+    	}
+    	lFlash(o) {
+    		const c = this.ctx,
+    			p = o.padding ?? 8,
+    			r = o.radius ?? 8,
+    			w = o.cell ?? 60,
+    			nodeW = o.nodeW ?? 120,
+    			x = o.x,
+    			y = o.y,
+    			elemY = o.elemY;
+    		c.save();
+    		c.globalAlpha = this.flashAlpha();
+    		c.strokeStyle = K.r;
+    		c.lineWidth = 5;
+    		c.beginPath();
+    		c.moveTo(x - p + r, elemY - p);
+    		c.lineTo(x + w + p - r, elemY - p);
+    		c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
+    		c.lineTo(x + w + p, y - p - r);
+    		c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
+    		c.lineTo(x + nodeW + p - r, y - p);
+    		c.arcTo(x + nodeW + p, y - p, x + nodeW + p, y - p + r, r);
+    		c.lineTo(x + nodeW + p, y + w + p - r);
+    		c.arcTo(x + nodeW + p, y + w + p, x + nodeW + p - r, y + w + p, r);
+    		c.lineTo(x - p + r, y + w + p);
+    		c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
+    		c.lineTo(x - p, elemY - p + r);
+    		c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
+    		c.closePath();
+    		c.stroke();
     		c.restore()
     	}
     	setSpeed(v) {
@@ -1129,6 +1079,243 @@ ptr(n) {
     	}
     }
 
+    // C-specific view: converts exact algorithm snapshots into the generic scene objects consumed by VisualizationEngine.
+    // It keeps all explicit C pointers visible, including dangling pointers after free().
+    class CLinkedListView {
+        constructor() {
+            this.c = VISUAL.node.cell;
+            this.nw = VISUAL.node.width;
+        }
+        obj(o, x) { o.push(x); }
+        n(s, id) { return (s.nodes || []).find(n => n.id === id); }
+        txt(o, id, text, x, y, font = VISUAL.fonts.value, fill = K.k, align = 'center', base = 'middle', layer = LAYER.text) {
+            this.obj(o, { id, kind: 'text', text, x, y, style: { font, fill, align, baseline: base }, layer });
+        }
+        rect(o, id, x, y, w, h, fill, hit = null, layer = LAYER.box) {
+            this.obj(o, { id, kind: 'rect', x, y, w, h, style: { fill }, hit, layer });
+        }
+        cir(o, id, x, y, r, fill, layer = LAYER.dot) {
+            this.obj(o, { id, kind: 'circle', x, y, r, style: { fill }, layer });
+        }
+        ar(o, id, x1, y1, x2, y2, col = K.b, layer = LAYER.arrow, lw = VISUAL.stroke.normalWidth) {
+            this.obj(o, { id, kind: 'arrow', x1, y1, x2, y2, style: { stroke: col, fill: col }, lineWidth: lw, layer });
+        }
+        poly(o, id, points, col = K.b, layer = LAYER.arrow, lw = VISUAL.stroke.normalWidth) {
+            this.obj(o, { id, kind: 'polylineArrow', points, style: { stroke: col }, lineWidth: lw, layer });
+        }
+        det(o, id, x1, y1, x2, y2, col = K.b, amount = 0, layer = LAYER.arrow) {
+            // Always polylineArrow with 4 points. amount=0 is visually straight and morph-compatible.
+            if (Math.abs(amount) < VISUAL.stroke.detourThreshold) {
+                this.poly(o, id, [
+                    { x: x1, y: y1 },
+                    { x: x1 + (x2 - x1) / 3, y: y1 + (y2 - y1) / 3 },
+                    { x: x1 + 2 * (x2 - x1) / 3, y: y1 + 2 * (y2 - y1) / 3 },
+                    { x: x2, y: y2 }
+                ], col, layer);
+                return;
+            }
+            const d = VISUAL.stroke.detourOffset * amount;
+            const midY = y1 + d;
+            this.poly(o, id, [
+                { x: x1, y: y1 },
+                { x: x1 + d, y: midY },
+                { x: x2 - d, y: midY },
+                { x: x2, y: y2 }
+            ], col, layer);
+        }
+        last(o, id, x1, y1, x2, y2, col = K.b, straight = false, layer = LAYER.arrow) {
+            // Always 3 points to morph smoothly between curved, straight and dangling last-pointer shapes.
+            const midX = straight ? (x1 + x2) / 2 : x2 - VISUAL.stroke.lastArrowHorizontalOffset;
+            const midY = straight ? (y1 + y2) / 2 : y1;
+            this.poly(o, id, [{ x: x1, y: y1 }, { x: midX, y: midY }, { x: x2, y: y2 }], col, layer);
+        }
+        ptr(n) { return { x: n.x + this.c + this.c / 2, y: n.y + this.c / 2 }; }
+        scene(s) {
+            const o = [];
+            this.struct(o, s);
+            (s.nodes || []).forEach(n => this.node(o, s, n));
+            if (s.pnode) this.pnode(o, s);
+            this.structArrows(o, s);
+            this.links(o, s);
+            (s.ptrs || []).forEach(p => this.aux(o, s, p));
+            if (s.pnode) this.pnodeArrow(o, s);
+            this.over(o, s);
+            return { text: s.text, pause: !!s.pause, objects: o, bounds: this.bounds(o) };
+        }
+        node(o, s, n) {
+            const w = this.c, x = n.x, y = n.y, id = 'node:' + n.id;
+            this.rect(o, id + ':elem', x, y, w, w, K.g, { value: n.e, index: n.index });
+            this.rect(o, id + ':next', x + w, y, w, w, K.c, { value: n.e, index: n.index });
+            this.txt(o, id + ':val', n.e, x + w / 2, y + w / 2 + VISUAL.node.valueBaselineCorrection, VISUAL.fonts.value, K.r);
+            if (n.index !== undefined) this.txt(o, id + ':idx', n.index, x + w - VISUAL.node.indexLabelOffsetX, y - VISUAL.node.indexLabelOffsetY, VISUAL.fonts.index, K.k, 'center', 'alphabetic');
+            this.cir(o, id + ':nextdot', x + w + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, K.b);
+        }
+        struct(o, s) {
+            const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.c;
+            this.txt(o, 'plist:lab', 'p_list', x - VISUAL.struct.listLabelOffsetX, y - VISUAL.struct.listLabelOffsetY, VISUAL.fonts.structLabel, K.k, 'right');
+            this.rect(o, 'plist:box', x - VISUAL.struct.listPointerBoxOffsetX, y - VISUAL.struct.listPointerBoxOffsetY, w, h, K.p);
+            this.cir(o, 'plist:dot', x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, VISUAL.struct.pointerDotRadius, K.v);
+            const rows = [
+                ['p_first', K.c, s.firstId, s.firstTargetX, s.firstTargetY],
+                ['p_last', K.c, s.lastId, s.lastTargetX, s.lastTargetY],
+                ['size', K.g, s.size, undefined, undefined]
+            ];
+            rows.forEach((r, i) => {
+                const yy = y + i * h, id = 'st:' + r[0];
+                this.txt(o, id + ':lab', r[0], x - VISUAL.struct.labelOffsetX, yy + h / 2, VISUAL.fonts.structLabel, K.k, 'right');
+                this.rect(o, id + ':box', x, yy, w, h * VISUAL.struct.rowHeightFactor, r[1]);
+                if (r[0] === 'size') this.txt(o, id + ':val', String(r[2]), x + w / 2, yy + h / 2 + VISUAL.node.valueBaselineCorrection, VISUAL.fonts.structValue, K.r);
+                else {
+                    const idValue = r[2];
+                    const dangling = idValue !== null && idValue !== undefined && !this.n(s, idValue) && r[3] !== undefined && r[4] !== undefined;
+                    this.cir(o, id + ':dot', x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, dangling ? K.d : K.b);
+                }
+            });
+        }
+        structArrows(o, s) {
+            const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.c;
+            this.ar(o, 'a:p_list', x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v);
+            const f = this.n(s, s.firstId);
+            if (f) {
+                const a = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
+                this.det(o, 'a:p_first', x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, a);
+            } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
+                this.det(o, 'a:p_first', x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, 0);
+            }
+            const l = this.n(s, s.lastId);
+            const startX = x + w / 2, startY = y + h + h / 2;
+            if (l) {
+                const targetY = l.y + this.c * VISUAL.struct.lastArrowTargetYFactor;
+                const col = s.markPLastArrow ? K.r : K.b;
+                const straight = ((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow;
+                this.last(o, 'a:p_last', startX, startY, l.x, targetY, col, straight);
+            } else if (s.lastTargetX !== undefined && s.lastTargetY !== undefined) {
+                const straight = s.straightPLastArrow && !s.keepCurvedPLastArrow;
+                this.last(o, 'a:p_last', startX, startY, s.lastTargetX, s.lastTargetY, K.d, straight);
+            }
+        }
+        links(o, s) {
+            (s.nodes || []).forEach(n => {
+                if (n.next !== null && n.next !== undefined) {
+                    const to = this.n(s, n.next);
+                    const p = this.ptr(n);
+                    const amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
+                    if (to) this.det(o, 'link:' + n.id, p.x, p.y, to.x, to.y + this.c / 2, K.b, amount);
+                    else if (n.nextTargetX !== undefined && n.nextTargetY !== undefined) this.det(o, 'link:' + n.id, p.x, p.y, n.nextTargetX, n.nextTargetY, K.d, amount);
+                }
+            });
+        }
+        pnode(o, s) {
+            const p = s.pnode;
+            this.txt(o, 'pn:lab', p.label || 'p_node', p.x - VISUAL.pointerBox.labelOffsetX, p.y + VISUAL.pointerBox.labelBaselineOffsetY, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic');
+            this.rect(o, 'pn:box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c);
+            this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, K.b);
+        }
+        pnodeArrow(o, s) {
+            const p = s.pnode, t = this.n(s, p.target);
+            if (t) this.ar(o, 'pn:ar', p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x, t.y + this.c / 2, K.b);
+            else if (p.targetX !== undefined && p.targetY !== undefined) this.ar(o, 'pn:ar', p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, p.targetX, p.targetY, K.d);
+        }
+        aux(o, s, p) {
+            const t = this.n(s, p.target);
+            const dangling = p.target !== null && p.target !== undefined && !t && p.targetX !== undefined && p.targetY !== undefined;
+            const col = dangling ? K.d : K.b;
+            const id = 'ptr:' + p.label;
+            this.txt(o, id + ':lab', p.label, p.x + VISUAL.pointerBox.centerX, p.y - VISUAL.pointerBox.auxLabelYOffset, VISUAL.fonts.auxPointerLabel, K.k, 'center', 'alphabetic');
+            this.rect(o, id + ':box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c);
+            this.cir(o, id + ':dot', p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, col);
+            if (t) this.ar(o, id + ':ar', p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, t.x, t.y, K.b);
+            else if (p.targetX !== undefined && p.targetY !== undefined) this.ar(o, id + ':ar', p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, p.targetX, p.targetY, col);
+        }
+        over(o, s) {
+            const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.c;
+            if (s.flashPFirst) this.obj(o, { id: 'fl:p_first', kind: 'flashCircle', x: x + w / 2, y: y + h / 2, r: VISUAL.overlay.structFlashRadius, layer: LAYER.overlay });
+            if (s.flashPLast) this.obj(o, { id: 'fl:p_last', kind: 'flashCircle', x: x + w / 2, y: y + h + h / 2, r: VISUAL.overlay.structFlashRadius, layer: LAYER.overlay });
+            if (s.flashSize) this.obj(o, { id: 'fl:size', kind: 'flashCircle', x: x + w / 2, y: y + 2 * h + h / 2, r: VISUAL.overlay.structFlashRadius, layer: LAYER.overlay });
+            (s.nodes || []).forEach(n => {
+                if (n.flashNew) this.obj(o, { id: 'fl:new:' + n.id, kind: 'flashRect', x: n.x - VISUAL.node.flashPadding, y: n.y - VISUAL.node.flashPadding, w: this.nw + VISUAL.overlay.nodeFlashExpansion, h: this.c + VISUAL.overlay.nodeFlashExpansion, radius: VISUAL.overlay.nodeFlashCornerRadius, layer: LAYER.overlay });
+                if (n.flashPNext || s.flashPNext === n.id) this.obj(o, { id: 'fl:pnext:' + n.id, kind: 'flashCircle', x: n.x + this.c + this.c / 2, y: n.y + this.c / 2, r: VISUAL.overlay.pNextFlashRadius, layer: LAYER.overlay });
+                if (n.flashElement) this.obj(o, { id: 'fl:elem:' + n.id, kind: 'flashRect', x: n.x - VISUAL.node.elementFlashPadding, y: n.y - VISUAL.node.elementFlashPadding, w: this.c + VISUAL.overlay.elementFlashExpansion, h: this.c + VISUAL.overlay.elementFlashExpansion, radius: VISUAL.overlay.nodeFlashCornerRadius, layer: LAYER.overlay });
+                if (n.flashNodeCross) this.obj(o, { id: 'cr:node:' + n.id, kind: 'cross', x: n.x, y: n.y, w: this.nw, h: this.c, layer: LAYER.overlay });
+            });
+            if (s.flashPNodeCross && s.pnode) this.obj(o, { id: 'cr:pnode', kind: 'cross', x: s.pnode.x, y: s.pnode.y, w: VISUAL.pointerBox.width, h: VISUAL.pointerBox.height, layer: LAYER.overlay });
+            if (s.flashAuxCross) (s.ptrs || []).forEach(p => this.obj(o, { id: 'cr:aux:' + p.label, kind: 'cross', x: p.x, y: p.y, w: VISUAL.pointerBox.width, h: VISUAL.pointerBox.height, layer: LAYER.overlay }));
+            if (s.flashPtrCross) (s.ptrs || []).forEach(p => { if (s.flashPtrCross.includes(p.label)) this.obj(o, { id: 'cr:ptr:' + p.label, kind: 'cross', x: p.x, y: p.y, w: VISUAL.pointerBox.width, h: VISUAL.pointerBox.height, layer: LAYER.overlay }); });
+            if (s.flashPtrs) (s.ptrs || []).forEach(p => { if (s.flashPtrs.includes(p.label)) this.obj(o, { id: 'fl:ptr:' + p.label, kind: 'flashCircle', x: p.x + VISUAL.pointerBox.centerX, y: p.y + VISUAL.pointerBox.centerY, r: VISUAL.overlay.pointerFlashRadius, layer: LAYER.overlay }); });
+        }
+        bounds(objects) {
+            let b = { minX: VISUAL.bounds.defaultMinX, minY: VISUAL.bounds.defaultMinY, maxX: VISUAL.bounds.defaultMaxX, maxY: VISUAL.bounds.defaultMaxY };
+            for (const q of objects) {
+                let xs = [], ys = [];
+                if (q.x !== undefined) { xs.push(q.x, q.x + (q.w || 0)); ys.push(q.y, q.y + (q.h || 0)); }
+                if (q.x1 !== undefined) { xs.push(q.x1, q.x2); ys.push(q.y1, q.y2); }
+                if (q.points) q.points.forEach(p => { xs.push(p.x); ys.push(p.y); });
+                if (xs.length) {
+                    b.minX = Math.min(b.minX, Math.min(...xs) - VISUAL.bounds.nodeLeftPadding);
+                    b.maxX = Math.max(b.maxX, Math.max(...xs) + VISUAL.bounds.nodeRightPadding);
+                    b.minY = Math.min(b.minY, Math.min(...ys) - VISUAL.bounds.nodeTopPadding);
+                    b.maxY = Math.max(b.maxY, Math.max(...ys) + VISUAL.bounds.nodeBottomPadding);
+                }
+            }
+            return b;
+        }
+    }
+    class Viz extends VisualizationEngine {
+        constructor(id) {
+            super({
+                canvasId: id,
+                wrapId: 'wrap',
+                statusId: 'status-text',
+                onHit: h => {
+                    document.getElementById('val').value = h.value;
+                    document.getElementById('idx').value = h.index ?? '';
+                },
+                options: {
+                    minScale: VISUAL.camera.minScale,
+                    maxScale: VISUAL.camera.maxScale,
+                    maxFitScale: VISUAL.camera.defaultMaxFitScale,
+                    wheelSensitivity: VISUAL.camera.wheelSensitivity,
+                    cameraSmoothing: VISUAL.camera.smoothingFactor,
+                    cameraSnapPx: VISUAL.camera.snapDistance,
+                    cameraSnapScale: VISUAL.camera.snapScaleDelta,
+                    maxFrameDelta: VISUAL.animation.maxFrameDeltaSeconds,
+                    morphSpeed: VISUAL.animation.morphSpeed,
+                    waitSeconds: VISUAL.animation.waitSeconds,
+                    fadeCutoff: VISUAL.animation.deleteFadeCutoff,
+                    fitPadding: VISUAL.bounds.fitPadding,
+                    worldFallback: {
+                        minX: VISUAL.bounds.defaultMinX,
+                        minY: VISUAL.bounds.defaultMinY,
+                        maxX: VISUAL.bounds.defaultMaxX,
+                        maxY: VISUAL.bounds.defaultMaxY
+                    }
+                }
+            });
+            this.view = new CLinkedListView();
+            this.cell = VISUAL.node.cell;
+            this.nodeW = VISUAL.node.width;
+            this.gap = VISUAL.node.gap;
+            this.reset();
+        }
+        get sn() { return this.scenes; }
+        set sn(v) { this.scenes = v; }
+        base() { return { x: VISUAL.list.originX, y: VISUAL.list.originY, up: VISUAL.list.tempY }; }
+        layout(s) {
+            const b = this.base();
+            (s.nodes || []).forEach((n, i) => {
+                if (n.x === undefined) n.x = b.x + i * VISUAL.node.step;
+                if (n.y === undefined) n.y = b.y;
+            });
+            if (s.pnode && s.pnode.x === undefined) {
+                s.pnode.x = b.x - VISUAL.list.tempPointerXOffset;
+                s.pnode.y = s.pnode.y ?? b.up;
+            }
+        }
+        enqueue(snaps) {
+            snaps.forEach(s => this.layout(s));
+            super.enqueue(snaps.map(s => this.view.scene(s)));
+        }
+    }
     function relink(nodes) {
     	nodes.forEach((n, i) => {
     		n.index = i;
@@ -2082,61 +2269,6 @@ ptr(n) {
         }
     }
 
-    /* Draw p_first and p_last arrows even when they are dangling pointers to
-       nodes that have already been removed from the visual representation. */
-    Viz.prototype.drawStructArrows = function (s) {
-        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.cell;
-        this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
-
-        const f = this.nodeById(s, s.firstId), l = this.nodeById(s, s.lastId);
-        if (f) {
-            const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-            if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth, firstAmount);
-            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, VISUAL.stroke.normalWidth)
-        } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
-            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, K.d, VISUAL.stroke.normalWidth)
-        }
-
-        if (l) {
-            const targetY = l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor, lastCol = s.markPLastArrow ? K.r : K.b;
-            if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3);
-            else this.lastArrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3)
-        } else if (s.lastTargetX !== undefined && s.lastTargetY !== undefined) {
-			if (s.straightPLastArrow && !s.keepCurvedPLastArrow) {
-				this.arrow(
-					x + w / 2,
-					y + h + h / 2,
-					s.lastTargetX,
-					s.lastTargetY,
-					K.d,
-					3
-				);
-			} else {
-				this.lastArrow(
-					x + w / 2,
-					y + h + h / 2,
-					s.lastTargetX,
-					s.lastTargetY,
-					K.d,
-					3
-				);
-			}
-		}
-    };
-
-    if (!Viz.prototype._drawOverlaysSupportsPtrCross) {
-        const previousDrawOverlaysForPtrCross = Viz.prototype.drawOverlays;
-        Viz.prototype.drawOverlays = function (s) {
-            previousDrawOverlaysForPtrCross.call(this, s);
-            if (s.flashPtrCross) {
-                (s.ptrs || []).forEach(p => {
-                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height)
-                })
-            }
-        };
-        Viz.prototype._drawOverlaysSupportsPtrCross = true
-    }
-
     app.clear = function () {
         this.save();
         const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
@@ -2280,6 +2412,7 @@ ptr(n) {
     };
 })();
 
+    window.app = app;
     window.onload = () => app.init();
     window.onclick = e => {
     	if (e.target === document.getElementById('helpModal')) app.toggleModal()
