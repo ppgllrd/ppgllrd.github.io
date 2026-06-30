@@ -292,6 +292,7 @@ const VISUAL = (() => {
         }),
         list: Object.freeze({
             originX: 360,
+            originY: 250,
             tempNodeYOffset: 160,
             tempPointerXOffset: 100,
             insertPointerXOffset: 120,
@@ -353,603 +354,604 @@ const VISUAL = (() => {
 })();
 let nextId = 0;
 class VisualizationEngine {
-    constructor({
-        canvasId,
-        wrapId,
-        statusId,
-        onHit = null,
-        options = {}
-    }) {
-        this.cv = document.getElementById(canvasId);
-        this.ctx = this.cv.getContext('2d');
-        this.wrap = document.getElementById(wrapId);
-        this.statusEl = document.getElementById(statusId);
-        this.onHit = onHit;
-        this.options = Object.assign({
-            minScale: .2,
-            maxScale: 5,
-            maxFitScale: 1.22,
-            wheelSensitivity: .001,
-            cameraSmoothing: 10,
-            cameraSnapPx: 5,
-            cameraSnapScale: .01,
-            maxFrameDelta: .1,
-            morphSpeed: 2.5,
-            waitSeconds: .75,
-            fadeCutoff: .95,
-            fitPadding: 150,
-            worldFallback: {
-                minX: 20,
-                minY: 35,
-                maxX: 760,
-                maxY: 470
-            }
-        }, options);
-
-        this.cam = {
-            scale: 1,
-            targetScale: 1,
-            x: 0,
-            targetX: 0,
-            y: 0,
-            targetY: 0
-        };
-        this.scenes = [];
-        this.pending = [];
-        this.idx = -1;
-        this.state = 'IDLE';
-        this.t = 0;
-        this.wait = 0;
-        this.speedFactor = 1;
-        this.paused = false;
-        this.last = 0;
-        this.drag = false;
-        this.hitObjects = [];
-
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        this.cv.addEventListener('wheel', e => this.wheel(e), {
-            passive: false
-        });
-        this.cv.addEventListener('mousedown', e => this.pointerStart(e));
-        this.cv.addEventListener('mousemove', e => this.pointerMove(e));
-        this.cv.addEventListener('mouseup', () => this.pointerEnd());
-        this.cv.addEventListener('mouseleave', () => this.pointerEnd());
-        this.cv.addEventListener('touchstart', e => this.touchStart(e), {
-            passive: false
-        });
-        this.cv.addEventListener('touchmove', e => this.touchMove(e), {
-            passive: false
-        });
-        this.cv.addEventListener('touchend', () => this.pointerEnd());
-        requestAnimationFrame(ts => this.loop(ts));
-    }
-
-    resize() {
-        this.cv.width = this.wrap.offsetWidth;
-        this.cv.height = this.wrap.offsetHeight;
-        const cur = this.current();
-        if (cur) {
-            this.fit([cur]);
-            this.cam.scale = this.cam.targetScale;
-            this.cam.x = this.cam.targetX;
-            this.cam.y = this.cam.targetY;
-        }
-    }
-    screenToWorld(x, y) {
-        return {
-            x: (x - this.cam.x) / this.cam.scale,
-            y: (y - this.cam.y) / this.cam.scale
-        };
-    }
-    wheel(e) {
-        e.preventDefault();
-        const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
-        let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
-        ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
-        const wx = (sx - this.cam.targetX) / this.cam.targetScale,
-            wy = (sy - this.cam.targetY) / this.cam.targetScale;
-        this.cam.targetScale = ns;
-        this.cam.targetX = sx - wx * ns;
-        this.cam.targetY = sy - wy * ns;
-    }
-    pointerStart(e) {
-        const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
-        const w = this.screenToWorld(sx, sy),
-            hit = this.findHit(w.x, w.y);
-        if (hit && this.onHit) {
-            this.onHit(hit);
-            return;
-        }
-        this.drag = true;
-        this.start = {
-            x: sx,
-            y: sy
-        };
-        this.c0 = {
-            x: this.cam.targetX,
-            y: this.cam.targetY
-        };
-        this.cv.style.cursor = 'grabbing';
-    }
-    pointerMove(e) {
-        const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
-        if (this.drag) {
-            this.cam.targetX = this.c0.x + sx - this.start.x;
-            this.cam.targetY = this.c0.y + sy - this.start.y;
-            return;
-        }
-        const w = this.screenToWorld(sx, sy);
-        this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default';
-    }
-    pointerEnd() {
-        this.drag = false;
-        this.cv.style.cursor = 'default';
-        this.pinch = null;
-    }
-    td(t) {
-        return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
-    }
-    tc(t, r) {
-        return {
-            x: (t[0].clientX + t[1].clientX) / 2 - r.left,
-            y: (t[0].clientY + t[1].clientY) / 2 - r.top
-        };
-    }
-    touchStart(e) {
-        e.preventDefault();
-        const r = this.cv.getBoundingClientRect();
-        if (e.touches.length === 1) {
-            const x = e.touches[0].clientX - r.left,
-                y = e.touches[0].clientY - r.top;
-            const w = this.screenToWorld(x, y);
-            const hit = this.findHit(w.x, w.y);
-            if (hit && this.onHit) {
-                this.onHit(hit);
-                return;
-            }
-            this.drag = true;
-            this.start = {
-                x,
-                y
-            };
-            this.c0 = {
-                x: this.cam.targetX,
-                y: this.cam.targetY
-            };
-        } else if (e.touches.length === 2) {
-            this.drag = false;
-            const c = this.tc(e.touches, r);
-            this.pinch = {
-                d: this.td(e.touches),
-                s: this.cam.targetScale,
-                wx: (c.x - this.cam.targetX) / this.cam.targetScale,
-                wy: (c.y - this.cam.targetY) / this.cam.targetScale
-            };
-        }
-    }
-    touchMove(e) {
-        e.preventDefault();
-        const r = this.cv.getBoundingClientRect();
-        if (e.touches.length === 1 && this.drag) {
-            const x = e.touches[0].clientX - r.left,
-                y = e.touches[0].clientY - r.top;
-            this.cam.targetX = this.c0.x + x - this.start.x;
-            this.cam.targetY = this.c0.y + y - this.start.y;
-        } else if (e.touches.length === 2 && this.pinch) {
-            const c = this.tc(e.touches, r);
-            let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
-            ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
-            this.cam.targetScale = ns;
-            this.cam.targetX = c.x - this.pinch.wx * ns;
-            this.cam.targetY = c.y - this.pinch.wy * ns;
-        }
-    }
-    findHit(x, y) {
-        for (let i = this.hitObjects.length - 1; i >= 0; i--) {
-            const o = this.hitObjects[i];
-            if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o.hit;
-        }
-        return null;
-    }
-
-    reset() {
-        this.scenes = [];
-        this.pending = [];
-        this.idx = -1;
-        this.state = 'IDLE';
-        this.t = 0;
-    }
-    enqueue(scenes) {
-        const copy = scenes.map(s => this.normalizeScene(s));
-        this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
-        if (!this.scenes.length && copy.length) {
-            this.scenes.push(copy.shift());
-            this.idx = 0;
-            this.setStatus(this.scenes[0].text || 'Ready.');
-        }
-        if (copy.length) {
-            this.pending = copy;
-            this.state = 'CAMERA';
-        }
-    }
-    normalizeScene(s) {
-        const scene = Object.assign({
-            objects: [],
-            pause: false
-        }, s);
-        scene.objects = this.normalizeObjects(scene.objects);
-        return scene;
-    }
-    normalizeObjects(objects = []) {
-        return objects.map((o, order) => this.normalizeObject(o, order));
-    }
-    normalizeObject(o, order = 0) {
-        const copy = Object.assign({}, o);
-        copy.layer = this.resolveLayer(copy);
-        copy.order = copy.order ?? order;
-        return copy;
-    }
-    resolveLayer(o) {
-        if (Number.isFinite(o.layer)) return o.layer;
-        if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
-        if (o.kind === 'text') return LAYER.text;
-        if (o.kind === 'circle') return LAYER.dot;
-        if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
-        if (o.kind === 'rect') return LAYER.box;
-        return Number.isFinite(o.z) ? o.z : LAYER.background;
-    }
-    sortObjects(objects = []) {
-        return [...objects].sort((a, b) =>
-            ((a.layer ?? LAYER.background) - (b.layer ?? LAYER.background)) ||
-            ((a.order ?? 0) - (b.order ?? 0))
-        );
-    }
-    setStatus(txt) {
-        if (this.statusEl) this.statusEl.innerText = txt;
-    }
-    loop(ts) {
-        if (!this.last) this.last = ts;
-        const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
-        this.last = ts;
-        if (!this.paused) this.update(dt);
-        this.draw();
-        requestAnimationFrame(t => this.loop(t));
-    }
-    update(dt) {
-        const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
-        this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-        this.cam.x += (this.cam.targetX - this.cam.x) * f;
-        this.cam.y += (this.cam.targetY - this.cam.y) * f;
-        if (this.state === 'CAMERA') {
-            if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next();
-        } else if (this.state === 'MORPH') {
-            this.t += this.options.morphSpeed * this.speedFactor * dt;
-            if (this.t >= 1) {
-                this.t = 1;
-                if (this.scenes[this.idx + 1]?.pause) {
-                    this.state = 'WAIT';
-                    this.wait = this.options.waitSeconds / this.speedFactor;
-                } else this.finish();
-            }
-        } else if (this.state === 'WAIT') {
-            this.wait -= dt;
-            if (this.wait <= 0) this.finish();
-        }
-    }
-    next() {
-        const s = this.pending.shift();
-        this.scenes.push(s);
-        if (s.fitCamera) this.fit([s]);
-        this.setStatus(s.text || 'Ready.');
-        this.t = 0;
-        this.state = 'MORPH';
-    }
-    finish() {
-        this.idx++;
-        if (this.pending.length) this.next();
-        else {
-            this.state = 'IDLE';
-            this.setStatus('Ready.');
-            if (app?.clearInputs) app.clearInputs();
-        }
-    }
-    ease(t) {
-        return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-    }
-    current() {
-        return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)];
-    }
-    interpolateScene(A, B, t) {
-        return Object.assign({}, B, {
-            objects: this.mixObjects(A.objects, B.objects, t)
-        });
-    }
-    mixObjects(a = [], b = [], t) {
-        const ma = new Map(a.map(o => [o.id, o])),
-            mb = new Map(b.map(o => [o.id, o])),
-            ids = new Set([...ma.keys(), ...mb.keys()]);
-        const sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined));
-        const out = [];
-        ids.forEach(id => {
-            const A = ma.get(id),
-                B = mb.get(id);
-            if (A && B) out.push(this.mixObject(A, B, t));
-            else if (B) {
-                const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-                out.push(S ? this.mixObject(S, B, t) : Object.assign({}, B, {
-                    alpha: B.alpha ?? 1
-                }));
-            } else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
-                alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
-            }));
-        });
-        return this.sortObjects(out);
-    }
-    mixObject(A, B, t) {
-        const o = Object.assign({}, B);
-        ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
-            if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t;
-        });
-        if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
-            x: A.points[i].x + (p.x - A.points[i].x) * t,
-            y: A.points[i].y + (p.y - A.points[i].y) * t
-        }));
-        return o;
-    }
-    bounds(scene) {
-        const fb = this.options.worldFallback;
-        let b = {
-            minX: fb.minX,
-            minY: fb.minY,
-            maxX: fb.maxX,
-            maxY: fb.maxY
-        };
-        for (const o of scene.objects || []) {
-            let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
-                maxX = (o.x !== undefined ? (o.x + (o.w ?? 0)) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity));
-            let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
-                maxY = (o.y !== undefined ? (o.y + (o.h ?? 0)) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity));
-            if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
-            b.minX = Math.min(b.minX, minX - 180);
-            b.maxX = Math.max(b.maxX, maxX + 180);
-            b.minY = Math.min(b.minY, minY - 135);
-            b.maxY = Math.max(b.maxY, maxY + 170);
-        }
-        return scene.bounds || b;
-    }
-    fit(scenes) {
-        let B = {
-            minX: 1e9,
-            minY: 1e9,
-            maxX: -1e9,
-            maxY: -1e9
-        };
-        scenes.forEach(s => {
-            const b = this.bounds(s);
-            B.minX = Math.min(B.minX, b.minX);
-            B.maxX = Math.max(B.maxX, b.maxX);
-            B.minY = Math.min(B.minY, b.minY);
-            B.maxY = Math.max(B.maxY, b.maxY);
-        });
-        const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
-        this.cam.targetScale = sc;
-        this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-        this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc;
-    }
-    flashAlpha() {
-        return .3 + .7 * Math.abs(Math.sin(performance.now() / 110));
-    }
-    draw() {
-        const s = this.current(),
-            c = this.ctx;
-        c.clearRect(0, 0, this.cv.width, this.cv.height);
-        this.hitObjects = [];
-        c.save();
-        c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-        if (!s) {
-            c.restore();
-            return;
-        }
-        for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
-        c.restore();
-    }
-    drawObject(o) {
-        const c = this.ctx;
-        c.save();
-        if (o.alpha !== undefined) c.globalAlpha *= o.alpha;
-        const st = o.style || {};
-        c.fillStyle = st.fill || '#fff';
-        c.strokeStyle = st.stroke || '#333';
-        c.lineWidth = o.lineWidth ?? st.lineWidth ?? 1;
-        c.font = st.font || '24px Arial';
-        c.textAlign = st.align || 'center';
-        c.textBaseline = st.baseline || 'middle';
-        if (o.kind === 'rect') {
-            this.roundOrRect(o, st);
-            if (st.stroke) c.stroke();
-            if (o.hit) this.hitObjects.push({
-                x: o.x,
-                y: o.y,
-                w: o.w,
-                h: o.h,
-                hit: o.hit,
-                layer: o.layer ?? LAYER.box,
-                order: o.order ?? 0
-            });
-        } else if (o.kind === 'text') {
-            c.fillStyle = st.fill || '#111';
-            c.fillText(String(o.text), o.x, o.y);
-        } else if (o.kind === 'circle') {
-            c.beginPath();
-            c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
-            if (st.fill) c.fill();
-            if (st.stroke) c.stroke();
-        } else if (o.kind === 'line') {
-            c.beginPath();
-            c.moveTo(o.x1, o.y1);
-            c.lineTo(o.x2, o.y2);
-            c.stroke();
-        } else if (o.kind === 'arrow') {
-            this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || '#1565c0', o.lineWidth ?? st.lineWidth ?? 3);
-        } else if (o.kind === 'polylineArrow') {
-            this.polylineArrow(o.points, st.stroke || '#1565c0', o.lineWidth ?? 3);
-        } else if (o.kind === 'cross') {
-            this.cross(o.x, o.y, o.w, o.h);
-        } else if (o.kind === 'flashRect') {
-            this.flashRect(o.x, o.y, o.w, o.h, o.radius ?? 8);
-        } else if (o.kind === 'flashCircle') {
-            this.flashCircle(o.x, o.y, o.r);
-        } else if (o.kind === 'lFlash') {
-            this.lFlash(o);
-        }
-        c.restore();
-    }
-    roundOrRect(o, st) {
-        const c = this.ctx;
-        const border = o.transparentBorder ?? VISUAL.pointerBox.transparentBorder ?? 0;
-        const ix = o.x + border,
-            iy = o.y + border,
-            iw = Math.max(0, o.w - 2 * border),
-            ih = Math.max(0, o.h - 2 * border),
-            ir = Math.max(0, (o.radius ?? 0) - border);
-        c.beginPath();
-        if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
-        else c.rect(ix, iy, iw, ih);
-        if (st.fill !== false) c.fill();
-        if (st.stroke) {
-            c.beginPath();
-            if (o.radius && c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, o.radius);
-            else c.rect(o.x, o.y, o.w, o.h);
-        }
-    }
-    arrow(x1, y1, x2, y2, col = '#1565c0', lw = 3) {
-        const c = this.ctx;
-        c.save();
-        c.strokeStyle = col;
-        c.fillStyle = col;
-        c.lineWidth = lw;
-        c.beginPath();
-        c.moveTo(x1, y1);
-        c.lineTo(x2, y2);
-        c.stroke();
-        this.head(x1, y1, x2, y2, col);
-        c.restore();
-    }
-    polylineArrow(points, col = '#1565c0', lw = 3) {
-        if (!points || points.length < 2) return;
-        const c = this.ctx;
-        c.save();
-        c.strokeStyle = col;
-        c.fillStyle = col;
-        c.lineWidth = lw;
-        c.beginPath();
-        c.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) c.lineTo(points[i].x, points[i].y);
-        c.stroke();
-        const a = points[points.length - 2],
-            b = points[points.length - 1];
-        this.head(a.x, a.y, b.x, b.y, col);
-        c.restore();
-    }
-    head(x1, y1, x2, y2, col) {
-        const c = this.ctx,
-            a = Math.atan2(y2 - y1, x2 - x1),
-            h = 17;
-        c.fillStyle = col;
-        c.beginPath();
-        c.moveTo(x2, y2);
-        c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
-        c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
-        c.closePath();
-        c.fill();
-    }
-    flashRect(x, y, w, h, r = 8) {
-        const c = this.ctx;
-        c.save();
-        c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
-        c.lineWidth = 5;
-        c.beginPath();
-        if (c.roundRect) c.roundRect(x, y, w, h, r);
-        else c.rect(x, y, w, h);
-        c.stroke();
-        c.restore();
-    }
-    flashCircle(x, y, r) {
-        const c = this.ctx;
-        c.save();
-        c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
-        c.lineWidth = 5;
-        c.beginPath();
-        c.arc(x, y, r, 0, Math.PI * 2);
-        c.stroke();
-        c.restore();
-    }
-    cross(x, y, w, h) {
-        const c = this.ctx;
-        c.save();
-        c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
-        c.lineWidth = 6;
-        const p = 7;
-        c.beginPath();
-        c.moveTo(x - p, y - p);
-        c.lineTo(x + w + p, y + h + p);
-        c.moveTo(x + w + p, y - p);
-        c.lineTo(x - p, y + h + p);
-        c.stroke();
-        c.restore();
-    }
-    lFlash(o) {
-        const c = this.ctx,
-            p = o.padding ?? 8,
-            r = o.radius ?? 8,
-            w = o.cell ?? 58,
-            nodeW = o.nodeW ?? 116,
-            x = o.x,
-            y = o.y,
-            elemY = o.elemY;
-        c.save();
-        c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
-        c.lineWidth = o.lineWidth ?? 5;
-        c.beginPath();
-        c.moveTo(x - p + r, elemY - p);
-        c.lineTo(x + w + p - r, elemY - p);
-        c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
-        c.lineTo(x + w + p, y - p - r);
-        c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
-        c.lineTo(x + nodeW + p - r, y - p);
-        c.arcTo(x + nodeW + p, y - p, x + nodeW + p, y - p + r, r);
-        c.lineTo(x + nodeW + p, y + w + p - r);
-        c.arcTo(x + nodeW + p, y + w + p, x + nodeW + p - r, y + w + p, r);
-        c.lineTo(x - p + r, y + w + p);
-        c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
-        c.lineTo(x - p, elemY - p + r);
-        c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
-        c.closePath();
-        c.stroke();
-        c.restore();
-    }
-    setSpeed(v) {
-        this.speedFactor = 1 / v;
-    }
-    togglePause() {
-        this.paused = !this.paused;
-        return this.paused;
-    }
+	constructor({
+		canvasId,
+		wrapId,
+		statusId,
+		onHit = null,
+		options = {}
+	}) {
+		this.cv = document.getElementById(canvasId);
+		this.ctx = this.cv.getContext('2d');
+		this.wrap = document.getElementById(wrapId);
+		this.statusEl = document.getElementById(statusId);
+		this.onHit = onHit;
+		this.options = Object.assign({
+			minScale: .2,
+			maxScale: 5,
+			maxFitScale: 1.22,
+			wheelSensitivity: .001,
+			cameraSmoothing: 10,
+			cameraSnapPx: 5,
+			cameraSnapScale: .01,
+			maxFrameDelta: .1,
+			morphSpeed: 2.5,
+			waitSeconds: .75,
+			fadeCutoff: .95,
+			fitPadding: 150,
+			worldFallback: {
+				minX: 20,
+				minY: 35,
+				maxX: 760,
+				maxY: 650
+			}
+		}, options);
+		this.cam = {
+			scale: 1,
+			targetScale: 1,
+			x: 0,
+			targetX: 0,
+			y: 0,
+			targetY: 0
+		};
+		this.scenes = [];
+		this.pending = [];
+		this.idx = -1;
+		this.state = 'IDLE';
+		this.t = 0;
+		this.wait = 0;
+		this.speedFactor = 1;
+		this.paused = false;
+		this.last = 0;
+		this.drag = false;
+		this.hitObjects = [];
+		this.resize();
+		window.addEventListener('resize', () => this.resize());
+		this.cv.addEventListener('wheel', e => this.wheel(e), {
+			passive: false
+		});
+		this.cv.addEventListener('mousedown', e => this.pointerStart(e));
+		this.cv.addEventListener('mousemove', e => this.pointerMove(e));
+		this.cv.addEventListener('mouseup', () => this.pointerEnd());
+		this.cv.addEventListener('mouseleave', () => this.pointerEnd());
+		this.cv.addEventListener('touchstart', e => this.touchStart(e), {
+			passive: false
+		});
+		this.cv.addEventListener('touchmove', e => this.touchMove(e), {
+			passive: false
+		});
+		this.cv.addEventListener('touchend', () => this.pointerEnd());
+		requestAnimationFrame(ts => this.loop(ts))
+	}
+	resize() {
+		this.cv.width = this.wrap.offsetWidth;
+		this.cv.height = this.wrap.offsetHeight;
+		const cur = this.current();
+		if (cur) {
+			this.fit([cur]);
+			this.cam.scale = this.cam.targetScale;
+			this.cam.x = this.cam.targetX;
+			this.cam.y = this.cam.targetY
+		}
+	}
+	screenToWorld(x, y) {
+		return {
+			x: (x - this.cam.x) / this.cam.scale,
+			y: (y - this.cam.y) / this.cam.scale
+		}
+	}
+	wheel(e) {
+		e.preventDefault();
+		const r = this.cv.getBoundingClientRect(),
+			sx = e.clientX - r.left,
+			sy = e.clientY - r.top;
+		let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
+		ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+		const wx = (sx - this.cam.targetX) / this.cam.targetScale,
+			wy = (sy - this.cam.targetY) / this.cam.targetScale;
+		this.cam.targetScale = ns;
+		this.cam.targetX = sx - wx * ns;
+		this.cam.targetY = sy - wy * ns
+	}
+	pointerStart(e) {
+		const r = this.cv.getBoundingClientRect(),
+			sx = e.clientX - r.left,
+			sy = e.clientY - r.top,
+			w = this.screenToWorld(sx, sy),
+			hit = this.findHit(w.x, w.y);
+		if (hit && this.onHit) {
+			this.onHit(hit);
+			return
+		}
+		this.drag = true;
+		this.start = {
+			x: sx,
+			y: sy
+		};
+		this.c0 = {
+			x: this.cam.targetX,
+			y: this.cam.targetY
+		};
+		this.cv.style.cursor = 'grabbing'
+	}
+	pointerMove(e) {
+		const r = this.cv.getBoundingClientRect(),
+			sx = e.clientX - r.left,
+			sy = e.clientY - r.top;
+		if (this.drag) {
+			this.cam.targetX = this.c0.x + sx - this.start.x;
+			this.cam.targetY = this.c0.y + sy - this.start.y;
+			return
+		}
+		const w = this.screenToWorld(sx, sy);
+		this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default'
+	}
+	pointerEnd() {
+		this.drag = false;
+		this.cv.style.cursor = 'default';
+		this.pinch = null
+	}
+	td(t) {
+		return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+	}
+	tc(t, r) {
+		return {
+			x: (t[0].clientX + t[1].clientX) / 2 - r.left,
+			y: (t[0].clientY + t[1].clientY) / 2 - r.top
+		}
+	}
+	touchStart(e) {
+		e.preventDefault();
+		const r = this.cv.getBoundingClientRect();
+		if (e.touches.length === 1) {
+			const x = e.touches[0].clientX - r.left,
+				y = e.touches[0].clientY - r.top,
+				w = this.screenToWorld(x, y),
+				hit = this.findHit(w.x, w.y);
+			if (hit && this.onHit) {
+				this.onHit(hit);
+				return
+			}
+			this.drag = true;
+			this.start = {
+				x,
+				y
+			};
+			this.c0 = {
+				x: this.cam.targetX,
+				y: this.cam.targetY
+			}
+		} else if (e.touches.length === 2) {
+			this.drag = false;
+			const c = this.tc(e.touches, r);
+			this.pinch = {
+				d: this.td(e.touches),
+				s: this.cam.targetScale,
+				wx: (c.x - this.cam.targetX) / this.cam.targetScale,
+				wy: (c.y - this.cam.targetY) / this.cam.targetScale
+			}
+		}
+	}
+	touchMove(e) {
+		e.preventDefault();
+		const r = this.cv.getBoundingClientRect();
+		if (e.touches.length === 1 && this.drag) {
+			const x = e.touches[0].clientX - r.left,
+				y = e.touches[0].clientY - r.top;
+			this.cam.targetX = this.c0.x + x - this.start.x;
+			this.cam.targetY = this.c0.y + y - this.start.y
+		} else if (e.touches.length === 2 && this.pinch) {
+			const c = this.tc(e.touches, r);
+			let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
+			ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+			this.cam.targetScale = ns;
+			this.cam.targetX = c.x - this.pinch.wx * ns;
+			this.cam.targetY = c.y - this.pinch.wy * ns
+		}
+	}
+	findHit(x, y) {
+		for (let i = this.hitObjects.length - 1; i >= 0; i--) {
+			const o = this.hitObjects[i];
+			if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o.hit
+		}
+		return null
+	}
+	reset() {
+		this.scenes = [];
+		this.pending = [];
+		this.idx = -1;
+		this.state = 'IDLE';
+		this.t = 0;
+		this.wait = 0;
+	}
+	enqueue(scenes) {
+		const copy = scenes.map(s => this.normalizeScene(s));
+		this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
+		if (!this.scenes.length && copy.length) {
+			this.scenes.push(copy.shift());
+			this.idx = 0;
+			this.setStatus(this.scenes[0].text || 'Ready.')
+		}
+		if (copy.length) {
+			this.pending = copy;
+			this.state = 'CAMERA'
+		}
+	}
+	normalizeScene(s) {
+		const scene = Object.assign({
+			objects: [],
+			pause: false
+		}, s);
+		scene.objects = this.normalizeObjects(scene.objects);
+		return scene
+	}
+	normalizeObjects(objects = []) {
+		return objects.map((o, order) => this.normalizeObject(o, order))
+	}
+	normalizeObject(o, order = 0) {
+		const copy = Object.assign({}, o);
+		copy.layer = this.resolveLayer(copy);
+		copy.order = copy.order ?? order;
+		return copy
+	}
+	resolveLayer(o) {
+		if (Number.isFinite(o.layer)) return o.layer;
+		if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
+		if (o.kind === 'text') return LAYER.text;
+		if (o.kind === 'circle') return LAYER.dot;
+		if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
+		if (o.kind === 'rect') return LAYER.box;
+		return Number.isFinite(o.z) ? o.z : LAYER.background
+	}
+	sortObjects(objects = []) {
+		return [...objects].sort((a, b) => ((a.layer ?? 0) - (b.layer ?? 0)) || ((a.order ?? 0) - (b.order ?? 0)))
+	}
+	setStatus(txt) {
+		if (this.statusEl) this.statusEl.innerText = txt
+	}
+	loop(ts) {
+		if (!this.last) this.last = ts;
+		const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
+		this.last = ts;
+		if (!this.paused) this.update(dt);
+		this.draw();
+		requestAnimationFrame(t => this.loop(t))
+	}
+	update(dt) {
+		const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
+		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+		this.cam.x += (this.cam.targetX - this.cam.x) * f;
+		this.cam.y += (this.cam.targetY - this.cam.y) * f;
+		if (this.state === 'CAMERA') {
+			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next()
+		} else if (this.state === 'MORPH') {
+			this.t += this.options.morphSpeed * this.speedFactor * dt;
+			if (this.t >= 1) {
+				this.t = 1;
+				if (this.scenes[this.idx + 1]?.pause) {
+					this.state = 'WAIT';
+					this.wait = this.options.waitSeconds / this.speedFactor
+				} else this.finish()
+			}
+		} else if (this.state === 'WAIT') {
+			this.wait -= dt;
+			if (this.wait <= 0) this.finish()
+		}
+	}
+	next() {
+		const s = this.pending.shift();
+		this.scenes.push(s);
+		if (s.fitCamera) this.fit([s]);
+		this.setStatus(s.text || 'Ready.');
+		this.t = 0;
+		this.state = 'MORPH'
+	}
+	finish() {
+		this.idx++;
+		if (this.pending.length) this.next();
+		else {
+			const finalScene = this.scenes[this.idx];
+			if (finalScene) this.fit([finalScene]);
+			this.state = 'IDLE';
+			this.setStatus('Ready.');
+			if (app?.clearInputs) app.clearInputs()
+		}
+	}
+	ease(t) {
+		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+	}
+	current() {
+		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
+	}
+	interpolateScene(A, B, t) {
+		return Object.assign({}, B, {
+			objects: this.mixObjects(A.objects, B.objects, t)
+		})
+	}
+	mixObjects(a = [], b = [], t) {
+		const ma = new Map(a.map(o => [o.id, o])),
+			mb = new Map(b.map(o => [o.id, o])),
+			ids = new Set([...ma.keys(), ...mb.keys()]),
+			sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined)),
+			out = [];
+		ids.forEach(id => {
+			const A = ma.get(id),
+				B = mb.get(id);
+			if (A && B) out.push(this.mixObject(A, B, t));
+			else if (B) {
+				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+				if (S) out.push(this.mixObject(S, B, t));
+				else {
+					const fadeT = Math.min(1, t / this.options.fadeCutoff);
+					out.push(Object.assign({}, B, {
+						alpha: (B.alpha ?? 1) * fadeT
+					}))
+				}
+			} else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
+				alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
+			}))
+		});
+		return this.sortObjects(out)
+	}
+	mixObject(A, B, t) {
+		const o = Object.assign({}, B);
+		['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
+			if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t
+		});
+		if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
+			x: A.points[i].x + (p.x - A.points[i].x) * t,
+			y: A.points[i].y + (p.y - A.points[i].y) * t
+		}));
+		return o
+	}
+	bounds(scene) {
+		const fb = this.options.worldFallback;
+		let b = {
+			minX: fb.minX,
+			minY: fb.minY,
+			maxX: fb.maxX,
+			maxY: fb.maxY
+		};
+		for (const o of scene.objects || []) {
+			let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
+				maxX = o.x !== undefined ? o.x + (o.w ?? 0) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity);
+			let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
+				maxY = o.y !== undefined ? o.y + (o.h ?? 0) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity);
+			if (o.points) {
+				for (const p of o.points) {
+					minX = Math.min(minX, p.x);
+					maxX = Math.max(maxX, p.x);
+					minY = Math.min(minY, p.y);
+					maxY = Math.max(maxY, p.y)
+				}
+			}
+			if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
+			b.minX = Math.min(b.minX, minX - 180);
+			b.maxX = Math.max(b.maxX, maxX + 230);
+			b.minY = Math.min(b.minY, minY - 200);
+			b.maxY = Math.max(b.maxY, maxY + 220)
+		}
+		return scene.bounds || b
+	}
+	fit(scenes) {
+		let B = {
+			minX: 1e9,
+			minY: 1e9,
+			maxX: -1e9,
+			maxY: -1e9
+		};
+		scenes.forEach(s => {
+			const b = this.bounds(s);
+			B.minX = Math.min(B.minX, b.minX);
+			B.maxX = Math.max(B.maxX, b.maxX);
+			B.minY = Math.min(B.minY, b.minY);
+			B.maxY = Math.max(B.maxY, b.maxY)
+		});
+		const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
+		this.cam.targetScale = sc;
+		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+	}
+	flashAlpha() {
+		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+	}
+	draw() {
+		const s = this.current(),
+			c = this.ctx;
+		c.clearRect(0, 0, this.cv.width, this.cv.height);
+		this.hitObjects = [];
+		c.save();
+		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+		if (s)
+			for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
+		c.restore()
+	}
+	drawObject(o) {
+		const c = this.ctx;
+		c.save();
+		if (o.alpha !== undefined) c.globalAlpha *= o.alpha;
+		const st = o.style || {};
+		c.fillStyle = st.fill || '#fff';
+		c.strokeStyle = st.stroke || '#333';
+		c.lineWidth = o.lineWidth ?? st.lineWidth ?? 1;
+		c.font = st.font || '24px Arial';
+		c.textAlign = st.align || 'center';
+		c.textBaseline = st.baseline || 'middle';
+		if (o.kind === 'rect') {
+			this.roundOrRect(o, st);
+			if (st.stroke) c.stroke();
+			if (o.hit) this.hitObjects.push({
+				x: o.x,
+				y: o.y,
+				w: o.w,
+				h: o.h,
+				hit: o.hit
+			})
+		} else if (o.kind === 'text') {
+			c.fillStyle = st.fill || '#111';
+			c.fillText(String(o.text), o.x, o.y)
+		} else if (o.kind === 'circle') {
+			c.beginPath();
+			c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+			if (st.fill) c.fill();
+			if (st.stroke) c.stroke()
+		} else if (o.kind === 'line') {
+			c.beginPath();
+			c.moveTo(o.x1, o.y1);
+			c.lineTo(o.x2, o.y2);
+			c.stroke()
+		} else if (o.kind === 'arrow') {
+			this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || K.b, o.lineWidth ?? 3)
+		} else if (o.kind === 'polylineArrow') {
+			this.polylineArrow(o.points, st.stroke || K.b, o.lineWidth ?? 3)
+		} else if (o.kind === 'cross') {
+			this.cross(o.x, o.y, o.w, o.h)
+		} else if (o.kind === 'flashRect') {
+			this.flashRect(o.x, o.y, o.w, o.h, o.radius ?? 8)
+		} else if (o.kind === 'flashCircle') {
+			this.flashCircle(o.x, o.y, o.r)
+		} else if (o.kind === 'lFlash') {
+			this.lFlash(o)
+		}
+		c.restore()
+	}
+	roundOrRect(o, st) {
+		const c = this.ctx,
+			b = o.transparentBorder ?? 1,
+			ix = o.x + b,
+			iy = o.y + b,
+			iw = Math.max(0, o.w - 2 * b),
+			ih = Math.max(0, o.h - 2 * b),
+			ir = Math.max(0, (o.radius ?? 0) - b);
+		c.beginPath();
+		if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
+		else c.rect(ix, iy, iw, ih);
+		if (st.fill !== false) c.fill();
+		if (st.stroke) {
+			c.beginPath();
+			if (o.radius && c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, o.radius);
+			else c.rect(o.x, o.y, o.w, o.h)
+		}
+	}
+	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+		const c = this.ctx;
+		c.save();
+		c.strokeStyle = col;
+		c.fillStyle = col;
+		c.lineWidth = lw;
+		c.beginPath();
+		c.moveTo(x1, y1);
+		c.lineTo(x2, y2);
+		c.stroke();
+		this.head(x1, y1, x2, y2, col);
+		c.restore()
+	}
+	polylineArrow(points, col = K.b, lw = 3) {
+		if (!points || points.length < 2) return;
+		const c = this.ctx;
+		c.save();
+		c.strokeStyle = col;
+		c.fillStyle = col;
+		c.lineWidth = lw;
+		c.beginPath();
+		c.moveTo(points[0].x, points[0].y);
+		for (let i = 1; i < points.length; i++) c.lineTo(points[i].x, points[i].y);
+		c.stroke();
+		const a = points[points.length - 2],
+			b = points[points.length - 1];
+		this.head(a.x, a.y, b.x, b.y, col);
+		c.restore()
+	}
+	head(x1, y1, x2, y2, col) {
+		const c = this.ctx,
+			a = Math.atan2(y2 - y1, x2 - x1),
+			h = 17;
+		c.fillStyle = col;
+		c.beginPath();
+		c.moveTo(x2, y2);
+		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
+		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+		c.closePath();
+		c.fill()
+	}
+	flashRect(x, y, w, h, r = 8) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flashAlpha();
+		c.strokeStyle = K.r;
+		c.lineWidth = 5;
+		c.beginPath();
+		if (c.roundRect) c.roundRect(x, y, w, h, r);
+		else c.rect(x, y, w, h);
+		c.stroke();
+		c.restore()
+	}
+	flashCircle(x, y, r) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flashAlpha();
+		c.strokeStyle = K.r;
+		c.lineWidth = 5;
+		c.beginPath();
+		c.arc(x, y, r, 0, Math.PI * 2);
+		c.stroke();
+		c.restore()
+	}
+	cross(x, y, w, h) {
+		const c = this.ctx;
+		c.save();
+		c.globalAlpha = this.flashAlpha();
+		c.strokeStyle = K.r;
+		c.lineWidth = 6;
+		const p = 7;
+		c.beginPath();
+		c.moveTo(x - p, y - p);
+		c.lineTo(x + w + p, y + h + p);
+		c.moveTo(x + w + p, y - p);
+		c.lineTo(x - p, y + h + p);
+		c.stroke();
+		c.restore()
+	}
+	lFlash(o) {
+		const c = this.ctx,
+			p = o.padding ?? 8,
+			r = o.radius ?? 8,
+			w = o.cell ?? 60,
+			nodeW = o.nodeW ?? 120,
+			x = o.x,
+			y = o.y,
+			elemY = o.elemY;
+		c.save();
+		c.globalAlpha = this.flashAlpha();
+		c.strokeStyle = K.r;
+		c.lineWidth = 5;
+		c.beginPath();
+		c.moveTo(x - p + r, elemY - p);
+		c.lineTo(x + w + p - r, elemY - p);
+		c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
+		c.lineTo(x + w + p, y - p - r);
+		c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
+		c.lineTo(x + nodeW + p - r, y - p);
+		c.arcTo(x + nodeW + p, y - p, x + nodeW + p, y - p + r, r);
+		c.lineTo(x + nodeW + p, y + w + p - r);
+		c.arcTo(x + nodeW + p, y + w + p, x + nodeW + p - r, y + w + p, r);
+		c.lineTo(x - p + r, y + w + p);
+		c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
+		c.lineTo(x - p, elemY - p + r);
+		c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
+		c.closePath();
+		c.stroke();
+		c.restore()
+	}
+	setSpeed(v) {
+		this.speedFactor = 1 / v
+	}
+	togglePause() {
+		this.paused = !this.paused;
+		return this.paused
+	}
 }
-
-
-
+// Stack-specific view: converts logical snapshots into the generic scene objects consumed by VisualizationEngine.
 class LinkedStackView {
     constructor() { this.c = VISUAL.node.cell; this.nw = VISUAL.node.width; }
     n(s, id) { return (s.nodes || []).find(n => n.id === id); }
@@ -985,18 +987,76 @@ class LinkedStackView {
         this.over(o, s);
         return { text: s.text, pause: !!s.pause, objects: o, bounds: this.bounds(o) };
     }
-    node(o, s, n) {
-        const w = this.c, x = n.x, y = n.y, ey = y + VISUAL.node.elementYOffset, id = 'node:' + n.id;
-        this.rect(o, id + ':elem', x, ey, w, w, K.g, { value: n.e });
-        this.txt(o, id + ':val', n.e, x + w / 2, ey + w / 2 + 2, VISUAL.fonts.value, K.r);
-        if (n.id === s.topId) this.txt(o, id + ':top-label', 'top', x + w / 2, y + w + 30, VISUAL.fonts.pointerLabel, K.k);
-        if ((s.nodes || []).length > 1 && n.id === s.nodes[s.nodes.length - 1].id) this.txt(o, id + ':bottom-label', 'bottom', x + w / 2, y + w + 30, VISUAL.fonts.pointerLabel, K.k);
-        this.rect(o, id + ':left', x, y, w, w, K.c, { value: n.e });
-        this.rect(o, id + ':right', x + w, y, w, w, K.c, { value: n.e });
-        this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
-        this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, 7.5, K.b);
-        this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, 7.5, K.b);
-    }
+	node(o, s, n) {
+		const w = this.c;
+		const x = n.x;
+		const y = n.y;
+		const ey = y + VISUAL.node.elementYOffset;
+		const id = 'node:' + n.id;
+
+		const nodes = s.nodes || [];
+
+		const reachableIds = [];
+		let cur = s.topId;
+		const seen = new Set();
+
+		while (cur != null && !seen.has(cur)) {
+			seen.add(cur);
+			const node = this.n(s, cur);
+			if (!node) break;
+			reachableIds.push(cur);
+			cur = node.next;
+		}
+
+		const isTop = n.id === s.topId;
+		const bottomId = reachableIds.length ? reachableIds[reachableIds.length - 1] : null;
+		const isBottom = n.id === bottomId;
+
+		this.rect(o, id + ':elem', x, ey, w, w, K.g, { value: n.e });
+		this.txt(o, id + ':val', n.e, x + w / 2, ey + w / 2 + 2, VISUAL.fonts.value, K.r);
+
+		if (isTop && isBottom) {
+			this.txt(
+				o,
+				id + ':top-bottom-label',
+				'top-bottom',
+				x + w,
+				y + w + 15,
+				VISUAL.fonts.auxPointerLabel,
+				K.k
+			);
+		} else {
+			if (isTop) {
+				this.txt(
+					o,
+					id + ':top-label',
+					'top',
+					x + w,
+					y + w + 15,
+					VISUAL.fonts.auxPointerLabel,
+					K.k
+				);
+			}
+
+			if (isBottom) {
+				this.txt(
+					o,
+					id + ':bottom-label',
+					'bottom',
+					x + w,
+					y + w + 15,
+					VISUAL.fonts.auxPointerLabel,
+					K.k
+				);
+			}
+		}
+
+		this.rect(o, id + ':left', x, y, w, w, K.c, { value: n.e });
+		this.rect(o, id + ':right', x + w, y, w, w, K.c, { value: n.e });
+		this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
+		this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, 7.5, K.b);
+		this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, 7.5, K.b);
+	}
     struct(o, s) {
         const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
         this.txt(o, 'stack:label', 'stack', x - 135, y - 70, VISUAL.fonts.structLabel, K.k, 'right');
@@ -1072,7 +1132,7 @@ class Viz extends VisualizationEngine {
         this.view = new LinkedStackView(); this.cell = VISUAL.node.cell; this.nodeW = VISUAL.node.width; this.gap = VISUAL.node.cell;
     }
     get sn() { return this.scenes; } set sn(v) { this.scenes = v; }
-    base() { return { x: 360, y: 250, up: 110 }; }
+    base() { return { x: VISUAL.list.originX, y: VISUAL.list.originY, up: VISUAL.list.originY - VISUAL.list.tempNodeYOffset }; }
     enqueue(snaps) { super.enqueue(snaps.map(s => this.view.scene(s))); }
 }
 function relink(nodes) { nodes.forEach((n, i) => { n.index = undefined; n.next = i < nodes.length - 1 ? nodes[i + 1].id : null; }); }
@@ -1115,7 +1175,18 @@ const app = {
         let remaining = oldNodes.filter(n => n.id !== removedId);
         snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', remaining, { size: oldSize - 1, topId: newTop, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
         const newVals = oldVals.slice(1), newIds = oldIds.slice(1), compact = this.baseNodes(newVals, newIds, 0, b.y);
-        snaps.push(this.snapshot('The remaining nodes shift into their final stack positions', compact, { size: oldSize - 1, topId: newTop, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot(
+			'The updated top reference settles into its final straight shape',
+			remaining,
+			{
+				size: oldSize - 1,
+				topId: newTop,
+				topDetourAmount: 0,
+				preserveLinks: true,
+				pause: true
+			}
+		));
+		snaps.push(this.snapshot('The remaining nodes shift into their final stack positions', compact, { size: oldSize - 1, topId: newTop, preserveLinks: true, pause: true }));
         snaps.push(this.snapshot('The operation is complete', compact, { size: oldSize - 1, topId: newTop, preserveLinks: true }));
         this.values = newVals; this.ids = newIds; this.viz.enqueue(snaps); this.updateUI();
     },
@@ -1147,6 +1218,7 @@ const app = {
     updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; },
     clearInputs() { document.getElementById('val').value = ''; }
 };
+window.app = app;
 window.onload = () => app.init();
 window.onclick = e => { if (e.target === document.getElementById('helpModal')) app.toggleModal(); };
 
