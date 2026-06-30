@@ -371,7 +371,9 @@
 								</div>
 							</div>
 							<script>
-    	const K = {
+'use strict';
+
+const K = {
     b: '#1565c0',
     c: '#91f4f4',
     g: '#b6f8b6',
@@ -477,2300 +479,1683 @@ const VIEW = Object.freeze({
     FLASH_ALPHA_RANGE: 0.7,
     FLASH_PERIOD_MS: 110
 });
-    let nextId = 0;
-    class Viz {
-    	constructor(id) {
-    		this.cv = document.getElementById(id);
-    		this.ctx = this.cv.getContext('2d');
-    		this.cam = {
-    			scale: 1,
-    			targetScale: 1,
-    			x: 0,
-    			targetX: 0,
-    			y: 0,
-    			targetY: 0
-    		};
-    		this.sn = [];
-    		this.pending = [];
-    		this.idx = -1;
-    		this.state = 'IDLE';
-    		this.t = 0;
-    		this.speedFactor = 1;
-    		this.paused = false;
-    		this.last = 0;
-    		this.cell = GEOMETRY.NODE_FIELD_SIZE;
-    		this.nodeW = GEOMETRY.NODE_WIDTH;
-    		this.gap = GEOMETRY.NODE_GAP;
-    		this.lastNodes = [];
-    		this.resize();
-    		window.addEventListener('resize', () => this.resize());
-    		this.cv.addEventListener('wheel', e => this.wheel(e), {
-    			passive: false
-    		});
-    		this.cv.addEventListener('mousedown', e => this.down(e));
-    		this.cv.addEventListener('mousemove', e => this.move(e));
-    		this.cv.addEventListener('mouseup', () => this.up());
-    		this.cv.addEventListener('mouseleave', () => this.up());
-    		this.cv.addEventListener('touchstart', e => this.ts(e), {
-    			passive: false
-    		});
-    		this.cv.addEventListener('touchmove', e => this.tm(e), {
-    			passive: false
-    		});
-    		this.cv.addEventListener('touchend', () => this.up());
-    		requestAnimationFrame(t => this.loop(t))
-    	}
-    	base() {
-    		return {
-    			x: GEOMETRY.LIST_START_X,
-    			y: GEOMETRY.LIST_BASELINE_Y,
-    			up: GEOMETRY.TEMP_ROW_Y
-    		}
-    	}
-    	resize() {
-    		const w = document.getElementById('wrap');
-    		this.cv.width = w.offsetWidth;
-    		this.cv.height = w.offsetHeight;
-    		if (this.sn.length) {
-    			this.fit([this.sn[Math.max(this.idx, 0)]]);
-    			this.cam.scale = this.cam.targetScale;
-    			this.cam.x = this.cam.targetX;
-    			this.cam.y = this.cam.targetY
-    		}
-    	}
-    	screenToWorld(x, y) {
-    		return {
-    			x: (x - this.cam.x) / this.cam.scale,
-    			y: (y - this.cam.y) / this.cam.scale
-    		}
-    	}
-    	wheel(e) {
-    		e.preventDefault();
-    		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
-    		let ns = this.cam.targetScale * (1 - e.deltaY * VIEW.WHEEL_ZOOM_FACTOR);
-    		ns = Math.min(VIEW.MAX_ZOOM, Math.max(VIEW.MIN_ZOOM, ns));
-    		const wx = (x - this.cam.targetX) / this.cam.targetScale,
-    			wy = (y - this.cam.targetY) / this.cam.targetScale;
-    		this.cam.targetScale = ns;
-    		this.cam.targetX = x - wx * ns;
-    		this.cam.targetY = y - wy * ns
-    	}
-    	down(e) {
-    		const r = this.cv.getBoundingClientRect(),
-    			sx = e.clientX - r.left,
-    			sy = e.clientY - r.top,
-    			w = this.screenToWorld(sx, sy);
-    		for (const n of this.lastNodes) {
-    			if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) {
-    				document.getElementById('val').value = n.e;
-    				document.getElementById('idx').value = n.index ?? '';
-    				return
-    			}
-    		}
-    		this.drag = true;
-    		this.start = {
-    			x: sx,
-    			y: sy
-    		};
-    		this.c0 = {
-    			x: this.cam.targetX,
-    			y: this.cam.targetY
-    		};
-    		this.cv.style.cursor = 'grabbing'
-    	}
-    	move(e) {
-    		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
-    		if (this.drag) {
-    			this.cam.targetX = this.c0.x + x - this.start.x;
-    			this.cam.targetY = this.c0.y + y - this.start.y;
-    			return
-    		}
-    		const w = this.screenToWorld(x, y);
-    		this.cv.style.cursor = this.lastNodes.some(n => w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) ? 'pointer' : 'default'
-    	}
-    	up() {
-    		this.drag = false;
-    		this.cv.style.cursor = 'default'
-    	}
-    	td(t) {
-    		return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
-    	}
-    	tc(t, r) {
-    		return {
-    			x: (t[0].clientX + t[1].clientX) / 2 - r.left,
-    			y: (t[0].clientY + t[1].clientY) / 2 - r.top
-    		}
-    	}
-    	ts(e) {
-    		e.preventDefault();
-    		const r = this.cv.getBoundingClientRect();
-    		if (e.touches.length === 1) {
-    			const x = e.touches[0].clientX - r.left,
-    				y = e.touches[0].clientY - r.top,
-    				w = this.screenToWorld(x, y);
-    			for (const n of this.lastNodes) {
-    				if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) {
-    					document.getElementById('val').value = n.e;
-    					document.getElementById('idx').value = n.index ?? '';
-    					return
-    				}
-    			}
-    			this.drag = true;
-    			this.start = {
-    				x,
-    				y
-    			};
-    			this.c0 = {
-    				x: this.cam.targetX,
-    				y: this.cam.targetY
-    			}
-    		} else if (e.touches.length === 2) {
-    			this.drag = false;
-    			this.p0 = this.td(e.touches);
-    			this.s0 = this.cam.targetScale;
-    			const c = this.tc(e.touches, r);
-    			this.pw = {
-    				x: (c.x - this.cam.targetX) / this.cam.targetScale,
-    				y: (c.y - this.cam.targetY) / this.cam.targetScale
-    			}
-    		}
-    	}
-    	tm(e) {
-    		e.preventDefault();
-    		const r = this.cv.getBoundingClientRect();
-    		if (e.touches.length === 1 && this.drag) {
-    			const x = e.touches[0].clientX - r.left,
-    				y = e.touches[0].clientY - r.top;
-    			this.cam.targetX = this.c0.x + x - this.start.x;
-    			this.cam.targetY = this.c0.y + y - this.start.y
-    		} else if (e.touches.length === 2 && this.p0) {
-    			const ns = Math.min(VIEW.MAX_ZOOM, Math.max(VIEW.MIN_ZOOM, this.s0 * this.td(e.touches) / this.p0)),
-    				c = this.tc(e.touches, r);
-    			this.cam.targetScale = ns;
-    			this.cam.targetX = c.x - this.pw.x * ns;
-    			this.cam.targetY = c.y - this.pw.y * ns
-    		}
-    	}
-    	layout(s) {
-    		const b = this.base();
-    		(s.nodes || []).forEach((n, i) => {
-    			if (n.x === undefined) n.x = b.x + i * (this.nodeW + this.gap);
-    			if (n.y === undefined) n.y = b.y
-    		});
-    		if (s.pnode && s.pnode.x === undefined) {
-    			s.pnode.x = b.x - GEOMETRY.PNODE_LEFT_OF_TARGET;
-    			s.pnode.y = s.pnode.y ?? b.up
-    		}
-    	}
-    	bounds(s) {
-    		let b = {
-    			minX: GEOMETRY.DEFAULT_BOUNDS_MIN_X,
-    			minY: GEOMETRY.DEFAULT_BOUNDS_MIN_Y,
-    			maxX: GEOMETRY.DEFAULT_BOUNDS_MAX_X,
-    			maxY: GEOMETRY.DEFAULT_BOUNDS_MAX_Y
-    		};
-    		(s.nodes || []).forEach(n => {
-    			b.minX = Math.min(b.minX, n.x - GEOMETRY.BOUNDS_NODE_LEFT_PADDING);
-    			b.maxX = Math.max(b.maxX, n.x + GEOMETRY.BOUNDS_NODE_RIGHT_PADDING);
-    			b.minY = Math.min(b.minY, n.y - GEOMETRY.BOUNDS_NODE_TOP_PADDING);
-    			b.maxY = Math.max(b.maxY, n.y + GEOMETRY.BOUNDS_NODE_BOTTOM_PADDING)
-    		});
-    		if (s.pnode) {
-    			b.minX = Math.min(b.minX, s.pnode.x - GEOMETRY.BOUNDS_PNODE_LEFT_PADDING);
-    			b.maxX = Math.max(b.maxX, s.pnode.x + GEOMETRY.BOUNDS_PNODE_RIGHT_PADDING);
-    			b.minY = Math.min(b.minY, s.pnode.y - GEOMETRY.BOUNDS_PNODE_TOP_PADDING);
-    			b.maxY = Math.max(b.maxY, s.pnode.y + GEOMETRY.BOUNDS_PNODE_BOTTOM_PADDING)
-    		}(s.ptrs || []).forEach(p => {
-    			b.minX = Math.min(b.minX, p.x - GEOMETRY.BOUNDS_AUX_LEFT_PADDING);
-    			b.maxX = Math.max(b.maxX, p.x + GEOMETRY.BOUNDS_AUX_RIGHT_PADDING);
-    			b.minY = Math.min(b.minY, p.y - GEOMETRY.BOUNDS_AUX_TOP_PADDING);
-    			b.maxY = Math.max(b.maxY, p.y + GEOMETRY.BOUNDS_AUX_BOTTOM_PADDING)
-    		});
-    		return b
-    	}
-    	fit(snaps) {
-    		let B = {
-    			minX: 1e9,
-    			minY: 1e9,
-    			maxX: -1e9,
-    			maxY: -1e9
-    		};
-    		snaps.forEach(s => {
-    			const b = this.bounds(s);
-    			B.minX = Math.min(B.minX, b.minX);
-    			B.maxX = Math.max(B.maxX, b.maxX);
-    			B.minY = Math.min(B.minY, b.minY);
-    			B.maxY = Math.max(B.maxY, b.maxY)
-    		});
-    		const sc = Math.min(VIEW.MAX_AUTO_ZOOM, this.cv.width / (B.maxX - B.minX + GEOMETRY.FIT_PADDING), this.cv.height / (B.maxY - B.minY + GEOMETRY.FIT_PADDING));
-    		this.cam.targetScale = sc;
-    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-    	}
 
-    hasFlash(s) {
-        if (!s) return false;
-        if (s.flashPFirst || s.flashPLast || s.flashSize || s.flashPNodeCross || s.flashAuxCross) return true;
-        if ((s.flashPtrs && s.flashPtrs.length) || (s.flashPtrCross && s.flashPtrCross.length)) return true;
-        if (s.flashPNext !== undefined || s.flashElement !== undefined) return true;
-        return (s.nodes || []).some(n => n.flashNew || n.flashPNext || n.flashElement || n.flashNodeCross);
+let nextId = 0;
+
+/* Engine: camera, lifecycle, interpolation and input. */
+class VisualizationEngine {
+    constructor(id) {
+        		this.cv = document.getElementById(id);
+        		this.ctx = this.cv.getContext('2d');
+        		this.cam = {
+        			scale: 1,
+        			targetScale: 1,
+        			x: 0,
+        			targetX: 0,
+        			y: 0,
+        			targetY: 0
+        		};
+        		this.sn = [];
+        		this.pending = [];
+        		this.idx = -1;
+        		this.state = 'IDLE';
+        		this.t = 0;
+        		this.speedFactor = 1;
+        		this.paused = false;
+        		this.last = 0;
+        		this.cell = GEOMETRY.NODE_FIELD_SIZE;
+        		this.nodeW = GEOMETRY.NODE_WIDTH;
+        		this.gap = GEOMETRY.NODE_GAP;
+        		this.lastNodes = [];
+        		this.resize();
+        		window.addEventListener('resize', () => this.resize());
+        		this.cv.addEventListener('wheel', e => this.wheel(e), {
+        			passive: false
+        		});
+        		this.cv.addEventListener('mousedown', e => this.down(e));
+        		this.cv.addEventListener('mousemove', e => this.move(e));
+        		this.cv.addEventListener('mouseup', () => this.up());
+        		this.cv.addEventListener('mouseleave', () => this.up());
+        		this.cv.addEventListener('touchstart', e => this.ts(e), {
+        			passive: false
+        		});
+        		this.cv.addEventListener('touchmove', e => this.tm(e), {
+        			passive: false
+        		});
+        		this.cv.addEventListener('touchend', () => this.up());
+        		requestAnimationFrame(t => this.loop(t))
+        	}
+    base() {
+        		return {
+        			x: GEOMETRY.LIST_START_X,
+        			y: GEOMETRY.LIST_BASELINE_Y,
+        			up: GEOMETRY.TEMP_ROW_Y
+        		}
+        	}
+    resize() {
+        		const w = document.getElementById('wrap');
+        		this.cv.width = w.offsetWidth;
+        		this.cv.height = w.offsetHeight;
+        		if (this.sn.length) {
+        			this.fit([this.sn[Math.max(this.idx, 0)]]);
+        			this.cam.scale = this.cam.targetScale;
+        			this.cam.x = this.cam.targetX;
+        			this.cam.y = this.cam.targetY
+        		}
+        	}
+    screenToWorld(x, y) {
+        		return {
+        			x: (x - this.cam.x) / this.cam.scale,
+        			y: (y - this.cam.y) / this.cam.scale
+        		}
+        	}
+    wheel(e) {
+        		e.preventDefault();
+        		const r = this.cv.getBoundingClientRect(),
+        			x = e.clientX - r.left,
+        			y = e.clientY - r.top;
+        		let ns = this.cam.targetScale * (1 - e.deltaY * VIEW.WHEEL_ZOOM_FACTOR);
+        		ns = Math.min(VIEW.MAX_ZOOM, Math.max(VIEW.MIN_ZOOM, ns));
+        		const wx = (x - this.cam.targetX) / this.cam.targetScale,
+        			wy = (y - this.cam.targetY) / this.cam.targetScale;
+        		this.cam.targetScale = ns;
+        		this.cam.targetX = x - wx * ns;
+        		this.cam.targetY = y - wy * ns
+        	}
+    down(e) {
+        		const r = this.cv.getBoundingClientRect(),
+        			sx = e.clientX - r.left,
+        			sy = e.clientY - r.top,
+        			w = this.screenToWorld(sx, sy);
+        		for (const n of this.lastNodes) {
+        			if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) {
+        				document.getElementById('val').value = n.e;
+        				document.getElementById('idx').value = n.index ?? '';
+        				return
+        			}
+        		}
+        		this.drag = true;
+        		this.start = {
+        			x: sx,
+        			y: sy
+        		};
+        		this.c0 = {
+        			x: this.cam.targetX,
+        			y: this.cam.targetY
+        		};
+        		this.cv.style.cursor = 'grabbing'
+        	}
+    move(e) {
+        		const r = this.cv.getBoundingClientRect(),
+        			x = e.clientX - r.left,
+        			y = e.clientY - r.top;
+        		if (this.drag) {
+        			this.cam.targetX = this.c0.x + x - this.start.x;
+        			this.cam.targetY = this.c0.y + y - this.start.y;
+        			return
+        		}
+        		const w = this.screenToWorld(x, y);
+        		this.cv.style.cursor = this.lastNodes.some(n => w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) ? 'pointer' : 'default'
+        	}
+    up() {
+        		this.drag = false;
+        		this.cv.style.cursor = 'default'
+        	}
+    td(t) {
+        		return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+        	}
+    tc(t, r) {
+        		return {
+        			x: (t[0].clientX + t[1].clientX) / 2 - r.left,
+        			y: (t[0].clientY + t[1].clientY) / 2 - r.top
+        		}
+        	}
+    ts(e) {
+        		e.preventDefault();
+        		const r = this.cv.getBoundingClientRect();
+        		if (e.touches.length === 1) {
+        			const x = e.touches[0].clientX - r.left,
+        				y = e.touches[0].clientY - r.top,
+        				w = this.screenToWorld(x, y);
+        			for (const n of this.lastNodes) {
+        				if (w.x >= n.x && w.x <= n.x + this.nodeW && w.y >= n.y && w.y <= n.y + this.cell) {
+        					document.getElementById('val').value = n.e;
+        					document.getElementById('idx').value = n.index ?? '';
+        					return
+        				}
+        			}
+        			this.drag = true;
+        			this.start = {
+        				x,
+        				y
+        			};
+        			this.c0 = {
+        				x: this.cam.targetX,
+        				y: this.cam.targetY
+        			}
+        		} else if (e.touches.length === 2) {
+        			this.drag = false;
+        			this.p0 = this.td(e.touches);
+        			this.s0 = this.cam.targetScale;
+        			const c = this.tc(e.touches, r);
+        			this.pw = {
+        				x: (c.x - this.cam.targetX) / this.cam.targetScale,
+        				y: (c.y - this.cam.targetY) / this.cam.targetScale
+        			}
+        		}
+        	}
+    tm(e) {
+        		e.preventDefault();
+        		const r = this.cv.getBoundingClientRect();
+        		if (e.touches.length === 1 && this.drag) {
+        			const x = e.touches[0].clientX - r.left,
+        				y = e.touches[0].clientY - r.top;
+        			this.cam.targetX = this.c0.x + x - this.start.x;
+        			this.cam.targetY = this.c0.y + y - this.start.y
+        		} else if (e.touches.length === 2 && this.p0) {
+        			const ns = Math.min(VIEW.MAX_ZOOM, Math.max(VIEW.MIN_ZOOM, this.s0 * this.td(e.touches) / this.p0)),
+        				c = this.tc(e.touches, r);
+        			this.cam.targetScale = ns;
+        			this.cam.targetX = c.x - this.pw.x * ns;
+        			this.cam.targetY = c.y - this.pw.y * ns
+        		}
+        	}
+    layout(s) {
+        		const b = this.base();
+        		(s.nodes || []).forEach((n, i) => {
+        			if (n.x === undefined) n.x = b.x + i * (this.nodeW + this.gap);
+        			if (n.y === undefined) n.y = b.y
+        		});
+        		if (s.pnode && s.pnode.x === undefined) {
+        			s.pnode.x = b.x - GEOMETRY.PNODE_LEFT_OF_TARGET;
+        			s.pnode.y = s.pnode.y ?? b.up
+        		}
+        	}
+    bounds(s) {
+        		let b = {
+        			minX: GEOMETRY.DEFAULT_BOUNDS_MIN_X,
+        			minY: GEOMETRY.DEFAULT_BOUNDS_MIN_Y,
+        			maxX: GEOMETRY.DEFAULT_BOUNDS_MAX_X,
+        			maxY: GEOMETRY.DEFAULT_BOUNDS_MAX_Y
+        		};
+        		(s.nodes || []).forEach(n => {
+        			b.minX = Math.min(b.minX, n.x - GEOMETRY.BOUNDS_NODE_LEFT_PADDING);
+        			b.maxX = Math.max(b.maxX, n.x + GEOMETRY.BOUNDS_NODE_RIGHT_PADDING);
+        			b.minY = Math.min(b.minY, n.y - GEOMETRY.BOUNDS_NODE_TOP_PADDING);
+        			b.maxY = Math.max(b.maxY, n.y + GEOMETRY.BOUNDS_NODE_BOTTOM_PADDING)
+        		});
+        		if (s.pnode) {
+        			b.minX = Math.min(b.minX, s.pnode.x - GEOMETRY.BOUNDS_PNODE_LEFT_PADDING);
+        			b.maxX = Math.max(b.maxX, s.pnode.x + GEOMETRY.BOUNDS_PNODE_RIGHT_PADDING);
+        			b.minY = Math.min(b.minY, s.pnode.y - GEOMETRY.BOUNDS_PNODE_TOP_PADDING);
+        			b.maxY = Math.max(b.maxY, s.pnode.y + GEOMETRY.BOUNDS_PNODE_BOTTOM_PADDING)
+        		}(s.ptrs || []).forEach(p => {
+        			b.minX = Math.min(b.minX, p.x - GEOMETRY.BOUNDS_AUX_LEFT_PADDING);
+        			b.maxX = Math.max(b.maxX, p.x + GEOMETRY.BOUNDS_AUX_RIGHT_PADDING);
+        			b.minY = Math.min(b.minY, p.y - GEOMETRY.BOUNDS_AUX_TOP_PADDING);
+        			b.maxY = Math.max(b.maxY, p.y + GEOMETRY.BOUNDS_AUX_BOTTOM_PADDING)
+        		});
+        		return b
+        	}
+    fit(snaps) {
+        		let B = {
+        			minX: 1e9,
+        			minY: 1e9,
+        			maxX: -1e9,
+        			maxY: -1e9
+        		};
+        		snaps.forEach(s => {
+        			const b = this.bounds(s);
+        			B.minX = Math.min(B.minX, b.minX);
+        			B.maxX = Math.max(B.maxX, b.maxX);
+        			B.minY = Math.min(B.minY, b.minY);
+        			B.maxY = Math.max(B.maxY, b.maxY)
+        		});
+        		const sc = Math.min(VIEW.MAX_AUTO_ZOOM, this.cv.width / (B.maxX - B.minX + GEOMETRY.FIT_PADDING), this.cv.height / (B.maxY - B.minY + GEOMETRY.FIT_PADDING));
+        		this.cam.targetScale = sc;
+        		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+        		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+        	}
+    enqueue(snaps) {
+        		snaps.forEach(s => this.layout(s));
+        		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+        		if (!this.sn.length) {
+        			this.sn.push(snaps.shift());
+        			this.idx = 0
+        		}
+        		if (snaps.length) {
+        			this.pending = snaps;
+        			this.state = 'CAMERA'
+        		}
+        	}
+    loop(ts) {
+        		if (!this.last) this.last = ts;
+        		const dt = Math.min((ts - this.last) / 1000, VIEW.MAX_FRAME_DELTA_SECONDS);
+        		this.last = ts;
+        		if (!this.paused) this.update(dt);
+        		this.draw();
+        		requestAnimationFrame(t => this.loop(t))
+        	}
+    update(dt) {
+        		const f = 1 - Math.exp(-VIEW.CAMERA_EASING * dt);
+        		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+        		this.cam.x += (this.cam.targetX - this.cam.x) * f;
+        		this.cam.y += (this.cam.targetY - this.cam.y) * f;
+        		if (this.state === 'CAMERA') {
+        			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VIEW.CAMERA_POSITION_EPSILON && Math.abs(this.cam.scale - this.cam.targetScale) < VIEW.CAMERA_SCALE_EPSILON) this.next()
+        		} else if (this.state === 'MORPH') {
+        			this.t += VIEW.MORPH_SPEED * this.speedFactor * dt;
+        			if (this.t >= 1) {
+        				this.t = 1;
+        				if (this.sn[this.idx + 1]?.pause) {
+        					this.state = 'WAIT';
+        					this.wait = VIEW.WAIT_SECONDS / this.speedFactor
+        				} else this.finish()
+        			}
+        		} else if (this.state === 'WAIT') {
+        			this.wait -= dt;
+        			if (this.wait <= 0) this.finish()
+        		}
+        	}
+    next() {
+        		const s = this.pending.shift();
+        		this.sn.push(s);
+        		document.getElementById('status-text').innerText = s.text || 'Ready.';
+        		this.t = 0;
+        		this.state = 'MORPH'
+        	}
+    finish() {
+        this.idx++;
+        if (this.pending.length) this.next();
+        else {
+            this.state = 'IDLE';
+            document.getElementById('status-text').innerText = 'Ready.';
+    
+            if (window.app?.clearInputs) window.app.clearInputs();
+        }
     }
-    visualSignature(s) {
-        const nodes = (s.nodes || []).map(n => [n.id, n.x, n.y, n.next, n.e, n.index]);
-        const ptrs = (s.ptrs || []).map(p => [p.label, p.x, p.y, p.target, p.targetX, p.targetY, !!p.dangling]);
-        const pnode = s.pnode ? [s.pnode.x, s.pnode.y, s.pnode.target, s.pnode.targetX, s.pnode.targetY] : null;
-        const lengthBox = s.lengthBox ? [s.lengthBox.x, s.lengthBox.y, s.lengthBox.value] : null;
-        return JSON.stringify({ nodes, ptrs, pnode, lengthBox, firstId: s.firstId, firstDangling: !!s.firstDangling, firstTargetX: s.firstTargetX, firstTargetY: s.firstTargetY });
+    ease(t) {
+        		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+        	}
+    interp(A, B, t) {
+        		const ma = new Map((A.nodes || []).map(n => [n.id, n])),
+        			mb = new Map((B.nodes || []).map(n => [n.id, n])),
+        			ids = new Set([...ma.keys(), ...mb.keys()]),
+        			nodes = [];
+        		ids.forEach(id => {
+        			const a = ma.get(id),
+        				b = mb.get(id);
+        			if (a && b) nodes.push({
+        				...b,
+        				x: a.x + (b.x - a.x) * t,
+        				y: a.y + (b.y - a.y) * t,
+        				detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
+        			});
+        			else if (b && !a) nodes.push({
+        				...b
+        			});
+        			else if (a && !b && t < .85) nodes.push({
+        				...a,
+        				deleted: true
+        			})
+        		});
+        		let pnode = null;
+        		if (A.pnode && B.pnode) pnode = {
+        			...B.pnode,
+        			x: A.pnode.x + (B.pnode.x - A.pnode.x) * t,
+        			y: A.pnode.y + (B.pnode.y - A.pnode.y) * t
+        		};
+        		else pnode = B.pnode || A.pnode || null;
+        		let ptrs = null;
+        		if (A.ptrs || B.ptrs) {
+        			const pa = new Map((A.ptrs || []).map(p => [p.label, p])),
+        				pb = new Map((B.ptrs || []).map(p => [p.label, p]));
+        			ptrs = [...new Set([...pa.keys(), ...pb.keys()])].map(label => {
+        				const a = pa.get(label),
+        					b = pb.get(label);
+        				if (a && b) return {
+        					...b,
+        					x: a.x + (b.x - a.x) * t,
+        					y: a.y + (b.y - a.y) * t
+        				};
+        				return b || a
+        			})
+        		}
+        		const pFirstDetourAmount = (A.pFirstDetourAmount !== undefined || B.pFirstDetourAmount !== undefined) ? ((A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0)) + ((B.pFirstDetourAmount ?? (B.detourPFirst ? 1 : 0)) - (A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0))) * t) : B.pFirstDetourAmount;
+        		return {
+        			...B,
+        			nodes,
+        			pnode,
+        			ptrs,
+        			pFirstDetourAmount
+        		}
+        	}
+    current() {
+        		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
+        		return this.sn[Math.max(this.idx, 0)]
+        	}
+    flash() {
+        		return VIEW.FLASH_BASE_ALPHA + VIEW.FLASH_ALPHA_RANGE * Math.abs(Math.sin(performance.now() / VIEW.FLASH_PERIOD_MS))
+        	}
+draw() {
+        const s = this.current();
+        const c = this.ctx;
+        c.clearRect(0, 0, this.cv.width, this.cv.height);
+        c.save();
+        c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+        if (s) this.renderScene(s);
+        c.restore();
     }
-    removeFlashFlags(s) {
-        const copy = {
-            ...s,
-            nodes: (s.nodes || []).map(n => {
-                const m = { ...n };
-                delete m.flashNew;
-                delete m.flashPNext;
-                delete m.flashElement;
-                delete m.flashNodeCross;
-                return m;
-            })
-        };
-        delete copy.flashPFirst;
-        delete copy.flashPLast;
-        delete copy.flashSize;
-        delete copy.flashPNodeCross;
-        delete copy.flashAuxCross;
-        delete copy.flashPtrCross;
-        delete copy.flashPtrs;
-        delete copy.flashPNext;
-        delete copy.flashElement;
-        return copy;
+
+    renderScene(_scene) {
+        // Subclasses render structure-specific content here using engine primitives.
     }
-    freezeForFlash(prev, cur) {
-        const frozen = {
-            ...cur,
-            nodes: (cur.nodes || []).map(n => ({ ...n })),
-            ptrs: cur.ptrs ? cur.ptrs.map(p => ({ ...p })) : cur.ptrs,
-            pnode: cur.pnode ? { ...cur.pnode } : cur.pnode,
-            lengthBox: cur.lengthBox ? { ...cur.lengthBox } : cur.lengthBox
-        };
-        const prevNodes = new Map((prev.nodes || []).map(n => [n.id, n]));
-        frozen.nodes = frozen.nodes.map(n => {
-            const old = prevNodes.get(n.id);
-            if (!old) return n;
-            return { ...n, x: old.x, y: old.y, next: old.next, e: old.e, index: old.index };
+
+    paintRect(x, y, w, h, fill) {
+        const c = this.ctx;
+        c.save();
+        c.fillStyle = fill;
+        c.fillRect(x, y, w, h);
+        c.restore();
+    }
+
+    paintText(text, x, y, { font = '24px Arial', fill = K.k, align = 'center', baseline = 'middle' } = {}) {
+        const c = this.ctx;
+        c.save();
+        c.fillStyle = fill;
+        c.font = font;
+        c.textAlign = align;
+        c.textBaseline = baseline;
+        c.fillText(String(text), x, y);
+        c.restore();
+    }
+
+    paintDot(x, y, r, fill) {
+        const c = this.ctx;
+        c.save();
+        c.fillStyle = fill;
+        c.beginPath();
+        c.arc(x, y, r, 0, Math.PI * 2);
+        c.fill();
+        c.restore();
+    }
+flashCircle(x, y, r) {
+            		const c = this.ctx;
+            		c.save();
+            		c.globalAlpha = this.flash();
+            		c.strokeStyle = K.r;
+            		c.lineWidth = DRAW.FLASH_STROKE_WIDTH;
+            		c.beginPath();
+            		c.arc(x, y, r, 0, Math.PI * 2);
+            		c.stroke();
+            		c.restore()
+            	}
+
+    roundFlash(x, y, w, h) {
+            		const c = this.ctx;
+            		c.save();
+            		c.globalAlpha = this.flash();
+            		c.strokeStyle = K.r;
+            		c.lineWidth = DRAW.FLASH_STROKE_WIDTH;
+            		c.beginPath();
+            		c.roundRect(x, y, w, h, DRAW.ROUNDED_FLASH_RADIUS);
+            		c.stroke();
+            		c.restore()
+            	}
+
+    cross(x, y, w, h) {
+            		const c = this.ctx;
+            		c.save();
+            		c.globalAlpha = this.flash();
+            		c.strokeStyle = K.r;
+            		c.lineWidth = DRAW.CROSS_STROKE_WIDTH;
+            		c.beginPath();
+            		c.moveTo(x - DRAW.CROSS_OVERHANG, y - DRAW.CROSS_OVERHANG);
+            		c.lineTo(x + w + DRAW.CROSS_OVERHANG, y + h + DRAW.CROSS_OVERHANG);
+            		c.moveTo(x + w + DRAW.CROSS_OVERHANG, y - DRAW.CROSS_OVERHANG);
+            		c.lineTo(x - DRAW.CROSS_OVERHANG, y + h + DRAW.CROSS_OVERHANG);
+            		c.stroke();
+            		c.restore()
+            	}
+
+    arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+            		const c = this.ctx;
+            		c.save();
+            		c.strokeStyle = col;
+            		c.fillStyle = col;
+            		c.lineWidth = lw;
+            		c.beginPath();
+            		c.moveTo(x1, y1);
+            		c.lineTo(x2, y2);
+            		c.stroke();
+            		this.head(x1, y1, x2, y2, col);
+            		c.restore()
+            	}
+
+    head(x1, y1, x2, y2, col = K.b) {
+            		const c = this.ctx,
+            			a = Math.atan2(y2 - y1, x2 - x1),
+            			h = DRAW.ARROW_HEAD_LENGTH;
+            		c.fillStyle = col;
+            		c.beginPath();
+            		c.moveTo(x2, y2);
+            		c.lineTo(x2 - h * Math.cos(a - DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a - DRAW.ARROW_HEAD_HALF_ANGLE));
+            		c.lineTo(x2 - h * Math.cos(a + DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a + DRAW.ARROW_HEAD_HALF_ANGLE));
+            		c.closePath();
+            		c.fill()
+            	}
+
+    lastArrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+            		const c = this.ctx;
+            		c.save();
+            		c.strokeStyle = col;
+            		c.fillStyle = col;
+            		c.lineWidth = lw;
+            		c.beginPath();
+            		c.moveTo(x1, y1);
+            		const d = DRAW.LAST_ARROW_HORIZONTAL_OFFSET,
+            			midY = y1;
+            		c.lineTo(x2 - d, midY);
+            		c.lineTo(x2, y2);
+            		c.stroke();
+            		this.head(x2 - d, midY, x2, y2, col);
+            		c.restore()
+            	}
+
+    detourArrow(x1, y1, x2, y2, col = K.b, lw = 3, amount = 1) {
+        		const c = this.ctx;
+        		c.save();
+        		c.strokeStyle = col;
+        		c.fillStyle = col;
+        		c.lineWidth = lw;
+        		const d = DRAW.DETOUR_DISTANCE * amount, midY = y1 + d;
+        		c.beginPath();
+        		c.moveTo(x1, y1);
+        		c.lineTo(x1 + d, midY);
+        		c.lineTo(x2 - d, midY);
+        		c.lineTo(x2, y2);
+        		c.stroke();
+        		this.head(x2 - d, midY, x2, y2, col);
+        		c.restore()
+        	}
+
+
+    setSpeed(v) {
+        		this.speedFactor = 1 / v
+        	}
+    togglePause() {
+        		this.paused = !this.paused;
+        		return this.paused
+        	}
+
+}
+
+/* View: C singly-linked-list drawing only. */
+class SinglyLinkedListView extends VisualizationEngine {drawStructBoxes(s) {
+        const x = GEOMETRY.STRUCT_X, y = GEOMETRY.STRUCT_Y, w = this.cell, h = this.cell;
+        this.paintText('p_first', x - DRAW.STRUCT_LABEL_GAP, y + h / 2, {
+            font: DRAW.STRUCT_LABEL_FONT,
+            fill: K.k,
+            align: 'right',
+            baseline: 'middle'
         });
-        if (cur.ptrs && prev.ptrs) {
-            const prevPtrs = new Map(prev.ptrs.map(p => [p.label, p]));
-            frozen.ptrs = cur.ptrs.map(p => {
-                const old = prevPtrs.get(p.label);
-                if (!old) return p;
-                return { ...p, x: old.x, y: old.y, target: old.target, targetX: old.targetX, targetY: old.targetY, dangling: old.dangling };
+        this.paintRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO, K.c);
+        this.paintDot(x + w / 2, y + h / 2, DRAW.POINTER_DOT_RADIUS, s.firstDangling ? K.d : K.b);
+    }
+    drawStructArrows(s) {
+            const x = GEOMETRY.STRUCT_X,
+        				y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell;
+            const firstColor = s.firstDangling ? K.d : K.b;
+            const f = this.nodeById(s, s.firstId);
+            if (f) {
+                const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
+                if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3, amount);
+                else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3)
+            } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
+                this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, firstColor, 3)
+            }
+        
+        }
+    drawOverlays(s) {
+            if (s.lengthBox) this.drawLengthBox(s.lengthBox);
+            if (s.flashPFirst) this.flashStruct(0);
+            (s.nodes || []).forEach(n => {
+                if (n.flashNew) this.roundFlash(n.x - DRAW.FLASH_NODE_PADDING, n.y - DRAW.FLASH_NODE_PADDING, this.nodeW + 2 * DRAW.FLASH_NODE_PADDING, this.cell + 2 * DRAW.FLASH_NODE_PADDING);
+                if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, DRAW.FLASH_NEXT_RADIUS);
+                if (n.flashElement || s.flashElement === n.id) this.roundFlash(n.x - DRAW.FLASH_ELEMENT_TIGHT_PADDING, n.y - DRAW.FLASH_ELEMENT_TIGHT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_TIGHT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_TIGHT_PADDING);
+                if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell);
+            });
+            if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
+            if (s.flashAuxCross) (s.ptrs || []).forEach(p => this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT));
+            if (s.flashPtrCross) (s.ptrs || []).forEach(p => { if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT); });
+            if (s.flashPtrs) (s.ptrs || []).forEach(p => { if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.FLASH_POINTER_RADIUS); });
+        }
+drawLengthBox(box) {
+        const x = box.x, y = box.y, w = box.w ?? this.cell, h = box.h ?? this.cell;
+        this.paintText(box.label ?? 'size', x - DRAW.STRUCT_LABEL_GAP, y + h / 2, {
+            font: DRAW.STRUCT_LABEL_FONT,
+            fill: K.k,
+            align: 'right',
+            baseline: 'middle'
+        });
+        this.paintRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO, K.g);
+        this.paintText(String(box.value ?? 0), x + w / 2, y + h / 2 + DRAW.NODE_VALUE_BASELINE_OFFSET, {
+            font: DRAW.SIZE_VALUE_FONT,
+            fill: K.r
+        });
+    }
+renderScene(s) {
+        this.lastNodes = s.nodes || [];
+        this.drawStructBoxes(s);
+        (s.nodes || []).forEach(n => this.drawNode(n));
+        if (s.pnode) this.drawPNodeBox(s);
+        this.drawStructArrows(s);
+        this.drawLinks(s);
+        if (s.ptrs) this.drawAuxPointers(s);
+        if (s.pnode) this.drawPNodeArrow(s);
+        this.drawOverlays(s);
+    }
+drawNode(n) {
+        const w = this.cell,
+            x = n.x,
+            y = n.y;
+        this.paintRect(x, y, w - w * 0.01, w, K.g);
+        this.paintRect(x + w + w * 0.01, y, w, w, K.c);
+        this.paintText(n.e, x + w / 2, y + w / 2 + DRAW.NODE_VALUE_BASELINE_OFFSET, {
+            font: DRAW.NODE_VALUE_FONT,
+            fill: K.r
+        });
+        this.paintDot(x + w + w / 2, y + w / 2, DRAW.NODE_NEXT_DOT_RADIUS, K.b);
+        if (n.index !== undefined) {
+            this.paintText(n.index, x + w - DRAW.NODE_INDEX_RIGHT_OFFSET, y - DRAW.NODE_INDEX_TOP_OFFSET, {
+                font: DRAW.NODE_INDEX_FONT,
+                fill: K.k,
+                baseline: 'alphabetic'
             });
         }
-        if (cur.pnode && prev.pnode) {
-            frozen.pnode = { ...cur.pnode, x: prev.pnode.x, y: prev.pnode.y, target: prev.pnode.target, targetX: prev.pnode.targetX, targetY: prev.pnode.targetY };
-        }
-        if (cur.flashPFirst) {
-            frozen.firstId = prev.firstId;
-            frozen.firstDangling = prev.firstDangling;
-            frozen.firstTargetX = prev.firstTargetX;
-            frozen.firstTargetY = prev.firstTargetY;
-            frozen.pFirstDetourAmount = prev.pFirstDetourAmount;
-            frozen.detourPFirst = prev.detourPFirst;
-        }
-        if (cur.lengthBox && prev.lengthBox) {
-            frozen.lengthBox = { ...cur.lengthBox, x: prev.lengthBox.x, y: prev.lengthBox.y, value: prev.lengthBox.value };
-        }
-        return frozen;
     }
-    expandFlashScenes(snaps) {
-        if (!snaps || snaps.length < 2) return snaps;
-        const out = [snaps[0]];
-        for (let i = 1; i < snaps.length; i++) {
-            const prev = snaps[i - 1];
-            const cur = snaps[i];
-            if (this.hasFlash(cur) && this.visualSignature(prev) !== this.visualSignature(cur)) {
-                const frozen = this.freezeForFlash(prev, cur);
-                frozen.pause = true;
-                out.push(frozen);
-                out.push(this.removeFlashFlags(cur));
-            } else {
-                out.push(cur);
-            }
-        }
-        return out;
+drawPNodeBox(s) {
+        const p = s.pnode;
+        this.paintText(p.label || 'p_node', p.x - GEOMETRY.POINTER_LABEL_GAP, p.y + GEOMETRY.POINTER_LABEL_BASELINE_OFFSET, {
+            font: DRAW.PNODE_LABEL_FONT,
+            fill: K.k,
+            align: 'right',
+            baseline: 'alphabetic'
+        });
+        this.paintRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT, K.c);
+        this.paintDot(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, K.b);
     }
-    enqueue(snaps) {
-        snaps.forEach(s => this.layout(s));
-        snaps = this.expandFlashScenes(snaps);
-        snaps.forEach(s => this.layout(s));
-        this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-        if (!this.sn.length) {
-            this.sn.push(snaps.shift());
-            this.idx = 0
-        }
-        if (snaps.length) {
-            this.pending = snaps;
-            this.state = 'CAMERA'
-        }
+drawAuxPointers(s) {
+        (s.ptrs || []).forEach(p => {
+            const pointerColor = p.dangling ? K.d : K.b;
+            this.paintText(p.label, p.x + GEOMETRY.POINTER_ANCHOR_X, p.y - GEOMETRY.POINTER_LABEL_GAP, {
+                font: DRAW.POINTER_LABEL_FONT,
+                fill: K.k,
+                align: 'center',
+                baseline: 'alphabetic'
+            });
+            this.paintRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT, K.c);
+            this.paintDot(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, pointerColor);
+            const t = this.nodeById(s, p.target);
+            if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y, pointerColor, 3);
+            else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, p.targetX, p.targetY, pointerColor, 3);
+        });
     }
-loop(ts) {
-    		if (!this.last) this.last = ts;
-    		const dt = Math.min((ts - this.last) / 1000, VIEW.MAX_FRAME_DELTA_SECONDS);
-    		this.last = ts;
-    		if (!this.paused) this.update(dt);
-    		this.draw();
-    		requestAnimationFrame(t => this.loop(t))
-    	}
-    	update(dt) {
-    		const f = 1 - Math.exp(-VIEW.CAMERA_EASING * dt);
-    		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-    		this.cam.x += (this.cam.targetX - this.cam.x) * f;
-    		this.cam.y += (this.cam.targetY - this.cam.y) * f;
-    		if (this.state === 'CAMERA') {
-    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VIEW.CAMERA_POSITION_EPSILON && Math.abs(this.cam.scale - this.cam.targetScale) < VIEW.CAMERA_SCALE_EPSILON) this.next()
-    		} else if (this.state === 'MORPH') {
-    			this.t += VIEW.MORPH_SPEED * this.speedFactor * dt;
-    			if (this.t >= 1) {
-    				this.t = 1;
-    				if (this.sn[this.idx + 1]?.pause) {
-    					this.state = 'WAIT';
-    					this.wait = VIEW.WAIT_SECONDS / this.speedFactor
-    				} else this.finish()
-    			}
-    		} else if (this.state === 'WAIT') {
-    			this.wait -= dt;
-    			if (this.wait <= 0) this.finish()
-    		}
-    	}
-    	next() {
-    		const s = this.pending.shift();
-    		this.sn.push(s);
-    		document.getElementById('status-text').innerText = s.text || 'Ready.';
-    		this.t = 0;
-    		this.state = 'MORPH'
-    	}
-finish() {
-    this.idx++;
-    if (this.pending.length) this.next();
-    else {
-        this.state = 'IDLE';
-        document.getElementById('status-text').innerText = 'Ready.';
-
-        if (typeof app !== 'undefined' && app.clearInputs) {
-            app.clearInputs();
-        }
-    }
-}
-    	ease(t) {
-    		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-    	}
-    	interp(A, B, t) {
-    		const ma = new Map((A.nodes || []).map(n => [n.id, n])),
-    			mb = new Map((B.nodes || []).map(n => [n.id, n])),
-    			ids = new Set([...ma.keys(), ...mb.keys()]),
-    			nodes = [];
-    		ids.forEach(id => {
-    			const a = ma.get(id),
-    				b = mb.get(id);
-    			if (a && b) nodes.push({
-    				...b,
-    				x: a.x + (b.x - a.x) * t,
-    				y: a.y + (b.y - a.y) * t,
-    				detourAmount: (a.detourAmount !== undefined || b.detourAmount !== undefined) ? ((a.detourAmount ?? (a.detourNext ? 1 : 0)) + ((b.detourAmount ?? (b.detourNext ? 1 : 0)) - (a.detourAmount ?? (a.detourNext ? 1 : 0))) * t) : b.detourAmount
-    			});
-    			else if (b && !a) nodes.push({
-    				...b
-    			});
-    			else if (a && !b && t < .85) nodes.push({
-    				...a,
-    				deleted: true
-    			})
-    		});
-    		let pnode = null;
-    		if (A.pnode && B.pnode) pnode = {
-    			...B.pnode,
-    			x: A.pnode.x + (B.pnode.x - A.pnode.x) * t,
-    			y: A.pnode.y + (B.pnode.y - A.pnode.y) * t
-    		};
-    		else pnode = B.pnode || A.pnode || null;
-    		let ptrs = null;
-    		if (A.ptrs || B.ptrs) {
-    			const pa = new Map((A.ptrs || []).map(p => [p.label, p])),
-    				pb = new Map((B.ptrs || []).map(p => [p.label, p]));
-    			ptrs = [...new Set([...pa.keys(), ...pb.keys()])].map(label => {
-    				const a = pa.get(label),
-    					b = pb.get(label);
-    				if (a && b) return {
-    					...b,
-    					x: a.x + (b.x - a.x) * t,
-    					y: a.y + (b.y - a.y) * t
-    				};
-    				return b || a
-    			})
-    		}
-    		const pFirstDetourAmount = (A.pFirstDetourAmount !== undefined || B.pFirstDetourAmount !== undefined) ? ((A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0)) + ((B.pFirstDetourAmount ?? (B.detourPFirst ? 1 : 0)) - (A.pFirstDetourAmount ?? (A.detourPFirst ? 1 : 0))) * t) : B.pFirstDetourAmount;
-    		return {
-    			...B,
-    			nodes,
-    			pnode,
-    			ptrs,
-    			pFirstDetourAmount
-    		}
-    	}
-    	current() {
-    		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
-    		return this.sn[Math.max(this.idx, 0)]
-    	}
-    	flash() {
-    		return VIEW.FLASH_BASE_ALPHA + VIEW.FLASH_ALPHA_RANGE * Math.abs(Math.sin(performance.now() / VIEW.FLASH_PERIOD_MS))
-    	}
-    	draw() {
-    		const s = this.current();
-    		const c = this.ctx;
-    		c.clearRect(0, 0, this.cv.width, this.cv.height);
-    		c.save();
-    		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-    		if (!s) {
-    			c.restore();
-    			return
-    		}
-    		this.lastNodes = s.nodes || [];
-    		this.drawStructBoxes(s);
-    		(s.nodes || []).forEach(n => this.drawNode(n));
-    		if (s.pnode) this.drawPNodeBox(s);
-    		this.drawStructArrows(s);
-    		this.drawLinks(s);
-    		if (s.ptrs) this.drawAuxPointers(s);
-    		if (s.pnode) this.drawPNodeArrow(s);
-    		this.drawOverlays(s);
-    		c.restore()
-    	}
-    	drawNode(n) {
-    		const c = this.ctx,
-    			w = this.cell,
-    			x = n.x,
-    			y = n.y;
-    		c.save();
-    		c.fillStyle = K.g;
-    		c.fillRect(x, y, w - w * 0.01, w);
-    		c.fillStyle = K.c;
-    		c.fillRect(x + w + w * 0.01, y, w, w);
-    		c.fillStyle = K.r;
-    		c.font = DRAW.NODE_VALUE_FONT;
-    		c.textAlign = 'center';
-    		c.textBaseline = 'middle';
-    		c.fillText(n.e, x + w / 2, y + w / 2 + DRAW.NODE_VALUE_BASELINE_OFFSET);
-    		c.fillStyle = K.b;
-    		c.beginPath();
-    		c.arc(x + w + w / 2, y + w / 2, DRAW.NODE_NEXT_DOT_RADIUS, 0, Math.PI * 2);
-    		c.fill();
-    		if (n.index !== undefined) {
-    			c.fillStyle = K.k;
-    			c.font = DRAW.NODE_INDEX_FONT;
-    			c.textBaseline = 'alphabetic';
-    			c.fillText(n.index, x + w - DRAW.NODE_INDEX_RIGHT_OFFSET, y - DRAW.NODE_INDEX_TOP_OFFSET)
-    		}
-
-    		c.restore()
-    	}
-    	drawStructBoxes(s) {
-    		const c = this.ctx,
-    			x = GEOMETRY.STRUCT_X,
-    				y = GEOMETRY.STRUCT_Y,
-    			w = this.cell,
-    			h = this.cell;
-    		c.save();
-    		c.fillStyle = K.k;
-    		c.font = DRAW.STRUCT_LABEL_FONT;
-    		c.textAlign = 'right';
-    		c.fillText('outer list pointer', x - DRAW.OUTER_POINTER_LABEL_X_OFFSET, y - DRAW.OUTER_POINTER_LABEL_Y_OFFSET);
-    		c.fillStyle = K.p;
-    		c.fillRect(x - DRAW.OUTER_POINTER_BOX_X_OFFSET, y - DRAW.OUTER_POINTER_BOX_Y_OFFSET, w, h);
-    		c.fillStyle = K.v;
-    		c.beginPath();
-    		c.arc(x - DRAW.OUTER_POINTER_DOT_X_OFFSET, y - DRAW.OUTER_POINTER_DOT_Y_OFFSET, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
-    		c.fill();
-    		[
-    			['p_first', K.c, s.firstId],
-    			['last-node pointer', K.c, s.lastId],
-    			['size', K.g, s.size]
-    		].forEach((r, i) => {
-    			const yy = y + i * h;
-    			c.fillStyle = K.k;
-    			c.font = DRAW.STRUCT_LABEL_FONT;
-    			c.textAlign = 'right';
-    			c.textBaseline = 'middle';
-    			c.fillText(r[0], x - DRAW.STRUCT_LABEL_GAP, yy + h / 2);
-    			c.fillStyle = r[1];
-    			c.fillRect(x, yy, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO);
-    			if (r[0] === 'size') {
-    				c.fillStyle = K.r;
-    				c.font = DRAW.SIZE_VALUE_FONT;
-    				c.textAlign = 'center';
-    				c.fillText(String(r[2]), x + w / 2, yy + h / 2 + 2)
-    			} else {
-    				c.fillStyle = K.b;
-    				c.beginPath();
-    				c.arc(x + w / 2, yy + h / 2, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
-    				c.fill()
-    			}
-    		});
-    		c.restore()
-    	}
-    	nodeById(s, id) {
-    		return (s.nodes || []).find(n => n.id === id)
-    	}
-    	drawStructArrows(s) {
-    		const x = GEOMETRY.STRUCT_X,
-    				y = GEOMETRY.STRUCT_Y,
-    			w = 70,
-    			h = this.cell;
-    		this.arrow(x - DRAW.OUTER_POINTER_DOT_X_OFFSET, y - DRAW.OUTER_POINTER_DOT_Y_OFFSET, x, y + 8, K.v, 3);
-    		const f = this.nodeById(s, s.firstId),
-    			l = this.nodeById(s, s.lastId);
-    		if (f) { const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0); if (firstAmount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, firstAmount); else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3) }
-    		if (l) {
-    			const targetY = l.y + this.cell * 0.75,
-    				lastCol = s.markPLastArrow ? K.r : K.b;
-    			if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3);
-    			else this.lastArrow(x + w / 2, y + h + h / 2, l.x, targetY, lastCol, 3)
-    		}
-    	}
-    	drawLinks(s) {
-		(s.nodes || []).forEach(n => {
-			if (n.next !== null && n.next !== undefined) {
-				const to = this.nodeById(s, n.next);
-				if (to) {
-					const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
-					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
-					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3)
-				}
-			}
-		})
-	}
-	detourArrow(x1, y1, x2, y2, col = K.b, lw = 3, amount = 1) {
-		const c = this.ctx;
-		c.save();
-		c.strokeStyle = col;
-		c.fillStyle = col;
-		c.lineWidth = lw;
-		const d = DRAW.DETOUR_DISTANCE * amount, midY = y1 + d;
-		c.beginPath();
-		c.moveTo(x1, y1);
-		c.lineTo(x1 + d, midY);
-		c.lineTo(x2 - d, midY);
-		c.lineTo(x2, y2);
-		c.stroke();
-		this.head(x2 - d, midY, x2, y2, col);
-		c.restore()
-	}
-ptr(n) {
-    		return {
-    			x: n.x + this.cell + this.cell / 2,
-    			y: n.y + this.cell / 2
-    		}
-    	}
-    	drawPNodeBox(s) {
-    		const p = s.pnode,
-    			c = this.ctx;
-    		c.save();
-    		c.fillStyle = K.k;
-    		c.font = DRAW.PNODE_LABEL_FONT;
-    		c.textAlign = 'right';
-    		c.textBaseline = 'alphabetic';
-    		c.fillText(p.label || 'p_node', p.x - GEOMETRY.POINTER_LABEL_GAP, p.y + GEOMETRY.POINTER_LABEL_BASELINE_OFFSET);
-    		c.fillStyle = K.c;
-    		c.fillRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
-    		c.fillStyle = K.b;
-    		c.beginPath();
-    		c.arc(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
-    		c.fill();
-    		c.restore()
-    	}
-    	drawAuxPointers(s) {
-		const c = this.ctx;
-		(s.ptrs || []).forEach(p => {
-			const pointerColor = p.dangling ? K.d : K.b;
-			c.save();
-			c.fillStyle = K.k;
-			c.font = DRAW.POINTER_LABEL_FONT;
-			c.textAlign = 'center';
-			c.textBaseline = 'alphabetic';
-			c.fillText(p.label, p.x + 30, p.y - GEOMETRY.POINTER_LABEL_GAP);
-			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
-			c.fillStyle = pointerColor;
-			c.beginPath();
-			c.arc(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2);
-			c.fill();
-			c.restore();
-			const t = this.nodeById(s, p.target);
-			if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y, pointerColor, 3);
-			else if (p.targetX !== undefined && p.targetY !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, p.targetX, p.targetY, pointerColor, 3)
-		})
-	}
-	drawPNodeArrow(s) {
-    		const p = s.pnode,
-    			t = this.nodeById(s, p.target);
-    		if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y + this.cell / 2, K.b, 3)
-    	}
-    	drawOverlays(s) {
-    		if (s.flashPFirst) this.flashStruct(0);
-    		if (s.flashPLast) this.flashStruct(1);
-    		if (s.flashSize) this.flashStruct(2);
+    drawPNodeArrow(s) {
+        		const p = s.pnode,
+        			t = this.nodeById(s, p.target);
+        		if (t) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, t.x, t.y + this.cell / 2, K.b, 3)
+        	}
+    flashStruct(row) {
+        		const x = GEOMETRY.STRUCT_X,
+        			y = GEOMETRY.STRUCT_Y + row * this.cell,
+        			w = this.cell,
+        			h = this.cell;
+        		this.flashCircle(x + w / 2, y + h / 2, DRAW.FLASH_POINTER_RADIUS)
+        	}
+nodeById(s, id) {
+        		return (s.nodes || []).find(n => n.id === id)
+        	}
+    drawLinks(s) {
     		(s.nodes || []).forEach(n => {
-    			if (n.flashNew) this.roundFlash(n.x - DRAW.FLASH_NODE_PADDING, n.y - DRAW.FLASH_NODE_PADDING, this.nodeW + 2 * DRAW.FLASH_NODE_PADDING, this.cell + 2 * DRAW.FLASH_NODE_PADDING);
-    			if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, DRAW.FLASH_NEXT_RADIUS);
-    			if (n.flashElement) this.roundFlash(n.x - DRAW.FLASH_ELEMENT_PADDING, n.y - DRAW.FLASH_ELEMENT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_PADDING);
-			if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
-    		});
-    		if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
-    		if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT));
-    		if (s.flashPtrs)(s.ptrs || []).forEach(p => {
-    			if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.FLASH_POINTER_RADIUS)
+    			if (n.next !== null && n.next !== undefined) {
+    				const to = this.nodeById(s, n.next);
+    				if (to) {
+    					const p = this.ptr(n), amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
+    					if (amount > 0.001) this.detourArrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3, amount);
+    					else this.arrow(p.x, p.y, to.x, to.y + this.cell / 2, K.b, 3)
+    				}
+    			}
     		})
     	}
-    	flashStruct(row) {
-    		const x = GEOMETRY.STRUCT_X,
-    			y = GEOMETRY.STRUCT_Y + row * this.cell,
-    			w = this.cell,
-    			h = this.cell;
-    		this.flashCircle(x + w / 2, y + h / 2, DRAW.FLASH_POINTER_RADIUS)
-    	}
-    	flashCircle(x, y, r) {
-    		const c = this.ctx;
-    		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = DRAW.FLASH_STROKE_WIDTH;
-    		c.beginPath();
-    		c.arc(x, y, r, 0, Math.PI * 2);
-    		c.stroke();
-    		c.restore()
-    	}
-    	roundFlash(x, y, w, h) {
-    		const c = this.ctx;
-    		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = DRAW.FLASH_STROKE_WIDTH;
-    		c.beginPath();
-    		c.roundRect(x, y, w, h, DRAW.ROUNDED_FLASH_RADIUS);
-    		c.stroke();
-    		c.restore()
-    	}
-    	cross(x, y, w, h) {
-    		const c = this.ctx;
-    		c.save();
-    		c.globalAlpha = this.flash();
-    		c.strokeStyle = K.r;
-    		c.lineWidth = DRAW.CROSS_STROKE_WIDTH;
-    		c.beginPath();
-    		c.moveTo(x - DRAW.CROSS_OVERHANG, y - DRAW.CROSS_OVERHANG);
-    		c.lineTo(x + w + DRAW.CROSS_OVERHANG, y + h + DRAW.CROSS_OVERHANG);
-    		c.moveTo(x + w + DRAW.CROSS_OVERHANG, y - DRAW.CROSS_OVERHANG);
-    		c.lineTo(x - DRAW.CROSS_OVERHANG, y + h + DRAW.CROSS_OVERHANG);
-    		c.stroke();
-    		c.restore()
-    	}
-    	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-    		const c = this.ctx;
-    		c.save();
-    		c.strokeStyle = col;
-    		c.fillStyle = col;
-    		c.lineWidth = lw;
-    		c.beginPath();
-    		c.moveTo(x1, y1);
-    		c.lineTo(x2, y2);
-    		c.stroke();
-    		this.head(x1, y1, x2, y2, col);
-    		c.restore()
-    	}
-    	head(x1, y1, x2, y2, col = K.b) {
-    		const c = this.ctx,
-    			a = Math.atan2(y2 - y1, x2 - x1),
-    			h = DRAW.ARROW_HEAD_LENGTH;
-    		c.fillStyle = col;
-    		c.beginPath();
-    		c.moveTo(x2, y2);
-    		c.lineTo(x2 - h * Math.cos(a - DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a - DRAW.ARROW_HEAD_HALF_ANGLE));
-    		c.lineTo(x2 - h * Math.cos(a + DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a + DRAW.ARROW_HEAD_HALF_ANGLE));
-    		c.closePath();
-    		c.fill()
-    	}
-    	lastArrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-    		const c = this.ctx;
-    		c.save();
-    		c.strokeStyle = col;
-    		c.fillStyle = col;
-    		c.lineWidth = lw;
-    		c.beginPath();
-    		c.moveTo(x1, y1);
-    		const d = DRAW.LAST_ARROW_HORIZONTAL_OFFSET,
-    			midY = y1;
-    		c.lineTo(x2 - d, midY);
-    		c.lineTo(x2, y2);
-    		c.stroke();
-    		this.head(x2 - d, midY, x2, y2, col);
-    		c.restore()
-    	}
-    	setSpeed(v) {
-    		this.speedFactor = 1 / v
-    	}
-    	togglePause() {
-    		this.paused = !this.paused;
-    		return this.paused
-    	}
-    }
+ptr(n) {
+        		return {
+        			x: n.x + this.cell + this.cell / 2,
+        			y: n.y + this.cell / 2
+        		}
+        	}
 
-    function relink(nodes) {
-    	nodes.forEach((n, i) => {
-    		n.index = i;
-    		n.next = i < nodes.length - 1 ? nodes[i + 1].id : null
-    	})
-    }
-    const app = {
-    	values: [],
-    	ids: [],
-    	history: [],
-    	viz: null,
-    	init() {
-    		this.viz = new Viz('cv');
-    		this.randomFill();
-    		this.ids = this.values.map(_ => nextId++);
-    		this.showCurrent('The list is initialized with sample values');
-    		this.updateUI()
-    	},
-    	baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
-    		const yy = y ?? this.viz.base().y;
-    		return vals.map((e, i) => ({
-    			id: ids[i],
-    			e,
-    			index: i,
-    			x: this.viz.base().x + shift + i * GEOMETRY.NODE_STEP,
-    			y: yy,
-    			next: i < ids.length - 1 ? ids[i + 1] : null
-    		}))
-    	},
-    	snapshot(text, nodes, extra = {}) {
-    		nodes = nodes.map(n => ({
-    			...n
-    		}));
-    		if (!extra.preserveLinks) relink(nodes);
-    		return {
-    			nodes,
-    			firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
-    			lastId: extra.lastId !== undefined ? extra.lastId : (nodes[nodes.length - 1]?.id ?? null),
-    			size: extra.size ?? nodes.length,
-    			text,
-    			...extra
-    		}
-    	},
-    	showCurrent(text = 'Ready.') {
-    		this.viz.sn = [];
-    		this.viz.pending = [];
-    		this.viz.idx = -1;
-    		this.viz.state = 'IDLE';
-    		this.viz.enqueue([this.snapshot(text, this.baseNodes())])
-    	},
-    	v() {
-    		return parseInt(document.getElementById('val').value)
-    	},
-    	save() {
-    		this.history.push({
-    			values: [...this.values],
-    			ids: [...this.ids]
-    		});
-    		if (this.history.length > 30) this.history.shift()
-    	},
-    	prepend() {
-    		const e = this.v();
-    		if (isNaN(e)) return;
+}
+
+/* App: model, UI, and algorithms only. */
+class App {
+    constructor() {
+            this.values = [];
+            this.ids = [];
+            this.history = [];
+            this.viz = null;
+        }
+
+    relink(nodes) {
+            nodes.forEach((n, i) => {
+                n.index = i;
+                n.next = i < nodes.length - 1 ? nodes[i + 1].id : null;
+            });
+        }
+
+    snapshot(text, nodes, extra = {}) {
+            nodes = nodes.map(n => ({ ...n }));
+            if (!extra.preserveLinks) this.relink(nodes);
+            return { nodes, firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null), text, ...extra }
+        
+        }
+
+    isSortedAscending() {
+            for (let i = 1; i < this.values.length; i++) if (this.values[i - 1] > this.values[i]) return false;
+            return true
+        
+        }
+
+    updateUI() {
+            document.getElementById('btnUndo').disabled = this.history.length === 0;
+            const b = document.getElementById('btnSortedInsert');
+            if (b) {
+                const ok = this.isSortedAscending();
+                b.disabled = !ok;
+                b.title = ok ? 'Insert the value preserving ascending order.' : 'Disabled: the current list is not sorted ascending.';
+                b.setAttribute('aria-label', b.title)
+            }
+        
+        }
+
+    _ptr(label, target, nodes, fixed = null, fallbackX = null) {
+                const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
+                return { label, target, x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : (fallbackX ?? b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)), y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST) }
+            
+        }
+
+    init() {
+        		this.viz = new SinglyLinkedListView('cv');
+        		this.randomFill();
+        		this.ids = this.values.map(_ => nextId++);
+        		this.showCurrent('The list is initialized with sample values');
+        		this.updateUI()
+        	}
+
+    baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
+        		const yy = y ?? this.viz.base().y;
+        		return vals.map((e, i) => ({
+        			id: ids[i],
+        			e,
+        			index: i,
+        			x: this.viz.base().x + shift + i * GEOMETRY.NODE_STEP,
+        			y: yy,
+        			next: i < ids.length - 1 ? ids[i + 1] : null
+        		}))
+        	}
+
+    showCurrent(text = 'Ready.') {
+        		this.viz.sn = [];
+        		this.viz.pending = [];
+        		this.viz.idx = -1;
+        		this.viz.state = 'IDLE';
+        		this.viz.enqueue([this.snapshot(text, this.baseNodes())])
+        	}
+
+    v() {
+        		return parseInt(document.getElementById('val').value)
+        	}
+
+    save() {
+        		this.history.push({
+        			values: [...this.values],
+        			ids: [...this.ids]
+        		});
+        		if (this.history.length > 30) this.history.shift()
+        	}
+
+    prepend() {
+        		const e = this.v();
+        		if (isNaN(e)) return;
+        		this.save();
+        		const oldVals = [...this.values],
+        			oldIds = [...this.ids],
+        			oldSize = oldVals.length,
+        			newId = nextId++;
+        		const b = this.viz.base(),
+        			gap = GEOMETRY.NODE_STEP,
+        			oldFirst = oldIds[0] ?? null;
+        		let snaps = [];
+        		let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, {
+        			size: oldSize
+        		}));
+        		let shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
+        		snaps.push(this.snapshot('Existing nodes are moved aside to make room for the new first node', shiftedOld, {
+        			size: oldSize,
+        			firstId: oldFirst,
+        			lastId: oldIds.at(-1) ?? null,
+        			pause: true
+        		}));
+        		let pnode = {
+        			x: b.x - GEOMETRY.PNODE_LEFT_OF_TARGET,
+        			y: b.up,
+        			target: newId
+        		};
+        		let newUp = {
+        			id: newId,
+        			e,
+        			index: 0,
+        			x: b.x,
+        			y: b.up,
+        			next: oldFirst,
+        			flashNew: true
+        		};
+        		snaps.push(this.snapshot('A new node is allocated and linked to the former first node', [newUp, ...shiftedOld], {
+        			size: oldSize,
+        			pnode,
+        			firstId: oldFirst,
+        			lastId: oldIds.at(-1) ?? null,
+        			pause: true
+        		}));
+        		newUp = {
+        			...newUp,
+        			flashNew: false
+        		};
+        		snaps.push(this.snapshot(oldSize === 0 ? 'The list is empty, so p_first is ready to point to the new node' : 'p_first is ready to point to the new node', [newUp, ...shiftedOld], {
+        			size: oldSize,
+        			pnode,
+        			firstId: oldFirst,
+        			lastId: oldIds.at(-1) ?? null,
+        			flashPFirst: true,
+        			flashPLast: oldSize === 0,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('p_first now points to the new first node', [newUp, ...shiftedOld], {
+        			size: oldSize,
+        			pnode,
+        			firstId: newId,
+        			lastId: oldIds.at(-1) ?? newId,
+        			pause: true
+        		}));
+        		let newDown = {
+        			...newUp,
+        			y: b.y
+        		};
+        		snaps.push(this.snapshot('The new node is placed in its final list position', [newDown, ...shiftedOld], {
+        			size: oldSize,
+        			pnode,
+        			firstId: newId,
+        			lastId: oldIds.at(-1) ?? newId,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The node indices are about to be refreshed', [newDown, ...shiftedOld], {
+        			size: oldSize,
+        			pnode,
+        			firstId: newId,
+        			lastId: oldIds.at(-1) ?? newId,
+        			flashSize: true,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The node indices have been refreshed', [newDown, ...shiftedOld], {
+        			size: oldSize + 1,
+        			pnode,
+        			firstId: newId,
+        			lastId: oldIds.at(-1) ?? newId,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The temporary pointer to the new node is deallocated after exiting the function', [newDown, ...shiftedOld], {
+        			size: oldSize + 1,
+        			pnode,
+        			firstId: newId,
+        			lastId: oldIds.at(-1) ?? newId,
+        			flashPNodeCross: true,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The operation is complete', [newDown, ...shiftedOld], {
+        			size: oldSize + 1,
+        			firstId: newId,
+        			lastId: oldIds.at(-1) ?? newId
+        		}));
+        		this.values = [e, ...oldVals];
+        		this.ids = [newId, ...oldIds];
+        		this.viz.enqueue(snaps);
+        		this.updateUI()
+        	}
+
+    insert() {
+        		const i = parseInt(document.getElementById('idx').value),
+        			e = this.v();
+        		if (isNaN(i) || isNaN(e) || i < 0 || i > this.values.length) return;
+        		if (i === 0) {
+        			this.prepend();
+        			return
+        		}
+        		if (i === this.values.length) {
+        			this.append();
+        			return
+        		}
+        		this.save();
+        		const oldVals = [...this.values],
+        			oldIds = [...this.ids],
+        			oldSize = oldVals.length,
+        			newId = nextId++;
+        		const b = this.viz.base(),
+        			gap = GEOMETRY.NODE_STEP,
+        			newNodeY = b.y + GEOMETRY.INSERT_NODE_VERTICAL_OFFSET;
+        		let snaps = [];
+        		const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        		const makePtr = (label, target, nodes, level = 0, fixedX = null, fixedY = null) => {
+        			const t = (nodes || []).find(n => n.id === target);
+        			return {
+        				label,
+        				target,
+        				x: fixedX ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET),
+        				y: fixedY ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST)
+        			}
+        		};
+        		const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('p_previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('p_current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
+        		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, {
+        			size: oldSize
+        		}));
+        		let prevId = null,
+        			curId = oldIds[0];
+        		snaps.push(this.snapshot('The traversal starts at the first node, with no previous node yet', oldNodes, {
+        			size: oldSize,
+        			ptrs: ptrsFor(prevId, curId),
+        			pause: true
+        		}));
+        		for (let k = 0; k < i; k++) {
+        			const oldCur = curId,
+        				nextCur = oldIds[k + 1],
+        				oldPtrs = ptrsFor(prevId, curId);
+        			snaps.push(this.snapshot('The previous pointer is advanced to the current node', oldNodes, {
+        				size: oldSize,
+        				ptrs: oldPtrs,
+        				flashPtrs: ['p_previous'],
+        				pause: true
+        			}));
+        			prevId = oldCur;
+        			const prevArrowUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+        			snaps.push(this.snapshot('The previous pointer now refers to the node just visited', oldNodes, {
+        				size: oldSize,
+        				ptrs: prevArrowUpdated,
+        				pause: true
+        			}));
+        			snaps.push(this.snapshot('The current pointer is advanced to the next node', oldNodes, {
+        				size: oldSize,
+        				ptrs: prevArrowUpdated,
+        				flashPtrs: ['p_current'],
+        				pause: true
+        			}));
+        			curId = nextCur;
+        			const bothArrowsUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+        			snaps.push(this.snapshot('The current pointer now refers to the next node', oldNodes, {
+        				size: oldSize,
+        				ptrs: bothArrowsUpdated,
+        				pause: true
+        			}));
+        			snaps.push(this.snapshot('The traversal pointers are positioned for the next step', oldNodes, {
+        				size: oldSize,
+        				ptrs: ptrsFor(prevId, curId),
+        				pause: true
+        			}));
+        		}
+        		const shiftedNodes = oldVals.map((val, j) => ({
+        			id: oldIds[j],
+        			e: val,
+        			index: j < i ? j : j + 1,
+        			x: b.x + (j + (j >= i ? 1 : 0)) * gap,
+        			y: b.y,
+        			next: j < oldIds.length - 1 ? oldIds[j + 1] : null
+        		}));
+        		const withShiftedPtrs = () => ptrsFor(oldIds[i - 1], oldIds[i], shiftedNodes);
+        		snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shiftedNodes, {
+        			size: oldSize,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		let pnode = {
+        			x: b.x + i * gap - GEOMETRY.PNODE_INSERT_LEFT_OF_TARGET,
+        			y: newNodeY,
+        			target: newId,
+        			label: 'p_node'
+        		};
+        		let newNode = {
+        			id: newId,
+        			e,
+        			index: i,
+        			x: b.x + i * gap,
+        			y: newNodeY,
+        			next: oldIds[i],
+        			flashNew: true
+        		};
+        		snaps.push(this.snapshot('A new node is allocated and linked to the node that will follow it', [...shiftedNodes, newNode], {
+        			size: oldSize,
+        			pnode,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		newNode = {
+        			...newNode,
+        			flashNew: false
+        		};
+        		snaps.push(this.snapshot('The previous node is ready to connect to the new node', [...shiftedNodes, newNode], {
+        			size: oldSize,
+        			pnode,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			flashPNext: oldIds[i - 1],
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		let linkedNodes = shiftedNodes.map(n => ({
+        			...n
+        		}));
+        		linkedNodes[i - 1].next = newId;
+        		snaps.push(this.snapshot('The previous node now points to the new node', [...linkedNodes, newNode], {
+        			size: oldSize,
+        			pnode,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		let newUp = {
+        			...newNode,
+        			y: b.y
+        		};
+        		snaps.push(this.snapshot('The new node is placed into the main list sequence', [...linkedNodes, newUp], {
+        			size: oldSize,
+        			pnode,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The node indices are about to be refreshed', [...linkedNodes, newUp], {
+        			size: oldSize,
+        			pnode,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			flashSize: true,
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The node indices have been refreshed', [...linkedNodes, newUp], {
+        			size: oldSize + 1,
+        			pnode,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The temporary pointers are deallocated after exiting the function', [...linkedNodes, newUp], {
+        			size: oldSize + 1,
+        			pnode,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			ptrs: withShiftedPtrs(),
+        			flashPNodeCross: true,
+        			flashAuxCross: true,
+        			preserveLinks: true,
+        			pause: true
+        		}));
+        		snaps.push(this.snapshot('The operation is complete', [...linkedNodes, newUp], {
+        			size: oldSize + 1,
+        			firstId: oldIds[0],
+        			lastId: oldIds.at(-1),
+        			preserveLinks: true
+        		}));
+        		this.values = [...oldVals];
+        		this.values.splice(i, 0, e);
+        		this.ids = [...oldIds];
+        		this.ids.splice(i, 0, newId);
+        		this.viz.enqueue(snaps);
+        		this.updateUI()
+        	}
+
+    del() {
+    		const i = parseInt(document.getElementById('idx').value);
+    		if (isNaN(i) || i < 0 || i >= this.values.length) return;
     		this.save();
-    		const oldVals = [...this.values],
-    			oldIds = [...this.ids],
-    			oldSize = oldVals.length,
-    			newId = nextId++;
-    		const b = this.viz.base(),
-    			gap = GEOMETRY.NODE_STEP,
-    			oldFirst = oldIds[0] ?? null;
-    		let snaps = [];
-    		let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-    		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, {
-    			size: oldSize
-    		}));
-    		let shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
-    		snaps.push(this.snapshot('Existing nodes are moved aside to make room for the new first node', shiftedOld, {
-    			size: oldSize,
-    			firstId: oldFirst,
-    			lastId: oldIds.at(-1) ?? null,
-    			pause: true
-    		}));
-    		let pnode = {
-    			x: b.x - GEOMETRY.PNODE_LEFT_OF_TARGET,
-    			y: b.up,
-    			target: newId
-    		};
-    		let newUp = {
-    			id: newId,
-    			e,
-    			index: 0,
-    			x: b.x,
-    			y: b.up,
-    			next: oldFirst,
-    			flashNew: true
-    		};
-    		snaps.push(this.snapshot('A new node is allocated and linked to the former first node', [newUp, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldFirst,
-    			lastId: oldIds.at(-1) ?? null,
-    			pause: true
-    		}));
-    		newUp = {
-    			...newUp,
-    			flashNew: false
-    		};
-    		snaps.push(this.snapshot(oldSize === 0 ? 'The list is empty, so p_first is ready to point to the new node' : 'p_first is ready to point to the new node', [newUp, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldFirst,
-    			lastId: oldIds.at(-1) ?? null,
-    			flashPFirst: true,
-    			flashPLast: oldSize === 0,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('p_first now points to the new first node', [newUp, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			firstId: newId,
-    			lastId: oldIds.at(-1) ?? newId,
-    			pause: true
-    		}));
-    		let newDown = {
-    			...newUp,
-    			y: b.y
-    		};
-    		snaps.push(this.snapshot('The new node is placed in its final list position', [newDown, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			firstId: newId,
-    			lastId: oldIds.at(-1) ?? newId,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The node indices are about to be refreshed', [newDown, ...shiftedOld], {
-    			size: oldSize,
-    			pnode,
-    			firstId: newId,
-    			lastId: oldIds.at(-1) ?? newId,
-    			flashSize: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The node indices have been refreshed', [newDown, ...shiftedOld], {
-    			size: oldSize + 1,
-    			pnode,
-    			firstId: newId,
-    			lastId: oldIds.at(-1) ?? newId,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The temporary pointer to the new node is deallocated after exiting the function', [newDown, ...shiftedOld], {
-    			size: oldSize + 1,
-    			pnode,
-    			firstId: newId,
-    			lastId: oldIds.at(-1) ?? newId,
-    			flashPNodeCross: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The operation is complete', [newDown, ...shiftedOld], {
-    			size: oldSize + 1,
-    			firstId: newId,
-    			lastId: oldIds.at(-1) ?? newId
-    		}));
-    		this.values = [e, ...oldVals];
-    		this.ids = [newId, ...oldIds];
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	},
-    	append() {
-    		const e = this.v();
-    		if (isNaN(e)) return;
-    		this.save();
-    		const oldVals = [...this.values],
-    			oldIds = [...this.ids],
-    			oldSize = oldVals.length,
-    			newId = nextId++;
+    		const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
     		const b = this.viz.base();
     		let snaps = [];
-    		let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-    		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, {
-    			size: oldSize
-    		}));
-    		let x = b.x + oldSize * GEOMETRY.NODE_STEP,
-    			y = b.up,
-    			pnode = {
-    				x: x - GEOMETRY.PNODE_LEFT_OF_TARGET,
-    				y,
-    				target: newId
-    			};
-    		let newNode = {
-    			id: newId,
-    			e,
-    			index: oldSize,
-    			x,
-    			y,
-    			next: null,
-    			flashNew: true
-    		};
-    		snaps.push(this.snapshot('A new node is allocated with no successor', [...oldNodes, newNode], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldIds[0] ?? null,
-    			lastId: oldIds.at(-1) ?? null,
-    			straightPLastArrow: oldSize === 1,
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		newNode = {
-    			...newNode,
-    			flashNew: false
-    		};
-    		if (oldSize === 0) {
-    			snaps.push(this.snapshot('The empty list will make the new node both first and last', [newNode], {
-    				size: 0,
-    				pnode,
-    				firstId: null,
-    				lastId: null,
-    				flashPFirst: true,
-    				flashPLast: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			let nd = {
-    				...newNode,
-    				y: b.y
-    			};
-    			snaps.push(this.snapshot('The new node becomes both the first and last node', [nd], {
-    				size: 0,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The node indices are about to be refreshed', [nd], {
-    				size: 0,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				flashSize: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The node indices have been refreshed', [nd], {
-    				size: 1,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The temporary pointer to the new node is deallocated after exiting the function', [nd], {
-    				size: 1,
-    				pnode,
-    				firstId: newId,
-    				lastId: newId,
-    				flashPNodeCross: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The operation is complete', [nd], {
-    				size: 1,
-    				firstId: newId,
-    				lastId: newId,
-    				preserveLinks: true
-    			}));
-    		} else {
-    			let last = oldNodes[oldNodes.length - 1];
-    			snaps.push(this.snapshot('The algorithm uses the last-node pointer to reach the current tail', [...oldNodes, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				markPLastArrow: true,
-    				straightPLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The current last node is ready to link to the new node', [...oldNodes, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				markPLastArrow: true,
-    				straightPLastArrow: oldSize === 1,
-    				flashPNext: last.id,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			let linkedOld = oldNodes.map(n => ({
-    				...n
-    			}));
-    			linkedOld[linkedOld.length - 1].next = newId;
-    			snaps.push(this.snapshot('The former last node now points to the new node', [...linkedOld, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				markPLastArrow: true,
-    				straightPLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The link from the former last node has been established', [...linkedOld, newNode], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				straightPLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			let nd = {
-    				...newNode,
-    				y: b.y
-    			};
-    			snaps.push(this.snapshot('The new node is placed in its final list position', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				straightPLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The list is ready to update its last-node pointer', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: oldIds.at(-1),
-    				flashPLast: true,
-    				straightPLastArrow: oldSize === 1,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The new node becomes the last node of the list', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The node indices are about to be refreshed', [...linkedOld, nd], {
-    				size: oldSize,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				flashSize: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The node indices have been refreshed', [...linkedOld, nd], {
-    				size: oldSize + 1,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The temporary pointer to the new node is deallocated after exiting the function', [...linkedOld, nd], {
-    				size: oldSize + 1,
-    				pnode,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				flashPNodeCross: true,
-    				preserveLinks: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The operation is complete', [...linkedOld, nd], {
-    				size: oldSize + 1,
-    				firstId: oldIds[0],
-    				lastId: newId,
-    				preserveLinks: true
-    			}));
-    		}
-    		this.values = [...oldVals, e];
-    		this.ids = [...oldIds, newId];
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	},
-    	insert() {
-    		const i = parseInt(document.getElementById('idx').value),
-    			e = this.v();
-    		if (isNaN(i) || isNaN(e) || i < 0 || i > this.values.length) return;
-    		if (i === 0) {
-    			this.prepend();
-    			return
-    		}
-    		if (i === this.values.length) {
-    			this.append();
-    			return
-    		}
-    		this.save();
-    		const oldVals = [...this.values],
-    			oldIds = [...this.ids],
-    			oldSize = oldVals.length,
-    			newId = nextId++;
-    		const b = this.viz.base(),
-    			gap = GEOMETRY.NODE_STEP,
-    			newNodeY = b.y + GEOMETRY.INSERT_NODE_VERTICAL_OFFSET;
-    		let snaps = [];
     		const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+    		const oldNodeMap = new Map(oldNodes.map(n => [n.id, n]));
     		const makePtr = (label, target, nodes, level = 0, fixedX = null, fixedY = null) => {
-    			const t = (nodes || []).find(n => n.id === target);
+    			const t = (nodes || []).find(n => n.id === target), oldT = oldNodeMap.get(target);
     			return {
     				label,
     				target,
-    				x: fixedX ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET),
-    				y: fixedY ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST)
+    				x: fixedX ?? (
+    					t
+    						? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET
+    						: (oldT ? oldT.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)
+    				),
+    				y: fixedY ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST - level * 0),
+    				targetX: t ? undefined : oldT?.x,
+    				targetY: t ? undefined : oldT?.y,
+    				dangling: target !== undefined && target !== null && !t && !!oldT
     			}
     		};
     		const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('p_previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('p_current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
-    		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, {
-    			size: oldSize
-    		}));
-    		let prevId = null,
-    			curId = oldIds[0];
-    		snaps.push(this.snapshot('The traversal starts at the first node, with no previous node yet', oldNodes, {
-    			size: oldSize,
-    			ptrs: ptrsFor(prevId, curId),
-    			pause: true
-    		}));
+    		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, { size: oldSize }));
+    		let prevId = null, curId = oldIds[0];
+    		snaps.push(this.snapshot('The traversal starts at the first node, with no previous node yet', oldNodes, { size: oldSize, ptrs: ptrsFor(prevId, curId), pause: true }));
     		for (let k = 0; k < i; k++) {
-    			const oldCur = curId,
-    				nextCur = oldIds[k + 1],
-    				oldPtrs = ptrsFor(prevId, curId);
-    			snaps.push(this.snapshot('The previous pointer is advanced to the current node', oldNodes, {
-    				size: oldSize,
-    				ptrs: oldPtrs,
-    				flashPtrs: ['p_previous'],
-    				pause: true
-    			}));
+    			const oldCur = curId, nextCur = oldIds[k + 1], oldPtrs = ptrsFor(prevId, curId);
+    			snaps.push(this.snapshot('The previous pointer is advanced to the current node', oldNodes, { size: oldSize, ptrs: oldPtrs, flashPtrs: ['p_previous'], pause: true }));
     			prevId = oldCur;
     			const prevArrowUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
-    			snaps.push(this.snapshot('The previous pointer now refers to the node just visited', oldNodes, {
-    				size: oldSize,
-    				ptrs: prevArrowUpdated,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The current pointer is advanced to the next node', oldNodes, {
-    				size: oldSize,
-    				ptrs: prevArrowUpdated,
-    				flashPtrs: ['p_current'],
-    				pause: true
-    			}));
+    			snaps.push(this.snapshot('The previous pointer now refers to the node just visited', oldNodes, { size: oldSize, ptrs: prevArrowUpdated, pause: true }));
+    			snaps.push(this.snapshot('The current pointer is advanced to the next node', oldNodes, { size: oldSize, ptrs: prevArrowUpdated, flashPtrs: ['p_current'], pause: true }));
     			curId = nextCur;
     			const bothArrowsUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
-    			snaps.push(this.snapshot('The current pointer now refers to the next node', oldNodes, {
-    				size: oldSize,
-    				ptrs: bothArrowsUpdated,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The traversal pointers are positioned for the next step', oldNodes, {
-    				size: oldSize,
-    				ptrs: ptrsFor(prevId, curId),
-    				pause: true
-    			}));
+    			snaps.push(this.snapshot('The current pointer now refers to the next node', oldNodes, { size: oldSize, ptrs: bothArrowsUpdated, pause: true }));
+    			snaps.push(this.snapshot('The traversal pointers are positioned for the next step', oldNodes, { size: oldSize, ptrs: ptrsFor(prevId, curId), pause: true }));
     		}
-    		const shiftedNodes = oldVals.map((val, j) => ({
-    			id: oldIds[j],
-    			e: val,
-    			index: j < i ? j : j + 1,
-    			x: b.x + (j + (j >= i ? 1 : 0)) * gap,
-    			y: b.y,
-    			next: j < oldIds.length - 1 ? oldIds[j + 1] : null
-    		}));
-    		const withShiftedPtrs = () => ptrsFor(oldIds[i - 1], oldIds[i], shiftedNodes);
-    		snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shiftedNodes, {
-    			size: oldSize,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		let pnode = {
-    			x: b.x + i * gap - GEOMETRY.PNODE_INSERT_LEFT_OF_TARGET,
-    			y: newNodeY,
-    			target: newId,
-    			label: 'p_node'
-    		};
-    		let newNode = {
-    			id: newId,
-    			e,
-    			index: i,
-    			x: b.x + i * gap,
-    			y: newNodeY,
-    			next: oldIds[i],
-    			flashNew: true
-    		};
-    		snaps.push(this.snapshot('A new node is allocated and linked to the node that will follow it', [...shiftedNodes, newNode], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		newNode = {
-    			...newNode,
-    			flashNew: false
-    		};
-    		snaps.push(this.snapshot('The previous node is ready to connect to the new node', [...shiftedNodes, newNode], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			flashPNext: oldIds[i - 1],
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		let linkedNodes = shiftedNodes.map(n => ({
-    			...n
-    		}));
-    		linkedNodes[i - 1].next = newId;
-    		snaps.push(this.snapshot('The previous node now points to the new node', [...linkedNodes, newNode], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		let newUp = {
-    			...newNode,
-    			y: b.y
-    		};
-    		snaps.push(this.snapshot('The new node is placed into the main list sequence', [...linkedNodes, newUp], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The node indices are about to be refreshed', [...linkedNodes, newUp], {
-    			size: oldSize,
-    			pnode,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			flashSize: true,
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The node indices have been refreshed', [...linkedNodes, newUp], {
-    			size: oldSize + 1,
-    			pnode,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The temporary pointers are deallocated after exiting the function', [...linkedNodes, newUp], {
-    			size: oldSize + 1,
-    			pnode,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			ptrs: withShiftedPtrs(),
-    			flashPNodeCross: true,
-    			flashAuxCross: true,
-    			preserveLinks: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The operation is complete', [...linkedNodes, newUp], {
-    			size: oldSize + 1,
-    			firstId: oldIds[0],
-    			lastId: oldIds.at(-1),
-    			preserveLinks: true
-    		}));
-    		this.values = [...oldVals];
-    		this.values.splice(i, 0, e);
-    		this.ids = [...oldIds];
-    		this.ids.splice(i, 0, newId);
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	},
-    	get() {
-    		const i = parseInt(document.getElementById('idx').value);
-    		if (isNaN(i) || i < 0 || i >= this.values.length) return;
-    		const b = this.viz.base();
-    		let snaps = [];
-    		const nodes = this.baseNodes();
-    		snaps.push(this.snapshot('The algorithm starts from the current list state', nodes, {
-    			size: this.values.length
-    		}));
-    		if (i === this.values.length - 1) {
-    			const lastId = this.ids.at(-1);
-    			snaps.push(this.snapshot('The algorithm uses last-node pointer to access the last node directly', nodes, {
-    				size: this.values.length,
-    				markPLastArrow: true,
-    				pause: true
-    			}));
-    			let found = nodes.map(n => n.id === lastId ? {
-    				...n,
-    				flashElement: true
-    			} : n);
-    			snaps.push(this.snapshot('The target node has been found: get(' + i + ') = ' + this.values[i], found, {
-    				size: this.values.length,
-    				markPLastArrow: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The lookup is complete: get(' + i + ') = ' + this.values[i], nodes, {
-    				size: this.values.length
-    			}));
-    			this.viz.enqueue(snaps);
-    			this.updateUI();
-    			return
+    		const currentNext = oldIds[i + 1] ?? null;
+    		let linkedNodes = oldNodes.map(n => ({ ...n }));
+    		let firstAfterLink = oldIds[0] ?? null, lastAfterLink = oldIds.at(-1) ?? null;
+    		const needsDetour = prevId !== null && currentNext !== null, firstNeedsDetour = prevId === null && currentNext !== null;
+    		if (prevId === null) {
+    			snaps.push(this.snapshot('The list is ready to bypass the first node', linkedNodes, { size: oldSize, firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, ptrs: ptrsFor(prevId, curId), flashPFirst: true, preserveLinks: true, pause: true }));
+    			firstAfterLink = currentNext;
+    			snaps.push(this.snapshot(firstNeedsDetour ? 'The first-node pointer is updated to bypass the removed node' : 'The first-node pointer is updated to the node after the removed node', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: oldIds.at(-1) ?? null, ptrs: ptrsFor(prevId, curId), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : 0, preserveLinks: true, pause: true }));
+    		} else {
+    			snaps.push(this.snapshot('The previous node is ready to connect to the new node', linkedNodes, { size: oldSize, firstId: oldIds[0], lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), flashPNext: prevId, preserveLinks: true, pause: true }));
+    			const prevNode = linkedNodes.find(n => n.id === prevId);
+    			if (prevNode) { prevNode.next = currentNext; prevNode.detourNext = needsDetour; prevNode.detourAmount = needsDetour ? 1 : 0 }
+    			snaps.push(this.snapshot(needsDetour ? 'The previous node is linked around the node being removed' : 'The previous node is linked to the node after the removed node', linkedNodes, { size: oldSize, firstId: oldIds[0], lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
     		}
-    		const makePtr = (target, fixed = null) => {
-    			const t = nodes.find(n => n.id === target);
-    			return {
-    				label: 'p_current',
-    				target,
-    				x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET),
-    				y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST)
-    			}
-    		};
-    		let curId = this.ids[0];
-    		snaps.push(this.snapshot('The traversal starts at the first node', nodes, {
-    			size: this.values.length,
-    			ptrs: [makePtr(curId)],
-    			pause: true
-    		}));
-    		for (let k = 0; k < i; k++) {
-    			const oldPtr = makePtr(curId),
-    				nextId = this.ids[k + 1];
-    			snaps.push(this.snapshot('The current pointer is advanced to the next node', nodes, {
-    				size: this.values.length,
-    				ptrs: [oldPtr],
-    				flashPtrs: ['p_current'],
-    				pause: true
-    			}));
-    			curId = nextId;
-    			snaps.push(this.snapshot('The current pointer now refers to the next node', nodes, {
-    				size: this.values.length,
-    				ptrs: [makePtr(curId, oldPtr)],
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The current pointer moves to the next node', nodes, {
-    				size: this.values.length,
-    				ptrs: [makePtr(curId)],
-    				pause: true
-    			}));
+    		if (curId === oldIds.at(-1)) {
+    			snaps.push(this.snapshot('The removed node has no successor, so only the bypass link is needed', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), flashPLast: true, preserveLinks: true, pause: true }));
+    			lastAfterLink = prevId;
+    			snaps.push(this.snapshot('The previous node now ends the list with p_next = NULL', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
     		}
-    		let found = nodes.map(n => n.id === curId ? {
-    			...n,
-    			flashElement: true
-    		} : n);
-    		snaps.push(this.snapshot('The target node has been found: get(' + i + ') = ' + this.values[i], found, {
-    			size: this.values.length,
-    			ptrs: [makePtr(curId)],
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The temporary traversal pointer is no longer needed', nodes, {
-    			size: this.values.length,
-    			ptrs: [makePtr(curId)],
-    			flashAuxCross: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The lookup is complete: get(' + i + ') = ' + this.values[i], nodes, {
-    			size: this.values.length
-    		}));
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	},
-    	set() {
-    		const i = parseInt(document.getElementById('idx').value),
-    			e = this.v();
-    		if (isNaN(i) || isNaN(e) || i < 0 || i >= this.values.length) return;
-    		this.save();
-    		const b = this.viz.base();
-    		let snaps = [];
-    		const oldVals = [...this.values],
-    			oldIds = [...this.ids];
-    		const nodes = this.baseNodes(oldVals, oldIds);
-    		snaps.push(this.snapshot('The algorithm starts from the current list state', nodes, {
-    			size: oldVals.length
-    		}));
-    		if (i === oldVals.length - 1) {
-    			const lastId = oldIds.at(-1);
-    			snaps.push(this.snapshot('The algorithm uses last-node pointer to access the last node directly', nodes, {
-    				size: oldVals.length,
-    				markPLastArrow: true,
-    				pause: true
-    			}));
-    			let before = nodes.map(n => n.id === lastId ? {
-    				...n,
-    				flashElement: true
-    			} : n);
-    			snaps.push(this.snapshot('The target node has been located and its value will be replaced', before, {
-    				size: oldVals.length,
-    				markPLastArrow: true,
-    				pause: true
-    			}));
-    			let newVals = [...oldVals];
-    			newVals[i] = e;
-    			let updated = this.baseNodes(newVals, oldIds);
-    			snaps.push(this.snapshot('The node value is updated to ' + e, updated, {
-    				size: oldVals.length,
-    				markPLastArrow: true,
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The operation is complete', updated, {
-    				size: oldVals.length
-    			}));
-    			this.values = newVals;
-    			this.viz.enqueue(snaps);
-    			this.updateUI();
-    			return
+    		const crossNodes = linkedNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
+    		const twoNodeDeleteFirst = oldSize === 2 && prevId === null && currentNext !== null;
+    		snaps.push(this.snapshot('The node selected for deletion is freed', crossNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
+    		let freedGoneNodes = linkedNodes.filter(n => n.id !== curId).map(n => ({ ...n }));
+    		snaps.push(this.snapshot('The released node is removed from the list representation', freedGoneNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, freedGoneNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
+    		let straightNodes = freedGoneNodes.map(n => n.id === prevId ? ({ ...n, detourNext: needsDetour, detourAmount: 0 }) : ({ ...n }));
+    		snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'The bypass link settles into its final shape' : 'The final link between the remaining nodes is established', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 0 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
+    		if (twoNodeDeleteFirst) {
+    			snaps.push(this.snapshot('The remaining pointer settles into its final shape', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: true, pFirstDetourAmount: 0, preserveLinks: true, pause: true }));
     		}
-    		const makePtr = (target, fixed = null, ns = nodes) => {
-    			const t = ns.find(n => n.id === target);
-    			return {
-    				label: 'p_current',
-    				target,
-    				x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET),
-    				y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST)
-    			}
-    		};
-    		let curId = oldIds[0];
-    		snaps.push(this.snapshot('The traversal starts at the first node', nodes, {
-    			size: oldVals.length,
-    			ptrs: [makePtr(curId)],
-    			pause: true
-    		}));
-    		for (let k = 0; k < i; k++) {
-    			const oldPtr = makePtr(curId),
-    				nextId = oldIds[k + 1];
-    			snaps.push(this.snapshot('The current pointer is advanced to the next node', nodes, {
-    				size: oldVals.length,
-    				ptrs: [oldPtr],
-    				flashPtrs: ['p_current'],
-    				pause: true
-    			}));
-    			curId = nextId;
-    			snaps.push(this.snapshot('The current pointer now refers to the next node', nodes, {
-    				size: oldVals.length,
-    				ptrs: [makePtr(curId, oldPtr)],
-    				pause: true
-    			}));
-    			snaps.push(this.snapshot('The current pointer moves to the next node', nodes, {
-    				size: oldVals.length,
-    				ptrs: [makePtr(curId)],
-    				pause: true
-    			}));
-    		}
-    		let before = nodes.map(n => n.id === curId ? {
-    			...n,
-    			flashElement: true
-    		} : n);
-    		snaps.push(this.snapshot('The target node has been located and its value will be replaced', before, {
-    			size: oldVals.length,
-    			ptrs: [makePtr(curId)],
-    			pause: true
-    		}));
-    		let newVals = [...oldVals];
-    		newVals[i] = e;
-    		let updated = this.baseNodes(newVals, oldIds);
-    		snaps.push(this.snapshot('The node value is updated to ' + e, updated, {
-    			size: oldVals.length,
-    			ptrs: [makePtr(curId, null, updated)],
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The temporary traversal pointer is no longer needed', updated, {
-    			size: oldVals.length,
-    			ptrs: [makePtr(curId, null, updated)],
-    			flashAuxCross: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('The operation is complete', updated, {
-    			size: oldVals.length
-    		}));
+    		const newVals = oldVals.filter((_, idx) => idx !== i), newIds = oldIds.filter((_, idx) => idx !== i), newFirst = newIds[0] ?? null, newLast = newIds.at(-1) ?? null;
+    		const compactNodes = this.baseNodes(newVals, newIds, 0, b.y);
+    		snaps.push(this.snapshot('The remaining nodes close the gap left by the removed node', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('The node indices are about to be refreshed', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashSize: true, preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('The node indices have been refreshed', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('The temporary pointers are deallocated after exiting the function', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashAuxCross: true, preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('The operation is complete', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true }));
     		this.values = newVals;
+    		this.ids = newIds;
     		this.viz.enqueue(snaps);
     		this.updateUI()
-    	},
-    	del() {
-		const i = parseInt(document.getElementById('idx').value);
-		if (isNaN(i) || i < 0 || i >= this.values.length) return;
-		this.save();
-		const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
-		const b = this.viz.base();
-		let snaps = [];
-		const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-		const oldNodeMap = new Map(oldNodes.map(n => [n.id, n]));
-		const makePtr = (label, target, nodes, level = 0, fixedX = null, fixedY = null) => {
-			const t = (nodes || []).find(n => n.id === target), oldT = oldNodeMap.get(target);
-			return {
-				label,
-				target,
-				x: fixedX ?? (
-					t
-						? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET
-						: (oldT ? oldT.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)
-				),
-				y: fixedY ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST - level * 0),
-				targetX: t ? undefined : oldT?.x,
-				targetY: t ? undefined : oldT?.y,
-				dangling: target !== undefined && target !== null && !t && !!oldT
-			}
-		};
-		const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('p_previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('p_current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
-		snaps.push(this.snapshot('The algorithm starts from the current list state', oldNodes, { size: oldSize }));
-		let prevId = null, curId = oldIds[0];
-		snaps.push(this.snapshot('The traversal starts at the first node, with no previous node yet', oldNodes, { size: oldSize, ptrs: ptrsFor(prevId, curId), pause: true }));
-		for (let k = 0; k < i; k++) {
-			const oldCur = curId, nextCur = oldIds[k + 1], oldPtrs = ptrsFor(prevId, curId);
-			snaps.push(this.snapshot('The previous pointer is advanced to the current node', oldNodes, { size: oldSize, ptrs: oldPtrs, flashPtrs: ['p_previous'], pause: true }));
-			prevId = oldCur;
-			const prevArrowUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
-			snaps.push(this.snapshot('The previous pointer now refers to the node just visited', oldNodes, { size: oldSize, ptrs: prevArrowUpdated, pause: true }));
-			snaps.push(this.snapshot('The current pointer is advanced to the next node', oldNodes, { size: oldSize, ptrs: prevArrowUpdated, flashPtrs: ['p_current'], pause: true }));
-			curId = nextCur;
-			const bothArrowsUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
-			snaps.push(this.snapshot('The current pointer now refers to the next node', oldNodes, { size: oldSize, ptrs: bothArrowsUpdated, pause: true }));
-			snaps.push(this.snapshot('The traversal pointers are positioned for the next step', oldNodes, { size: oldSize, ptrs: ptrsFor(prevId, curId), pause: true }));
-		}
-		const currentNext = oldIds[i + 1] ?? null;
-		let linkedNodes = oldNodes.map(n => ({ ...n }));
-		let firstAfterLink = oldIds[0] ?? null, lastAfterLink = oldIds.at(-1) ?? null;
-		const needsDetour = prevId !== null && currentNext !== null, firstNeedsDetour = prevId === null && currentNext !== null;
-		if (prevId === null) {
-			snaps.push(this.snapshot('The list is ready to bypass the first node', linkedNodes, { size: oldSize, firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, ptrs: ptrsFor(prevId, curId), flashPFirst: true, preserveLinks: true, pause: true }));
-			firstAfterLink = currentNext;
-			snaps.push(this.snapshot(firstNeedsDetour ? 'The first-node pointer is updated to bypass the removed node' : 'The first-node pointer is updated to the node after the removed node', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: oldIds.at(-1) ?? null, ptrs: ptrsFor(prevId, curId), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : 0, preserveLinks: true, pause: true }));
-		} else {
-			snaps.push(this.snapshot('The previous node is ready to connect to the new node', linkedNodes, { size: oldSize, firstId: oldIds[0], lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), flashPNext: prevId, preserveLinks: true, pause: true }));
-			const prevNode = linkedNodes.find(n => n.id === prevId);
-			if (prevNode) { prevNode.next = currentNext; prevNode.detourNext = needsDetour; prevNode.detourAmount = needsDetour ? 1 : 0 }
-			snaps.push(this.snapshot(needsDetour ? 'The previous node is linked around the node being removed' : 'The previous node is linked to the node after the removed node', linkedNodes, { size: oldSize, firstId: oldIds[0], lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
-		}
-		if (curId === oldIds.at(-1)) {
-			snaps.push(this.snapshot('The removed node has no successor, so only the bypass link is needed', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), flashPLast: true, preserveLinks: true, pause: true }));
-			lastAfterLink = prevId;
-			snaps.push(this.snapshot('The previous node now ends the list with p_next = NULL', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
-		}
-		const crossNodes = linkedNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
-		const twoNodeDeleteFirst = oldSize === 2 && prevId === null && currentNext !== null;
-		snaps.push(this.snapshot('The node selected for deletion is freed', crossNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
-		let freedGoneNodes = linkedNodes.filter(n => n.id !== curId).map(n => ({ ...n }));
-		snaps.push(this.snapshot('The released node is removed from the list representation', freedGoneNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, freedGoneNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
-		let straightNodes = freedGoneNodes.map(n => n.id === prevId ? ({ ...n, detourNext: needsDetour, detourAmount: 0 }) : ({ ...n }));
-		snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'The bypass link settles into its final shape' : 'The final link between the remaining nodes is established', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 0 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
-		if (twoNodeDeleteFirst) {
-			snaps.push(this.snapshot('The remaining pointer settles into its final shape', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: true, pFirstDetourAmount: 0, preserveLinks: true, pause: true }));
-		}
-		const newVals = oldVals.filter((_, idx) => idx !== i), newIds = oldIds.filter((_, idx) => idx !== i), newFirst = newIds[0] ?? null, newLast = newIds.at(-1) ?? null;
-		const compactNodes = this.baseNodes(newVals, newIds, 0, b.y);
-		snaps.push(this.snapshot('The remaining nodes close the gap left by the removed node', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
-		snaps.push(this.snapshot('The node indices are about to be refreshed', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashSize: true, preserveLinks: true, pause: true }));
-		snaps.push(this.snapshot('The node indices have been refreshed', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
-		snaps.push(this.snapshot('The temporary pointers are deallocated after exiting the function', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashAuxCross: true, preserveLinks: true, pause: true }));
-		snaps.push(this.snapshot('The operation is complete', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true }));
-		this.values = newVals;
-		this.ids = newIds;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	demoPrepend() {
-    		document.getElementById('val').value = 5;
-    		this.values = [4, 8, 2];
-    		this.ids = this.values.map(_ => nextId++);
-    		this.viz.sn = [];
-    		this.viz.idx = -1;
-    		this.viz.pending = [];
-    		this.viz.state = 'IDLE';
-    		this.prepend()
-    	},
-    	demoAppend() {
-    		document.getElementById('val').value = 5;
-    		this.values = [4, 8, 2];
-    		this.ids = this.values.map(_ => nextId++);
-    		this.viz.sn = [];
-    		this.viz.idx = -1;
-    		this.viz.pending = [];
-    		this.viz.state = 'IDLE';
-    		this.append()
-    	},
-    	randomFill() {
-    		this.values = [];
-			let sz = Math.floor(Math.random() * 4) + 2;
-    		while (this.values.length < sz) {
-    			let v = Math.floor(Math.random() * 9) + 1;
-    			if (!this.values.includes(v)) this.values.push(v)
+    	}
+
+    demoPrepend() {
+        		document.getElementById('val').value = 5;
+        		this.values = [4, 8, 2];
+        		this.ids = this.values.map(_ => nextId++);
+        		this.viz.sn = [];
+        		this.viz.idx = -1;
+        		this.viz.pending = [];
+        		this.viz.state = 'IDLE';
+        		this.prepend()
+        	}
+
+    demoAppend() {
+        		document.getElementById('val').value = 5;
+        		this.values = [4, 8, 2];
+        		this.ids = this.values.map(_ => nextId++);
+        		this.viz.sn = [];
+        		this.viz.idx = -1;
+        		this.viz.pending = [];
+        		this.viz.state = 'IDLE';
+        		this.append()
+        	}
+
+    randomFill() {
+        		this.values = [];
+    			let sz = Math.floor(Math.random() * 4) + 2;
+        		while (this.values.length < sz) {
+        			let v = Math.floor(Math.random() * 9) + 1;
+        			if (!this.values.includes(v)) this.values.push(v)
+        		}
+    			if (Math.random() < 0.33) {
+    				this.values.sort()
+    			}
+        	}
+
+    random() {
+        		this.save();
+        		this.values = [];
+    			this.randomFill()
+        		this.ids = this.values.map(_ => nextId++);
+        		this.showCurrent('A random sample list has been created');
+        		this.updateUI()
+        	}
+
+    new() {
+        		this.save();
+        		this.values = [];
+        		this.ids = [];
+        		this.showCurrent('A new empty list has been initialized');
+        		this.updateUI()
+        	}
+
+    undo() {
+        		if (!this.history.length) return;
+        		const h = this.history.pop();
+        		this.values = h.values;
+        		this.ids = h.ids;
+        		this.showCurrent('The previous list state has been restored');
+        		this.updateUI()
+        	}
+
+    speed() {
+        		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+        	}
+
+    pause() {
+        		const p = this.viz.togglePause();
+        		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
+        	}
+
+    toggleModal() {
+        		const m = document.getElementById('helpModal');
+        		m.style.display = m.style.display === 'block' ? 'none' : 'block'
+        	}
+
+    clearInputs() {
+    			document.getElementById('val').value = '';
+    			document.getElementById('idx').value = '';
     		}
-			if (Math.random() < 0.33) {
-				this.values.sort()
-			}
-    	},
-    	random() {
-    		this.save();
-    		this.values = [];
-			this.randomFill()
-    		this.ids = this.values.map(_ => nextId++);
-    		this.showCurrent('A random sample list has been created');
-    		this.updateUI()
-    	},
-    	clear() {
-    		this.save();
-    		this.values = [];
-    		this.ids = [];
-    		this.showCurrent('The list has been cleared');
-    		this.updateUI()
-    	},
-		new() {
-    		this.save();
-    		this.values = [];
-    		this.ids = [];
-    		this.showCurrent('A new empty list has been initialized');
-    		this.updateUI()
-    	},
-		undo() {
-    		if (!this.history.length) return;
-    		const h = this.history.pop();
-    		this.values = h.values;
-    		this.ids = h.ids;
-    		this.showCurrent('The previous list state has been restored');
-    		this.updateUI()
-    	},
-    	speed() {
-    		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
-    	},
-    	pause() {
-    		const p = this.viz.togglePause();
-    		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
-    	},
-    	toggleModal() {
-    		const m = document.getElementById('helpModal');
-    		m.style.display = m.style.display === 'block' ? 'none' : 'block'
-    	},
-    	updateUI() {
-    		document.getElementById('btnUndo').disabled = this.history.length === 0
-    	},
-		clearInputs() {
-			document.getElementById('val').value = '';
-			document.getElementById('idx').value = '';
-		}
-    }
-    ;
 
-/* === p_first-only overrides + sorted_insert. Leading semicolon prevents object-literal call errors. === */
-(function () {
-    const GAP = GEOMETRY.NODE_STEP;
-
-    Viz.prototype.drawStructBoxes = function (s) {
-        const c = this.ctx, x = GEOMETRY.STRUCT_X,
-    				y = GEOMETRY.STRUCT_Y, w = this.cell, h = this.cell;
-        c.save();
-        c.fillStyle = K.k; c.font = DRAW.STRUCT_LABEL_FONT; c.textAlign = 'right'; c.textBaseline = 'middle';
-        c.fillText('p_first', x - DRAW.STRUCT_LABEL_GAP, y + h / 2);
-        c.fillStyle = K.c; c.fillRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO);
-        c.fillStyle = s.firstDangling ? K.d : K.b; c.beginPath(); c.arc(x + w / 2, y + h / 2, DRAW.POINTER_DOT_RADIUS, 0, Math.PI * 2); c.fill();
-        c.restore()
-    };
-
-    Viz.prototype.drawStructArrows = function (s) {
-        const x = GEOMETRY.STRUCT_X,
-    				y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell, f = this.nodeById(s, s.firstId);
-        if (f) {
-            const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-            if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3, amount);
-            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, 3)
+    append() {
+            const e = this.v();
+            if (isNaN(e)) return;
+            this.save();
+            const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
+            const b = this.viz.base();
+            const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+            const snaps = [this.snapshot('The algorithm starts from the current list state', oldNodes)];
+            let newNode = { id: newId, e, index: oldSize, x: b.x + oldSize * GEOMETRY.NODE_STEP, y: b.up, next: null, flashNew: true };
+            const pnode = { x: newNode.x - GEOMETRY.PNODE_LEFT_OF_TARGET, y: b.up, target: newId, label: 'p_node' };
+            snaps.push(this.snapshot('A new node is allocated with p_next = NULL', [...oldNodes, newNode], { pnode, firstId: oldIds[0] ?? null, preserveLinks: true, pause: true }));
+            newNode = { ...newNode, flashNew: false };
+            if (oldSize === 0) {
+                const nd = { ...newNode, y: b.y };
+                snaps.push(this.snapshot('The list is empty, so p_first is ready to point to the new node', [newNode], { pnode, firstId: null, flashPFirst: true, preserveLinks: true, pause: true }));
+    snaps.push(this.snapshot(
+        'p_first now points to the new node',
+        [nd],
+        {
+            pnode,
+            firstId: newId,
+            preserveLinks: true,
+            pause: true
         }
-    };
-
-    Viz.prototype.drawOverlays = function (s) {
-        if (s.flashPFirst) this.flashStruct(0);
-        (s.nodes || []).forEach(n => {
-            if (n.flashNew) this.roundFlash(n.x - DRAW.FLASH_NODE_PADDING, n.y - DRAW.FLASH_NODE_PADDING, this.nodeW + 2 * DRAW.FLASH_NODE_PADDING, this.cell + 2 * DRAW.FLASH_NODE_PADDING);
-            if (n.flashPNext || s.flashPNext === n.id) this.flashCircle(n.x + this.cell + this.cell / 2, n.y + this.cell / 2, DRAW.FLASH_NEXT_RADIUS);
-            if (n.flashElement) this.roundFlash(n.x - DRAW.FLASH_ELEMENT_TIGHT_PADDING, n.y - DRAW.FLASH_ELEMENT_TIGHT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_TIGHT_PADDING, this.cell + 2 * DRAW.FLASH_ELEMENT_TIGHT_PADDING);
-            if (n.flashNodeCross) this.cross(n.x, n.y, this.nodeW, this.cell)
-        });
-        if (s.flashPNodeCross && s.pnode) this.cross(s.pnode.x, s.pnode.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT);
-        if (s.flashAuxCross)(s.ptrs || []).forEach(p => this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT));
-        if (s.flashPtrs)(s.ptrs || []).forEach(p => { if (s.flashPtrs.includes(p.label)) this.flashCircle(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.FLASH_POINTER_RADIUS) })
-    };
-
-    app.snapshot = function (text, nodes, extra = {}) {
-        nodes = nodes.map(n => ({ ...n }));
-        if (!extra.preserveLinks) relink(nodes);
-        return { nodes, firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null), text, ...extra }
-    };
-
-    app.isSortedAscending = function () {
-        for (let i = 1; i < this.values.length; i++) if (this.values[i - 1] > this.values[i]) return false;
-        return true
-    };
-
-    app.updateUI = function () {
-        document.getElementById('btnUndo').disabled = this.history.length === 0;
-        const b = document.getElementById('btnSortedInsert');
-        if (b) {
-            const ok = this.isSortedAscending();
-            b.disabled = !ok;
-            b.title = ok ? 'Insert the value preserving ascending order.' : 'Disabled: the current list is not sorted ascending.';
-            b.setAttribute('aria-label', b.title)
-        }
-    };
-
-    app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
-        const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
-        return { label, target, x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : (fallbackX ?? b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)), y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST) }
-    };
-
-    app.append = function () {
-        const e = this.v();
-        if (isNaN(e)) return;
-        this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
-        const b = this.viz.base();
-        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        const snaps = [this.snapshot('The algorithm starts from the current list state', oldNodes)];
-        let newNode = { id: newId, e, index: oldSize, x: b.x + oldSize * GAP, y: b.up, next: null, flashNew: true };
-        const pnode = { x: newNode.x - GEOMETRY.PNODE_LEFT_OF_TARGET, y: b.up, target: newId, label: 'p_node' };
-        snaps.push(this.snapshot('A new node is allocated with p_next = NULL', [...oldNodes, newNode], { pnode, firstId: oldIds[0] ?? null, preserveLinks: true, pause: true }));
-        newNode = { ...newNode, flashNew: false };
-        if (oldSize === 0) {
-            const nd = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('The list is empty, so p_first is ready to point to the new node', [newNode], { pnode, firstId: null, flashPFirst: true, preserveLinks: true, pause: true }));
-snaps.push(this.snapshot(
-    'p_first now points to the new node',
-    [nd],
-    {
-        pnode,
-        firstId: newId,
-        preserveLinks: true,
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The temporary pointer p_node is deallocated after exiting the function',
-    [nd],
-    {
-        pnode,
-        firstId: newId,
-        flashPNodeCross: true,
-        preserveLinks: true,
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The operation is complete',
-    [nd],
-    {
-        firstId: newId,
-        preserveLinks: true
-    }
-));
-        } else {
-            const makePtr = (target, fixed = null, ns = oldNodes) => this._ptr('p_current', target, ns, fixed);
-            let curId = oldIds[0];
-            snaps.push(this.snapshot('Because there is no last-node pointer, traversal starts at p_first', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], preserveLinks: true, pause: true }));
-            for (let k = 0; k < oldSize - 1; k++) {
-                const oldPtr = makePtr(curId);
-                snaps.push(this.snapshot('p_current advances through p_next looking for the last node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [oldPtr], flashPtrs: ['p_current'], preserveLinks: true, pause: true }));
-                curId = oldIds[k + 1];
-                snaps.push(this.snapshot('p_current now refers to the next node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId, oldPtr)], preserveLinks: true, pause: true }));
-                snaps.push(this.snapshot('The traversal continues from this node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], preserveLinks: true, pause: true }));
-            }
-            snaps.push(this.snapshot('The last node has been found: its p_next is ready to change', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], flashPNext: curId, preserveLinks: true, pause: true }));
-            const linked = oldNodes.map(n => ({ ...n })); linked[linked.length - 1].next = newId;
-            const nd = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('The former last node now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId, null, linked)], preserveLinks: true, pause: true }));
-const finalPtr = makePtr(curId, null, linked);
-
-snaps.push(this.snapshot(
-    'The new node is placed in its final list position',
-    [...linked, nd],
-    {
-        pnode,
-        firstId: oldIds[0],
-        ptrs: [finalPtr],
-        preserveLinks: true,
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The temporary pointers are deallocated after exiting the function',
-    [...linked, nd],
-    {
-        pnode,
-        firstId: oldIds[0],
-        ptrs: [finalPtr],
-        flashPNodeCross: true,
-        flashAuxCross: true,
-        preserveLinks: true,
-        pause: true
-    }
-));
-
-
-snaps.push(this.snapshot(
-    'The operation is complete',
-    [...linked, nd],
-    {
-        firstId: oldIds[0],
-        preserveLinks: true
-    }
-));
-
-        }
-        this.values = [...oldVals, e]; this.ids = [...oldIds, newId]; this.viz.enqueue(snaps); this.updateUI()
-    };
-
-    app.get = function () {
-        const i = parseInt(document.getElementById('idx').value);
-        if (isNaN(i) || i < 0 || i >= this.values.length) return;
-        const nodes = this.baseNodes();
-        const snaps = [this.snapshot('The algorithm starts from the current list state', nodes)];
-        const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed);
-        let curId = this.ids[0];
-        snaps.push(this.snapshot('Traversal starts at p_first', nodes, { ptrs: [makePtr(curId)], pause: true }));
-        for (let k = 0; k < i; k++) {
-            const oldPtr = makePtr(curId);
-            snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [oldPtr], flashPtrs: ['p_current'], pause: true }));
-            curId = this.ids[k + 1];
-            snaps.push(this.snapshot('p_current now refers to the next node', nodes, { ptrs: [makePtr(curId, oldPtr)], pause: true }));
-            snaps.push(this.snapshot('The traversal continues from this node', nodes, { ptrs: [makePtr(curId)], pause: true }));
-        }
-const finalPtr = makePtr(curId);
-
-snaps.push(this.snapshot(
-    'The target node has been found: get(' + i + ') = ' + this.values[i],
-    nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n),
-    {
-        ptrs: [finalPtr],
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The temporary traversal pointer p_current is deallocated after exiting the function',
-    nodes,
-    {
-        ptrs: [finalPtr],
-        flashAuxCross: true,
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The lookup is complete: get(' + i + ') = ' + this.values[i],
-    nodes
-));
-        this.viz.enqueue(snaps); this.updateUI()
-    };
-
-    app.set = function () {
-        const i = parseInt(document.getElementById('idx').value), e = this.v();
-        if (isNaN(i) || isNaN(e) || i < 0 || i >= this.values.length) return;
-        this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], nodes = this.baseNodes(oldVals, oldIds);
-        const snaps = [this.snapshot('The algorithm starts from the current list state', nodes)];
-        const makePtr = (target, fixed = null, ns = nodes) => this._ptr('p_current', target, ns, fixed);
-        let curId = oldIds[0];
-        snaps.push(this.snapshot('Traversal starts at p_first', nodes, { ptrs: [makePtr(curId)], pause: true }));
-        for (let k = 0; k < i; k++) {
-            const oldPtr = makePtr(curId);
-            snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [oldPtr], flashPtrs: ['p_current'], pause: true }));
-            curId = oldIds[k + 1];
-            snaps.push(this.snapshot('p_current now refers to the next node', nodes, { ptrs: [makePtr(curId, oldPtr)], pause: true }));
-            snaps.push(this.snapshot('The traversal continues from this node', nodes, { ptrs: [makePtr(curId)], pause: true }));
-        }
-        snaps.push(this.snapshot('The target node has been located and its value will be replaced', nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n), { ptrs: [makePtr(curId)], pause: true }));
-const newVals = [...oldVals];
-newVals[i] = e;
-
-const updated = this.baseNodes(newVals, oldIds);
-const finalPtr = makePtr(curId, null, updated);
-
-snaps.push(this.snapshot(
-    'The node value is updated to ' + e,
-    updated,
-    {
-        ptrs: [finalPtr],
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The temporary traversal pointer p_current is deallocated after exiting the function',
-    updated,
-    {
-        ptrs: [finalPtr],
-        flashAuxCross: true,
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The operation is complete',
-    updated
-));
-        this.values = newVals; this.viz.enqueue(snaps); this.updateUI()
-    };
-
-    app.sorted_insert = function () {
-        const e = this.v();
-        if (isNaN(e) || !this.isSortedAscending()) return;
-        this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
-        const b = this.viz.base(), newNodeY = b.y + GEOMETRY.INSERT_NODE_VERTICAL_OFFSET;
-        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        const snaps = [this.snapshot('The list is sorted ascending, so sorted_insert can start', oldNodes)];
-const currentNullX = b.x + oldSize * GAP - 50;
-
-const makePtr = (label, target, nodes = oldNodes, fixed = null) => {
-    const nullX = label === 'p_current'
-        ? currentNullX
-        : b.x - GEOMETRY.PREVIOUS_NULL_POINTER_X_OFFSET;
-
-    return this._ptr(
-        label,
-        target,
-        nodes,
-        fixed,
-        target === null ? nullX : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET
-    );
-};
-        const ptrsFor = (prev, cur, nodes = oldNodes, fp = null, fc = null) => [makePtr('p_previous', prev, nodes, fp), makePtr('p_current', cur, nodes, fc)];
-        let prevId = null, curId = oldIds[0] ?? null, pos = 0;
-        snaps.push(this.snapshot('p_previous starts as NULL and p_current starts at p_first', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
-        while (pos < oldSize && oldVals[pos] <= e) {
-            const oldCur = curId, nextCur = oldIds[pos + 1] ?? null, oldPtrs = ptrsFor(prevId, curId);
-            snaps.push(this.snapshot('The current value is smaller than or equal to ' + e + ', so the search advances', oldNodes, { ptrs: oldPtrs, flashElement: oldCur, pause: true }));
-            snaps.push(this.snapshot('p_previous is advanced to p_current', oldNodes, { ptrs: oldPtrs, flashPtrs: ['p_previous'], pause: true }));
-            prevId = oldCur;
-            const prevUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
-            snaps.push(this.snapshot('p_previous now refers to the node just visited', oldNodes, { ptrs: prevUpdated, pause: true }));
-            snaps.push(this.snapshot('p_current is advanced to the next node', oldNodes, { ptrs: prevUpdated, flashPtrs: ['p_current'], pause: true }));
-            curId = nextCur; pos++;
-            const currentUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
-            snaps.push(this.snapshot(curId === null ? 'p_current is now NULL: the new value belongs at the end' : 'p_current now refers to the next node', oldNodes, { ptrs: currentUpdated, pause: true }));
-            snaps.push(this.snapshot('The traversal pointers are positioned for the next comparison', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
-        }
-        snaps.push(this.snapshot(curId !== null ? 'The first node larger than ' + e + ' has been found' : 'No remaining node is greater than ' + e + ', so insertion will be at the end', oldNodes, { ptrs: ptrsFor(prevId, curId), flashElement: curId ?? undefined, pause: true }));
-        const shifted = oldVals.map((val, j) => ({ id: oldIds[j], e: val, index: j < pos ? j : j + 1, x: b.x + (j + (j >= pos ? 1 : 0)) * GAP, y: b.y, next: j < oldIds.length - 1 ? oldIds[j + 1] : null }));
-        snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shifted, { firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
-        const pnode = { x: b.x + pos * GAP - GEOMETRY.PNODE_INSERT_LEFT_OF_TARGET, y: newNodeY, target: newId, label: 'p_node' };
-        let newNode = { id: newId, e, index: pos, x: b.x + pos * GAP, y: newNodeY, next: curId, flashNew: true };
-        snaps.push(this.snapshot('A new node is allocated and its p_next points to p_current', [...shifted, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
-        newNode = { ...newNode, flashNew: false };
-        let linked = shifted.map(n => ({ ...n }));
-        let newFirst = oldIds[0] ?? newId;
-        if (prevId === null) {
-            snaps.push(this.snapshot('The new value belongs before the current first node, so p_first must change', [...linked, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), flashPFirst: true, preserveLinks: true, pause: true }));
-            newFirst = newId;
-            snaps.push(this.snapshot('p_first now points to the new node', [...linked, newNode], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
-        } else {
-            snaps.push(this.snapshot('p_previous is ready to link to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), flashPNext: prevId, preserveLinks: true, pause: true }));
-            const prevNode = linked.find(n => n.id === prevId); if (prevNode) prevNode.next = newId;
-            snaps.push(this.snapshot('p_previous->p_next now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
-        }
-        const newUp = { ...newNode, y: b.y };
-        snaps.push(this.snapshot('The new node is placed into the main list sequence', [...linked, newUp], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
-        const newVals = [...oldVals], newIds = [...oldIds]; newVals.splice(pos, 0, e); newIds.splice(pos, 0, newId);
-const compact = this.baseNodes(newVals, newIds, 0, b.y);
-
-// Mantener posiciones finales de los punteros temporales.
-// Uso 'shifted' para que, si p_current === NULL, no se recalcule más a la derecha
-// al pasar a 'compact', que ya tiene un nodo más.
-const finalPtrs = ptrsFor(prevId, curId, shifted);
-
-snaps.push(this.snapshot(
-    'The list remains sorted ascending after the insertion',
-    compact,
-    {
-        firstId: newIds[0] ?? null,
-        pnode,
-        ptrs: finalPtrs,
-        preserveLinks: true,
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The temporary pointers are deallocated after exiting the function',
-    compact,
-    {
-        firstId: newIds[0] ?? null,
-        pnode,
-        ptrs: finalPtrs,
-        flashPNodeCross: true,
-        flashAuxCross: true,
-        preserveLinks: true,
-        pause: true
-    }
-));
-
-snaps.push(this.snapshot(
-    'The operation is complete',
-    compact,
-    {
-        firstId: newIds[0] ?? null,
-        preserveLinks: true
-    }
-));
-        this.values = newVals; this.ids = newIds; this.viz.enqueue(snaps); this.updateUI()
-    };
-})();
-
+    ));
     
-;
-/* === Length operation with green counter box: fixed local LEN_GAP === */
-(function () {
-    const LEN_GAP = GEOMETRY.NODE_STEP;
+    snaps.push(this.snapshot(
+        'The temporary pointer p_node is deallocated after exiting the function',
+        [nd],
+        {
+            pnode,
+            firstId: newId,
+            flashPNodeCross: true,
+            preserveLinks: true,
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The operation is complete',
+        [nd],
+        {
+            firstId: newId,
+            preserveLinks: true
+        }
+    ));
+            } else {
+                const makePtr = (target, fixed = null, ns = oldNodes) => this._ptr('p_current', target, ns, fixed);
+                let curId = oldIds[0];
+                snaps.push(this.snapshot('Because there is no last-node pointer, traversal starts at p_first', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], preserveLinks: true, pause: true }));
+                for (let k = 0; k < oldSize - 1; k++) {
+                    const oldPtr = makePtr(curId);
+                    snaps.push(this.snapshot('p_current advances through p_next looking for the last node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [oldPtr], flashPtrs: ['p_current'], preserveLinks: true, pause: true }));
+                    curId = oldIds[k + 1];
+                    snaps.push(this.snapshot('p_current now refers to the next node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId, oldPtr)], preserveLinks: true, pause: true }));
+                    snaps.push(this.snapshot('The traversal continues from this node', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], preserveLinks: true, pause: true }));
+                }
+                snaps.push(this.snapshot('The last node has been found: its p_next is ready to change', [...oldNodes, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId)], flashPNext: curId, preserveLinks: true, pause: true }));
+                const linked = oldNodes.map(n => ({ ...n })); linked[linked.length - 1].next = newId;
+                const nd = { ...newNode, y: b.y };
+                snaps.push(this.snapshot('The former last node now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: [makePtr(curId, null, linked)], preserveLinks: true, pause: true }));
+    const finalPtr = makePtr(curId, null, linked);
+    
+    snaps.push(this.snapshot(
+        'The new node is placed in its final list position',
+        [...linked, nd],
+        {
+            pnode,
+            firstId: oldIds[0],
+            ptrs: [finalPtr],
+            preserveLinks: true,
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The temporary pointers are deallocated after exiting the function',
+        [...linked, nd],
+        {
+            pnode,
+            firstId: oldIds[0],
+            ptrs: [finalPtr],
+            flashPNodeCross: true,
+            flashAuxCross: true,
+            preserveLinks: true,
+            pause: true
+        }
+    ));
+    
+    
+    snaps.push(this.snapshot(
+        'The operation is complete',
+        [...linked, nd],
+        {
+            firstId: oldIds[0],
+            preserveLinks: true
+        }
+    ));
+    
+            }
+            this.values = [...oldVals, e]; this.ids = [...oldIds, newId]; this.viz.enqueue(snaps); this.updateUI()
+        
+        }
 
-    if (!Viz.prototype.drawLengthBox) {
-        Viz.prototype.drawLengthBox = function (box) {
-            const c = this.ctx;
-            const x = box.x, y = box.y, w = box.w ?? this.cell, h = box.h ?? this.cell;
-            c.save();
-            c.fillStyle = K.k;
-            c.font = DRAW.STRUCT_LABEL_FONT;
-            c.textAlign = 'right';
-            c.textBaseline = 'middle';
-            c.fillText(box.label ?? 'size', x - DRAW.STRUCT_LABEL_GAP, y + h / 2);
-            c.fillStyle = K.g;
-            c.fillRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO);
-            c.fillStyle = K.r;
-            c.font = DRAW.SIZE_VALUE_FONT;
-            c.textAlign = 'center';
-            c.fillText(String(box.value ?? 0), x + w / 2, y + h / 2 + DRAW.NODE_VALUE_BASELINE_OFFSET);
-            c.restore()
-        };
+    get() {
+            const i = parseInt(document.getElementById('idx').value);
+            if (isNaN(i) || i < 0 || i >= this.values.length) return;
+            const nodes = this.baseNodes();
+            const snaps = [this.snapshot('The algorithm starts from the current list state', nodes)];
+            const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed);
+            let curId = this.ids[0];
+            snaps.push(this.snapshot('Traversal starts at p_first', nodes, { ptrs: [makePtr(curId)], pause: true }));
+            for (let k = 0; k < i; k++) {
+                const oldPtr = makePtr(curId);
+                snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [oldPtr], flashPtrs: ['p_current'], pause: true }));
+                curId = this.ids[k + 1];
+                snaps.push(this.snapshot('p_current now refers to the next node', nodes, { ptrs: [makePtr(curId, oldPtr)], pause: true }));
+                snaps.push(this.snapshot('The traversal continues from this node', nodes, { ptrs: [makePtr(curId)], pause: true }));
+            }
+    const finalPtr = makePtr(curId);
+    
+    snaps.push(this.snapshot(
+        'The target node has been found: get(' + i + ') = ' + this.values[i],
+        nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n),
+        {
+            ptrs: [finalPtr],
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The temporary traversal pointer p_current is deallocated after exiting the function',
+        nodes,
+        {
+            ptrs: [finalPtr],
+            flashAuxCross: true,
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The lookup is complete: get(' + i + ') = ' + this.values[i],
+        nodes
+    ));
+            this.viz.enqueue(snaps); this.updateUI()
+        
+        }
 
-        const previousDrawOverlaysLength = Viz.prototype.drawOverlays;
-        Viz.prototype.drawOverlays = function (s) {
-            if (s.lengthBox) this.drawLengthBox(s.lengthBox);
-            previousDrawOverlaysLength.call(this, s)
-        };
-    }
+    set() {
+            const i = parseInt(document.getElementById('idx').value), e = this.v();
+            if (isNaN(i) || isNaN(e) || i < 0 || i >= this.values.length) return;
+            this.save();
+            const oldVals = [...this.values], oldIds = [...this.ids], nodes = this.baseNodes(oldVals, oldIds);
+            const snaps = [this.snapshot('The algorithm starts from the current list state', nodes)];
+            const makePtr = (target, fixed = null, ns = nodes) => this._ptr('p_current', target, ns, fixed);
+            let curId = oldIds[0];
+            snaps.push(this.snapshot('Traversal starts at p_first', nodes, { ptrs: [makePtr(curId)], pause: true }));
+            for (let k = 0; k < i; k++) {
+                const oldPtr = makePtr(curId);
+                snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [oldPtr], flashPtrs: ['p_current'], pause: true }));
+                curId = oldIds[k + 1];
+                snaps.push(this.snapshot('p_current now refers to the next node', nodes, { ptrs: [makePtr(curId, oldPtr)], pause: true }));
+                snaps.push(this.snapshot('The traversal continues from this node', nodes, { ptrs: [makePtr(curId)], pause: true }));
+            }
+            snaps.push(this.snapshot('The target node has been located and its value will be replaced', nodes.map(n => n.id === curId ? { ...n, flashElement: true } : n), { ptrs: [makePtr(curId)], pause: true }));
+    const newVals = [...oldVals];
+    newVals[i] = e;
+    
+    const updated = this.baseNodes(newVals, oldIds);
+    const finalPtr = makePtr(curId, null, updated);
+    
+    snaps.push(this.snapshot(
+        'The node value is updated to ' + e,
+        updated,
+        {
+            ptrs: [finalPtr],
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The temporary traversal pointer p_current is deallocated after exiting the function',
+        updated,
+        {
+            ptrs: [finalPtr],
+            flashAuxCross: true,
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The operation is complete',
+        updated
+    ));
+            this.values = newVals; this.viz.enqueue(snaps); this.updateUI()
+        
+        }
 
-    app.length = function () {
-        const nodes = this.baseNodes();
-        const n = this.values.length;
-        const b = this.viz.base();
-        const lengthBox = count => ({ x: GEOMETRY.STRUCT_X, y: GEOMETRY.LENGTH_BOX_Y, value: count, label: 'size' });
-        const currentNullX = b.x + n * LEN_GAP - 50;
-        const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed, target === null ? currentNullX : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET);
-        const snaps = [this.snapshot('The algorithm starts from the current list state', nodes, { lengthBox: lengthBox(0) })];
+    sorted_insert() {
+            const e = this.v();
+            if (isNaN(e) || !this.isSortedAscending()) return;
+            this.save();
+            const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
+            const b = this.viz.base(), newNodeY = b.y + GEOMETRY.INSERT_NODE_VERTICAL_OFFSET;
+            const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+            const snaps = [this.snapshot('The list is sorted ascending, so sorted_insert can start', oldNodes)];
+    const currentNullX = b.x + oldSize * GEOMETRY.NODE_STEP - 50;
+    
+    const makePtr = (label, target, nodes = oldNodes, fixed = null) => {
+        const nullX = label === 'p_current'
+            ? currentNullX
+            : b.x - GEOMETRY.PREVIOUS_NULL_POINTER_X_OFFSET;
+    
+        return this._ptr(
+            label,
+            target,
+            nodes,
+            fixed,
+            target === null ? nullX : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET
+        );
+    };
+            const ptrsFor = (prev, cur, nodes = oldNodes, fp = null, fc = null) => [makePtr('p_previous', prev, nodes, fp), makePtr('p_current', cur, nodes, fc)];
+            let prevId = null, curId = oldIds[0] ?? null, pos = 0;
+            snaps.push(this.snapshot('p_previous starts as NULL and p_current starts at p_first', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
+            while (pos < oldSize && oldVals[pos] <= e) {
+                const oldCur = curId, nextCur = oldIds[pos + 1] ?? null, oldPtrs = ptrsFor(prevId, curId);
+                snaps.push(this.snapshot('The current value is smaller than or equal to ' + e + ', so the search advances', oldNodes, { ptrs: oldPtrs, flashElement: oldCur, pause: true }));
+                snaps.push(this.snapshot('p_previous is advanced to p_current', oldNodes, { ptrs: oldPtrs, flashPtrs: ['p_previous'], pause: true }));
+                prevId = oldCur;
+                const prevUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+                snaps.push(this.snapshot('p_previous now refers to the node just visited', oldNodes, { ptrs: prevUpdated, pause: true }));
+                snaps.push(this.snapshot('p_current is advanced to the next node', oldNodes, { ptrs: prevUpdated, flashPtrs: ['p_current'], pause: true }));
+                curId = nextCur; pos++;
+                const currentUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+                snaps.push(this.snapshot(curId === null ? 'p_current is now NULL: the new value belongs at the end' : 'p_current now refers to the next node', oldNodes, { ptrs: currentUpdated, pause: true }));
+                snaps.push(this.snapshot('The traversal pointers are positioned for the next comparison', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
+            }
+            snaps.push(this.snapshot(curId !== null ? 'The first node larger than ' + e + ' has been found' : 'No remaining node is greater than ' + e + ', so insertion will be at the end', oldNodes, { ptrs: ptrsFor(prevId, curId), flashElement: curId ?? undefined, pause: true }));
+            const shifted = oldVals.map((val, j) => ({ id: oldIds[j], e: val, index: j < pos ? j : j + 1, x: b.x + (j + (j >= pos ? 1 : 0)) * GEOMETRY.NODE_STEP, y: b.y, next: j < oldIds.length - 1 ? oldIds[j + 1] : null }));
+            snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shifted, { firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+            const pnode = { x: b.x + pos * GEOMETRY.NODE_STEP - GEOMETRY.PNODE_INSERT_LEFT_OF_TARGET, y: newNodeY, target: newId, label: 'p_node' };
+            let newNode = { id: newId, e, index: pos, x: b.x + pos * GEOMETRY.NODE_STEP, y: newNodeY, next: curId, flashNew: true };
+            snaps.push(this.snapshot('A new node is allocated and its p_next points to p_current', [...shifted, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+            newNode = { ...newNode, flashNew: false };
+            let linked = shifted.map(n => ({ ...n }));
+            let newFirst = oldIds[0] ?? newId;
+            if (prevId === null) {
+                snaps.push(this.snapshot('The new value belongs before the current first node, so p_first must change', [...linked, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), flashPFirst: true, preserveLinks: true, pause: true }));
+                newFirst = newId;
+                snaps.push(this.snapshot('p_first now points to the new node', [...linked, newNode], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+            } else {
+                snaps.push(this.snapshot('p_previous is ready to link to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), flashPNext: prevId, preserveLinks: true, pause: true }));
+                const prevNode = linked.find(n => n.id === prevId); if (prevNode) prevNode.next = newId;
+                snaps.push(this.snapshot('p_previous->p_next now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+            }
+            const newUp = { ...newNode, y: b.y };
+            snaps.push(this.snapshot('The new node is placed into the main list sequence', [...linked, newUp], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+            const newVals = [...oldVals], newIds = [...oldIds]; newVals.splice(pos, 0, e); newIds.splice(pos, 0, newId);
+    const compact = this.baseNodes(newVals, newIds, 0, b.y);
+    
+    // Mantener posiciones finales de los punteros temporales.
+    // Uso 'shifted' para que, si p_current === NULL, no se recalcule más a la derecha
+    // al pasar a 'compact', que ya tiene un nodo más.
+    const finalPtrs = ptrsFor(prevId, curId, shifted);
+    
+    snaps.push(this.snapshot(
+        'The list remains sorted ascending after the insertion',
+        compact,
+        {
+            firstId: newIds[0] ?? null,
+            pnode,
+            ptrs: finalPtrs,
+            preserveLinks: true,
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The temporary pointers are deallocated after exiting the function',
+        compact,
+        {
+            firstId: newIds[0] ?? null,
+            pnode,
+            ptrs: finalPtrs,
+            flashPNodeCross: true,
+            flashAuxCross: true,
+            preserveLinks: true,
+            pause: true
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The operation is complete',
+        compact,
+        {
+            firstId: newIds[0] ?? null,
+            preserveLinks: true
+        }
+    ));
+            this.values = newVals; this.ids = newIds; this.viz.enqueue(snaps); this.updateUI()
+        
+        }
 
-        if (n === 0) {
-            const nullPtr = makePtr(null);
-            snaps.push(this.snapshot('p_current is initialized with p_first, which is NULL; size = 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
-            snaps.push(this.snapshot('The loop is not entered; the final size is 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
-            snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), flashAuxCross: true, pause: true }));
-            snaps.push(this.snapshot('The size result remains visible briefly: 0', nodes, { lengthBox: lengthBox(0), pause: true }));
+    length() {
+            const nodes = this.baseNodes();
+            const n = this.values.length;
+            const b = this.viz.base();
+            const lengthBox = count => ({ x: GEOMETRY.STRUCT_X, y: GEOMETRY.LENGTH_BOX_Y, value: count, label: 'size' });
+            const currentNullX = b.x + n * GEOMETRY.NODE_STEP - 50;
+            const makePtr = (target, fixed = null) => this._ptr('p_current', target, nodes, fixed, target === null ? currentNullX : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET);
+            const snaps = [this.snapshot('The algorithm starts from the current list state', nodes, { lengthBox: lengthBox(0) })];
+    
+            if (n === 0) {
+                const nullPtr = makePtr(null);
+                snaps.push(this.snapshot('p_current is initialized with p_first, which is NULL; size = 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
+                snaps.push(this.snapshot('The loop is not entered; the final size is 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
+                snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), flashAuxCross: true, pause: true }));
+                snaps.push(this.snapshot('The size result remains visible briefly: 0', nodes, { lengthBox: lengthBox(0), pause: true }));
+                snaps.push(this.snapshot('The size display is removed', nodes));
+                this.viz.enqueue(snaps);
+                this.updateUI();
+                return
+            }
+    
+            let curId = this.ids[0], count = 0;
+            snaps.push(this.snapshot('p_current starts at p_first; size = 0', nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
+            for (let k = 0; k < n; k++) {
+                const currentPtr = makePtr(curId);
+                count++;
+                snaps.push(this.snapshot('A node is visited; size becomes ' + count, nodes.map(node => node.id === curId ? { ...node, flashElement: true } : node), { ptrs: [currentPtr], lengthBox: lengthBox(count), pause: true }));
+                snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [currentPtr], lengthBox: lengthBox(count), flashPtrs: ['p_current'], pause: true }));
+                curId = this.ids[k + 1] ?? null;
+                const nextPtr = makePtr(curId, currentPtr);
+                snaps.push(this.snapshot(curId === null ? 'p_current is now NULL, so the traversal stops' : 'p_current now refers to the next node', nodes, { ptrs: [nextPtr], lengthBox: lengthBox(count), pause: true }));
+                if (curId !== null) snaps.push(this.snapshot('The next iteration continues with size = ' + count, nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
+            }
+            const finalPtr = makePtr(null);
+            snaps.push(this.snapshot('No more nodes remain; the final size is ' + count, nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), pause: true }));
+            snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), flashAuxCross: true, pause: true }));
+            snaps.push(this.snapshot('The size result remains visible briefly: ' + count, nodes, { lengthBox: lengthBox(count), pause: true }));
             snaps.push(this.snapshot('The size display is removed', nodes));
             this.viz.enqueue(snaps);
-            this.updateUI();
-            return
+            this.updateUI()
+        
         }
 
-        let curId = this.ids[0], count = 0;
-        snaps.push(this.snapshot('p_current starts at p_first; size = 0', nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
-        for (let k = 0; k < n; k++) {
-            const currentPtr = makePtr(curId);
-            count++;
-            snaps.push(this.snapshot('A node is visited; size becomes ' + count, nodes.map(node => node.id === curId ? { ...node, flashElement: true } : node), { ptrs: [currentPtr], lengthBox: lengthBox(count), pause: true }));
-            snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [currentPtr], lengthBox: lengthBox(count), flashPtrs: ['p_current'], pause: true }));
-            curId = this.ids[k + 1] ?? null;
-            const nextPtr = makePtr(curId, currentPtr);
-            snaps.push(this.snapshot(curId === null ? 'p_current is now NULL, so the traversal stops' : 'p_current now refers to the next node', nodes, { ptrs: [nextPtr], lengthBox: lengthBox(count), pause: true }));
-            if (curId !== null) snaps.push(this.snapshot('The next iteration continues with size = ' + count, nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
-        }
-        const finalPtr = makePtr(null);
-        snaps.push(this.snapshot('No more nodes remain; the final size is ' + count, nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), pause: true }));
-        snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), flashAuxCross: true, pause: true }));
-        snaps.push(this.snapshot('The size result remains visible briefly: ' + count, nodes, { lengthBox: lengthBox(count), pause: true }));
-        snaps.push(this.snapshot('The size display is removed', nodes));
-        this.viz.enqueue(snaps);
-        this.updateUI()
-    };
-})();
-
+    clear() {
+            this.save();
+            const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
+            const b = this.viz.base();
+            const originalNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+            const oldNodeMap = new Map(originalNodes.map(n => [n.id, n]));
+            const firstDanglingTarget = originalNodes[0] ? { firstTargetX: originalNodes[0].x, firstTargetY: originalNodes[0].y + this.viz.cell / 2 } : {};
+            const firstRef = () => ({ firstId: oldIds[0] ?? null });
+            const firstDanglingRef = () => ({ firstId: oldIds[0] ?? null, firstDangling: true, ...firstDanglingTarget });
+            const currentNullX = b.x + oldSize * GEOMETRY.NODE_STEP - 50;
     
-;
-/* === Animated clear(struct Node** p_p_first) operation === */
-(function () {
-    const CLEAR_GAP = GEOMETRY.NODE_STEP;
-
-    if (!app._ptr) {
-        app._ptr = function (label, target, nodes, fixed = null, fallbackX = null) {
-            const b = this.viz.base(), t = (nodes || []).find(n => n.id === target);
-            return { label, target, x: fixed?.x ?? (t ? t.x - GEOMETRY.TEMP_POINTER_LEFT_OF_TARGET : (fallbackX ?? b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET)), y: fixed?.y ?? (b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST) }
-        }
-    }
-
-    if (!Viz.prototype._drawOverlaysSupportsPtrCross) {
-        const previousDrawOverlaysForPtrCross = Viz.prototype.drawOverlays;
-        Viz.prototype.drawOverlays = function (s) {
-            previousDrawOverlaysForPtrCross.call(this, s);
-            if (s.flashPtrCross) {
-                (s.ptrs || []).forEach(p => {
-                    if (s.flashPtrCross.includes(p.label)) this.cross(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT)
-                })
+            const makePtr = (label, target, nodes, fixed = null) => {
+                const fallback = target === null
+                    ? (label === 'p_current' ? currentNullX : b.x - GEOMETRY.PREVIOUS_NULL_POINTER_X_OFFSET)
+                    : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET;
+                return this._ptr(label, target, nodes, fixed, fallback)
+            };
+    
+            // p_delete is visualized as a function-scope local variable.
+            // It is never set to NULL by the animation. After Node_free(&p_delete),
+            // it deliberately stays as a dangling pointer to the freed node until the
+            // next assignment p_delete = p, or until the function exits.
+            // It is always drawn at the same vertical height as p, and clearly to its left.
+            const pToDeleteAt = (pPtr, target, nodes) => {
+                const ptr = makePtr('p_delete', target, nodes, { x: pPtr.x - GEOMETRY.CLEAR_P_TO_DELETE_LEFT_OF_CURRENT, y: pPtr.y });
+                const stillVisible = (nodes || []).some(n => n.id === target);
+                const oldNode = oldNodeMap.get(target);
+                if (target !== undefined && target !== null && !stillVisible && oldNode) {
+                    ptr.targetX = oldNode.x;
+                    ptr.targetY = oldNode.y;
+                    ptr.dangling = true;
+                }
+                return ptr
+            };
+    
+            const compactRemaining = startIndex => this.baseNodes(oldVals.slice(startIndex), oldIds.slice(startIndex), startIndex * GEOMETRY.NODE_STEP, b.y);
+            const snaps = [this.snapshot('The algorithm starts from the current list state', originalNodes, firstRef())];
+    
+            let pId = oldIds[0] ?? null;
+            let pPtr = makePtr('p_current', pId, originalNodes);
+            let pToDeleteCurrentValue = undefined;
+            let pToDeletePtr = pToDeleteAt(pPtr, pToDeleteCurrentValue, originalNodes);
+    
+            snaps.push(this.snapshot('The function-local pointers p and p_delete are created; p_delete is uninitialized', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], pause: true }));
+            snaps.push(this.snapshot('p_current is initialized with p_first', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], flashPtrs: ['p_current'], pause: true }));
+    
+            if (oldSize === 0) {
+                snaps.push(this.snapshot('p_current is NULL, so the loop is not entered', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], pause: true }));
+                snaps.push(this.snapshot('p_first is already NULL', originalNodes, { firstId: null, flashPFirst: true, ptrs: [pPtr, pToDeletePtr], pause: true }));
+                snaps.push(this.snapshot('The function-local pointers are deallocated after exiting the function', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
+                snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
+                this.values = [];
+                this.ids = [];
+                this.viz.enqueue(snaps);
+                this.updateUI();
+                return
             }
-        };
-        Viz.prototype._drawOverlaysSupportsPtrCross = true
-    }
-
-    app.clear = function () {
-        this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
-        const b = this.viz.base();
-        const originalNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        const oldNodeMap = new Map(originalNodes.map(n => [n.id, n]));
-        const firstDanglingTarget = originalNodes[0] ? { firstTargetX: originalNodes[0].x, firstTargetY: originalNodes[0].y + this.viz.cell / 2 } : {};
-        const firstRef = () => ({ firstId: oldIds[0] ?? null });
-        const firstDanglingRef = () => ({ firstId: oldIds[0] ?? null, firstDangling: true, ...firstDanglingTarget });
-        const currentNullX = b.x + oldSize * CLEAR_GAP - 50;
-
-        const makePtr = (label, target, nodes, fixed = null) => {
-            const fallback = target === null
-                ? (label === 'p_current' ? currentNullX : b.x - GEOMETRY.PREVIOUS_NULL_POINTER_X_OFFSET)
-                : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET;
-            return this._ptr(label, target, nodes, fixed, fallback)
-        };
-
-        // p_delete is visualized as a function-scope local variable.
-        // It is never set to NULL by the animation. After Node_free(&p_delete),
-        // it deliberately stays as a dangling pointer to the freed node until the
-        // next assignment p_delete = p, or until the function exits.
-        // It is always drawn at the same vertical height as p, and clearly to its left.
-        const pToDeleteAt = (pPtr, target, nodes) => {
-            const ptr = makePtr('p_delete', target, nodes, { x: pPtr.x - GEOMETRY.CLEAR_P_TO_DELETE_LEFT_OF_CURRENT, y: pPtr.y });
-            const stillVisible = (nodes || []).some(n => n.id === target);
-            const oldNode = oldNodeMap.get(target);
-            if (target !== undefined && target !== null && !stillVisible && oldNode) {
-                ptr.targetX = oldNode.x;
-                ptr.targetY = oldNode.y;
-                ptr.dangling = true;
+    
+            for (let k = 0; k < oldSize; k++) {
+                const curId = oldIds[k];
+                const nextId = oldIds[k + 1] ?? null;
+                const visibleNodes = compactRemaining(k);
+                const firstState = k === 0 ? firstRef() : firstDanglingRef();
+                const pCurrent = makePtr('p_current', curId, visibleNodes);
+                const pToDeleteBeforeAssignment = pToDeleteAt(pCurrent, pToDeleteCurrentValue, visibleNodes);
+    
+                snaps.push(this.snapshot('Loop test: p_current is not NULL', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteBeforeAssignment], pause: true }));
+    
+                pToDeleteCurrentValue = curId;
+                const pToDeleteAssigned = pToDeleteAt(pCurrent, pToDeleteCurrentValue, visibleNodes);
+                snaps.push(this.snapshot('p_delete points to p_current', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteAssigned], flashPtrs: ['p_delete'], pause: true }));
+    
+                const pNextMoving = makePtr('p_current', nextId, visibleNodes, pCurrent);
+                snaps.push(this.snapshot('p_current is advanced before freeing the node', visibleNodes, { ...firstState, ptrs: [pNextMoving, pToDeleteAssigned], flashPtrs: ['p_current'], pause: true }));
+    
+                const pNext = makePtr('p_current', nextId, visibleNodes);
+                const pToDeleteLeftOfNextP = pToDeleteAt(pNext, pToDeleteCurrentValue, visibleNodes);
+                snaps.push(this.snapshot(nextId === null ? 'p_current is now NULL; this is the last node to free' : 'p now points to the next node', visibleNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], pause: true }));
+    
+                const crossedNodes = visibleNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
+                // Only the node is flashed/crossed here. p_delete is not crossed during the loop.
+                snaps.push(this.snapshot('free the selected node; p_delete becomes dangling', crossedNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], preserveLinks: true, pause: true }));
+    
+                const remainingNodes = compactRemaining(k + 1);
+                const pAfterFree = makePtr('p_current', nextId, remainingNodes);
+                const pToDeleteAfterFree = pToDeleteAt(pAfterFree, pToDeleteCurrentValue, remainingNodes);
+                // p_first is not made NULL here. After the first node is freed it is dangling,
+                // and it stays dangling until the final explicit assignment *p_p_first = NULL.
+                snaps.push(this.snapshot('The freed node is removed; p_delete remains dangling until the next assignment', remainingNodes, { ...firstDanglingRef(), ptrs: [pAfterFree, pToDeleteAfterFree], preserveLinks: true, pause: true }));
             }
-            return ptr
-        };
-
-        const compactRemaining = startIndex => this.baseNodes(oldVals.slice(startIndex), oldIds.slice(startIndex), startIndex * CLEAR_GAP, b.y);
-        const snaps = [this.snapshot('The algorithm starts from the current list state', originalNodes, firstRef())];
-
-        let pId = oldIds[0] ?? null;
-        let pPtr = makePtr('p_current', pId, originalNodes);
-        let pToDeleteCurrentValue = undefined;
-        let pToDeletePtr = pToDeleteAt(pPtr, pToDeleteCurrentValue, originalNodes);
-
-        snaps.push(this.snapshot('The function-local pointers p and p_delete are created; p_delete is uninitialized', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], pause: true }));
-        snaps.push(this.snapshot('p_current is initialized with p_first', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], flashPtrs: ['p_current'], pause: true }));
-
-        if (oldSize === 0) {
-            snaps.push(this.snapshot('p_current is NULL, so the loop is not entered', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], pause: true }));
-            snaps.push(this.snapshot('p_first is already NULL', originalNodes, { firstId: null, flashPFirst: true, ptrs: [pPtr, pToDeletePtr], pause: true }));
-            snaps.push(this.snapshot('The function-local pointers are deallocated after exiting the function', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
+    
+            // p_first is intentionally kept dangling until the explicit final assignment *p_p_first = NULL.
+            const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST });
+            const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteCurrentValue, []);
+            snaps.push(this.snapshot('All nodes have been freed; p_current is NULL and p_delete is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+            snaps.push(this.snapshot('p_first is set to NULL', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], flashPFirst: true, pause: true }));
+            snaps.push(this.snapshot('p_first now contains NULL', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+            snaps.push(this.snapshot('The function-local pointers p_current and p_delete are deallocated after exiting the function', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
             snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
+    
             this.values = [];
             this.ids = [];
             this.viz.enqueue(snaps);
-            this.updateUI();
-            return
+            this.updateUI()
+        
         }
+}
+const app = new App();
+window.app = app;
+window.onload = () => app.init();
+window.onclick = e => { if (e.target === document.getElementById('helpModal')) app.toggleModal(); };
 
-        for (let k = 0; k < oldSize; k++) {
-            const curId = oldIds[k];
-            const nextId = oldIds[k + 1] ?? null;
-            const visibleNodes = compactRemaining(k);
-            const firstState = k === 0 ? firstRef() : firstDanglingRef();
-            const pCurrent = makePtr('p_current', curId, visibleNodes);
-            const pToDeleteBeforeAssignment = pToDeleteAt(pCurrent, pToDeleteCurrentValue, visibleNodes);
-
-            snaps.push(this.snapshot('Loop test: p_current is not NULL', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteBeforeAssignment], pause: true }));
-
-            pToDeleteCurrentValue = curId;
-            const pToDeleteAssigned = pToDeleteAt(pCurrent, pToDeleteCurrentValue, visibleNodes);
-            snaps.push(this.snapshot('p_delete points to p_current', visibleNodes, { ...firstState, ptrs: [pCurrent, pToDeleteAssigned], flashPtrs: ['p_delete'], pause: true }));
-
-            const pNextMoving = makePtr('p_current', nextId, visibleNodes, pCurrent);
-            snaps.push(this.snapshot('p_current is advanced before freeing the node', visibleNodes, { ...firstState, ptrs: [pNextMoving, pToDeleteAssigned], flashPtrs: ['p_current'], pause: true }));
-
-            const pNext = makePtr('p_current', nextId, visibleNodes);
-            const pToDeleteLeftOfNextP = pToDeleteAt(pNext, pToDeleteCurrentValue, visibleNodes);
-            snaps.push(this.snapshot(nextId === null ? 'p_current is now NULL; this is the last node to free' : 'p now points to the next node', visibleNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], pause: true }));
-
-            const crossedNodes = visibleNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
-            // Only the node is flashed/crossed here. p_delete is not crossed during the loop.
-            snaps.push(this.snapshot('free the selected node; p_delete becomes dangling', crossedNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], preserveLinks: true, pause: true }));
-
-            const remainingNodes = compactRemaining(k + 1);
-            const pAfterFree = makePtr('p_current', nextId, remainingNodes);
-            const pToDeleteAfterFree = pToDeleteAt(pAfterFree, pToDeleteCurrentValue, remainingNodes);
-            // p_first is not made NULL here. After the first node is freed it is dangling,
-            // and it stays dangling until the final explicit assignment *p_p_first = NULL.
-            snaps.push(this.snapshot('The freed node is removed; p_delete remains dangling until the next assignment', remainingNodes, { ...firstDanglingRef(), ptrs: [pAfterFree, pToDeleteAfterFree], preserveLinks: true, pause: true }));
-        }
-
-        // p_first is intentionally kept dangling until the explicit final assignment *p_p_first = NULL.
-        const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST });
-        const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteCurrentValue, []);
-        snaps.push(this.snapshot('All nodes have been freed; p_current is NULL and p_delete is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
-        snaps.push(this.snapshot('p_first is set to NULL', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], flashPFirst: true, pause: true }));
-        snaps.push(this.snapshot('p_first now contains NULL', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
-        snaps.push(this.snapshot('The function-local pointers p_current and p_delete are deallocated after exiting the function', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
-        snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
-
-        this.values = [];
-        this.ids = [];
-        this.viz.enqueue(snaps);
-        this.updateUI()
-    };
-})();
-
-    
-;
-/* === Draw dangling p_first arrows when firstTargetX/firstTargetY are provided === */
-(function () {
-    Viz.prototype.drawStructArrows = function (s) {
-        const x = GEOMETRY.STRUCT_X,
-    				y = GEOMETRY.STRUCT_Y, w = 70, h = this.cell;
-        const firstColor = s.firstDangling ? K.d : K.b;
-        const f = this.nodeById(s, s.firstId);
-        if (f) {
-            const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-            if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3, amount);
-            else this.arrow(x + w / 2, y + h / 2, f.x, f.y + h / 2, firstColor, 3)
-        } else if (s.firstTargetX !== undefined && s.firstTargetY !== undefined) {
-            this.arrow(x + w / 2, y + h / 2, s.firstTargetX, s.firstTargetY, firstColor, 3)
-        }
-    };
-})();
-
-    window.onload = () => app.init();
-    window.onclick = e => {
-    	if (e.target === document.getElementById('helpModal')) app.toggleModal()
-    }; 
 </script>
 </body>
 

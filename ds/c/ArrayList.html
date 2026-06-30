@@ -162,6 +162,7 @@
 									</div>
 								</div>
 <script>
+'use strict';
 const K = {
 	b: '#1565c0',
 	c: '#91f4f4',
@@ -173,1028 +174,1122 @@ const K = {
 	y: '#fff7b3'
 };
 let gid = 0;
-class Viz {
-	constructor(id) {
-		this.cv = document.getElementById(id);
-		this.ctx = this.cv.getContext('2d');
-		this.cam = {
-			scale: 1,
-			targetScale: 1,
-			x: 0,
-			targetX: 0,
-			y: 0,
-			targetY: 0
-		};
-		this.sn = [];
-		this.pending = [];
-		this.idx = -1;
-		this.state = 'IDLE';
-		this.t = 0;
-		this.speedFactor = 1;
-		this.paused = false;
-		this.last = 0;
-		this.cell = 58;
-		this.lastCells = [];
-		this.resize();
-		window.addEventListener('resize', () => this.resize());
-		this.cv.addEventListener('wheel', e => this.wheel(e), {
-			passive: false
-		});
-		this.cv.addEventListener('mousedown', e => this.down(e));
-		this.cv.addEventListener('mousemove', e => this.move(e));
-		this.cv.addEventListener('mouseup', () => this.up());
-		this.cv.addEventListener('mouseleave', () => this.up());
-		requestAnimationFrame(t => this.loop(t))
-	}
-	base() {
-		const arrayLeftX = 325;
-		const arrayTopY = 160;
-		const structLeftX = 210;
-		const structTopY = 160;
-		const transientValueY = arrayTopY - 104;
-		const cellPitch = 62;
-		const reallocOldArrayY = 125;
-		const reallocNewArrayY = 335;
-		return {
-			arrayLeftX,
-			arrayTopY,
-			structLeftX,
-			structTopY,
-			transientValueY,
-			cellPitch,
-			reallocOldArrayY,
-			reallocNewArrayY,
-			// Compatibility aliases used by older operation builders.
-			x: arrayLeftX,
-			y: arrayTopY,
-			structX: structLeftX,
-			structY: structTopY,
-			up: transientValueY,
-			gap: cellPitch
-		}
-	}
-	layoutMetrics() {
-		const cell = this.cell;
-		return {
-			cell,
-			cellCenter: cell / 2,
-			rowHeight: cell,
-			rowStrokeCompensation: cell * 0.04,
-			structLabelGap: 16,
-			listPointerBoxOffsetX: 125,
-			listPointerBoxOffsetY: 108,
-			listPointerLabelGap: 20,
-			listPointerLabelBaselineFromBoxTop: cell * 0.71,
-			listPointerArrowTargetInsetY: 8,
-			dotRadius: 8,
-			structFlashRadius: cell * 0.48,
-			indexLabelGap: 8,
-			cellCornerRadius: 8,
-			cellFlashPadding: 7,
-			pointerLabelGap: 10,
-			boundLeftExtra: 210,
-			boundRightExtra: 110,
-			boundTopExtra: 125,
-			boundBottomExtra: 175,
-			fitPadding: 150,
-			maxAutoScale: 1.22
-		}
-	}
-	resize() {
-		const w = document.getElementById('wrap');
-		this.cv.width = w.offsetWidth;
-		this.cv.height = w.offsetHeight;
-		if (this.sn.length) {
-			this.fit([this.sn[Math.max(this.idx, 0)]]);
-			this.cam.scale = this.cam.targetScale;
-			this.cam.x = this.cam.targetX;
-			this.cam.y = this.cam.targetY
-		}
-	}
-	screenToWorld(x, y) {
-		return {
-			x: (x - this.cam.x) / this.cam.scale,
-			y: (y - this.cam.y) / this.cam.scale
-		}
-	}
-	wheel(e) {
-		e.preventDefault();
-		const r = this.cv.getBoundingClientRect(),
-			x = e.clientX - r.left,
-			y = e.clientY - r.top;
-		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
-		ns = Math.min(5, Math.max(.2, ns));
-		const wx = (x - this.cam.targetX) / this.cam.targetScale,
-			wy = (y - this.cam.targetY) / this.cam.targetScale;
-		this.cam.targetScale = ns;
-		this.cam.targetX = x - wx * ns;
-		this.cam.targetY = y - wy * ns
-	}
-	down(e) {
-		const r = this.cv.getBoundingClientRect(),
-			sx = e.clientX - r.left,
-			sy = e.clientY - r.top,
-			w = this.screenToWorld(sx, sy);
-		for (const c of this.lastCells) {
-			if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) {
-				document.getElementById('val').value = c.v === '?' ? '' : c.v;
-				document.getElementById('idx').value = c.i;
-				return
-			}
-		}
-		this.drag = true;
-		this.start = {
-			x: sx,
-			y: sy
-		};
-		this.c0 = {
-			x: this.cam.targetX,
-			y: this.cam.targetY
-		};
-		this.cv.style.cursor = 'grabbing'
-	}
-	move(e) {
-		const r = this.cv.getBoundingClientRect(),
-			x = e.clientX - r.left,
-			y = e.clientY - r.top;
-		if (this.drag) {
-			this.cam.targetX = this.c0.x + x - this.start.x;
-			this.cam.targetY = this.c0.y + y - this.start.y;
-			return
-		}
-		const w = this.screenToWorld(x, y);
-		this.cv.style.cursor = this.lastCells.some(c => w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) ? 'pointer' : 'default'
-	}
-	up() {
-		this.drag = false;
-		this.cv.style.cursor = 'default'
-	}
-	layout(s) {
-		const b = this.base();
-		(s.cells || []).forEach((c, i) => {
-			if (c.x === undefined) c.x = b.arrayLeftX + i * b.cellPitch;
-			if (c.y === undefined) c.y = b.arrayTopY
-		});
-		(s.ghosts || []).forEach(g => {
-			if (g.x === undefined) g.x = b.arrayLeftX + (g.i ?? 0) * b.cellPitch;
-			if (g.y === undefined) g.y = b.transientValueY
-		});
-		(s.ptrs || []).forEach((p, i) => {
-			if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
-			if (p.y === undefined) p.y = b.arrayTopY - 95 - i * (this.cell + 6)
-		})
-	}
-	bounds(s) {
-		const m = this.layoutMetrics();
-		let b = {
-			minX: 20,
-			minY: 35,
-			maxX: 760,
-			maxY: 470
-		};
-		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
-			b.minX = Math.min(b.minX, c.x - m.boundLeftExtra);
-			b.maxX = Math.max(b.maxX, c.x + m.boundRightExtra);
-			b.minY = Math.min(b.minY, c.y - m.boundTopExtra);
-			b.maxY = Math.max(b.maxY, c.y + m.boundBottomExtra)
-		});
-		return b
-	}
-	fit(snaps) {
-		let B = {
-			minX: 1e9,
-			minY: 1e9,
-			maxX: -1e9,
-			maxY: -1e9
-		};
-		snaps.forEach(s => {
-			const b = this.bounds(s);
-			B.minX = Math.min(B.minX, b.minX);
-			B.maxX = Math.max(B.maxX, b.maxX);
-			B.minY = Math.min(B.minY, b.minY);
-			B.maxY = Math.max(B.maxY, b.maxY)
-		});
-		const m = this.layoutMetrics();
-		const sc = Math.min(m.maxAutoScale, this.cv.width / (B.maxX - B.minX + m.fitPadding), this.cv.height / (B.maxY - B.minY + m.fitPadding));
-		this.cam.targetScale = sc;
-		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-	}
-	enqueue(snaps) {
-		snaps.forEach(s => this.layout(s));
-		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-		if (!this.sn.length) {
-			this.sn.push(snaps.shift());
-			this.idx = 0;
-			document.getElementById('status-text').innerText = this.sn[0].text || 'Ready.'
-		}
-		if (snaps.length) {
-			this.pending = snaps;
-			this.state = 'CAMERA'
-		}
-	}
-	loop(ts) {
-		if (!this.last) this.last = ts;
-		const dt = Math.min((ts - this.last) / 1000, .1);
-		this.last = ts;
-		if (!this.paused) this.update(dt);
-		this.draw();
-		requestAnimationFrame(t => this.loop(t))
-	}
-	update(dt) {
-		const f = 1 - Math.exp(-10 * dt);
-		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-		this.cam.x += (this.cam.targetX - this.cam.x) * f;
-		this.cam.y += (this.cam.targetY - this.cam.y) * f;
-		if (this.state === 'CAMERA') {
-			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
-		} else if (this.state === 'MORPH') {
-			this.t += 2.5 * this.speedFactor * dt;
-			if (this.t >= 1) {
-				this.t = 1;
-				if (this.sn[this.idx + 1]?.pause) {
-					this.state = 'WAIT';
-					this.wait = .75 / this.speedFactor
-				} else this.finish()
-			}
-		} else if (this.state === 'WAIT') {
-			this.wait -= dt;
-			if (this.wait <= 0) this.finish()
-		}
-	}
-	next() {
-		const s = this.pending.shift();
-		this.sn.push(s);
-		if (s.fitCamera) this.fit([s]);
-		document.getElementById('status-text').innerText = s.text || 'Ready.';
-		this.t = 0;
-		this.state = 'MORPH'
-	}
-	finish() {
-		this.idx++;
-		if (this.pending.length) this.next();
-		else {
-			this.state = 'IDLE';
-			document.getElementById('status-text').innerText = 'Ready.';
-			app.clearInputs()
-		}
-	}
-	ease(t) {
-		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-	}
-	mix(a, b, t) {
-		const ma = new Map((a || []).map(o => [o.id, o])),
-			mb = new Map((b || []).map(o => [o.id, o])),
-			ids = new Set([...ma.keys(), ...mb.keys()]),
-			sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
-		let out = [];
-		ids.forEach(id => {
-			const A = ma.get(id),
-				B = mb.get(id);
-			if (A && B) out.push({
-				...B,
-				x: A.x + (B.x - A.x) * t,
-				y: A.y + (B.y - A.y) * t
-			});
-			else if (B) {
-				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-				if (S) out.push({
-					...B,
-					x: S.x + (B.x - S.x) * t,
-					y: S.y + (B.y - S.y) * t
-				});
-				else out.push({
-					...B
-				})
-			}
-			else if (A && !sourceIds.has(id) && t < .85) out.push({
-				...A
-			})
-		});
-		return out
-	}
-	interp(A, B, t) {
-		return {
-			...B,
-			cells: this.mix(A.cells, B.cells, t),
-			ghosts: this.mix(A.ghosts, B.ghosts, t),
-			ptrs: this.mix(A.ptrs, B.ptrs, t)
-		}
-	}
-	current() {
-		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)]
-	}
-	flash() {
-		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
-	}
-	draw() {
-		const s = this.current(),
-			c = this.ctx;
-		c.clearRect(0, 0, this.cv.width, this.cv.height);
-		c.save();
-		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-		if (!s) {
-			c.restore();
-			return
-		}
-		this.lastCells = s.cells || [];
-		this.drawStruct(s);
-		this.drawArrayPointer(s);
-		this.drawLabels(s);
-		(s.cells || []).forEach(cell => this.drawCell(cell, s));
-		(s.ghosts || []).forEach(g => this.drawGhost(g));
-		this.drawMoves(s);
-		this.drawPtrs(s);
-		this.drawOverlays(s);
-		c.restore()
-	}
-	drawStruct(s) {
-		const c = this.ctx,
-			b = this.base(),
-			m = this.layoutMetrics(),
-			structLeft = b.structLeftX,
-			structTop = b.structTopY,
-			cell = m.cell,
-			rowHeight = m.rowHeight,
-			labelRightX = structLeft - m.structLabelGap,
-			listBoxX = structLeft - m.listPointerBoxOffsetX,
-			listBoxY = structTop - m.listPointerBoxOffsetY,
-			listDotX = listBoxX + m.cellCenter,
-			listDotY = listBoxY + m.cellCenter;
-		c.save();
-		c.fillStyle = K.k;
-		c.font = '28px monospace';
-		c.textAlign = 'right';
-		c.fillText('p_list', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop);
-		c.fillStyle = K.p;
-		c.fillRect(listBoxX, listBoxY, cell, cell);
-		c.fillStyle = K.v;
-		c.beginPath();
-		c.arc(listDotX, listDotY, m.dotRadius, 0, Math.PI * 2);
-		c.fill();
-		this.arrow(listDotX, listDotY, structLeft, structTop + m.listPointerArrowTargetInsetY, K.v, 3);
-		[
-			['elements', K.c],
-			['capacity', K.g],
-			['size', K.g]
-		].forEach((r, i) => {
-			const rowTop = structTop + i * rowHeight,
-				rowCenterY = rowTop + m.cellCenter;
-			c.fillStyle = K.k;
-			c.font = '28px monospace';
-			c.textAlign = 'right';
-			c.textBaseline = 'middle';
-			c.fillText(r[0], labelRightX, rowCenterY);
-			c.fillStyle = r[1];
-			c.fillRect(structLeft, rowTop, cell, cell - m.rowStrokeCompensation);
-			if (r[0] === 'elements') {
-				c.fillStyle = K.b;
-				c.beginPath();
-				c.arc(structLeft + m.cellCenter, rowCenterY, m.dotRadius, 0, Math.PI * 2);
-				c.fill()
-			} else {
-				c.fillStyle = K.r;
-				c.font = '32px Arial';
-				c.textAlign = 'center';
-				c.fillText(String(r[0] === 'capacity' ? s.capacity : s.size), structLeft + m.cellCenter, rowCenterY + 2)
-			}
-		});
-		c.restore()
-	}
-	drawArrayPointer(s) {
-		if (s.arrayPointer === false) return;
-		const b = this.base(),
-			m = this.layoutMetrics();
-		let firstCell = null;
-		if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
-		if (!firstCell) firstCell = (s.cells || [])[0];
-		if (firstCell) this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, K.b, 3)
-	}
-	drawLabels(s) {
-		const c = this.ctx;
-		(s.labels || []).forEach(l => {
-			c.save();
-			c.fillStyle = l.color || K.k;
-			c.font = l.font || 'bold 24px Arial';
-			c.textAlign = l.align || 'center';
-			c.fillText(l.text, l.x, l.y);
-			c.restore()
-		})
-	}
-	drawCell(cell, s) {
-		const c = this.ctx,
-			m = this.layoutMetrics(),
-			w = m.cell,
-			isGrey = ((s.greyCells || []).includes(cell.i)),
-			active = cell.active !== undefined ? cell.active : (!isGrey && (cell.i < s.size || ((s.greenCells || []).includes(cell.i))));
-		c.save();
-		c.fillStyle = active ? K.g : K.y;
-		c.fillRect(cell.x, cell.y, w, w);
-		c.strokeStyle = '#333';
-		c.fillStyle = active ? K.r : '#777';
-		c.font = cell.v === '?' ? '27px Arial' : '30px Arial';
-		c.textAlign = 'center';
-		c.textBaseline = 'middle';
-		c.fillText(String(cell.v), cell.x + m.cellCenter, cell.y + m.cellCenter + 2);
-		c.fillStyle = K.k;
-		c.font = '22px monospace';
-		c.textBaseline = 'alphabetic';
-		c.fillText(cell.i, cell.x + m.cellCenter, cell.y - m.indexLabelGap);
-		c.restore()
-	}
-	drawGhost(g) {
-		const c = this.ctx,
-			m = this.layoutMetrics(),
-			w = m.cell;
-		c.save();
-		c.globalAlpha = .82;
-		c.fillStyle = K.g;
-		c.fillRect(g.x, g.y, w, w);
-		if (g.border !== false) {
-			c.strokeStyle = K.r;
-			c.lineWidth = 3;
-			c.strokeRect(g.x, g.y, w, w)
-		}
-		c.fillStyle = K.r;
-		c.font = '30px Arial';
-		c.textAlign = 'center';
-		c.textBaseline = 'middle';
-		c.fillText(String(g.v), g.x + m.cellCenter, g.y + m.cellCenter + 2);
-		c.restore()
-	}
-	drawMoves(s) {
-		(s.moves || []).forEach(m => {
-			const from = (s.cells || []).find(c => c.i === m.from),
-				to = (s.cells || []).find(c => c.i === m.to);
-			if (from && to) this.arrow(from.x + this.cell / 2, from.y + this.cell + 20, to.x + this.cell / 2, to.y + this.cell + 20, K.r, 3)
-		})
-	}
-	drawPtrs(s) {
-		const m = this.layoutMetrics();
-		(s.ptrs || []).forEach(p => {
-			const c = this.ctx,
-				pointerCenterX = p.x + m.cellCenter,
-				pointerCenterY = p.y + m.cellCenter;
-			c.save();
-			c.fillStyle = K.k;
-			c.font = '22px monospace';
-			c.textAlign = 'center';
-			c.fillText(p.label, pointerCenterX, p.y - m.pointerLabelGap);
-			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, m.cell, m.cell);
-			c.fillStyle = K.b;
-			c.beginPath();
-			c.arc(pointerCenterX, pointerCenterY, m.dotRadius, 0, Math.PI * 2);
-			c.fill();
-			c.restore();
-			const target = (s.cells || []).find(c => c.i === p.i);
-			if (target) this.arrow(pointerCenterX, pointerCenterY, target.x + m.cellCenter, target.y, K.b, 3)
-		})
-	}
-	drawOverlays(s) {
-		if (s.flashElements) this.flashStruct(0);
-		if (s.flashCapacity) this.flashStruct(1);
-		if (s.flashSize) this.flashStruct(2);
-		(s.flashCells || []).forEach(i => {
-			const cell = (s.cells || []).find(c => c.i === i);
-			if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
-		});
-		(s.flashCellIds || []).forEach(id => {
-			const cell = (s.cells || []).find(c => c.id === id);
-			if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
-		});
-		(s.crossCells || []).forEach(i => {
-			const cell = (s.cells || []).find(c => c.i === i);
-			if (cell) this.cross(cell.x, cell.y, this.cell, this.cell)
-		})
-	}
-	flashStruct(row) {
-		const b = this.base(),
-			m = this.layoutMetrics();
-		this.flashCircle(b.structLeftX + m.cellCenter, b.structTopY + row * m.rowHeight + m.cellCenter, m.structFlashRadius)
-	}
-	flashCircle(x, y, r) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flash();
-		c.strokeStyle = K.r;
-		c.lineWidth = 5;
-		c.beginPath();
-		c.arc(x, y, r, 0, Math.PI * 2);
-		c.stroke();
-		c.restore()
-	}
-	roundFlash(x, y, w, h) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flash();
-		c.strokeStyle = K.r;
-		c.lineWidth = 5;
-		c.beginPath();
-		c.roundRect(x, y, w, h, this.layoutMetrics().cellCornerRadius);
-		c.stroke();
-		c.restore()
-	}
-	cross(x, y, w, h) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flash();
-		c.strokeStyle = K.r;
-		c.lineWidth = 6;
-		c.beginPath();
-		const pad = this.layoutMetrics().cellFlashPadding;
-		c.moveTo(x - pad, y - pad);
-		c.lineTo(x + w + pad, y + h + pad);
-		c.moveTo(x + w + pad, y - pad);
-		c.lineTo(x - pad, y + h + pad);
-		c.stroke();
-		c.restore()
-	}
-	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-		const c = this.ctx;
-		c.save();
-		c.strokeStyle = col;
-		c.fillStyle = col;
-		c.lineWidth = lw;
-		c.beginPath();
-		c.moveTo(x1, y1);
-		c.lineTo(x2, y2);
-		c.stroke();
-		this.head(x1, y1, x2, y2, col);
-		c.restore()
-	}
-	head(x1, y1, x2, y2, col = K.b) {
-		const c = this.ctx,
-			a = Math.atan2(y2 - y1, x2 - x1),
-			h = 17;
-		c.fillStyle = col;
-		c.beginPath();
-		c.moveTo(x2, y2);
-		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
-		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
-		c.closePath();
-		c.fill()
-	}
-	setSpeed(v) {
-		this.speedFactor = 1 / v
-	}
-	togglePause() {
-		this.paused = !this.paused;
-		return this.paused
-	}
+
+/* Engine: camera, input, animation lifecycle and drawing primitives. */
+class VisualizationEngine {
+    constructor(id) {
+    		this.cv = document.getElementById(id);
+    		this.ctx = this.cv.getContext('2d');
+    		this.cam = {
+    			scale: 1,
+    			targetScale: 1,
+    			x: 0,
+    			targetX: 0,
+    			y: 0,
+    			targetY: 0
+    		};
+    		this.sn = [];
+    		this.pending = [];
+    		this.idx = -1;
+    		this.state = 'IDLE';
+    		this.t = 0;
+    		this.speedFactor = 1;
+    		this.paused = false;
+    		this.last = 0;
+    		this.cell = 58;
+    		this.lastCells = [];
+    		this.resize();
+    		window.addEventListener('resize', () => this.resize());
+    		this.cv.addEventListener('wheel', e => this.wheel(e), {
+    			passive: false
+    		});
+    		this.cv.addEventListener('mousedown', e => this.down(e));
+    		this.cv.addEventListener('mousemove', e => this.move(e));
+    		this.cv.addEventListener('mouseup', () => this.up());
+    		this.cv.addEventListener('mouseleave', () => this.up());
+    		requestAnimationFrame(t => this.loop(t))
+    	}
+
+    base() {
+    		const arrayLeftX = 325;
+    		const arrayTopY = 160;
+    		const structLeftX = 210;
+    		const structTopY = 160;
+    		const transientValueY = arrayTopY - 104;
+    		const cellPitch = 62;
+    		const reallocOldArrayY = 125;
+    		const reallocNewArrayY = 335;
+    		return {
+    			arrayLeftX,
+    			arrayTopY,
+    			structLeftX,
+    			structTopY,
+    			transientValueY,
+    			cellPitch,
+    			reallocOldArrayY,
+    			reallocNewArrayY,
+    			// Compatibility aliases used by older operation builders.
+    			x: arrayLeftX,
+    			y: arrayTopY,
+    			structX: structLeftX,
+    			structY: structTopY,
+    			up: transientValueY,
+    			gap: cellPitch
+    		}
+    	}
+
+    layoutMetrics() {
+    		const cell = this.cell;
+    		return {
+    			cell,
+    			cellCenter: cell / 2,
+    			rowHeight: cell,
+    			rowStrokeCompensation: cell * 0.04,
+    			structLabelGap: 16,
+    			listPointerBoxOffsetX: 125,
+    			listPointerBoxOffsetY: 108,
+    			listPointerLabelGap: 20,
+    			listPointerLabelBaselineFromBoxTop: cell * 0.71,
+    			listPointerArrowTargetInsetY: 8,
+    			dotRadius: 8,
+    			structFlashRadius: cell * 0.48,
+    			indexLabelGap: 8,
+    			cellCornerRadius: 8,
+    			cellFlashPadding: 7,
+    			pointerLabelGap: 10,
+    			boundLeftExtra: 210,
+    			boundRightExtra: 110,
+    			boundTopExtra: 125,
+    			boundBottomExtra: 175,
+    			fitPadding: 150,
+    			maxAutoScale: 1.22
+    		}
+    	}
+
+    resize() {
+    		const w = document.getElementById('wrap');
+    		this.cv.width = w.offsetWidth;
+    		this.cv.height = w.offsetHeight;
+    		if (this.sn.length) {
+    			this.fit([this.sn[Math.max(this.idx, 0)]]);
+    			this.cam.scale = this.cam.targetScale;
+    			this.cam.x = this.cam.targetX;
+    			this.cam.y = this.cam.targetY
+    		}
+    	}
+
+    screenToWorld(x, y) {
+    		return {
+    			x: (x - this.cam.x) / this.cam.scale,
+    			y: (y - this.cam.y) / this.cam.scale
+    		}
+    	}
+
+    wheel(e) {
+    		e.preventDefault();
+    		const r = this.cv.getBoundingClientRect(),
+    			x = e.clientX - r.left,
+    			y = e.clientY - r.top;
+    		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
+    		ns = Math.min(5, Math.max(.2, ns));
+    		const wx = (x - this.cam.targetX) / this.cam.targetScale,
+    			wy = (y - this.cam.targetY) / this.cam.targetScale;
+    		this.cam.targetScale = ns;
+    		this.cam.targetX = x - wx * ns;
+    		this.cam.targetY = y - wy * ns
+    	}
+
+    down(e) {
+    		const r = this.cv.getBoundingClientRect(),
+    			sx = e.clientX - r.left,
+    			sy = e.clientY - r.top,
+    			w = this.screenToWorld(sx, sy);
+    		for (const c of this.lastCells) {
+    			if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) {
+    				document.getElementById('val').value = c.v === '?' ? '' : c.v;
+    				document.getElementById('idx').value = c.i;
+    				return
+    			}
+    		}
+    		this.drag = true;
+    		this.start = {
+    			x: sx,
+    			y: sy
+    		};
+    		this.c0 = {
+    			x: this.cam.targetX,
+    			y: this.cam.targetY
+    		};
+    		this.cv.style.cursor = 'grabbing'
+    	}
+
+    move(e) {
+    		const r = this.cv.getBoundingClientRect(),
+    			x = e.clientX - r.left,
+    			y = e.clientY - r.top;
+    		if (this.drag) {
+    			this.cam.targetX = this.c0.x + x - this.start.x;
+    			this.cam.targetY = this.c0.y + y - this.start.y;
+    			return
+    		}
+    		const w = this.screenToWorld(x, y);
+    		this.cv.style.cursor = this.lastCells.some(c => w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) ? 'pointer' : 'default'
+    	}
+
+    up() {
+    		this.drag = false;
+    		this.cv.style.cursor = 'default'
+    	}
+
+    layout(s) {
+    		const b = this.base();
+    		(s.cells || []).forEach((c, i) => {
+    			if (c.x === undefined) c.x = b.arrayLeftX + i * b.cellPitch;
+    			if (c.y === undefined) c.y = b.arrayTopY
+    		});
+    		(s.ghosts || []).forEach(g => {
+    			if (g.x === undefined) g.x = b.arrayLeftX + (g.i ?? 0) * b.cellPitch;
+    			if (g.y === undefined) g.y = b.transientValueY
+    		});
+    		(s.ptrs || []).forEach((p, i) => {
+    			if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
+    			if (p.y === undefined) p.y = b.arrayTopY - 95 - i * (this.cell + 6)
+    		})
+    	}
+
+    bounds(s) {
+    		const m = this.layoutMetrics();
+    		let b = {
+    			minX: 20,
+    			minY: 35,
+    			maxX: 760,
+    			maxY: 470
+    		};
+    		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
+    			b.minX = Math.min(b.minX, c.x - m.boundLeftExtra);
+    			b.maxX = Math.max(b.maxX, c.x + m.boundRightExtra);
+    			b.minY = Math.min(b.minY, c.y - m.boundTopExtra);
+    			b.maxY = Math.max(b.maxY, c.y + m.boundBottomExtra)
+    		});
+    		return b
+    	}
+
+    fit(snaps) {
+    		let B = {
+    			minX: 1e9,
+    			minY: 1e9,
+    			maxX: -1e9,
+    			maxY: -1e9
+    		};
+    		snaps.forEach(s => {
+    			const b = this.bounds(s);
+    			B.minX = Math.min(B.minX, b.minX);
+    			B.maxX = Math.max(B.maxX, b.maxX);
+    			B.minY = Math.min(B.minY, b.minY);
+    			B.maxY = Math.max(B.maxY, b.maxY)
+    		});
+    		const m = this.layoutMetrics();
+    		const sc = Math.min(m.maxAutoScale, this.cv.width / (B.maxX - B.minX + m.fitPadding), this.cv.height / (B.maxY - B.minY + m.fitPadding));
+    		this.cam.targetScale = sc;
+    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+    	}
+
+    enqueue(snaps) {
+    		snaps.forEach(s => this.layout(s));
+    		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+    		if (!this.sn.length) {
+    			this.sn.push(snaps.shift());
+    			this.idx = 0;
+    			document.getElementById('status-text').innerText = this.sn[0].text || 'Ready.'
+    		}
+    		if (snaps.length) {
+    			this.pending = snaps;
+    			this.state = 'CAMERA'
+    		}
+    	}
+
+    loop(ts) {
+    		if (!this.last) this.last = ts;
+    		const dt = Math.min((ts - this.last) / 1000, .1);
+    		this.last = ts;
+    		if (!this.paused) this.update(dt);
+    		this.draw();
+    		requestAnimationFrame(t => this.loop(t))
+    	}
+
+    update(dt) {
+    		const f = 1 - Math.exp(-10 * dt);
+    		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+    		this.cam.x += (this.cam.targetX - this.cam.x) * f;
+    		this.cam.y += (this.cam.targetY - this.cam.y) * f;
+    		if (this.state === 'CAMERA') {
+    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
+    		} else if (this.state === 'MORPH') {
+    			this.t += 2.5 * this.speedFactor * dt;
+    			if (this.t >= 1) {
+    				this.t = 1;
+    				if (this.sn[this.idx + 1]?.pause) {
+    					this.state = 'WAIT';
+    					this.wait = .75 / this.speedFactor
+    				} else this.finish()
+    			}
+    		} else if (this.state === 'WAIT') {
+    			this.wait -= dt;
+    			if (this.wait <= 0) this.finish()
+    		}
+    	}
+
+    next() {
+    		const s = this.pending.shift();
+    		this.sn.push(s);
+    		if (s.fitCamera) this.fit([s]);
+    		document.getElementById('status-text').innerText = s.text || 'Ready.';
+    		this.t = 0;
+    		this.state = 'MORPH'
+    	}
+
+    finish() {
+    		this.idx++;
+    		if (this.pending.length) this.next();
+    		else {
+    			this.state = 'IDLE';
+    			document.getElementById('status-text').innerText = 'Ready.';
+    			window.app?.clearInputs()
+    		}
+    	}
+
+    ease(t) {
+    		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    	}
+
+    mix(a, b, t) {
+    		const ma = new Map((a || []).map(o => [o.id, o])),
+    			mb = new Map((b || []).map(o => [o.id, o])),
+    			ids = new Set([...ma.keys(), ...mb.keys()]),
+    			sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
+    		let out = [];
+    		ids.forEach(id => {
+    			const A = ma.get(id),
+    				B = mb.get(id);
+    			if (A && B) out.push({
+    				...B,
+    				x: A.x + (B.x - A.x) * t,
+    				y: A.y + (B.y - A.y) * t
+    			});
+    			else if (B) {
+    				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+    				if (S) out.push({
+    					...B,
+    					x: S.x + (B.x - S.x) * t,
+    					y: S.y + (B.y - S.y) * t
+    				});
+    				else out.push({
+    					...B
+    				})
+    			}
+    			else if (A && !sourceIds.has(id) && t < .85) out.push({
+    				...A
+    			})
+    		});
+    		return out
+    	}
+
+    interp(A, B, t) {
+    		return {
+    			...B,
+    			cells: this.mix(A.cells, B.cells, t),
+    			ghosts: this.mix(A.ghosts, B.ghosts, t),
+    			ptrs: this.mix(A.ptrs, B.ptrs, t)
+    		}
+    	}
+
+    current() {
+    		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)]
+    	}
+
+    flash() {
+    		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+    	}
+
+    setSpeed(v) {
+    		this.speedFactor = 1 / v
+    	}
+
+    togglePause() {
+    		this.paused = !this.paused;
+    		return this.paused
+    	}
+
+    draw() {
+            const s = this.current();
+            const c = this.ctx;
+            c.clearRect(0, 0, this.cv.width, this.cv.height);
+            c.save();
+            c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+            if (s) this.renderScene(s);
+            c.restore();
+        }
+    
+        renderScene(_scene) {
+            // Subclasses render structure-specific content here using engine primitives.
+        }
+    
+        paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1 } = {}) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha *= alpha;
+            c.fillStyle = fill;
+            c.fillRect(x, y, w, h);
+            if (stroke) {
+                c.strokeStyle = stroke;
+                c.lineWidth = lineWidth;
+                c.strokeRect(x, y, w, h);
+            }
+            c.restore();
+        }
+    
+        paintText(text, x, y, { font = '24px Arial', fill = K.k, align = 'center', baseline = 'middle', alpha = 1 } = {}) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha *= alpha;
+            c.fillStyle = fill;
+            c.font = font;
+            c.textAlign = align;
+            c.textBaseline = baseline;
+            c.fillText(String(text), x, y);
+            c.restore();
+        }
+    
+        paintDot(x, y, r, fill, { alpha = 1 } = {}) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha *= alpha;
+            c.fillStyle = fill;
+            c.beginPath();
+            c.arc(x, y, r, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+        }
+    
+        strokeRoundedRect(x, y, w, h, radius, stroke = K.r, lineWidth = 5, alpha = 1) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha *= alpha;
+            c.strokeStyle = stroke;
+            c.lineWidth = lineWidth;
+            c.beginPath();
+            if (c.roundRect) c.roundRect(x, y, w, h, radius);
+            else c.rect(x, y, w, h);
+            c.stroke();
+            c.restore();
+        }
+    
+        flashCircle(x, y, r) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha = this.flash();
+            c.strokeStyle = K.r;
+            c.lineWidth = 5;
+            c.beginPath();
+            c.arc(x, y, r, 0, Math.PI * 2);
+            c.stroke();
+            c.restore();
+        }
+    
+        roundFlash(x, y, w, h) {
+            this.strokeRoundedRect(x, y, w, h, this.layoutMetrics().cellCornerRadius, K.r, 5, this.flash());
+        }
+    
+        cross(x, y, w, h) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha = this.flash();
+            c.strokeStyle = K.r;
+            c.lineWidth = 6;
+            c.beginPath();
+            const pad = this.layoutMetrics().cellFlashPadding;
+            c.moveTo(x - pad, y - pad);
+            c.lineTo(x + w + pad, y + h + pad);
+            c.moveTo(x + w + pad, y - pad);
+            c.lineTo(x - pad, y + h + pad);
+            c.stroke();
+            c.restore();
+        }
+    
+        arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+            const c = this.ctx;
+            c.save();
+            c.strokeStyle = col;
+            c.fillStyle = col;
+            c.lineWidth = lw;
+            c.beginPath();
+            c.moveTo(x1, y1);
+            c.lineTo(x2, y2);
+            c.stroke();
+            this.head(x1, y1, x2, y2, col);
+            c.restore();
+        }
+    
+        head(x1, y1, x2, y2, col = K.b) {
+            const c = this.ctx,
+                a = Math.atan2(y2 - y1, x2 - x1),
+                h = 17;
+            c.fillStyle = col;
+            c.beginPath();
+            c.moveTo(x2, y2);
+            c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
+            c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+            c.closePath();
+            c.fill();
+        }
 }
-const app = {
-	values: [],
-	capacity: 6,
-	storage: [],
-	history: [],
-	viz: null,
-	init() {
-		this.viz = new Viz('cv');
-		this.values = [2, 1, 4];
-		this.capacity = 6;
-		this.storage = [...this.values];
-		this.showCurrent('The ArrayList is initialized with sample values');
-		this.updateUI()
-	},
-	cells(vals = this.values, cap = this.capacity) {
-		return Array.from({
-			length: cap
-		}, (_, i) => {
-			const hasVal = i < vals.length && vals[i] !== undefined;
-			const hasStored = this.storage && i < this.storage.length && this.storage[i] !== undefined;
-			return {
-				id: 'c' + i,
-				v: hasVal ? vals[i] : (hasStored ? this.storage[i] : '?'),
-				i
-			}
-		})
-	},
-	commitStorage(vals, cap = this.capacity) {
-		const next = Array.from({ length: cap }, (_, i) => this.storage?.[i]);
-		vals.forEach((v, i) => {
-			next[i] = v
-		});
-		this.storage = next
-	},
-	snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
-		return {
-			cells: this.cells(vals, cap),
-			size: extra.size ?? this.values.length,
-			capacity: cap,
-			text,
-			...extra
-		}
-	},
-	showCurrent(text = 'Ready.') {
-		this.viz.sn = [];
-		this.viz.pending = [];
-		this.viz.idx = -1;
-		this.viz.state = 'IDLE';
-		this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
-			size: this.values.length
-		})])
-	},
-	v() {
-		return parseInt(document.getElementById('val').value)
-	},
-	i() {
-		return parseInt(document.getElementById('idx').value)
-	},
-	save() {
-		this.history.push({
-			values: [...this.values],
-			capacity: this.capacity,
-			storage: [...this.storage]
-		});
-		if (this.history.length > 30) this.history.shift()
-	},
-	reallocCells(vals, oldCap, newCap, copiedCount = 0) {
-		const b = this.viz.base(), cellPitch = b.cellPitch;
-		const arrayLeftX = b.arrayLeftX;
-		const oldArrayTopY = b.reallocOldArrayY;
-		const newArrayTopY = b.reallocNewArrayY;
-		const stored = this.storage || [];
-		const oldCells = Array.from({ length: oldCap }, (_, i) => ({
-			id: 'old' + i,
-			fromId: 'c' + i,
-			i,
-			v: i < vals.length ? vals[i] : (stored[i] !== undefined ? stored[i] : '?'),
-			x: arrayLeftX + i * cellPitch,
-			y: oldArrayTopY,
-			active: i < vals.length
-		}));
-		const newCells = Array.from({ length: newCap }, (_, i) => ({
-			id: 'new' + i,
-			i,
-			v: i < copiedCount ? vals[i] : '?',
-			x: arrayLeftX + i * cellPitch,
-			y: newArrayTopY,
-			active: i < copiedCount
-		}));
-		return [...oldCells, ...newCells]
-	},
-	reallocLabels(oldCap, newCap) {
-		const b = this.viz.base(), m = this.viz.layoutMetrics();
-		const centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + m.cellCenter;
-		return [
-			{ text: 'old elements', x: centeredLabelX(oldCap), y: b.reallocOldArrayY - 38, color: '#777' },
-			{ text: 'new elements', x: centeredLabelX(newCap), y: b.reallocNewArrayY - 38, color: '#2E7D32' }
-		]
-	},
-	reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
-		return this.snapshot(text, vals, oldCap, {
-			size: vals.length,
-			capacity: oldCap,
-			cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
-			labels: this.reallocLabels(oldCap, newCap),
-			arrayPointerId: 'old0',
-			...extra
-		})
-	},
-	reallocFinalSnapshot(text, vals, newCap, extra = {}) {
-		const finalCells = this.cells(vals, newCap).map(c => ({ ...c, fromId: 'new' + c.i }));
-		return this.snapshot(text, vals, newCap, {
-			size: vals.length,
-			capacity: newCap,
-			cells: finalCells,
-			...extra
-		})
-	},
-	ensureSnaps(vals, cap, need, lead) {
-		let snaps = [];
-		if (vals.length + need <= cap) return {
-			cap,
-			snaps
-		};
-		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
-			size: vals.length,
-			pause: true
-		}));
-		let newCap = Math.max(1, cap * 2);
-		while (vals.length + need > newCap) newCap *= 2;
-		snaps.push(this.reallocSnapshot('A new array with double capacity is allocated', vals, cap, newCap, 0, {
-			fitCamera: true,
-			pause: true
-		}));
-		for (let i = 0; i < vals.length; i++) {
-			const b = this.viz.base();
-			const copyX = b.arrayLeftX + i * b.cellPitch;
-			snaps.push(this.reallocSnapshot('Copying element ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
-				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocOldArrayY, border: false }]
-			}));
-			snaps.push(this.reallocSnapshot('Element ' + i + ' has been copied into the new array', vals, cap, newCap, i, {
-				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocNewArrayY, border: false }],
-				pause: true
-			}));
-			snaps.push(this.reallocSnapshot('The new array now contains the first ' + (i + 1) + ' copied element' + (i === 0 ? '' : 's'), vals, cap, newCap, i + 1, {
-				flashCellIds: ['new' + i],
-				pause: true
-			}));
-		}
-		snaps.push(this.reallocSnapshot('All existing elements have been copied; elements will now point to the new array', vals, cap, newCap, vals.length, {
-			pause: true
-		}));
-		snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the ArrayList structure', vals, newCap, {
-			fitCamera: true,
-			pause: true
-		}));
-		return {
-			cap: newCap,
-			snaps
-		}
-	},
-	append() {
-		const e = this.v();
-		if (isNaN(e)) return;
-		this.save();
-		const old = [...this.values],
-			oldCap = this.capacity;
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
-			size: old.length
-		})];
-		let ec = this.ensureSnaps(old, oldCap, 1, 'Before appending,');
-		snaps.push(...ec.snaps);
-		let vals = [...old],
-			cap = ec.cap;
-		let beforeSizeIncrement = [...vals];
-		beforeSizeIncrement[old.length] = e;
-		snaps.push(this.snapshot('The new element is written at array index size', beforeSizeIncrement, cap, {
-			size: old.length,
-			greenCells: [old.length],
-			flashCells: [old.length],
-			pause: true
-		}));
-		vals.push(e);
-		snaps.push(this.snapshot('size is incremented after storing the new element', vals, cap, {
-			size: old.length,
-			greenCells: [old.length],
-			flashSize: true,
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', vals, cap, {
-			size: vals.length
-		}));
-		this.commitStorage(vals, cap);
-		this.values = vals;
-		this.capacity = cap;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	prepend() {
-		document.getElementById('idx').value = 0;
-		this.insert()
-	},
-	insert() {
-		let idx = this.i(),
-			e = this.v();
-		if (isNaN(idx) || isNaN(e) || idx < 0 || idx > this.values.length) return;
-		this.save();
-		const old = [...this.values],
-			oldCap = this.capacity;
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
-			size: old.length
-		})];
-		let ec = this.ensureSnaps(old, oldCap, 1, 'Before inserting,');
-		snaps.push(...ec.snaps);
-		let cap = ec.cap,
-			work = [...old],
-			grownCells = [],
-			greyCells = [];
-		for (let j = old.length - 1; j >= idx; j--) {
-			let tmp = [...work];
-			tmp[j + 1] = tmp[j];
-			greyCells = greyCells.filter(i => i !== j + 1);
-			if (!greyCells.includes(j)) greyCells.push(j);
-			if (j + 1 >= old.length && !grownCells.includes(j + 1)) grownCells.push(j + 1);
-			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position right', tmp, cap, {
-				size: old.length,
-				moves: [{
-					from: j,
-					to: j + 1
-				}],
-				flashCells: [j + 1],
-				greenCells: [...grownCells],
-				greyCells: [...greyCells],
-				pause: true
-			}));
-			work = tmp
-		}
-		snaps.push(this.snapshot('The gap at index ' + idx + ' is ready for the new element', work, cap, {
-			size: old.length,
-			flashCells: [idx],
-			greenCells: [...grownCells],
-			greyCells: [...greyCells],
-			pause: true
-		}));
-		work[idx] = e;
-		greyCells = greyCells.filter(i => i !== idx);
-		let final = work.slice(0, old.length + 1),
-			storedGreenCells = [...grownCells];
-		if (!storedGreenCells.includes(idx)) storedGreenCells.push(idx);
-		snaps.push(this.snapshot('The new element is stored at index ' + idx, final, cap, {
-			size: old.length,
-			flashCells: [idx],
-			greenCells: storedGreenCells,
-			greyCells: [...greyCells],
-			pause: true
-		}));
-		snaps.push(this.snapshot('size is incremented after the insertion', final, cap, {
-			size: old.length,
-			flashSize: true,
-			greenCells: storedGreenCells,
-			greyCells: [...greyCells],
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', final, cap, {
-			size: final.length
-		}));
-		this.commitStorage(final, cap);
-		this.values = final;
-		this.capacity = cap;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	get() {
-		let idx = this.i();
-		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', this.values, this.capacity, {
-			size: this.values.length
-		}), this.snapshot('ArrayList_get accesses elements[' + idx + '] directly', this.values, this.capacity, {
-			size: this.values.length,
-			ptrs: [{
-				id: 'pget',
-				label: 'elements[' + idx + ']',
-				i: idx
-			}],
-			flashCells: [idx],
-			pause: true
-		}), this.snapshot('The lookup result is get(' + idx + ') = ' + this.values[idx], this.values, this.capacity, {
-			size: this.values.length,
-			flashCells: [idx],
-			pause: true
-		}), this.snapshot('The operation is complete', this.values, this.capacity, {
-			size: this.values.length
-		})];
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	set() {
-		let idx = this.i(),
-			e = this.v();
-		if (isNaN(idx) || isNaN(e) || idx < 0 || idx >= this.values.length) return;
-		this.save();
-		let old = [...this.values],
-			upd = [...old];
-		upd[idx] = e;
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, {
-			size: old.length
-		}), this.snapshot('ArrayList_set locates elements[' + idx + '] directly', old, this.capacity, {
-			size: old.length,
-			ptrs: [{
-				id: 'pset',
-				label: 'elements[' + idx + ']',
-				i: idx
-			}],
-			flashCells: [idx],
-			pause: true
-		}), this.snapshot('The value at index ' + idx + ' is replaced by ' + e, upd, this.capacity, {
-			size: upd.length,
-			flashCells: [idx],
-			pause: true
-		}), this.snapshot('The operation is complete', upd, this.capacity, {
-			size: upd.length
-		})];
-		this.commitStorage(upd, this.capacity);
-		this.values = upd;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	del() {
-		let idx = this.i();
-		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
-		this.save();
-		let old = [...this.values],
-			work = [...old],
-			greyCells = [];
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, {
-			size: old.length
-		}), this.snapshot('The element at index ' + idx + ' is selected for deletion', old, this.capacity, {
-			size: old.length,
-			crossCells: [idx],
-			pause: true
-		})];
-		for (let j = idx + 1; j < old.length; j++) {
-			work[j - 1] = work[j];
-			greyCells = greyCells.filter(i => i !== j - 1);
-			if (!greyCells.includes(j)) greyCells.push(j);
-			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position left', work, this.capacity, {
-				size: old.length,
-				moves: [{
-					from: j,
-					to: j - 1
-				}],
-				flashCells: [j - 1],
-				greyCells: [...greyCells],
-				pause: true
-			}))
-		}
-		let final = old.filter((_, i) => i !== idx);
-		snaps.push(this.snapshot('The trailing duplicate is now outside the logical list', work, this.capacity, {
-			size: old.length,
-			greyCells: [...greyCells],
-			pause: true
-		}));
-		snaps.push(this.snapshot('size is decremented; the last physical value remains allocated but becomes unused', work, this.capacity, {
-			size: old.length - 1,
-			flashSize: true,
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', work, this.capacity, {
-			size: final.length
-		}));
-		this.commitStorage(work, this.capacity);
-		this.values = final;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	clear() {
-		this.save();
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', this.values, this.capacity, {
-			size: this.values.length
-		}), this.snapshot('ArrayList_clear sets size to 0; capacity and the allocated array are kept', this.values, this.capacity, {
-			size: this.values.length,
-			flashSize: true,
-			pause: true
-		}), this.snapshot('The ArrayList is now logically empty; old cells are outside size', this.values, this.capacity, {
-			size: 0,
-			pause: true
-		}), this.snapshot('The operation is complete', this.values, this.capacity, {
-			size: 0
-		})];
-		this.commitStorage(this.values, this.capacity);
-		this.values = [];
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	random() {
-		this.save();
-		this.capacity = 6;
-		let sz = Math.floor(Math.random() * 4) + 2;
-		this.values = [];
-		while (this.values.length < sz) {
-			let v = Math.floor(Math.random() * 9) + 1;
-			if (!this.values.includes(v)) this.values.push(v)
-		}
-		if (Math.random() < 0.33) {
-			this.values.sort()
-		}
-		this.storage = [...this.values];
-		this.showCurrent('A random sample ArrayList has been created');
-		this.updateUI()
-	},
-	reinit() {
-		let c = parseInt(document.getElementById('cap').value);
-		if (isNaN(c) || c < 1) c = 6;
-		this.save();
-		this.capacity = c;
-		this.values = [];
-		this.storage = [];
-		this.showCurrent('A new empty ArrayList has been allocated with capacity ' + c);
-		this.updateUI()
-	},
-	undo() {
-		if (!this.history.length) return;
-		const h = this.history.pop();
-		this.values = h.values;
-		this.capacity = h.capacity;
-		this.storage = h.storage ?? [...h.values];
-		this.showCurrent('The previous ArrayList state has been restored');
-		this.updateUI()
-	},
-	speed() {
-		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
-	},
-	pause() {
-		const p = this.viz.togglePause();
-		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
-	},
-	toggleModal() {
-		const m = document.getElementById('helpModal');
-		m.style.display = m.style.display === 'block' ? 'none' : 'block'
-	},
-	updateUI() {
-		document.getElementById('btnUndo').disabled = this.history.length === 0
-	},
-	clearInputs() {
-		document.getElementById('val').value = '';
-		document.getElementById('idx').value = ''
-	}
-};
+
+/* View: ArrayList-specific semantic rendering only. */
+class ArrayListView extends VisualizationEngine {
+    
+    renderScene(s) {
+            this.lastCells = s.cells || [];
+            this.drawStruct(s);
+            this.drawArrayPointer(s);
+            this.drawLabels(s);
+            (s.cells || []).forEach(cell => this.drawCell(cell, s));
+            (s.ghosts || []).forEach(g => this.drawGhost(g));
+            this.drawMoves(s);
+            this.drawPtrs(s);
+            this.drawOverlays(s);
+        }
+    
+
+    
+    drawStruct(s) {
+            const b = this.base(),
+                m = this.layoutMetrics(),
+                structLeft = b.structLeftX,
+                structTop = b.structTopY,
+                cell = m.cell,
+                rowHeight = m.rowHeight,
+                labelRightX = structLeft - m.structLabelGap,
+                listBoxX = structLeft - m.listPointerBoxOffsetX,
+                listBoxY = structTop - m.listPointerBoxOffsetY,
+                listDotX = listBoxX + m.cellCenter,
+                listDotY = listBoxY + m.cellCenter;
+            this.paintText('p_list', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
+                font: '28px monospace',
+                fill: K.k,
+                align: 'right',
+                baseline: 'alphabetic'
+            });
+            this.paintRect(listBoxX, listBoxY, cell, cell, K.p);
+            this.paintDot(listDotX, listDotY, m.dotRadius, K.v);
+            this.arrow(listDotX, listDotY, structLeft, structTop + m.listPointerArrowTargetInsetY, K.v, 3);
+            [
+                ['elements', K.c],
+                ['capacity', K.g],
+                ['size', K.g]
+            ].forEach((r, i) => {
+                const rowTop = structTop + i * rowHeight,
+                    rowCenterY = rowTop + m.cellCenter;
+                this.paintText(r[0], labelRightX, rowCenterY, {
+                    font: '28px monospace',
+                    fill: K.k,
+                    align: 'right',
+                    baseline: 'middle'
+                });
+                this.paintRect(structLeft, rowTop, cell, cell - m.rowStrokeCompensation, r[1]);
+                if (r[0] === 'elements') this.paintDot(structLeft + m.cellCenter, rowCenterY, m.dotRadius, K.b);
+                else this.paintText(String(r[0] === 'capacity' ? s.capacity : s.size), structLeft + m.cellCenter, rowCenterY + 2, { font: '32px Arial', fill: K.r });
+            });
+        }
+    
+
+    drawArrayPointer(s) {
+    		if (s.arrayPointer === false) return;
+    		const b = this.base(),
+    			m = this.layoutMetrics();
+    		let firstCell = null;
+    		if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
+    		if (!firstCell) firstCell = (s.cells || [])[0];
+    		if (firstCell) this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, K.b, 3)
+    	}
+
+    
+    drawLabels(s) {
+            (s.labels || []).forEach(l => this.paintText(l.text, l.x, l.y, {
+                font: l.font || 'bold 24px Arial',
+                fill: l.color || K.k,
+                align: l.align || 'center',
+                baseline: l.baseline || 'alphabetic'
+            }));
+        }
+    
+
+    
+    drawCell(cell, s) {
+            const m = this.layoutMetrics(),
+                w = m.cell,
+                isGrey = ((s.greyCells || []).includes(cell.i)),
+                active = cell.active !== undefined ? cell.active : (!isGrey && (cell.i < s.size || ((s.greenCells || []).includes(cell.i))));
+            this.paintRect(cell.x, cell.y, w, w, active ? K.g : K.y);
+            this.paintText(String(cell.v), cell.x + m.cellCenter, cell.y + m.cellCenter + 2, {
+                font: cell.v === '?' ? '27px Arial' : '30px Arial',
+                fill: active ? K.r : '#777'
+            });
+            this.paintText(cell.i, cell.x + m.cellCenter, cell.y - m.indexLabelGap, {
+                font: '22px monospace',
+                fill: K.k,
+                baseline: 'alphabetic'
+            });
+        }
+    
+
+    
+    drawGhost(g) {
+            const m = this.layoutMetrics(), w = m.cell;
+            this.paintRect(g.x, g.y, w, w, K.g, { alpha: 0.82 });
+            if (g.border !== false) this.paintRect(g.x, g.y, w, w, 'rgba(0,0,0,0)', { stroke: K.r, lineWidth: 3, alpha: 0.82 });
+            this.paintText(String(g.v), g.x + m.cellCenter, g.y + m.cellCenter + 2, { font: '30px Arial', fill: K.r, alpha: 0.82 });
+        }
+    
+
+    drawMoves(s) {
+    		(s.moves || []).forEach(m => {
+    			const from = (s.cells || []).find(c => c.i === m.from),
+    				to = (s.cells || []).find(c => c.i === m.to);
+    			if (from && to) this.arrow(from.x + this.cell / 2, from.y + this.cell + 20, to.x + this.cell / 2, to.y + this.cell + 20, K.r, 3)
+    		})
+    	}
+
+    
+    drawPtrs(s) {
+            const m = this.layoutMetrics();
+            (s.ptrs || []).forEach(p => {
+                const pointerCenterX = p.x + m.cellCenter,
+                    pointerCenterY = p.y + m.cellCenter;
+                this.paintText(p.label, pointerCenterX, p.y - m.pointerLabelGap, {
+                    font: '22px monospace',
+                    fill: K.k,
+                    baseline: 'alphabetic'
+                });
+                this.paintRect(p.x, p.y, m.cell, m.cell, K.c);
+                this.paintDot(pointerCenterX, pointerCenterY, m.dotRadius, K.b);
+                const target = (s.cells || []).find(c => c.i === p.i);
+                if (target) this.arrow(pointerCenterX, pointerCenterY, target.x + m.cellCenter, target.y, K.b, 3);
+            });
+        }
+    
+
+    drawOverlays(s) {
+    		if (s.flashElements) this.flashStruct(0);
+    		if (s.flashCapacity) this.flashStruct(1);
+    		if (s.flashSize) this.flashStruct(2);
+    		(s.flashCells || []).forEach(i => {
+    			const cell = (s.cells || []).find(c => c.i === i);
+    			if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
+    		});
+    		(s.flashCellIds || []).forEach(id => {
+    			const cell = (s.cells || []).find(c => c.id === id);
+    			if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
+    		});
+    		(s.crossCells || []).forEach(i => {
+    			const cell = (s.cells || []).find(c => c.i === i);
+    			if (cell) this.cross(cell.x, cell.y, this.cell, this.cell)
+    		})
+    	}
+
+    flashStruct(row) {
+    		const b = this.base(),
+    			m = this.layoutMetrics();
+    		this.flashCircle(b.structLeftX + m.cellCenter, b.structTopY + row * m.rowHeight + m.cellCenter, m.structFlashRadius)
+    	}
+}
+
+/* App: model, UI and ArrayList algorithms only. */
+class App {
+    constructor() {
+            this.values = [];
+            this.capacity = 6;
+            this.storage = [];
+            this.history = [];
+            this.viz = null;
+        }
+
+    init() {
+    		this.viz = new ArrayListView('cv');
+    		this.values = [2, 1, 4];
+    		this.capacity = 6;
+    		this.storage = [...this.values];
+    		this.showCurrent('The ArrayList is initialized with sample values');
+    		this.updateUI()
+    	}
+
+    cells(vals = this.values, cap = this.capacity) {
+    		return Array.from({
+    			length: cap
+    		}, (_, i) => {
+    			const hasVal = i < vals.length && vals[i] !== undefined;
+    			const hasStored = this.storage && i < this.storage.length && this.storage[i] !== undefined;
+    			return {
+    				id: 'c' + i,
+    				v: hasVal ? vals[i] : (hasStored ? this.storage[i] : '?'),
+    				i
+    			}
+    		})
+    	}
+
+    commitStorage(vals, cap = this.capacity) {
+    		const next = Array.from({ length: cap }, (_, i) => this.storage?.[i]);
+    		vals.forEach((v, i) => {
+    			next[i] = v
+    		});
+    		this.storage = next
+    	}
+
+    snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
+    		return {
+    			cells: this.cells(vals, cap),
+    			size: extra.size ?? this.values.length,
+    			capacity: cap,
+    			text,
+    			...extra
+    		}
+    	}
+
+    showCurrent(text = 'Ready.') {
+    		this.viz.sn = [];
+    		this.viz.pending = [];
+    		this.viz.idx = -1;
+    		this.viz.state = 'IDLE';
+    		this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
+    			size: this.values.length
+    		})])
+    	}
+
+    v() {
+    		return parseInt(document.getElementById('val').value)
+    	}
+
+    i() {
+    		return parseInt(document.getElementById('idx').value)
+    	}
+
+    save() {
+    		this.history.push({
+    			values: [...this.values],
+    			capacity: this.capacity,
+    			storage: [...this.storage]
+    		});
+    		if (this.history.length > 30) this.history.shift()
+    	}
+
+    reallocCells(vals, oldCap, newCap, copiedCount = 0) {
+    		const b = this.viz.base(), cellPitch = b.cellPitch;
+    		const arrayLeftX = b.arrayLeftX;
+    		const oldArrayTopY = b.reallocOldArrayY;
+    		const newArrayTopY = b.reallocNewArrayY;
+    		const stored = this.storage || [];
+    		const oldCells = Array.from({ length: oldCap }, (_, i) => ({
+    			id: 'old' + i,
+    			fromId: 'c' + i,
+    			i,
+    			v: i < vals.length ? vals[i] : (stored[i] !== undefined ? stored[i] : '?'),
+    			x: arrayLeftX + i * cellPitch,
+    			y: oldArrayTopY,
+    			active: i < vals.length
+    		}));
+    		const newCells = Array.from({ length: newCap }, (_, i) => ({
+    			id: 'new' + i,
+    			i,
+    			v: i < copiedCount ? vals[i] : '?',
+    			x: arrayLeftX + i * cellPitch,
+    			y: newArrayTopY,
+    			active: i < copiedCount
+    		}));
+    		return [...oldCells, ...newCells]
+    	}
+
+    reallocLabels(oldCap, newCap) {
+    		const b = this.viz.base(), m = this.viz.layoutMetrics();
+    		const centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + m.cellCenter;
+    		return [
+    			{ text: 'old elements', x: centeredLabelX(oldCap), y: b.reallocOldArrayY - 38, color: '#777' },
+    			{ text: 'new elements', x: centeredLabelX(newCap), y: b.reallocNewArrayY - 38, color: '#2E7D32' }
+    		]
+    	}
+
+    reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
+    		return this.snapshot(text, vals, oldCap, {
+    			size: vals.length,
+    			capacity: oldCap,
+    			cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
+    			labels: this.reallocLabels(oldCap, newCap),
+    			arrayPointerId: 'old0',
+    			...extra
+    		})
+    	}
+
+    reallocFinalSnapshot(text, vals, newCap, extra = {}) {
+    		const finalCells = this.cells(vals, newCap).map(c => ({ ...c, fromId: 'new' + c.i }));
+    		return this.snapshot(text, vals, newCap, {
+    			size: vals.length,
+    			capacity: newCap,
+    			cells: finalCells,
+    			...extra
+    		})
+    	}
+
+    ensureSnaps(vals, cap, need, lead) {
+    		let snaps = [];
+    		if (vals.length + need <= cap) return {
+    			cap,
+    			snaps
+    		};
+    		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
+    			size: vals.length,
+    			pause: true
+    		}));
+    		let newCap = Math.max(1, cap * 2);
+    		while (vals.length + need > newCap) newCap *= 2;
+    		snaps.push(this.reallocSnapshot('A new array with double capacity is allocated', vals, cap, newCap, 0, {
+    			fitCamera: true,
+    			pause: true
+    		}));
+    		for (let i = 0; i < vals.length; i++) {
+    			const b = this.viz.base();
+    			const copyX = b.arrayLeftX + i * b.cellPitch;
+    			snaps.push(this.reallocSnapshot('Copying element ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
+    				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocOldArrayY, border: false }]
+    			}));
+    			snaps.push(this.reallocSnapshot('Element ' + i + ' has been copied into the new array', vals, cap, newCap, i, {
+    				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocNewArrayY, border: false }],
+    				pause: true
+    			}));
+    			snaps.push(this.reallocSnapshot('The new array now contains the first ' + (i + 1) + ' copied element' + (i === 0 ? '' : 's'), vals, cap, newCap, i + 1, {
+    				flashCellIds: ['new' + i],
+    				pause: true
+    			}));
+    		}
+    		snaps.push(this.reallocSnapshot('All existing elements have been copied; elements will now point to the new array', vals, cap, newCap, vals.length, {
+    			pause: true
+    		}));
+    		snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the ArrayList structure', vals, newCap, {
+    			fitCamera: true,
+    			pause: true
+    		}));
+    		return {
+    			cap: newCap,
+    			snaps
+    		}
+    	}
+
+    append() {
+    		const e = this.v();
+    		if (isNaN(e)) return;
+    		this.save();
+    		const old = [...this.values],
+    			oldCap = this.capacity;
+    		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
+    			size: old.length
+    		})];
+    		let ec = this.ensureSnaps(old, oldCap, 1, 'Before appending,');
+    		snaps.push(...ec.snaps);
+    		let vals = [...old],
+    			cap = ec.cap;
+    		let beforeSizeIncrement = [...vals];
+    		beforeSizeIncrement[old.length] = e;
+    		snaps.push(this.snapshot('The new element is written at array index size', beforeSizeIncrement, cap, {
+    			size: old.length,
+    			greenCells: [old.length],
+    			flashCells: [old.length],
+    			pause: true
+    		}));
+    		vals.push(e);
+    		snaps.push(this.snapshot('size is incremented after storing the new element', vals, cap, {
+    			size: old.length,
+    			greenCells: [old.length],
+    			flashSize: true,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The operation is complete', vals, cap, {
+    			size: vals.length
+    		}));
+    		this.commitStorage(vals, cap);
+    		this.values = vals;
+    		this.capacity = cap;
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    prepend() {
+    		document.getElementById('idx').value = 0;
+    		this.insert()
+    	}
+
+    insert() {
+    		let idx = this.i(),
+    			e = this.v();
+    		if (isNaN(idx) || isNaN(e) || idx < 0 || idx > this.values.length) return;
+    		this.save();
+    		const old = [...this.values],
+    			oldCap = this.capacity;
+    		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
+    			size: old.length
+    		})];
+    		let ec = this.ensureSnaps(old, oldCap, 1, 'Before inserting,');
+    		snaps.push(...ec.snaps);
+    		let cap = ec.cap,
+    			work = [...old],
+    			grownCells = [],
+    			greyCells = [];
+    		for (let j = old.length - 1; j >= idx; j--) {
+    			let tmp = [...work];
+    			tmp[j + 1] = tmp[j];
+    			greyCells = greyCells.filter(i => i !== j + 1);
+    			if (!greyCells.includes(j)) greyCells.push(j);
+    			if (j + 1 >= old.length && !grownCells.includes(j + 1)) grownCells.push(j + 1);
+    			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position right', tmp, cap, {
+    				size: old.length,
+    				moves: [{
+    					from: j,
+    					to: j + 1
+    				}],
+    				flashCells: [j + 1],
+    				greenCells: [...grownCells],
+    				greyCells: [...greyCells],
+    				pause: true
+    			}));
+    			work = tmp
+    		}
+    		snaps.push(this.snapshot('The gap at index ' + idx + ' is ready for the new element', work, cap, {
+    			size: old.length,
+    			flashCells: [idx],
+    			greenCells: [...grownCells],
+    			greyCells: [...greyCells],
+    			pause: true
+    		}));
+    		work[idx] = e;
+    		greyCells = greyCells.filter(i => i !== idx);
+    		let final = work.slice(0, old.length + 1),
+    			storedGreenCells = [...grownCells];
+    		if (!storedGreenCells.includes(idx)) storedGreenCells.push(idx);
+    		snaps.push(this.snapshot('The new element is stored at index ' + idx, final, cap, {
+    			size: old.length,
+    			flashCells: [idx],
+    			greenCells: storedGreenCells,
+    			greyCells: [...greyCells],
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('size is incremented after the insertion', final, cap, {
+    			size: old.length,
+    			flashSize: true,
+    			greenCells: storedGreenCells,
+    			greyCells: [...greyCells],
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The operation is complete', final, cap, {
+    			size: final.length
+    		}));
+    		this.commitStorage(final, cap);
+    		this.values = final;
+    		this.capacity = cap;
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    get() {
+    		let idx = this.i();
+    		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
+    		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', this.values, this.capacity, {
+    			size: this.values.length
+    		}), this.snapshot('ArrayList_get accesses elements[' + idx + '] directly', this.values, this.capacity, {
+    			size: this.values.length,
+    			ptrs: [{
+    				id: 'pget',
+    				label: 'elements[' + idx + ']',
+    				i: idx
+    			}],
+    			flashCells: [idx],
+    			pause: true
+    		}), this.snapshot('The lookup result is get(' + idx + ') = ' + this.values[idx], this.values, this.capacity, {
+    			size: this.values.length,
+    			flashCells: [idx],
+    			pause: true
+    		}), this.snapshot('The operation is complete', this.values, this.capacity, {
+    			size: this.values.length
+    		})];
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    set() {
+    		let idx = this.i(),
+    			e = this.v();
+    		if (isNaN(idx) || isNaN(e) || idx < 0 || idx >= this.values.length) return;
+    		this.save();
+    		let old = [...this.values],
+    			upd = [...old];
+    		upd[idx] = e;
+    		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, {
+    			size: old.length
+    		}), this.snapshot('ArrayList_set locates elements[' + idx + '] directly', old, this.capacity, {
+    			size: old.length,
+    			ptrs: [{
+    				id: 'pset',
+    				label: 'elements[' + idx + ']',
+    				i: idx
+    			}],
+    			flashCells: [idx],
+    			pause: true
+    		}), this.snapshot('The value at index ' + idx + ' is replaced by ' + e, upd, this.capacity, {
+    			size: upd.length,
+    			flashCells: [idx],
+    			pause: true
+    		}), this.snapshot('The operation is complete', upd, this.capacity, {
+    			size: upd.length
+    		})];
+    		this.commitStorage(upd, this.capacity);
+    		this.values = upd;
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    del() {
+    		let idx = this.i();
+    		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
+    		this.save();
+    		let old = [...this.values],
+    			work = [...old],
+    			greyCells = [];
+    		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, {
+    			size: old.length
+    		}), this.snapshot('The element at index ' + idx + ' is selected for deletion', old, this.capacity, {
+    			size: old.length,
+    			crossCells: [idx],
+    			pause: true
+    		})];
+    		for (let j = idx + 1; j < old.length; j++) {
+    			work[j - 1] = work[j];
+    			greyCells = greyCells.filter(i => i !== j - 1);
+    			if (!greyCells.includes(j)) greyCells.push(j);
+    			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position left', work, this.capacity, {
+    				size: old.length,
+    				moves: [{
+    					from: j,
+    					to: j - 1
+    				}],
+    				flashCells: [j - 1],
+    				greyCells: [...greyCells],
+    				pause: true
+    			}))
+    		}
+    		let final = old.filter((_, i) => i !== idx);
+    		snaps.push(this.snapshot('The trailing duplicate is now outside the logical list', work, this.capacity, {
+    			size: old.length,
+    			greyCells: [...greyCells],
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('size is decremented; the last physical value remains allocated but becomes unused', work, this.capacity, {
+    			size: old.length - 1,
+    			flashSize: true,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The operation is complete', work, this.capacity, {
+    			size: final.length
+    		}));
+    		this.commitStorage(work, this.capacity);
+    		this.values = final;
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    clear() {
+    		this.save();
+    		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', this.values, this.capacity, {
+    			size: this.values.length
+    		}), this.snapshot('ArrayList_clear sets size to 0; capacity and the allocated array are kept', this.values, this.capacity, {
+    			size: this.values.length,
+    			flashSize: true,
+    			pause: true
+    		}), this.snapshot('The ArrayList is now logically empty; old cells are outside size', this.values, this.capacity, {
+    			size: 0,
+    			pause: true
+    		}), this.snapshot('The operation is complete', this.values, this.capacity, {
+    			size: 0
+    		})];
+    		this.commitStorage(this.values, this.capacity);
+    		this.values = [];
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    random() {
+    		this.save();
+    		this.capacity = 6;
+    		let sz = Math.floor(Math.random() * 4) + 2;
+    		this.values = [];
+    		while (this.values.length < sz) {
+    			let v = Math.floor(Math.random() * 9) + 1;
+    			if (!this.values.includes(v)) this.values.push(v)
+    		}
+    		if (Math.random() < 0.33) {
+    			this.values.sort()
+    		}
+    		this.storage = [...this.values];
+    		this.showCurrent('A random sample ArrayList has been created');
+    		this.updateUI()
+    	}
+
+    reinit() {
+    		let c = parseInt(document.getElementById('cap').value);
+    		if (isNaN(c) || c < 1) c = 6;
+    		this.save();
+    		this.capacity = c;
+    		this.values = [];
+    		this.storage = [];
+    		this.showCurrent('A new empty ArrayList has been allocated with capacity ' + c);
+    		this.updateUI()
+    	}
+
+    undo() {
+    		if (!this.history.length) return;
+    		const h = this.history.pop();
+    		this.values = h.values;
+    		this.capacity = h.capacity;
+    		this.storage = h.storage ?? [...h.values];
+    		this.showCurrent('The previous ArrayList state has been restored');
+    		this.updateUI()
+    	}
+
+    speed() {
+    		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+    	}
+
+    pause() {
+    		const p = this.viz.togglePause();
+    		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
+    	}
+
+    toggleModal() {
+    		const m = document.getElementById('helpModal');
+    		m.style.display = m.style.display === 'block' ? 'none' : 'block'
+    	}
+
+    updateUI() {
+    		document.getElementById('btnUndo').disabled = this.history.length === 0
+    	}
+
+    clearInputs() {
+    		document.getElementById('val').value = '';
+    		document.getElementById('idx').value = ''
+    	}
+}
+const app = new App();
+window.app = app;
 window.onload = () => app.init();
 window.onclick = e => {
-	if (e.target === document.getElementById('helpModal')) app.toggleModal()
+    if (e.target === document.getElementById('helpModal')) app.toggleModal();
 };
+
 </script>
 </body>
 </html>

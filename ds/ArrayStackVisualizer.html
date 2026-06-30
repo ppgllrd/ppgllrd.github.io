@@ -113,6 +113,7 @@
 								</div>
 							</div>
 							<script>
+'use strict';
 const K = {
 	b: '#1565c0',
 	c: '#91f4f4',
@@ -123,892 +124,973 @@ const K = {
 	k: '#111'
 };
 const GC_ANIMATION = { unreachableValueKey: 'garbageV' };
-class Viz {
-	constructor(id) {
-		this.cv = document.getElementById(id);
-		this.ctx = this.cv.getContext('2d');
-		this.cam = {
-			scale: 1,
-			targetScale: 1,
-			x: 0,
-			targetX: 0,
-			y: 0,
-			targetY: 0
-		};
-		this.sn = [];
-		this.pending = [];
-		this.idx = -1;
-		this.state = 'IDLE';
-		this.t = 0;
-		this.speedFactor = 1;
-		this.paused = false;
-		this.last = 0;
-		this.cell = 40;
-		this.lastHits = [];
-		this.resize();
-		window.addEventListener('resize', () => this.resize());
-		this.cv.addEventListener('wheel', e => this.wheel(e), {
-			passive: false
-		});
-		this.cv.addEventListener('mousedown', e => this.down(e));
-		this.cv.addEventListener('mousemove', e => this.move(e));
-		this.cv.addEventListener('mouseup', () => this.up());
-		this.cv.addEventListener('mouseleave', () => this.up());
-		requestAnimationFrame(t => this.loop(t))
-	}
-	base() {
-		const arrayLeftX = 325;
-		const arrayTopY = 170;
-		const structLeftX = 210;
-		const structTopY = 170;
-		const cellPitch = 40;
-		const reallocOldArrayY = 115;
-		const reallocNewArrayY = 330;
-		const transientValueY = reallocOldArrayY - 70;
-		return {
-			arrayLeftX, arrayTopY, structLeftX, structTopY, cellPitch,
-			reallocOldArrayY, reallocNewArrayY, transientValueY,
-			x: arrayLeftX, y: arrayTopY, structX: structLeftX, structY: structTopY, gap: cellPitch
-		}
-	}
-	resize() {
-		const w = document.getElementById('wrap');
-		this.cv.width = w.offsetWidth;
-		this.cv.height = w.offsetHeight;
-		if (this.sn.length) {
-			this.fit([this.sn[Math.max(this.idx, 0)]]);
-			this.cam.scale = this.cam.targetScale;
-			this.cam.x = this.cam.targetX;
-			this.cam.y = this.cam.targetY
-		}
-	}
-	screenToWorld(x, y) {
-		return {
-			x: (x - this.cam.x) / this.cam.scale,
-			y: (y - this.cam.y) / this.cam.scale
-		}
-	}
-	wheel(e) {
-		e.preventDefault();
-		const r = this.cv.getBoundingClientRect(),
-			x = e.clientX - r.left,
-			y = e.clientY - r.top;
-		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
-		ns = Math.min(5, Math.max(.2, ns));
-		const wx = (x - this.cam.targetX) / this.cam.targetScale,
-			wy = (y - this.cam.targetY) / this.cam.targetScale;
-		this.cam.targetScale = ns;
-		this.cam.targetX = x - wx * ns;
-		this.cam.targetY = y - wy * ns
-	}
-	down(e) {
-		const r = this.cv.getBoundingClientRect(),
-			sx = e.clientX - r.left,
-			sy = e.clientY - r.top,
-			w = this.screenToWorld(sx, sy);
-		for (const h of this.lastHits) {
-			if (w.x >= h.x && w.x <= h.x + h.w && w.y >= h.y && w.y <= h.y + h.h) {
-				if (h.v !== null && h.v !== undefined) document.getElementById('val').value = h.v;
-				return
-			}
-		}
-		this.drag = true;
-		this.start = {
-			x: sx,
-			y: sy
-		};
-		this.c0 = {
-			x: this.cam.targetX,
-			y: this.cam.targetY
-		};
-		this.cv.style.cursor = 'grabbing'
-	}
-	move(e) {
-		const r = this.cv.getBoundingClientRect(),
-			x = e.clientX - r.left,
-			y = e.clientY - r.top;
-		if (this.drag) {
-			this.cam.targetX = this.c0.x + x - this.start.x;
-			this.cam.targetY = this.c0.y + y - this.start.y;
-			return
-		}
-		const w = this.screenToWorld(x, y);
-		this.cv.style.cursor = this.lastHits.some(h => w.x >= h.x && w.x <= h.x + h.w && w.y >= h.y && w.y <= h.y + h.h) ? 'pointer' : 'default'
-	}
-	up() {
-		this.drag = false;
-		this.cv.style.cursor = 'default'
-	}
-	layout(s) {
-		const b = this.base();
-		(s.cells || []).forEach((c, i) => {
-			if (c.x === undefined) c.x = b.arrayLeftX + i * b.cellPitch;
-			if (c.y === undefined) c.y = b.arrayTopY
-		});
-		(s.ghosts || []).forEach(g => {
-			if (g.x === undefined) g.x = b.arrayLeftX + (g.i ?? 0) * b.cellPitch;
-			if (g.y === undefined) g.y = b.transientValueY
-		});
-		(s.ptrs || []).forEach((p, i) => {
-			if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
-			if (p.y === undefined) p.y = b.arrayTopY - 78 - i * 62
-		})
-	}
-	bounds(s) {
-		let b = { minX: 20, minY: 20, maxX: 760, maxY: 540 };
-		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
-			b.minX = Math.min(b.minX, c.x - 220);
-			b.maxX = Math.max(b.maxX, c.x + 90);
-			b.minY = Math.min(b.minY, c.y - 130);
-			b.maxY = Math.max(b.maxY, c.y + 190)
-		});
-		return b
-	}
-	fit(snaps) {
-		let B = {
-			minX: 1e9,
-			minY: 1e9,
-			maxX: -1e9,
-			maxY: -1e9
-		};
-		snaps.forEach(s => {
-			const b = this.bounds(s);
-			B.minX = Math.min(B.minX, b.minX);
-			B.maxX = Math.max(B.maxX, b.maxX);
-			B.minY = Math.min(B.minY, b.minY);
-			B.maxY = Math.max(B.maxY, b.maxY)
-		});
-		const sc = Math.min(1.35, this.cv.width / (B.maxX - B.minX + 130), this.cv.height / (B.maxY - B.minY + 130));
-		this.cam.targetScale = sc;
-		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-	}
-	enqueue(snaps) {
-		snaps.forEach(s => this.layout(s));
-		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-		if (!this.sn.length) {
-			this.sn.push(snaps.shift());
-			this.idx = 0;
-			document.getElementById('status-text').innerText = this.sn[0].text || 'Ready.'
-		}
-		if (snaps.length) {
-			this.pending = snaps;
-			this.state = 'CAMERA'
-		}
-	}
-	loop(ts) {
-		if (!this.last) this.last = ts;
-		const dt = Math.min((ts - this.last) / 1000, .1);
-		this.last = ts;
-		if (!this.paused) this.update(dt);
-		this.draw();
-		requestAnimationFrame(t => this.loop(t))
-	}
-	update(dt) {
-		const f = 1 - Math.exp(-10 * dt);
-		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-		this.cam.x += (this.cam.targetX - this.cam.x) * f;
-		this.cam.y += (this.cam.targetY - this.cam.y) * f;
-		if (this.state === 'CAMERA') {
-			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
-		} else if (this.state === 'MORPH') {
-			this.t += 2.5 * this.speedFactor * dt;
-			if (this.t >= 1) {
-				this.t = 1;
-				if (this.sn[this.idx + 1]?.pause) {
-					this.state = 'WAIT';
-					this.wait = .75 / this.speedFactor
-				} else this.finish()
-			}
-		} else if (this.state === 'WAIT') {
-			this.wait -= dt;
-			if (this.wait <= 0) this.finish()
-		}
-	}
-	next() {
-		const s = this.pending.shift();
-		this.sn.push(s);
-		document.getElementById('status-text').innerText = s.text || 'Ready.';
-		this.t = 0;
-		this.state = 'MORPH'
-	}
-	finish() {
-		this.idx++;
-		if (this.pending.length) this.next();
-		else {
-			this.state = 'IDLE';
-			document.getElementById('status-text').innerText = 'Ready.';
-			app.clearInputs()
-		}
-	}
-	ease(t) {
-		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-	}
-	mix(a, b, t) {
-		const ma = new Map((a || []).map(o => [o.id, o])),
-			mb = new Map((b || []).map(o => [o.id, o])),
-			ids = new Set([...ma.keys(), ...mb.keys()]),
-			sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
-		let out = [];
-		ids.forEach(id => {
-			const A = ma.get(id), B = mb.get(id);
-			if (A && B) out.push({ ...B, x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t });
-			else if (B) {
-				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-				if (S) out.push({ ...B, x: S.x + (B.x - S.x) * t, y: S.y + (B.y - S.y) * t });
-				else out.push({ ...B })
-			}
-			else if (A && !sourceIds.has(id) && t < .85) out.push({ ...A })
-		});
-		return out
-	}
-	current() {
-		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? {
-			...this.sn[this.idx + 1],
-			cells: this.mix(this.sn[this.idx].cells, this.sn[this.idx + 1].cells, this.ease(this.t)),
-			ghosts: this.mix(this.sn[this.idx].ghosts, this.sn[this.idx + 1].ghosts, this.ease(this.t)),
-			ptrs: this.mix(this.sn[this.idx].ptrs, this.sn[this.idx + 1].ptrs, this.ease(this.t))
-		} : this.sn[Math.max(this.idx, 0)]
-	}
-	flash() {
-		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
-	}
-	draw() {
-		const s = this.current(), c = this.ctx;
-		c.clearRect(0, 0, this.cv.width, this.cv.height);
-		c.save();
-		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-		if (!s) { c.restore(); return }
-		this.lastHits = [];
-		this.drawStruct(s);
-		this.drawArrayPointer(s);
-		this.drawLabels(s);
-		(s.cells || []).forEach(cell => this.drawCell(cell, s));
-		(s.ghosts || []).forEach(g => this.drawGhost(g));
-		this.drawPtrs(s);
-		this.drawTopLabel(s);
-		this.drawStruct(s);
-		this.drawOverlays(s);
-		c.restore()
-	}
-	drawStruct(s) {
-		const c = this.ctx,
-			b = this.base(),
-			x = b.structX,
-			y = b.structY,
-			w = 40,
-			h = this.cell;
-		c.save();
-		c.fillStyle = K.k;
-		c.font = '18px monospace';
-		c.textAlign = 'right';
-		c.textBaseline = 'middle';
-		c.fillText('stack', x - 55, y - 38);
-		c.fillStyle = K.p;
-		c.fillRect(x - 45, y - 60, w, h);
-		c.fillStyle = K.v;
-		c.beginPath();
-		c.arc(x - 25, y - 40, 6, 0, Math.PI * 2);
-		c.fill();
-		[
-			['elements', K.c],
-			['size', K.g]
-		].forEach((r, i) => {
-			const yy = y + i * h;
-			c.fillStyle = K.k;
-			c.fillText(r[0], x - 10, yy + h / 2);
-			c.fillStyle = r[1];
-			c.fillRect(x, yy + h * 0.03, w, h - h * 0.03);
-			if (r[0] === 'elements') {
-				c.fillStyle = K.b;
-				c.beginPath();
-				c.arc(x + w / 2, yy + h / 2, 6, 0, Math.PI * 2);
-				c.fill()
-			} else {
-				c.fillStyle = K.r;
-				c.font = '24px Arial';
-				c.textAlign = 'center';
-				c.fillText(String(s.size), x + w / 2, yy + h / 2 + 1);
-				c.font = '18px monospace';
-				c.textAlign = 'right'
-			}
-		});
-        this.arrow(x - 25, y - 40, x, y, K.v, 2.5);
-		c.restore()
-	}
-	drawArrayPointer(s) {
-		if (s.arrayPointer === false) return;
-		const b = this.base();
-		let firstCell = null;
-		if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
-		if (!firstCell) firstCell = (s.cells || [])[0];
-		if (firstCell) this.arrow(b.structX + this.cell / 2, b.structY + this.cell / 2, firstCell.x, firstCell.y + this.cell / 2, K.b, 2.5)
-	}
-	drawLabels(s) {
-		const c = this.ctx;
-		(s.labels || []).forEach(l => {
-			c.save();
-			c.fillStyle = l.color || K.k;
-			c.font = l.font || 'bold 19px Arial';
-			c.textAlign = l.align || 'center';
-			c.fillText(l.text, l.x, l.y);
-			c.restore()
-		})
-	}
-	drawReferenceValuePair(x, y, value, drawReferenceCell = true) {
-		const c = this.ctx, w = this.cell, valueY = y + w + 40;
-		c.save();
-		if (drawReferenceCell) {
-			c.fillStyle = K.c;
-			c.fillRect(x, y, w, w);
-			c.strokeStyle = '#fff';
-			c.lineWidth = 2;
-			c.strokeRect(x, y, w, w);
-			c.fillStyle = K.b;
-			c.beginPath();
-			c.arc(x + w / 2, y + w / 2, 6, 0, Math.PI * 2);
-			c.fill()
-		}
-		c.restore();
-		this.arrow(x + w / 2, y + w / 2 + 6, x + w / 2, valueY, K.b, 2.5);
-		c.save();
-		c.fillStyle = K.g;
-		c.fillRect(x, valueY, w, w);
-		c.strokeStyle = '#fff';
-		c.lineWidth = 2;
-		c.strokeRect(x, valueY, w, w);
-		c.fillStyle = K.r;
-		c.font = '24px Arial';
-		c.textAlign = 'center';
-		c.textBaseline = 'middle';
-		c.fillText(String(value), x + w / 2, valueY + w / 2 + 1);
-		c.restore()
-	}
-	drawGhost(g) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = .82;
-		this.drawReferenceValuePair(g.x, g.y, g.v, false);
-		c.restore()
-	}
-	drawCell(cell, s) {
-		const c = this.ctx,
-			w = this.cell,
-			active = cell.active !== undefined ? cell.active : cell.i < s.size,
-			isNull = cell.v === null,
-			hasReferencedValue = active && !isNull,
-			hasUnreachableValue = cell[GC_ANIMATION.unreachableValueKey] !== undefined,
-			displayedValue = hasReferencedValue ? cell.v : cell[GC_ANIMATION.unreachableValueKey];
-		c.save();
-		c.fillStyle = K.c;
-		c.fillRect(cell.x, cell.y, w, w);
-		c.strokeStyle = '#fff';
-		c.lineWidth = 2;
-		c.strokeRect(cell.x, cell.y, w, w);
-		this.lastHits.push({ x: cell.x, y: cell.y, w: w, h: w, v: cell.v });
-		c.fillStyle = K.k;
-		c.font = '18px monospace';
-		c.textAlign = 'center';
-		c.textBaseline = 'alphabetic';
-		c.fillText(cell.i, cell.x + w / 2, cell.y - 9);
-		c.fillStyle = K.b;
-		c.beginPath();
-		c.arc(cell.x + w / 2, cell.y + w / 2, 6, 0, Math.PI * 2);
-		c.fill();
-		if (hasReferencedValue || hasUnreachableValue) {
-			const vy = cell.y + w + 40;
-			c.restore();
-			if (hasReferencedValue) this.arrow(cell.x + w / 2, cell.y + w / 2 + 6, cell.x + w / 2, vy, K.b, 2.5);
-			c.save();
-			c.fillStyle = K.g;
-			c.fillRect(cell.x, vy, w, w);
-			c.strokeStyle = '#fff';
-			c.lineWidth = 2;
-			c.strokeRect(cell.x, vy, w, w);
-			this.lastHits.push({ x: cell.x, y: vy, w: w, h: w, v: displayedValue });
-			c.fillStyle = K.r;
-			c.font = '24px Arial';
-			c.textAlign = 'center';
-			c.textBaseline = 'middle';
-			c.fillText(String(displayedValue), cell.x + w / 2, vy + w / 2 + 1)
-		}
-		c.restore()
-	}
-	drawPtrs(s) {
-		(s.ptrs || []).forEach(p => {
-			const c = this.ctx;
-			c.save();
-			c.fillStyle = K.k;
-			c.font = '18px monospace';
-			c.textAlign = 'center';
-			c.fillText(p.label, p.x + 30, p.y - 8);
-			c.fillStyle = K.c;
-			c.fillRect(p.x, p.y, 40, 40);
-			c.fillStyle = K.b;
-			c.beginPath();
-			c.arc(p.x + 20, p.y + 20, 6, 0, Math.PI * 2);
-			c.fill();
-			c.restore();
-			const target = (s.cells || []).find(c => c.i === p.i);
-			if (target) this.arrow(p.x + 20, p.y + 20, target.x + this.cell / 2, target.y, K.b, 2.5)
-		})
-	}
-	drawTopLabel(s) {
-		const c = this.ctx,
-			top = s.size > 0 ? (s.cells || []).find(x => x.i === s.size - 1) : null;
-		if (!top) return;
-		c.save();
-		c.fillStyle = K.k;
-		c.font = '16px monospace';
-		c.textAlign = 'center';
-		c.textBaseline = 'alphabetic';
-		c.fillText('top', top.x + this.cell / 2, top.y + this.cell + 40 + this.cell + 24);
-		c.restore()
-	}
-	drawOverlays(s) {
-		if (s.flashSize) this.flashStruct(1);
-		if (s.flashElements) this.flashStruct(0);
-		(s.flashCells || []).forEach(i => {
-			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
-			if (cell) this.roundFlash(cell.x - 4, cell.y - 4, this.cell + 8, this.cell + 8)
-		});
-		(s.flashCellIds || []).forEach(id => {
-			const cell = (s.cells || []).find(c => c.id === id);
-			if (cell) this.roundFlash(cell.x - 4, cell.y - 4, this.cell + 8, this.cell + 8)
-		});
-		(s.crossCells || []).forEach(i => {
-			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
-			if (cell) this.cross(cell.x, cell.y + this.cell + 40, this.cell, this.cell)
-		})
-	}
-	flashStruct(row) {
-		const b = this.base();
-		this.flashCircle(b.structX + 20, b.structY + row * this.cell + this.cell / 2, 22)
-	}
-	flashCircle(x, y, r) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flash();
-		c.strokeStyle = K.r;
-		c.lineWidth = 4;
-		c.beginPath();
-		c.arc(x, y, r, 0, Math.PI * 2);
-		c.stroke();
-		c.restore()
-	}
-	roundFlash(x, y, w, h) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flash();
-		c.strokeStyle = K.r;
-		c.lineWidth = 4;
-		c.beginPath();
-		c.roundRect(x, y, w, h, 8);
-		c.stroke();
-		c.restore()
-	}
-	cross(x, y, w, h) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flash();
-		c.strokeStyle = K.r;
-		c.lineWidth = 5;
-		c.beginPath();
-		c.moveTo(x - 6, y - 6);
-		c.lineTo(x + w + 6, y + h + 6);
-		c.moveTo(x + w + 6, y - 6);
-		c.lineTo(x - 6, y + h + 6);
-		c.stroke();
-		c.restore()
-	}
-	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-		const c = this.ctx;
-		c.save();
-		c.strokeStyle = col;
-		c.fillStyle = col;
-		c.lineWidth = lw;
-		c.beginPath();
-		c.moveTo(x1, y1);
-		c.lineTo(x2, y2);
-		c.stroke();
-		this.head(x1, y1, x2, y2, col);
-		c.restore()
-	}
-	head(x1, y1, x2, y2, col = K.b) {
-		const c = this.ctx,
-			a = Math.atan2(y2 - y1, x2 - x1),
-			h = 13;
-		c.fillStyle = col;
-		c.beginPath();
-		c.moveTo(x2, y2);
-		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
-		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
-		c.closePath();
-		c.fill()
-	}
-	setSpeed(v) {
-		this.speedFactor = 1 / v
-	}
-	togglePause() {
-		this.paused = !this.paused;
-		return this.paused
-	}
+
+/* Engine: camera, input, animation lifecycle and drawing primitives. */
+class VisualizationEngine {
+    constructor(id) {
+    		this.cv = document.getElementById(id);
+    		this.ctx = this.cv.getContext('2d');
+    		this.cam = {
+    			scale: 1,
+    			targetScale: 1,
+    			x: 0,
+    			targetX: 0,
+    			y: 0,
+    			targetY: 0
+    		};
+    		this.sn = [];
+    		this.pending = [];
+    		this.idx = -1;
+    		this.state = 'IDLE';
+    		this.t = 0;
+    		this.speedFactor = 1;
+    		this.paused = false;
+    		this.last = 0;
+    		this.cell = 40;
+    		this.lastHits = [];
+    		this.resize();
+    		window.addEventListener('resize', () => this.resize());
+    		this.cv.addEventListener('wheel', e => this.wheel(e), {
+    			passive: false
+    		});
+    		this.cv.addEventListener('mousedown', e => this.down(e));
+    		this.cv.addEventListener('mousemove', e => this.move(e));
+    		this.cv.addEventListener('mouseup', () => this.up());
+    		this.cv.addEventListener('mouseleave', () => this.up());
+    		requestAnimationFrame(t => this.loop(t))
+    	}
+
+    base() {
+    		const arrayLeftX = 300;
+    		const arrayTopY = 170;
+    		const structLeftX = 210;
+    		const structTopY = 170;
+    		const cellPitch = 40;
+    		const reallocOldArrayY = 115;
+    		const reallocNewArrayY = 330;
+    		const transientValueY = reallocOldArrayY - 70;
+    		return {
+    			arrayLeftX, arrayTopY, structLeftX, structTopY, cellPitch,
+    			reallocOldArrayY, reallocNewArrayY, transientValueY,
+    			x: arrayLeftX, y: arrayTopY, structX: structLeftX, structY: structTopY, gap: cellPitch
+    		}
+    	}
+
+    resize() {
+    		const w = document.getElementById('wrap');
+    		this.cv.width = w.offsetWidth;
+    		this.cv.height = w.offsetHeight;
+    		if (this.sn.length) {
+    			this.fit([this.sn[Math.max(this.idx, 0)]]);
+    			this.cam.scale = this.cam.targetScale;
+    			this.cam.x = this.cam.targetX;
+    			this.cam.y = this.cam.targetY
+    		}
+    	}
+
+    screenToWorld(x, y) {
+    		return {
+    			x: (x - this.cam.x) / this.cam.scale,
+    			y: (y - this.cam.y) / this.cam.scale
+    		}
+    	}
+
+    wheel(e) {
+    		e.preventDefault();
+    		const r = this.cv.getBoundingClientRect(),
+    			x = e.clientX - r.left,
+    			y = e.clientY - r.top;
+    		let ns = this.cam.targetScale * (1 - e.deltaY * .001);
+    		ns = Math.min(5, Math.max(.2, ns));
+    		const wx = (x - this.cam.targetX) / this.cam.targetScale,
+    			wy = (y - this.cam.targetY) / this.cam.targetScale;
+    		this.cam.targetScale = ns;
+    		this.cam.targetX = x - wx * ns;
+    		this.cam.targetY = y - wy * ns
+    	}
+
+    down(e) {
+    		const r = this.cv.getBoundingClientRect(),
+    			sx = e.clientX - r.left,
+    			sy = e.clientY - r.top,
+    			w = this.screenToWorld(sx, sy);
+    		for (const h of this.lastHits) {
+    			if (w.x >= h.x && w.x <= h.x + h.w && w.y >= h.y && w.y <= h.y + h.h) {
+    				if (h.v !== null && h.v !== undefined) document.getElementById('val').value = h.v;
+    				return
+    			}
+    		}
+    		this.drag = true;
+    		this.start = {
+    			x: sx,
+    			y: sy
+    		};
+    		this.c0 = {
+    			x: this.cam.targetX,
+    			y: this.cam.targetY
+    		};
+    		this.cv.style.cursor = 'grabbing'
+    	}
+
+    move(e) {
+    		const r = this.cv.getBoundingClientRect(),
+    			x = e.clientX - r.left,
+    			y = e.clientY - r.top;
+    		if (this.drag) {
+    			this.cam.targetX = this.c0.x + x - this.start.x;
+    			this.cam.targetY = this.c0.y + y - this.start.y;
+    			return
+    		}
+    		const w = this.screenToWorld(x, y);
+    		this.cv.style.cursor = this.lastHits.some(h => w.x >= h.x && w.x <= h.x + h.w && w.y >= h.y && w.y <= h.y + h.h) ? 'pointer' : 'default'
+    	}
+
+    up() {
+    		this.drag = false;
+    		this.cv.style.cursor = 'default'
+    	}
+
+    layout(s) {
+    		const b = this.base();
+    		(s.cells || []).forEach((c, i) => {
+    			if (c.x === undefined) c.x = b.arrayLeftX + i * b.cellPitch;
+    			if (c.y === undefined) c.y = b.arrayTopY
+    		});
+    		(s.ghosts || []).forEach(g => {
+    			if (g.x === undefined) g.x = b.arrayLeftX + (g.i ?? 0) * b.cellPitch;
+    			if (g.y === undefined) g.y = b.transientValueY
+    		});
+    		(s.ptrs || []).forEach((p, i) => {
+    			if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
+    			if (p.y === undefined) p.y = b.arrayTopY - 78 - i * 62
+    		})
+    	}
+
+    bounds(s) {
+    		let b = { minX: 20, minY: 20, maxX: 760, maxY: 540 };
+    		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
+    			b.minX = Math.min(b.minX, c.x - 220);
+    			b.maxX = Math.max(b.maxX, c.x + 90);
+    			b.minY = Math.min(b.minY, c.y - 130);
+    			b.maxY = Math.max(b.maxY, c.y + 190)
+    		});
+    		return b
+    	}
+
+    fit(snaps) {
+    		let B = {
+    			minX: 1e9,
+    			minY: 1e9,
+    			maxX: -1e9,
+    			maxY: -1e9
+    		};
+    		snaps.forEach(s => {
+    			const b = this.bounds(s);
+    			B.minX = Math.min(B.minX, b.minX);
+    			B.maxX = Math.max(B.maxX, b.maxX);
+    			B.minY = Math.min(B.minY, b.minY);
+    			B.maxY = Math.max(B.maxY, b.maxY)
+    		});
+    		const sc = Math.min(1.35, this.cv.width / (B.maxX - B.minX + 130), this.cv.height / (B.maxY - B.minY + 130));
+    		this.cam.targetScale = sc;
+    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+    	}
+
+    enqueue(snaps) {
+    		snaps.forEach(s => this.layout(s));
+    		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+    		if (!this.sn.length) {
+    			this.sn.push(snaps.shift());
+    			this.idx = 0;
+    			document.getElementById('status-text').innerText = this.sn[0].text || 'Ready.'
+    		}
+    		if (snaps.length) {
+    			this.pending = snaps;
+    			this.state = 'CAMERA'
+    		}
+    	}
+
+    loop(ts) {
+    		if (!this.last) this.last = ts;
+    		const dt = Math.min((ts - this.last) / 1000, .1);
+    		this.last = ts;
+    		if (!this.paused) this.update(dt);
+    		this.draw();
+    		requestAnimationFrame(t => this.loop(t))
+    	}
+
+    update(dt) {
+    		const f = 1 - Math.exp(-10 * dt);
+    		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+    		this.cam.x += (this.cam.targetX - this.cam.x) * f;
+    		this.cam.y += (this.cam.targetY - this.cam.y) * f;
+    		if (this.state === 'CAMERA') {
+    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
+    		} else if (this.state === 'MORPH') {
+    			this.t += 2.5 * this.speedFactor * dt;
+    			if (this.t >= 1) {
+    				this.t = 1;
+    				if (this.sn[this.idx + 1]?.pause) {
+    					this.state = 'WAIT';
+    					this.wait = .75 / this.speedFactor
+    				} else this.finish()
+    			}
+    		} else if (this.state === 'WAIT') {
+    			this.wait -= dt;
+    			if (this.wait <= 0) this.finish()
+    		}
+    	}
+
+    next() {
+    		const s = this.pending.shift();
+    		this.sn.push(s);
+    		document.getElementById('status-text').innerText = s.text || 'Ready.';
+    		this.t = 0;
+    		this.state = 'MORPH'
+    	}
+
+    finish() {
+    		this.idx++;
+    		if (this.pending.length) this.next();
+    		else {
+    			this.state = 'IDLE';
+    			document.getElementById('status-text').innerText = 'Ready.';
+    			window.app?.clearInputs()
+    		}
+    	}
+
+    ease(t) {
+    		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+    	}
+
+    mix(a, b, t) {
+    		const ma = new Map((a || []).map(o => [o.id, o])),
+    			mb = new Map((b || []).map(o => [o.id, o])),
+    			ids = new Set([...ma.keys(), ...mb.keys()]),
+    			sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
+    		let out = [];
+    		ids.forEach(id => {
+    			const A = ma.get(id), B = mb.get(id);
+    			if (A && B) out.push({ ...B, x: A.x + (B.x - A.x) * t, y: A.y + (B.y - A.y) * t });
+    			else if (B) {
+    				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+    				if (S) out.push({ ...B, x: S.x + (B.x - S.x) * t, y: S.y + (B.y - S.y) * t });
+    				else out.push({ ...B })
+    			}
+    			else if (A && !sourceIds.has(id) && t < .85) out.push({ ...A })
+    		});
+    		return out
+    	}
+
+    current() {
+    		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? {
+    			...this.sn[this.idx + 1],
+    			cells: this.mix(this.sn[this.idx].cells, this.sn[this.idx + 1].cells, this.ease(this.t)),
+    			ghosts: this.mix(this.sn[this.idx].ghosts, this.sn[this.idx + 1].ghosts, this.ease(this.t)),
+    			ptrs: this.mix(this.sn[this.idx].ptrs, this.sn[this.idx + 1].ptrs, this.ease(this.t))
+    		} : this.sn[Math.max(this.idx, 0)]
+    	}
+
+    flash() {
+    		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+    	}
+
+    setSpeed(v) {
+    		this.speedFactor = 1 / v
+    	}
+
+    togglePause() {
+    		this.paused = !this.paused;
+    		return this.paused
+    	}
+
+    draw() {
+            const s = this.current();
+            const c = this.ctx;
+            c.clearRect(0, 0, this.cv.width, this.cv.height);
+            c.save();
+            c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+            if (s) this.renderScene(s);
+            c.restore();
+        }
+    
+        renderScene(_scene) {
+            // Subclasses render structure-specific content here using engine primitives.
+        }
+    
+        paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1 } = {}) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha *= alpha;
+            c.fillStyle = fill;
+            c.fillRect(x, y, w, h);
+            if (stroke) {
+                c.strokeStyle = stroke;
+                c.lineWidth = lineWidth;
+                c.strokeRect(x, y, w, h);
+            }
+            c.restore();
+        }
+    
+        paintText(text, x, y, { font = '18px Arial', fill = K.k, align = 'center', baseline = 'middle', alpha = 1 } = {}) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha *= alpha;
+            c.fillStyle = fill;
+            c.font = font;
+            c.textAlign = align;
+            c.textBaseline = baseline;
+            c.fillText(String(text), x, y);
+            c.restore();
+        }
+    
+        paintDot(x, y, r, fill, { alpha = 1 } = {}) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha *= alpha;
+            c.fillStyle = fill;
+            c.beginPath();
+            c.arc(x, y, r, 0, Math.PI * 2);
+            c.fill();
+            c.restore();
+        }
+    
+        flashCircle(x, y, r) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha = this.flash();
+            c.strokeStyle = K.r;
+            c.lineWidth = 4;
+            c.beginPath();
+            c.arc(x, y, r, 0, Math.PI * 2);
+            c.stroke();
+            c.restore();
+        }
+    
+        roundFlash(x, y, w, h) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha = this.flash();
+            c.strokeStyle = K.r;
+            c.lineWidth = 4;
+            c.beginPath();
+            if (c.roundRect) c.roundRect(x, y, w, h, 8);
+            else c.rect(x, y, w, h);
+            c.stroke();
+            c.restore();
+        }
+    
+        cross(x, y, w, h) {
+            const c = this.ctx;
+            c.save();
+            c.globalAlpha = this.flash();
+            c.strokeStyle = K.r;
+            c.lineWidth = 5;
+            c.beginPath();
+            c.moveTo(x - 6, y - 6);
+            c.lineTo(x + w + 6, y + h + 6);
+            c.moveTo(x + w + 6, y - 6);
+            c.lineTo(x - 6, y + h + 6);
+            c.stroke();
+            c.restore();
+        }
+    
+        arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+            const c = this.ctx;
+            c.save();
+            c.strokeStyle = col;
+            c.fillStyle = col;
+            c.lineWidth = lw;
+            c.beginPath();
+            c.moveTo(x1, y1);
+            c.lineTo(x2, y2);
+            c.stroke();
+            this.head(x1, y1, x2, y2, col);
+            c.restore();
+        }
+    
+        head(x1, y1, x2, y2, col = K.b) {
+            const c = this.ctx,
+                a = Math.atan2(y2 - y1, x2 - x1),
+                h = 13;
+            c.fillStyle = col;
+            c.beginPath();
+            c.moveTo(x2, y2);
+            c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
+            c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
+            c.closePath();
+            c.fill();
+        }
 }
-const app = {
-	values: [],
-	capacity: 6,
-	storage: [],
-	history: [],
-	viz: null,
-	init() {
-		this.viz = new Viz('cv');
-		this.values = [2, 1, 4];
-		this.capacity = 6;
-		this.storage = this.makeStorage(this.values, this.capacity);
-		this.showCurrent('The ArrayStack is initialized with sample values');
-		this.updateUI()
-	},
-	makeStorage(vals, cap) {
-		return Array.from({
-			length: cap
-		}, (_, i) => i < vals.length ? vals[i] : null)
-	},
-	cells(vals = this.values, cap = this.capacity, storage = this.storage, garbageValues = {}) {
-		return Array.from({ length: cap }, (_, i) => ({
-			id: 'c' + i,
-			v: i < storage.length ? storage[i] : null,
-			[GC_ANIMATION.unreachableValueKey]: Object.prototype.hasOwnProperty.call(garbageValues, i) ? garbageValues[i] : undefined,
-			i
-		}))
-	},
-	snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
-		const st = extra.storage ?? this.makeStorage(vals, cap);
-		const garbageValues = extra.garbageValues ?? {};
-		return {
-			cells: this.cells(vals, cap, st, garbageValues),
-			size: extra.size ?? vals.length,
-			capacity: cap,
-			text,
-			...extra,
-			storage: st,
-			garbageValues
-		}
-	},
-	showCurrent(text = 'Ready.') {
-		this.viz.sn = [];
-		this.viz.pending = [];
-		this.viz.idx = -1;
-		this.viz.state = 'IDLE';
-		this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage
-		})])
-	},
-	v() {
-		return parseInt(document.getElementById('val').value)
-	},
-	save() {
-		this.history.push({
-			values: [...this.values],
-			capacity: this.capacity,
-			storage: [...this.storage]
+
+/* View: Java ArrayStack-specific semantic rendering only. */
+class ArrayStackView extends VisualizationEngine {
+    
+    renderScene(s) {
+            this.lastHits = [];
+            this.drawStruct(s);
+            this.drawArrayPointer(s);
+            this.drawLabels(s);
+            (s.cells || []).forEach(cell => this.drawCell(cell, s));
+            (s.ghosts || []).forEach(g => this.drawGhost(g));
+            this.drawCellLabels(s);
+            this.drawPtrs(s);
+            this.drawTopLabel(s);
+			this.drawBottomLabel(s);
+            this.drawOverlays(s);
+        }
+    
+
+    
+    drawStruct(s) {
+            const b = this.base(), x = b.structX, y = b.structY, w = 40, h = this.cell;
+            this.paintText('stack', x - 55, y - 38, { font: '18px monospace', fill: K.k, align: 'right', baseline: 'middle' });
+            this.paintRect(x - 45, y - 60, w, h, K.p);
+            this.paintDot(x - 25, y - 40, 6, K.v);
+            [
+                ['elements', K.c],
+                ['size', K.g]
+            ].forEach((r, i) => {
+                const yy = y + i * h;
+                this.paintText(r[0], x - 10, yy + h / 2, { font: '18px monospace', fill: K.k, align: 'right', baseline: 'middle' });
+                this.paintRect(x, yy + h * 0.03, w, h - h * 0.03, r[1]);
+                if (r[0] === 'elements') {
+                    this.paintDot(x + w / 2, yy + h / 2, 6, K.b);
+                } else {
+                    this.paintText(String(s.size), x + w / 2, yy + h / 2 + 1, { font: '24px Arial', fill: K.r });
+                }
+            });
+            this.arrow(x - 25, y - 40, x, y, K.v, 2.5);
+        }
+    
+
+    drawArrayPointer(s) {
+    		if (s.arrayPointer === false) return;
+    		const b = this.base();
+    		let firstCell = null;
+    		if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
+    		if (!firstCell) firstCell = (s.cells || [])[0];
+    		if (firstCell) this.arrow(b.structX + this.cell / 2, b.structY + this.cell / 2, firstCell.x, firstCell.y + this.cell / 2, K.b, 2.5)
+    	}
+
+    
+    drawLabels(s) {
+            (s.labels || []).forEach(l => this.paintText(l.text, l.x, l.y, {
+                font: l.font || 'bold 19px Arial',
+                fill: l.color || K.k,
+                align: l.align || 'center',
+                baseline: l.baseline || 'alphabetic'
+            }));
+        }
+    
+
+    
+    drawReferenceValuePair(x, y, value, drawReferenceCell = true, alpha = 1) {
+            const w = this.cell, valueY = y + w + 20;
+            if (drawReferenceCell) {
+                this.paintRect(x, y, w, w, K.c, { stroke: '#fff', lineWidth: 2, alpha });
+                this.paintDot(x + w / 2, y + w / 2, 6, K.b, { alpha });
+            }
+            this.arrow(x + w / 2, y + w / 2 + 6, x + w / 2, valueY, K.b, 2.5);
+            this.paintRect(x, valueY, w, w, K.g, { stroke: '#fff', lineWidth: 2, alpha });
+            this.paintText(String(value), x + w / 2, valueY + w / 2 + 1, { font: '24px Arial', fill: K.r, alpha });
+        }
+    
+
+    
+    drawGhost(g) {
+            this.drawReferenceValuePair(g.x, g.y, g.v, false, 0.82);
+        }
+    
+
+    
+    drawCell(cell, s) {
+            const w = this.cell,
+                active = cell.active !== undefined ? cell.active : cell.i < s.size,
+                isNull = cell.v === null,
+                hasReferencedValue = active && !isNull,
+                hasUnreachableValue = cell[GC_ANIMATION.unreachableValueKey] !== undefined,
+                displayedValue = hasReferencedValue ? cell.v : cell[GC_ANIMATION.unreachableValueKey],
+                redReference = (s.redReferenceCells || []).includes(cell.i),
+                referenceColor = redReference ? K.r : K.b,
+                referenceLineWidth = redReference ? 3.5 : 2.5;
+            this.paintRect(cell.x, cell.y, w, w, K.c, { stroke: '#fff', lineWidth: 2 });
+            this.lastHits.push({ x: cell.x, y: cell.y, w, h: w, v: cell.v });
+            this.paintText(cell.i, cell.x + w / 2, cell.y - 9, { font: '18px monospace', fill: K.k, baseline: 'alphabetic' });
+            this.paintDot(cell.x + w / 2, cell.y + w / 2, 6, referenceColor);
+            if (hasReferencedValue || hasUnreachableValue) {
+                const vy = cell.y + w + 20;
+                if (hasReferencedValue) this.arrow(cell.x + w / 2, cell.y + w / 2 + 6, cell.x + w / 2, vy, referenceColor, referenceLineWidth);
+                this.paintRect(cell.x, vy, w, w, K.g, { stroke: '#fff', lineWidth: 2 });
+                this.lastHits.push({ x: cell.x, y: vy, w, h: w, v: displayedValue });
+                this.paintText(String(displayedValue), cell.x + w / 2, vy + w / 2 + 1, { font: '24px Arial', fill: K.r });
+            }
+        }
+    
+
+    
+
+    drawCellLabels(s) {
+            (s.cellLabels || []).forEach(l => {
+                const cell = (s.cells || []).find(c => c.i === l.i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === l.i);
+                if (!cell) return;
+                this.paintText(l.text, cell.x + this.cell / 2, cell.y - 40, {
+                    font: l.font || '14px monospace',
+                    fill: l.color || K.k,
+                    baseline: 'alphabetic'
+                });
+            });
+        }    
+      
+    drawPtrs(s) {
+            (s.ptrs || []).forEach(p => {
+                this.paintText(p.label, p.x + 30, p.y - 8, { font: '18px monospace', fill: K.k, baseline: 'alphabetic' });
+                this.paintRect(p.x, p.y, 40, 40, K.c);
+                this.paintDot(p.x + 20, p.y + 20, 6, K.b);
+                const target = (s.cells || []).find(c => c.i === p.i);
+                if (target) this.arrow(p.x + 20, p.y + 20, target.x + this.cell / 2, target.y, K.b, 2.5);
+            });
+        }
+    
+
+    
+    drawTopLabel(s) {
+            const top = s.size > 0 ? (s.cells || []).find(x => x.i === s.size - 1) : null;
+            if (!top) return;
+            this.paintText(s.size > 1 ? 'top' : 'top/bottom', top.x + this.cell / 2, top.y + this.cell + 20 + this.cell + 24, {
+                font: '14px monospace',
+                fill: K.k,
+                baseline: 'alphabetic'
+            });
+        }
+    
+    drawBottomLabel(s) {
+		if (s.size < 2) return;
+		const bottom = (s.cells || []).find(x => x.i === 0);
+		this.paintText('bottom', bottom.x + this.cell / 2, bottom.y + this.cell + 20 + this.cell + 24, {
+			font: '14px monospace',
+			fill: K.k,
+			baseline: 'alphabetic'
 		});
-		if (this.history.length > 30) this.history.shift()
-	},
-	reallocCells(vals, oldCap, newCap, copiedCount = 0) {
-		const b = this.viz.base(), oldStorage = this.makeStorage(vals, oldCap), newStorage = this.makeStorage(vals.slice(0, copiedCount), newCap);
-		const oldCells = Array.from({ length: oldCap }, (_, i) => ({
-			id: 'old' + i, fromId: 'c' + i, i,
-			v: oldStorage[i], x: b.arrayLeftX + i * b.cellPitch, y: b.reallocOldArrayY, active: i < vals.length
-		}));
-		const newCells = Array.from({ length: newCap }, (_, i) => ({
-			id: 'new' + i, i,
-			v: newStorage[i], x: b.arrayLeftX + i * b.cellPitch, y: b.reallocNewArrayY, active: i < copiedCount
-		}));
-		return [...oldCells, ...newCells]
-	},
-	reallocLabels(oldCap, newCap) {
-		const b = this.viz.base();
-		const centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + this.viz.cell / 2;
-		return [
-			{ text: 'old elements', x: centeredLabelX(oldCap), y: b.reallocOldArrayY - 30, color: '#777' },
-			{ text: 'new elements', x: centeredLabelX(newCap), y: b.reallocNewArrayY - 30, color: '#2E7D32' }
-		]
-	},
-	reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
-		return this.snapshot(text, vals, oldCap, {
-			size: vals.length, capacity: oldCap,
-			cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
-			labels: this.reallocLabels(oldCap, newCap), arrayPointerId: 'old0', ...extra
-		})
-	},
-	reallocFinalSnapshot(text, vals, newCap, extra = {}) {
-		const finalStorage = this.makeStorage(vals, newCap);
-		const finalCells = this.cells(vals, newCap, finalStorage).map(c => ({ ...c, fromId: 'new' + c.i }));
-		return this.snapshot(text, vals, newCap, { size: vals.length, capacity: newCap, storage: finalStorage, cells: finalCells, ...extra })
-	},
-
-	ensureSnaps(vals, cap, need, lead) {
-		let snaps = [];
-		if (vals.length + need <= cap) return { cap, snaps };
-		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
-			size: vals.length, storage: this.makeStorage(vals, cap), flashSize: true, pause: true
-		}));
-		let newCap = Math.max(1, cap * 2);
-		while (vals.length + need > newCap) newCap *= 2;
-		snaps.push(this.reallocSnapshot('A new larger array is allocated; the current array moves smoothly to become the old array', vals, cap, newCap, 0, { pause: true }));
-		for (let i = 0; i < vals.length; i++) {
-			const b = this.viz.base();
-			const copyX = b.arrayLeftX + i * b.cellPitch;
-			snaps.push(this.reallocSnapshot('Copying the reference at index ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
-				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocOldArrayY, border: false }]
-			}));
-			snaps.push(this.reallocSnapshot('The copied reference, with its blue arrow and value, reaches the destination cell', vals, cap, newCap, i, {
-				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocNewArrayY, border: false }]
-			}));
-			snaps.push(this.reallocSnapshot('The destination cell in the new array is filled and its border flashes', vals, cap, newCap, i + 1, {
-				flashCellIds: ['new' + i], pause: true
-			}));
-		}
-		snaps.push(this.reallocSnapshot('All references have been copied; elements will now point to the new array', vals, cap, newCap, vals.length, { pause: true }));
-		snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the ArrayStack structure', vals, newCap, { pause: true }));
-		return { cap: newCap, snaps }
-	},
-	push() {
-		const e = this.v();
-		if (isNaN(e)) return;
-		this.save();
-		const old = [...this.values],
-			oldCap = this.capacity;
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayStack state', old, oldCap, {
-			size: old.length,
-			storage: [...this.storage]
-		})];
-		let ec = this.ensureSnaps(old, oldCap, 1, 'Before pushing,');
-		snaps.push(...ec.snaps);
-		let cap = ec.cap,
-			st = this.makeStorage(old, cap);
-		st[old.length] = e;
-		snaps.push(this.snapshot('The new reference is stored at elements[size]', old, cap, {
-			size: old.length,
-			storage: st,
-			flashCells: [old.length],
-			pause: true
-		}));
-		let vals = [...old, e];
-		snaps.push(this.snapshot('size is incremented; the new value is now the top element', vals, cap, {
-			size: vals.length,
-			storage: st,
-			flashSize: true,
-			flashCells: [old.length],
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', vals, cap, {
-			size: vals.length,
-			storage: st
-		}));
-		this.values = vals;
-		this.capacity = cap;
-		this.storage = st;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	top() {
-		if (this.values.length === 0) {
-			this.viz.enqueue([this.snapshot('The stack is empty: top() would throw EmptyStackException', this.values, this.capacity, {
-				size: 0,
-				storage: this.storage,
-				flashSize: true,
-				pause: true
-			}), this.snapshot('The operation is complete', this.values, this.capacity, {
-				size: 0,
-				storage: this.storage
-			})]);
-			return
-		}
-		let i = this.values.length - 1;
-		this.viz.enqueue([this.snapshot('The algorithm starts from the current ArrayStack state', this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage
-		}), this.snapshot('top() accesses elements[size - 1] directly', this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage,
-			ptrs: [{
-				id: 'ptop',
-				label: 'elements[size-1]',
-				i
-			}],
-			flashCells: [i],
-			pause: true
-		}), this.snapshot('The top element is ' + this.values[i], this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage,
-			flashCells: [i],
-			pause: true
-		}), this.snapshot('The operation is complete', this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage
-		})]);
-		this.updateUI()
-	},
-	pop() {
-		if (this.values.length === 0) {
-			this.viz.enqueue([this.snapshot('The stack is empty: pop() would throw EmptyStackException', this.values, this.capacity, { size: 0, storage: this.storage, flashSize: true, pause: true }), this.snapshot('The operation is complete', this.values, this.capacity, { size: 0, storage: this.storage })]);
-			return
-		}
-		this.save();
-		let old = [...this.values], cap = this.capacity, i = old.length - 1, removedValue = old[i], stBeforeNull = [...this.storage], stAfterNull = [...this.storage];
-		stAfterNull[i] = null;
-		let vals = old.slice(0, -1), unreachable = { [i]: removedValue }, snaps = [
-			this.snapshot('The algorithm starts from the current ArrayStack state', old, cap, { size: old.length, storage: stBeforeNull }),
-			this.snapshot('First, elements[size - 1] is set to null. The top value is still visible, but the array reference no longer points to it', old, cap, { size: old.length, storage: stAfterNull, garbageValues: unreachable, flashCells: [i], pause: true }),
-			this.snapshot('Then size is decremented. The old top is outside the logical stack and is eligible for Java garbage collection', vals, cap, { size: vals.length, storage: stAfterNull, garbageValues: unreachable, flashSize: true, flashCells: [i], pause: true }),
-			this.snapshot('There is no reference to the old top value hence its memory is eligible for Java garbage collection', vals, cap, { size: vals.length, storage: stAfterNull, garbageValues: unreachable, crossCells: [i], pause: true }),
-			this.snapshot('Finally, the unreachable value is deallocated by the garbage collector', vals, cap, { size: vals.length, storage: stAfterNull, pause: true }),
-			this.snapshot('The operation is complete', vals, cap, { size: vals.length, storage: stAfterNull })
-		];
-		this.values = vals;
-		this.storage = stAfterNull;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	isEmpty() {
-		const e = this.values.length === 0;
-		this.viz.enqueue([this.snapshot('isEmpty() checks whether size == 0', this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage,
-			flashSize: true,
-			pause: true
-		}), this.snapshot('Result: isEmpty() = ' + e, this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage,
-			flashSize: true,
-			pause: true
-		}), this.snapshot('The operation is complete', this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage
-		})])
-	},
-	showSize() {
-		this.viz.enqueue([this.snapshot('size() returns the integer field size', this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage,
-			flashSize: true,
-			pause: true
-		}), this.snapshot('Result: size() = ' + this.values.length, this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage,
-			flashSize: true,
-			pause: true
-		}), this.snapshot('The operation is complete', this.values, this.capacity, {
-			size: this.values.length,
-			storage: this.storage
-		})])
-	},
-	clear() {
-		this.save();
-		let old = [...this.values],
-			st = [...this.storage],
-			oldSize = old.length,
-			snaps = [this.snapshot('The algorithm starts from the current ArrayStack state', old, this.capacity, {
-				size: oldSize,
-				storage: st
-			})];
-		for (let j = 0; j < st.length; j++) {
-			if (st[j] === null || st[j] === undefined) continue;
-			const removedValue = st[j];
-			st[j] = null;
-			const garbage = { [j]: removedValue };
-			snaps.push(this.snapshot('elements[' + j + '] is set to null.', old, this.capacity, {
-				size: oldSize,
-				storage: [...st],
-				garbageValues: garbage,
-				flashCells: [j],
-				pause: true
-			}));
-			snaps.push(this.snapshot('The former value at index ' + j + ' is eligible for garbage collection as no reference points to it.', old, this.capacity, {
-				size: oldSize,
-				storage: [...st],
-				garbageValues: garbage,
-				crossCells: [j],
-				pause: true
-			}));
-			snaps.push(this.snapshot('The memory of the unreachable value at index ' + j + ' is reclaimed by the garbage collector.', old, this.capacity, {
-				size: oldSize,
-				storage: [...st],
-				pause: true
-			}))
-		}
-		this.values = [];
-		this.storage = st;
-		snaps.push(this.snapshot('All used references are null; now size is updated to 0', [], this.capacity, {
-			size: 0,
-			storage: st,
-			flashSize: true,
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', [], this.capacity, {
-			size: 0,
-			storage: st
-		}));
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	},
-	random() {
-		this.save();
-		let c = parseInt(document.getElementById('cap').value);
-		if (isNaN(c) || c < 6) c = 6;
-
-		this.capacity = c;
-		this.values = [];
-		let sz = Math.floor(Math.random() * Math.floor(2 * c/3)) + Math.floor(c/3);
-		while (this.values.length < sz) {
-			let v = Math.floor(Math.random() * 9) + 1;
-			if (!this.values.includes(v) || c > 9) this.values.push(v)
-		}
-		this.storage = this.makeStorage(this.values, this.capacity);
-		this.showCurrent('A random sample ArrayStack has been created');
-		this.updateUI()
-	},
-	reinit() {
-		let c = parseInt(document.getElementById('cap').value);
-		if (isNaN(c) || c < 1) c = 6;
-		this.save();
-		this.capacity = c;
-		this.values = [];
-		this.storage = this.makeStorage([], c);
-		this.showCurrent('A new empty ArrayStack has been allocated with capacity ' + c);
-		this.updateUI()
-	},
-	undo() {
-		if (!this.history.length) return;
-		const h = this.history.pop();
-		this.values = h.values;
-		this.capacity = h.capacity;
-		this.storage = h.storage;
-		this.showCurrent('The previous ArrayStack state has been restored');
-		this.updateUI()
-	},
-	speed() {
-		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
-	},
-	pause() {
-		const p = this.viz.togglePause();
-		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
-	},
-	toggleModal() {
-		const m = document.getElementById('helpModal');
-		m.style.display = m.style.display === 'block' ? 'none' : 'block'
-	},
-	updateUI() {
-		document.getElementById('btnUndo').disabled = this.history.length === 0
-	},
-	clearInputs() {
-		document.getElementById('val').value = ''
 	}
-};
+
+    drawOverlays(s) {
+    		if (s.flashSize) this.flashStruct(1);
+    		if (s.flashElements) this.flashStruct(0);
+    		(s.flashCells || []).forEach(i => {
+    			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
+    			if (cell) this.flashCircle(cell.x + this.cell / 2, cell.y + this.cell / 2, this.cell / 2 * 0.9)
+    		});
+    		(s.flashValueCells || []).forEach(i => {
+    			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
+    			if (cell) this.roundFlash(cell.x - 4, cell.y + this.cell + 16, this.cell + 8, this.cell + 8)
+    		});
+    		(s.flashCellIds || []).forEach(id => {
+    			const cell = (s.cells || []).find(c => c.id === id);
+    			if (cell) this.roundFlash(cell.x - 4, cell.y - 4, this.cell + 8, this.cell + 8)
+    		});
+    		(s.crossCells || []).forEach(i => {
+    			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
+    			if (cell) this.cross(cell.x, cell.y + this.cell + 20, this.cell, this.cell)
+    		})
+    	}
+
+    flashStruct(row) {
+    		const b = this.base();
+    		this.flashCircle(b.structX + 20, b.structY + row * this.cell + this.cell / 2, 22)
+    	}
+}
+
+/* App: model, UI and Java ArrayStack algorithms only. */
+class App {
+    constructor() {
+            this.values = [];
+            this.capacity = 6;
+            this.storage = [];
+            this.history = [];
+            this.viz = null;
+        }
+
+    init() {
+    		this.viz = new ArrayStackView('cv');
+    		this.values = [2, 1, 4];
+    		this.capacity = 6;
+    		this.storage = this.makeStorage(this.values, this.capacity);
+    		this.showCurrent('The ArrayStack is initialized with sample values');
+    		this.updateUI()
+    	}
+
+    makeStorage(vals, cap) {
+    		return Array.from({
+    			length: cap
+    		}, (_, i) => i < vals.length ? vals[i] : null)
+    	}
+
+    cells(vals = this.values, cap = this.capacity, storage = this.storage, garbageValues = {}) {
+    		return Array.from({ length: cap }, (_, i) => ({
+    			id: 'c' + i,
+    			v: i < storage.length ? storage[i] : null,
+    			[GC_ANIMATION.unreachableValueKey]: Object.prototype.hasOwnProperty.call(garbageValues, i) ? garbageValues[i] : undefined,
+    			i
+    		}))
+    	}
+
+    snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
+    		const st = extra.storage ?? this.makeStorage(vals, cap);
+    		const garbageValues = extra.garbageValues ?? {};
+    		return {
+    			cells: this.cells(vals, cap, st, garbageValues),
+    			size: extra.size ?? vals.length,
+    			capacity: cap,
+    			text,
+    			...extra,
+    			storage: st,
+    			garbageValues
+    		}
+    	}
+
+    showCurrent(text = 'Ready.') {
+    		this.viz.sn = [];
+    		this.viz.pending = [];
+    		this.viz.idx = -1;
+    		this.viz.state = 'IDLE';
+    		this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage
+    		})])
+    	}
+
+    v() {
+    		return parseInt(document.getElementById('val').value)
+    	}
+
+    save() {
+    		this.history.push({
+    			values: [...this.values],
+    			capacity: this.capacity,
+    			storage: [...this.storage]
+    		});
+    		if (this.history.length > 30) this.history.shift()
+    	}
+
+    reallocCells(vals, oldCap, newCap, copiedCount = 0) {
+    		const b = this.viz.base(), oldStorage = this.makeStorage(vals, oldCap), newStorage = this.makeStorage(vals.slice(0, copiedCount), newCap);
+    		const oldCells = Array.from({ length: oldCap }, (_, i) => ({
+    			id: 'old' + i, fromId: 'c' + i, i,
+    			v: oldStorage[i], x: b.arrayLeftX + i * b.cellPitch, y: b.reallocOldArrayY, active: i < vals.length
+    		}));
+    		const newCells = Array.from({ length: newCap }, (_, i) => ({
+    			id: 'new' + i, i,
+    			v: newStorage[i], x: b.arrayLeftX + i * b.cellPitch, y: b.reallocNewArrayY, active: i < copiedCount
+    		}));
+    		return [...oldCells, ...newCells]
+    	}
+
+    reallocLabels(oldCap, newCap) {
+    		const b = this.viz.base();
+    		const centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + this.viz.cell / 2;
+    		return [
+    			{ text: 'old elements', x: centeredLabelX(oldCap), y: b.reallocOldArrayY - 30, color: '#777' },
+    			{ text: 'new elements', x: centeredLabelX(newCap), y: b.reallocNewArrayY - 30, color: '#2E7D32' }
+    		]
+    	}
+
+    reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
+    		return this.snapshot(text, vals, oldCap, {
+    			size: vals.length, capacity: oldCap,
+    			cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
+    			labels: this.reallocLabels(oldCap, newCap), arrayPointerId: 'old0', ...extra
+    		})
+    	}
+
+    reallocFinalSnapshot(text, vals, newCap, extra = {}) {
+    		const finalStorage = this.makeStorage(vals, newCap);
+    		const finalCells = this.cells(vals, newCap, finalStorage).map(c => ({ ...c, fromId: 'new' + c.i }));
+    		return this.snapshot(text, vals, newCap, { size: vals.length, capacity: newCap, storage: finalStorage, cells: finalCells, ...extra })
+    	}
+
+    ensureSnaps(vals, cap, need, lead) {
+    		let snaps = [];
+    		if (vals.length + need <= cap) return { cap, snaps };
+    		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
+    			size: vals.length, storage: this.makeStorage(vals, cap), flashSize: true, pause: true
+    		}));
+    		let newCap = Math.max(1, cap * 2);
+    		while (vals.length + need > newCap) newCap *= 2;
+    		snaps.push(this.reallocSnapshot('A new larger array is allocated; the current array moves smoothly to become the old array', vals, cap, newCap, 0, { pause: true }));
+    		for (let i = 0; i < vals.length; i++) {
+    			const b = this.viz.base();
+    			const copyX = b.arrayLeftX + i * b.cellPitch;
+    			snaps.push(this.reallocSnapshot('Copying the reference at index ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
+    				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocOldArrayY, border: false }]
+    			}));
+    			snaps.push(this.reallocSnapshot('The copied reference, with its blue arrow and value, reaches the destination cell', vals, cap, newCap, i, {
+    				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocNewArrayY, border: false }]
+    			}));
+    			snaps.push(this.reallocSnapshot('The destination cell in the new array is filled and its border flashes', vals, cap, newCap, i + 1, {
+    				flashCellIds: ['new' + i], pause: true
+    			}));
+    		}
+    		snaps.push(this.reallocSnapshot('All references have been copied; elements will now point to the new array', vals, cap, newCap, vals.length, { pause: true }));
+    		snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the ArrayStack structure', vals, newCap, { pause: true }));
+    		return { cap: newCap, snaps }
+    	}
+
+    push() {
+    		const e = this.v();
+    		if (isNaN(e)) return;
+    		this.save();
+    		const old = [...this.values],
+    			oldCap = this.capacity;
+    		let snaps = [this.snapshot('The algorithm starts from the current ArrayStack state', old, oldCap, {
+    			size: old.length,
+    			storage: [...this.storage]
+    		})];
+    		let ec = this.ensureSnaps(old, oldCap, 1, 'Before pushing,');
+    		snaps.push(...ec.snaps);
+    		let cap = ec.cap,
+    			st = this.makeStorage(old, cap);
+    		st[old.length] = e;
+    		snaps.push(this.snapshot('The new reference is stored at elements[size]', old, cap, {
+    			size: old.length,
+    			storage: st,
+    			flashCells: [old.length],
+    			pause: true
+    		}));
+    		let vals = [...old, e];
+    		snaps.push(this.snapshot('size is incremented; the new value is now the top element', vals, cap, {
+    			size: vals.length,
+    			storage: st,
+    			flashSize: true,
+    			flashCells: [old.length],
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The operation is complete', vals, cap, {
+    			size: vals.length,
+    			storage: st
+    		}));
+    		this.values = vals;
+    		this.capacity = cap;
+    		this.storage = st;
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    top() {
+    		if (this.values.length === 0) {
+    			this.viz.enqueue([this.snapshot('The stack is empty: top() would throw EmptyStackException', this.values, this.capacity, {
+    				size: 0,
+    				storage: this.storage,
+    				flashSize: true,
+    				pause: true
+    			}), this.snapshot('The operation is complete', this.values, this.capacity, {
+    				size: 0,
+    				storage: this.storage
+    			})]);
+    			return
+    		}
+    		let i = this.values.length - 1;
+    		this.viz.enqueue([this.snapshot('The algorithm starts from the current ArrayStack state', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage
+    		}), this.snapshot('top() accesses elements[size-1]', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage,
+    			cellLabels: [{ text: 'elements[size-1]', i }],
+    			redReferenceCells: [i],
+    			flashValueCells: [i],
+    			pause: true
+    		}), this.snapshot('The top element is elements[size-1] = ' + this.values[i], this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage,
+    			cellLabels: [{ text: 'elements[size-1]', i }],
+    			redReferenceCells: [i],
+    			flashValueCells: [i],
+    			pause: true
+    		}), this.snapshot('The reference arrow returns to its normal color', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage,
+    			pause: true
+    		}), this.snapshot('The operation is complete', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage
+    		})]);
+    		this.updateUI()
+    	}
+
+    pop() {
+    		if (this.values.length === 0) {
+    			this.viz.enqueue([this.snapshot('The stack is empty: pop() would throw EmptyStackException', this.values, this.capacity, { size: 0, storage: this.storage, flashSize: true, pause: true }), this.snapshot('The operation is complete', this.values, this.capacity, { size: 0, storage: this.storage })]);
+    			return
+    		}
+    		this.save();
+    		let old = [...this.values], cap = this.capacity, i = old.length - 1, removedValue = old[i], stBeforeNull = [...this.storage], stAfterNull = [...this.storage];
+    		stAfterNull[i] = null;
+    		let vals = old.slice(0, -1), unreachable = { [i]: removedValue }, snaps = [
+    			this.snapshot('The algorithm starts from the current ArrayStack state', old, cap, { size: old.length, storage: stBeforeNull }),
+    			this.snapshot('First, elements[size - 1] is set to null. The top value is still visible, but the array reference no longer points to it', old, cap, { size: old.length, storage: stAfterNull, garbageValues: unreachable, flashCells: [i], pause: true }),
+    			this.snapshot('Then size is decremented. The old top is outside the logical stack and is eligible for Java garbage collection', vals, cap, { size: vals.length, storage: stAfterNull, garbageValues: unreachable, flashSize: true, flashCells: [i], pause: true }),
+    			this.snapshot('There is no reference to the old top value hence its memory is eligible for Java garbage collection', vals, cap, { size: vals.length, storage: stAfterNull, garbageValues: unreachable, crossCells: [i], pause: true }),
+    			this.snapshot('Finally, the unreachable value is deallocated by the garbage collector', vals, cap, { size: vals.length, storage: stAfterNull, pause: true }),
+    			this.snapshot('The operation is complete', vals, cap, { size: vals.length, storage: stAfterNull })
+    		];
+    		this.values = vals;
+    		this.storage = stAfterNull;
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    isEmpty() {
+    		const e = this.values.length === 0;
+    		this.viz.enqueue([this.snapshot('isEmpty() checks whether size == 0', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage,
+    			flashSize: true,
+    			pause: true
+    		}), this.snapshot('Result: isEmpty() = ' + e, this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage,
+    			flashSize: true,
+    			pause: true
+    		}), this.snapshot('The operation is complete', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage
+    		})])
+    	}
+
+    showSize() {
+    		this.viz.enqueue([this.snapshot('size() returns the integer field size', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage,
+    			flashSize: true,
+    			pause: true
+    		}), this.snapshot('Result: size() = ' + this.values.length, this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage,
+    			flashSize: true,
+    			pause: true
+    		}), this.snapshot('The operation is complete', this.values, this.capacity, {
+    			size: this.values.length,
+    			storage: this.storage
+    		})])
+    	}
+
+    clear() {
+    		this.save();
+    		let old = [...this.values],
+    			st = [...this.storage],
+    			oldSize = old.length,
+    			snaps = [this.snapshot('The algorithm starts from the current ArrayStack state', old, this.capacity, {
+    				size: oldSize,
+    				storage: st
+    			})];
+    		for (let j = 0; j < st.length; j++) {
+    			if (st[j] === null || st[j] === undefined) continue;
+    			const removedValue = st[j];
+    			st[j] = null;
+    			const garbage = { [j]: removedValue };
+    			snaps.push(this.snapshot('elements[' + j + '] is set to null.', old, this.capacity, {
+    				size: oldSize,
+    				storage: [...st],
+    				garbageValues: garbage,
+    				flashCells: [j],
+    				pause: true
+    			}));
+    			snaps.push(this.snapshot('The former value at index ' + j + ' is eligible for garbage collection as no reference points to it.', old, this.capacity, {
+    				size: oldSize,
+    				storage: [...st],
+    				garbageValues: garbage,
+    				crossCells: [j],
+    				pause: true
+    			}));
+    			snaps.push(this.snapshot('The memory of the unreachable value at index ' + j + ' is reclaimed by the garbage collector.', old, this.capacity, {
+    				size: oldSize,
+    				storage: [...st],
+    				pause: true
+    			}))
+    		}
+    		this.values = [];
+    		this.storage = st;
+    		snaps.push(this.snapshot('All used references are null; now size is updated to 0', [], this.capacity, {
+    			size: 0,
+    			storage: st,
+    			flashSize: true,
+    			pause: true
+    		}));
+    		snaps.push(this.snapshot('The operation is complete', [], this.capacity, {
+    			size: 0,
+    			storage: st
+    		}));
+    		this.viz.enqueue(snaps);
+    		this.updateUI()
+    	}
+
+    random() {
+    		this.save();
+    		let c = parseInt(document.getElementById('cap').value);
+    		if (isNaN(c) || c < 6) c = 6;
+    
+    		this.capacity = c;
+    		this.values = [];
+    		let sz = Math.floor(Math.random() * Math.floor(2 * c/3)) + 1;
+    		while (this.values.length < sz) {
+    			let v = Math.floor(Math.random() * 9) + 1;
+    			if (!this.values.includes(v) || c > 9) this.values.push(v)
+    		}
+    		this.storage = this.makeStorage(this.values, this.capacity);
+    		this.showCurrent('A random sample ArrayStack has been created');
+    		this.updateUI()
+    	}
+
+    reinit() {
+    		let c = parseInt(document.getElementById('cap').value);
+    		if (isNaN(c) || c < 1) c = 6;
+    		this.save();
+    		this.capacity = c;
+    		this.values = [];
+    		this.storage = this.makeStorage([], c);
+    		this.showCurrent('A new empty ArrayStack has been allocated with capacity ' + c);
+    		this.updateUI()
+    	}
+
+    undo() {
+    		if (!this.history.length) return;
+    		const h = this.history.pop();
+    		this.values = h.values;
+    		this.capacity = h.capacity;
+    		this.storage = h.storage;
+    		this.showCurrent('The previous ArrayStack state has been restored');
+    		this.updateUI()
+    	}
+
+    speed() {
+    		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+    	}
+
+    pause() {
+    		const p = this.viz.togglePause();
+    		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
+    	}
+
+    toggleModal() {
+    		const m = document.getElementById('helpModal');
+    		m.style.display = m.style.display === 'block' ? 'none' : 'block'
+    	}
+
+    updateUI() {
+    		document.getElementById('btnUndo').disabled = this.history.length === 0
+    	}
+
+    clearInputs() {
+    		document.getElementById('val').value = ''
+    	}
+}
+const app = new App();
+window.app = app;
 window.onload = () => app.init();
 window.onclick = e => {
-	if (e.target === document.getElementById('helpModal')) app.toggleModal()
+    if (e.target === document.getElementById('helpModal')) app.toggleModal();
 };
+
 </script></body></html>
