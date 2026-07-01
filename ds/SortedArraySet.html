@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>ArrayList Visualizer</title>
+    <title>SortedArraySet Visualizer</title>
     <style>
         :root {
             --b: #1565c0;
@@ -54,34 +54,23 @@
 <body>
     <header>
         <div class="top">
-            <h1>ArrayList Visualizer</h1>
+            <h1>SortedArraySet Visualizer</h1>
             <button class="help" onclick="app.toggleModal()" title="Open help and asymptotic complexity summary.">?</button>
         </div>
         <div class="gui">
             <div class="controls">
-                <label>Element 
-                    <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.append()">
-                </label>
-                <label>Index 
-                    <input id="idx" class="idx" type="number" placeholder="i">
-                </label>
-                <label>Initial capacity 
-                    <input id="cap" class="idx" type="number" min="1" value="6">
-                </label>
-                <button class="green" onclick="app.append()" title="Append: add the value at the end of the list">Append</button>
-                <button class="green" onclick="app.prepend()" title="Prepend: insert the value at index 0 and shift existing elements one position to the right.">Prepend</button>
-                <button class="blue" onclick="app.insert()" title="Insert: place the value at the selected index, shifting following elements to the right.">Insert</button>
-                <button class="purple" onclick="app.get()" title="Get: read the element at the selected index by direct array access.">Get</button>
-                <button class="blue" onclick="app.set()" title="Set: replace the element at the selected index by direct array access.">Set</button>
-                <button class="red" onclick="app.del()" title="Delete: remove the element at the selected index and shift following elements to the left.">Delete</button>
-                <button class="purple" onclick="app.iterate()" title="Iterate: traverse the list with an ArrayList iterator.">Iterate</button>
-                <div class="sep"></div>
-                <button class="orange" onclick="app.reinit()" title="New: allocate a new empty ArrayList with the selected initial capacity.">New</button>
-                <button class="gray" onclick="app.clear()" title="Clear: set size to 0 while keeping capacity and the allocated array.">Clear</button>
-                <div class="sep"></div>
-                <button class="orange" onclick="app.random()" title="Build Random: create a new sample list with three random distinct values.">Build Random</button>
-                <div class="sep"></div>
-                <button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo: restore the previous ArrayList state.">Undo</button>
+                <label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.insert()"></label>
+                <input id="idx" class="idx" type="number" style="display:none">
+                <label>Initial capacity <input id="cap" class="idx" type="number" min="1" value="8"></label>
+                <button class="green" onclick="app.insert()">Insert</button>
+                <button class="red" onclick="app.del()">Delete</button>
+                <button class="purple" onclick="app.contains()">Contains</button>
+                <button class="purple" onclick="app.iterate()">Iterate</button>
+                <div class="sep"></div><button class="orange" onclick="app.reinit()">Empty</button><button class="gray" onclick="app.clear()">Clear</button>
+                <div class="sep"></div><button class="orange" onclick="app.random()">Build Random</button>
+                <div class="sep"></div><label>Other set <input id="other" type="text" placeholder="2,4,9" style="width:120px;padding:6px;border:1px solid #999;border-radius:4px;font-weight:bold"></label>
+                <button class="blue" onclick="app.union()">Union</button><button class="blue" onclick="app.intersection()">Intersection</button><button class="blue" onclick="app.difference()">Difference</button>
+                <div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled>Undo</button>
             </div>
             <div class="sub">
                 <label>Slowdown:</label>
@@ -98,7 +87,7 @@
         <div id="legend">
             <div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div>
             <div class="li"><span class="sw" style="background:#91f4f4"></span>array reference slot</div>
-            <div class="li"><span class="sw" style="background:#c78cff"></span>list reference</div>
+            <div class="li"><span class="sw" style="background:#c78cff"></span>set reference</div>
             <div class="li"><span class="dot"></span>object reference</div>
         </div>
     </div>
@@ -106,8 +95,8 @@
     <div id="helpModal" class="modal">
         <div class="modal-content">
             <span class="close" onclick="app.toggleModal()">&times;</span>
-            <h2>ArrayList</h2>
-            <p>A Java <strong>ArrayList</strong> stores the sequence in a heap allocated array of references <span class="code">elements</span>. The object also tracks <span class="code">size</span>. The <span class="code">capacity</span> is implicitly the length of the internal array.</p>
+            <h2>SortedArraySet</h2>
+            <p>A Java <strong>SortedArraySet</strong> stores the sequence in a heap allocated array of references <span class="code">elements</span>. The object also tracks <span class="code">size</span>. The <span class="code">capacity</span> is implicitly the length of the internal array.</p>
             <ul>
                 <li><strong>Append</strong>: ensure capacity, write the object reference at <span class="code">elements[size]</span>, then increment <span class="code">size</span>. Complexity: <strong>amortized O(1)</strong>; <strong>O(n)</strong> in the occasional worst case when reallocation occurs.</li>
                 <li><strong>Prepend</strong>: insert at index <span class="code">0</span>, shifting all current references one position to the right. Complexity: <strong>O(n)</strong>.</li>
@@ -332,7 +321,7 @@ class VisualizationEngine {
 			maxX: 760,
 			maxY: 470
 		};
-		[...(s.cells || []), ...(s.ghosts || []), ...(s.objBoxes || []), ...(s.iterators || [])].forEach(c => {
+		[...(s.cells || []), ...(s.ghosts || []), ...(s.objBoxes || []), ...(s.iterators || []), ...(s.searchBoxes || []), ...(s.finder ? [{x:s.finder.x,y:s.finder.y},{x:s.finder.x,y:s.finder.y+5*this.cell}] : [])].forEach(c => {
 			b.minX = Math.min(b.minX, c.x - m.boundLeftExtra);
 			b.maxX = Math.max(b.maxX, c.x + m.boundRightExtra);
 			b.minY = Math.min(b.minY, c.y - m.boundTopExtra);
@@ -497,6 +486,7 @@ class VisualizationEngine {
 			ptrs: this.mix(A.ptrs, B.ptrs, t, A),
 			objBoxes: this.mix(A.objBoxes, B.objBoxes, t, A),
 			iterators: this.mix(A.iterators, B.iterators, t, A),
+			searchBoxes: this.mix(A.searchBoxes, B.searchBoxes, t, A),
 			refArrows: this.mixRefArrows(A, B, t)
 		}
 	}
@@ -639,8 +629,8 @@ class VisualizationEngine {
 	}
 }
 
-/* View: Java ArrayList-specific semantic rendering only. */
-class JavaArrayListView extends VisualizationEngine {
+/* View: Java SortedArraySet-specific semantic rendering only. */
+class JavaSortedArraySetView extends VisualizationEngine {
 	renderScene(s) {
 		this.lastCells = s.cells || [];
 		this.drawStruct(s);
@@ -652,6 +642,8 @@ class JavaArrayListView extends VisualizationEngine {
 		(s.objBoxes || []).forEach(o => this.drawObjBox(o));
 		this.drawRefArrows(s);
 		this.drawPtrs(s);
+		this.drawSearchBoxes(s);
+		this.drawFinder(s);
 		(s.iterators || []).forEach(it => this.drawIterator(it, s));
 		this.drawOverlays(s);
 	}
@@ -668,7 +660,7 @@ class JavaArrayListView extends VisualizationEngine {
 			listBoxY = structTop - m.listPointerBoxOffsetY,
 			listDotX = listBoxX + m.cellCenter,
 			listDotY = listBoxY + m.cellCenter;
-		this.paintText('list', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
+		this.paintText('set', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
 			font: '28px monospace',
 			fill: K.k,
 			align: 'right',
@@ -720,7 +712,7 @@ class JavaArrayListView extends VisualizationEngine {
 	drawCell(cell, s) {
 		const m = this.layoutMetrics(),
 			w = m.cell;
-		this.paintRect(cell.x, cell.y, w, w, K.c);
+		this.paintRect(cell.x, cell.y, w, w, cell.range ? K.y : K.c);
 		this.paintText(cell.i, cell.x + m.cellCenter, cell.y - m.indexLabelGap, {
 			font: '22px monospace',
 			fill: K.k,
@@ -823,6 +815,30 @@ class JavaArrayListView extends VisualizationEngine {
 		});
 	}
 
+
+	drawSearchBoxes(s) {
+		const m = this.layoutMetrics();
+		(s.searchBoxes || []).forEach(p => {
+			this.paintText(p.label, p.x - 10, p.y + m.cellCenter, { font: '22px monospace', fill: p.color || K.k, align: 'right' });
+			this.paintRect(p.x, p.y, m.cell, m.cell, p.fill || K.c);
+			this.paintText(String(p.i), p.x + m.cellCenter, p.y + m.cellCenter + 2, { font: '28px Arial', fill: K.r });
+		});
+	}
+	drawFinder(s) {
+		if (!s.finder) return;
+		const f = s.finder, m = this.layoutMetrics(), cell = m.cell, x = f.x, y = f.y;
+		this.paintText('finder', x - 105, y - 55, { font: '24px monospace', align: 'right' });
+		this.paintRect(x - 90, y - 90, cell, cell, K.p);
+		this.paintDot(x - 90 + m.cellCenter, y - 90 + m.cellCenter, m.dotRadius, K.v);
+		this.arrow(x - 90 + m.cellCenter, y - 90 + m.cellCenter, x, y, K.v, 3);
+		[['left', f.left], ['right', f.right], ['mid', f.mid == null ? '?' : f.mid], ['found', f.found == null ? '?' : f.found], ['index', f.index == null ? '?' : f.index]].forEach((r, i) => {
+			const yy = y + i * cell;
+			this.paintText(r[0], x - 16, yy + m.cellCenter, { font: i < 3 ? '24px monospace' : '21px monospace', align: 'right' });
+			this.paintRect(x, yy, cell, cell, K.g);
+			this.paintText(String(r[1]), x + m.cellCenter, yy + m.cellCenter + 2, { font: i < 3 ? '30px Arial' : 'bold 18px monospace', fill: K.r });
+		});
+	}
+
 	drawIterator(it, s) {
 		const m = this.layoutMetrics(),
 			w = m.cell,
@@ -851,6 +867,11 @@ class JavaArrayListView extends VisualizationEngine {
 	drawOverlays(s) {
 		if (s.flashElements) this.flashStruct(0);
 		if (s.flashSize) this.flashStruct(1);
+		if (s.flashFinder && s.finder) {
+			const row = {left:0, right:1, mid:2, found:3, index:4}[s.flashFinder];
+			if (row !== undefined) this.flashCircle(s.finder.x + this.layoutMetrics().cellCenter, s.finder.y + row * this.layoutMetrics().rowHeight + this.layoutMetrics().cellCenter, this.layoutMetrics().structFlashRadius);
+		}
+
 		const m = this.layoutMetrics();
 		(s.flashRefDots || []).forEach(i => {
 			const cell = (s.cells || []).find(c => c.i === i && !String(c.id).startsWith('old')) || (s.cells || []).find(c => c.i === i);
@@ -901,635 +922,38 @@ class JavaArrayListView extends VisualizationEngine {
 	}
 }
 
-/* App: model, UI and Java ArrayList algorithms only. */
+/* App: model, UI and Java SortedArraySet algorithms only. */
+
 class App {
-	constructor() {
-		this.values = [];
-		this.capacity = 6;
-		this.storage = [];
-		this.history = [];
-		this.viz = null;
-	}
-
-	makeDisplayStorage(vals, cap = this.capacity) {
-		return Array.from({
-			length: cap
-		}, (_, i) => i < vals.length ? vals[i] : '?');
-	}
-
-	cells(vals = this.values, cap = this.capacity, storageOverride = null) {
-		return Array.from({
-			length: cap
-		}, (_, i) => {
-			if (storageOverride) return {
-				id: 'c' + i,
-				v: storageOverride[i] !== undefined ? storageOverride[i] : '?',
-				i
-			};
-			const hasVal = i < vals.length && vals[i] !== undefined;
-			const hasStored = this.storage && i < this.storage.length && this.storage[i] !== undefined;
-			return {
-				id: 'c' + i,
-				v: hasVal ? vals[i] : (hasStored ? this.storage[i] : '?'),
-				i
-			};
-		});
-	}
-
-	snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
-		const storageOverride = extra.storage ?? null;
-		return {
-			cells: this.cells(vals, cap, storageOverride),
-			size: extra.size ?? this.values.length,
-			capacity: cap,
-			text,
-			...extra
-		};
-	}
-
-	init() {
-		this.viz = new JavaArrayListView('cv');
-		this.values = [2, 1, 4];
-		this.capacity = 6;
-		this.storage = [...this.values];
-		this.showCurrent('The ArrayList is initialized with sample objects');
-		this.updateUI()
-	}
-
-	commitStorage(vals, cap = this.capacity) {
-		const next = Array.from({
-			length: cap
-		}, (_, i) => this.storage?.[i]);
-		vals.forEach((v, i) => {
-			next[i] = v
-		});
-		this.storage = next
-	}
-
-	showCurrent(text = 'Ready.') {
-		this.viz.sn = [];
-		this.viz.pending = [];
-		this.viz.idx = -1;
-		this.viz.state = 'IDLE';
-		this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
-			size: this.values.length
-		})])
-	}
-
-	v() {
-		return parseInt(document.getElementById('val').value)
-	}
-
-	i() {
-		return parseInt(document.getElementById('idx').value)
-	}
-
-	save() {
-		this.history.push({
-			values: [...this.values],
-			capacity: this.capacity,
-			storage: [...this.storage]
-		});
-		if (this.history.length > 30) this.history.shift()
-	}
-
-	reallocCells(vals, oldCap, newCap, copiedCount = 0) {
-		const b = this.viz.base(),
-			cellPitch = b.cellPitch,
-			arrayLeftX = b.arrayLeftX,
-			oldArrayTopY = b.reallocOldArrayY,
-			newArrayTopY = b.reallocNewArrayY,
-			stored = this.storage || [];
-		const oldCells = Array.from({
-			length: oldCap
-		}, (_, i) => ({
-			id: 'old' + i,
-			fromId: 'c' + i,
-			i,
-			v: i < vals.length ? vals[i] : (stored[i] !== undefined ? stored[i] : '?'),
-			x: arrayLeftX + i * cellPitch,
-			y: oldArrayTopY
-		}));
-		const newCells = Array.from({
-			length: newCap
-		}, (_, i) => ({
-			id: 'new' + i,
-			i,
-			v: i < copiedCount ? vals[i] : '?',
-			x: arrayLeftX + i * cellPitch,
-			y: newArrayTopY
-		}));
-		return [...oldCells, ...newCells]
-	}
-
-	reallocLabels(oldCap, newCap) {
-		const b = this.viz.base(),
-			m = this.viz.layoutMetrics(),
-			centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + m.cellCenter;
-		return [{
-				text: 'old elements',
-				x: centeredLabelX(oldCap),
-				y: b.reallocOldArrayY - 38,
-				color: '#777'
-			},
-			{
-				text: 'new elements',
-				x: centeredLabelX(newCap),
-				y: b.reallocNewArrayY - 38,
-				color: '#2E7D32'
-			}
-		]
-	}
-
-	reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
-		return this.snapshot(text, vals, oldCap, {
-			size: vals.length,
-			capacity: oldCap,
-			cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
-			labels: this.reallocLabels(oldCap, newCap),
-			arrayPointerId: 'old0',
-			...extra
-		})
-	}
-
-	reallocFinalSnapshot(text, vals, newCap, extra = {}) {
-		const finalCells = this.cells(vals, newCap).map(c => ({
-			...c,
-			fromId: 'new' + c.i
-		}));
-		return this.snapshot(text, vals, newCap, {
-			size: vals.length,
-			capacity: newCap,
-			cells: finalCells,
-			...extra
-		})
-	}
-
-	ensureSnaps(vals, cap, need, lead) {
-		let snaps = [];
-		if (vals.length + need <= cap) return {
-			cap,
-			snaps
-		};
-		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
-			size: vals.length,
-			pause: true
-		}));
-		let newCap = Math.max(1, cap * 2);
-		while (vals.length + need > newCap) newCap *= 2;
-		snaps.push(this.reallocSnapshot('A new array with double capacity is allocated', vals, cap, newCap, 0, {
-			fitCamera: true,
-			pause: true
-		}));
-		for (let i = 0; i < vals.length; i++) {
-			const b = this.viz.base(),
-				copyX = b.arrayLeftX + i * b.cellPitch;
-			snaps.push(this.reallocSnapshot('Copying reference ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
-				ghosts: [{
-					id: 'copy' + i,
-					i,
-					v: vals[i],
-					x: copyX,
-					y: b.reallocOldArrayY,
-					border: false
-				}]
-			}));
-			snaps.push(this.reallocSnapshot('Reference ' + i + ' has been copied into the new array', vals, cap, newCap, i, {
-				ghosts: [{
-					id: 'copy' + i,
-					i,
-					v: vals[i],
-					x: copyX,
-					y: b.reallocNewArrayY,
-					border: false
-				}],
-				pause: true
-			}));
-			snaps.push(this.reallocSnapshot('The new array now contains the first ' + (i + 1) + ' copied reference' + (i === 0 ? '' : 's'), vals, cap, newCap, i + 1, {
-				flashRefDots: [i],
-				pause: true
-			}));
-		}
-		snaps.push(this.reallocSnapshot('All existing elements have been copied; the list will now point to the new array', vals, cap, newCap, vals.length, {
-			pause: true
-		}));
-		snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the ArrayList structure', vals, newCap, {
-			fitCamera: true,
-			flashElements: true,
-			pause: true
-		}));
-		return {
-			cap: newCap,
-			snaps
-		}
-	}
-
-	insert() {
-		let idx = this.i(),
-			e = this.v();
-		if (isNaN(idx) || isNaN(e) || idx < 0 || idx > this.values.length) return;
-		this.save();
-		const old = [...this.values],
-			oldCap = this.capacity;
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
-			size: old.length
-		})];
-		let ec = this.ensureSnaps(old, oldCap, 1, 'Before inserting,');
-		snaps.push(...ec.snaps);
-		let cap = ec.cap,
-			work = [...old];
-		if (idx < old.length) {
-			const b = this.viz.base(),
-				source = [];
-			for (let j = idx; j < old.length; j++) source.push(j);
-			const hide = [...source],
-				oldObjs = source.map(j => ({
-					id: 'shiftObj' + j,
-					i: j,
-					v: work[j],
-					x: b.arrayLeftX + j * b.cellPitch,
-					y: b.arrayTopY,
-					border: false
-				}));
-			let changed = [];
-			for (let j = old.length - 1; j >= idx; j--) {
-				changed.push({
-					from: j + 1,
-					objId: 'shiftObj' + j
-				});
-				const unchanged = [];
-				for (let k = idx; k <= j; k++) unchanged.push({
-					from: k,
-					objId: 'shiftObj' + k
-				});
-				snaps.push(this.snapshot('The reference in cell ' + (j + 1) + ' is changed to point to the object previously referenced by cell ' + j, work, cap, {
-					size: old.length,
-					objBoxes: oldObjs,
-					refArrows: [...changed, ...unchanged],
-					hideObjectIndices: hide,
-					flashRefDots: [j + 1],
-					pause: true
-				}));
-			}
-			snaps.push(this.snapshot('For an instant, the insertion cell and the next cell both reference the leftmost shifted object', work, cap, {
-				size: old.length,
-				objBoxes: oldObjs,
-				refArrows: [...changed, {
-					from: idx,
-					objId: 'shiftObj' + idx
-				}],
-				hideObjectIndices: hide,
-				flashRefDots: [idx + 1],
-				pause: true
-			}));
-			const moved = source.map(j => ({
-				id: 'shiftObj' + j,
-				fromId: 'shiftObj' + j,
-				i: j + 1,
-				v: work[j],
-				x: b.arrayLeftX + (j + 1) * b.cellPitch,
-				y: b.arrayTopY,
-				border: false
-			}));
-			snaps.push(this.snapshot('The shifted objects move one position to the right while the changed references follow them', work, cap, {
-				size: old.length,
-				objBoxes: moved,
-				refArrows: [...changed, {
-					from: idx,
-					objId: 'shiftObj' + idx
-				}],
-				hideObjectIndices: hide,
-				pause: true
-			}));
-			let shifted = [...work];
-			for (let j = old.length - 1; j >= idx; j--) shifted[j + 1] = shifted[j];
-			work = shifted;
-			const newObj = {
-				id: 'newInsertObj',
-				i: idx,
-				v: e,
-				x: b.arrayLeftX + idx * b.cellPitch,
-				y: b.arrayTopY,
-				border: false
-			};
-			snaps.push(this.snapshot('The reference in the insertion cell is overwritten so that it points to the new object', work, cap, {
-				size: old.length,
-				objBoxes: [...moved, newObj],
-				refArrows: [...changed, {
-					from: idx,
-					objId: 'newInsertObj'
-				}],
-				hideObjectIndices: [...hide, idx],
-				flashRefDots: [idx],
-				pause: true
-			}));
-		} else snaps.push(this.snapshot('The insertion position is the first free cell at the end of the list', work, cap, {
-			size: old.length,
-			flashRefDots: [idx],
-			pause: true
-		}));
-		work[idx] = e;
-		let final = work.slice(0, old.length + 1);
-		snaps.push(this.snapshot('The new object reference is stored at index ' + idx, final, cap, {
-			size: old.length,
-			flashRefDots: [idx],
-			pause: true
-		}));
-		snaps.push(this.snapshot('size is incremented after the insertion', final, cap, {
-			size: old.length,
-			flashSize: true,
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', final, cap, {
-			size: final.length,
-			storage: this.makeDisplayStorage(final, cap)
-		}));
-		this.commitStorage(final, cap);
-		this.values = final;
-		this.capacity = cap;
-		this.viz.enqueue(snaps);
-		this.updateUI();
-	}
-
-	get() {
-		let idx = this.i();
-		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
-		const b = this.viz.base(), m = this.viz.layoutMetrics(), labelX = b.arrayLeftX + idx * b.cellPitch + m.cellCenter, labelY = b.arrayTopY - 50;
-		let snaps = [
-			this.snapshot('The algorithm starts from the current ArrayList state', this.values, this.capacity, { size: this.values.length }),
-			this.snapshot('elements[' + idx + '] is selected directly; its reference arrow is highlighted in red', this.values, this.capacity, {
-				size: this.values.length,
-				labels: [{ text: 'elements[' + idx + ']', x: labelX, y: labelY, font: '18px monospace', color: K.k }],
-				redObjectArrows: [idx],
-				pause: true
-			}),
-			this.snapshot('The object referenced by elements[' + idx + '] is flashed', this.values, this.capacity, { size: this.values.length, flashObjects: [idx], pause: true }),
-			this.snapshot('The lookup result is get(' + idx + ') = ' + this.values[idx], this.values, this.capacity, { size: this.values.length, flashObjects: [idx], pause: true }),
-			this.snapshot('The operation is complete', this.values, this.capacity, { size: this.values.length })
-		];
-		this.viz.enqueue(snaps);
-		this.updateUI();
-	}
-	append() {
-		const e = this.v();
-		if (isNaN(e)) return;
-		this.save();
-		const old = [...this.values],
-			oldCap = this.capacity;
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, oldCap, {
-			size: old.length
-		})];
-		let ec = this.ensureSnaps(old, oldCap, 1, 'Before appending,');
-		snaps.push(...ec.snaps);
-		let vals = [...old],
-			cap = ec.cap,
-			beforeSizeIncrement = [...vals];
-		beforeSizeIncrement[old.length] = e;
-		snaps.push(this.snapshot('The new object reference is written at array index size', beforeSizeIncrement, cap, {
-			size: old.length,
-			flashRefDots: [old.length],
-			pause: true
-		}));
-		vals.push(e);
-		snaps.push(this.snapshot('size is incremented after storing the new element', vals, cap, {
-			size: old.length,
-			flashSize: true,
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', vals, cap, {
-			size: vals.length
-		}));
-		this.commitStorage(vals, cap);
-		this.values = vals;
-		this.capacity = cap;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	}
-
-	del() {
-		let idx = this.i();
-		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
-		this.save();
-		const old = [...this.values], cap = this.capacity, b = this.viz.base();
-		let work = [...old];
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, cap, { size: old.length })];
-		if (idx === old.length - 1) {
-			const delObj = { id: 'deleteLastObj', i: idx, v: old[idx], x: b.arrayLeftX + idx * b.cellPitch, y: b.arrayTopY, border: false };
-			snaps.push(this.snapshot('The last reference cell flashes before being set to null', old, cap, { size: old.length, flashRefDots: [idx], pause: true }));
-			work[idx] = '?';
-			snaps.push(this.snapshot('The last reference is now null; its arrow is removed and the null-reference circle remains', old, cap, { size: old.length, storage: [...work], objBoxes: [delObj], hideObjectIndices: [idx], pause: true }));
-			snaps.push(this.snapshot('The removed last object is no longer reachable and is crossed before disappearing', old, cap, { size: old.length, storage: [...work], objBoxes: [delObj], hideObjectIndices: [idx], crossObjectIds: ['deleteLastObj'], pause: true }));
-			snaps.push(this.snapshot('The unreachable value disappears', old, cap, { size: old.length, storage: [...work], pause: true }));
-			const final = old.slice(0, old.length - 1), finalStorage = this.makeDisplayStorage(final, cap);
-			snaps.push(this.snapshot('size is decremented', final, cap, { size: final.length, storage: finalStorage, flashSize: true, pause: true }));
-			snaps.push(this.snapshot('The operation is complete', final, cap, { size: final.length, storage: finalStorage }));
-			this.commitStorage(work, cap); this.values = final; this.viz.enqueue(snaps); this.updateUI(); return;
-		}
-		const source = [];
-		for (let j = idx; j < old.length; j++) source.push(j);
-		const hide = [...source], objs = source.map(j => ({ id: 'shiftObj' + j, i: j, v: old[j], x: b.arrayLeftX + j * b.cellPitch, y: b.arrayTopY, border: false }));
-		const directRefs = source.map(j => ({ from: j, objId: 'shiftObj' + j }));
-		snaps.push(this.snapshot('The affected references are exposed before shifting starts', work, cap, { size: old.length, objBoxes: objs, refArrows: directRefs, hideObjectIndices: hide, pause: true }));
-		let changed = [];
-		for (let j = idx + 1; j < old.length; j++) {
-			changed.push({ from: j - 1, objId: 'shiftObj' + j });
-			const unchanged = [];
-			for (let k = j; k < old.length; k++) unchanged.push({ from: k, objId: 'shiftObj' + k });
-			snaps.push(this.snapshot('Cell ' + (j - 1) + ' is overwritten to reference the object currently at cell ' + j, work, cap, { size: old.length, objBoxes: objs, refArrows: [...changed, ...unchanged], hideObjectIndices: hide, flashRefDots: [j - 1], pause: true }));
-		}
-		snaps.push(this.snapshot('Before values move left, two references point to the last value: the old last cell and the new last cell', work, cap, {
-			size: old.length,
-			objBoxes: objs,
-			refArrows: [...changed, { from: old.length - 1, objId: 'shiftObj' + (old.length - 1) }],
-			hideObjectIndices: hide,
-			flashRefDots: [old.length - 2],
-			pause: true
-		}));
-		snaps.push(this.snapshot('The green value box at index ' + idx + ' is crossed with a flashing mark just before it disappears', work, cap, { size: old.length, objBoxes: objs, refArrows: [...changed, { from: old.length - 1, objId: 'shiftObj' + (old.length - 1) }], hideObjectIndices: hide, crossObjectIds: ['shiftObj' + idx], pause: true }));
-		for (let j = idx + 1; j < old.length; j++) work[j - 1] = work[j];
-		const moved = source.filter(j => j !== idx).map(j => ({ id: 'shiftObj' + j, fromId: 'shiftObj' + j, i: j - 1, v: old[j], x: b.arrayLeftX + (j - 1) * b.cellPitch, y: b.arrayTopY, border: false }));
-		const oldLastStillPoints = { from: old.length - 1, objId: 'shiftObj' + (old.length - 1) };
-		snaps.push(this.snapshot('The remaining values move one position to the left; the old last cell still points to the former last value for an instant', work, cap, { size: old.length, objBoxes: moved, refArrows: [...changed, oldLastStillPoints], hideObjectIndices: hide, pause: true }));
-		snaps.push(this.snapshot('The old last cell flashes only now, just before being set to null', work, cap, {
-			size: old.length,
-			objBoxes: moved,
-			refArrows: [...changed, oldLastStillPoints],
-			hideObjectIndices: hide,
-			flashRefDots: [old.length - 1],
-			pause: true
-		}));
-		work[old.length - 1] = '?';
-		snaps.push(this.snapshot('The old last cell is set to null', work, cap, {
-			size: old.length,
-			storage: [...work],
-			objBoxes: moved,
-			refArrows: [...changed],
-			hideObjectIndices: hide,
-			pause: true
-		}));
-		const final = old.filter((_, i) => i !== idx), finalStorage = this.makeDisplayStorage(final, cap);
-		snaps.push(this.snapshot('size is decremented', final, cap, { size: final.length, storage: finalStorage, flashSize: true, pause: true }));
-		snaps.push(this.snapshot('The operation is complete', final, cap, { size: final.length, storage: finalStorage }));
-		this.commitStorage(work, cap); this.values = final; this.viz.enqueue(snaps); this.updateUI();
-	}
-	clear() {
-		this.save();
-		let old = [...this.values], work = this.makeDisplayStorage(this.values, this.capacity);
-		const b = this.viz.base();
-		let snaps = [this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, { size: old.length, storage: work })];
-		for (let j = 0; j < old.length; j++) {
-			if (work[j] === '?') continue;
-			const gcObj = { id: 'gcClearObj' + j, i: j, v: old[j], x: b.arrayLeftX + j * b.cellPitch, y: b.arrayTopY, border: false };
-			snaps.push(this.snapshot('elements[' + j + '] flashes: this reference cell is about to be set to null', old, this.capacity, { size: old.length, storage: [...work], flashRefDots: [j], pause: true }));
-			work[j] = '?';
-			snaps.push(this.snapshot('elements[' + j + '] is now null; the arrow has been removed but the null-reference circle remains', old, this.capacity, { size: old.length, storage: [...work], objBoxes: [gcObj], hideObjectIndices: [j], flashRefDots: [j], pause: true }));
-			snaps.push(this.snapshot('The object formerly referenced by elements[' + j + '] is no longer reachable; it is crossed before garbage collection releases it', old, this.capacity, { size: old.length, storage: [...work], objBoxes: [gcObj], hideObjectIndices: [j], crossObjectIds: ['gcClearObj' + j], pause: true }));
-			snaps.push(this.snapshot('The unreachable value disappears', old, this.capacity, { size: old.length, storage: [...work], pause: true }));
-		}
-		snaps.push(this.snapshot('size is set to 0. The allocated array is kept.', [], this.capacity, { size: 0, storage: [...work], flashSize: true, pause: true }));
-		snaps.push(this.snapshot('The operation is complete', [], this.capacity, { size: 0, storage: [...work] }));
-		this.storage = [...work]; this.values = [];
-		this.viz.enqueue(snaps); this.updateUI();
-	}
-	prepend() {
-		document.getElementById('idx').value = 0;
-		this.insert()
-	}
-
-	set() {
-		let idx = this.i(), e = this.v();
-		if (isNaN(idx) || isNaN(e) || idx < 0 || idx >= this.values.length) return;
-		this.save();
-		let old = [...this.values], upd = [...old];
-		upd[idx] = e;
-		const b = this.viz.base(), m = this.viz.layoutMetrics(), labelX = b.arrayLeftX + idx * b.cellPitch + m.cellCenter, labelY = b.arrayTopY - 50;
-		const accessLabel = [{ text: 'elements[' + idx + ']', x: labelX, y: labelY, font: '18px monospace', color: K.k }];
-		let snaps = [
-			this.snapshot('The algorithm starts from the current ArrayList state', old, this.capacity, { size: old.length }),
-			this.snapshot('elements[' + idx + '] is selected directly; its reference arrow is highlighted in red', old, this.capacity, { size: old.length, labels: accessLabel, redObjectArrows: [idx], pause: true }),
-			this.snapshot('The reference cell elements[' + idx + '] flashes before the assignment', old, this.capacity, { size: old.length, flashRefDots: [idx], pause: true }),
-			this.snapshot('The value in the green object box is changed while the whole referenced item flashes', upd, this.capacity, { size: upd.length, flashCells: [idx], pause: true }),
-			this.snapshot('The operation is complete', upd, this.capacity, { size: upd.length })
-		];
-		this.commitStorage(upd, this.capacity);
-		this.values = upd;
-		this.viz.enqueue(snaps);
-		this.updateUI()
-	}
-	random() {
-		this.save();
-		let c = parseInt(document.getElementById('cap').value);
-		if (isNaN(c) || c < 6) c = 6;
-
-		this.capacity = c;
-		let sz = Math.floor(Math.random() * Math.floor(2 * c/3)) + 1;
-		this.values = [];
-		while (this.values.length < sz) {
-			let v = Math.floor(Math.random() * 9) + 1;
-			if (!this.values.includes(v) || c > 9) this.values.push(v)
-		}
-		if (Math.random() < 0.33) this.values.sort();
-		this.storage = [...this.values];
-		this.showCurrent('A random sample ArrayList has been created');
-		this.updateUI()
-	}
-
-	iteratorSnapshot(text, idx, extra = {}) {
-		const b = this.viz.base();
-		const x = b.arrayLeftX + idx * b.cellPitch;
-		const y = b.arrayTopY - 185;
-		return this.snapshot(text, this.values, this.capacity, {
-			size: this.values.length,
-			iterators: [{
-				id: 'iterator',
-				label: 'iterator',
-				index: idx,
-				x,
-				y
-			}],
-			...extra
-		});
-	}
-
-	iterate() {
-		const size = this.values.length;
-		let snaps = [this.snapshot('The iterator is created. Its counter starts at 0.', this.values, this.capacity, {
-			size
-		})];
-		if (size === 0) {
-			snaps.push(this.iteratorSnapshot('The iterator counter is 0 and size is 0, so iteration is complete.', 0, {
-				pause: true
-			}));
-			snaps.push(this.snapshot('The operation is complete', this.values, this.capacity, {
-				size
-			}));
-			this.viz.enqueue(snaps);
-			this.updateUI();
-			return;
-		}
-		for (let i = 0; i < size; i++) {
-			snaps.push(this.iteratorSnapshot('Iterator counter = ' + i + '; next() returns elements[' + i + '] = ' + this.values[i], i, {
-				flashObjects: [i],
-				pause: true
-			}));
-			snaps.push(this.iteratorSnapshot('The iterator counter is incremented to ' + (i + 1), i + 1, {
-				pause: true
-			}));
-		}
-		snaps.push(this.iteratorSnapshot('The iterator counter is equal to size. Iteration is complete.', size, {
-			flashSize: true,
-			pause: true
-		}));
-		snaps.push(this.snapshot('The operation is complete', this.values, this.capacity, {
-			size
-		}));
-		this.viz.enqueue(snaps);
-		this.updateUI();
-	}
-
-	reinit() {
-		let c = parseInt(document.getElementById('cap').value);
-		if (isNaN(c) || c < 1) c = 6;
-		this.save();
-		this.capacity = c;
-		this.values = [];
-		this.storage = [];
-		this.showCurrent('A new empty ArrayList has been allocated with capacity ' + c);
-		this.updateUI()
-	}
-
-	undo() {
-		if (!this.history.length) return;
-		const h = this.history.pop();
-		this.values = h.values;
-		this.capacity = h.capacity;
-		this.storage = h.storage ?? [...h.values];
-		this.showCurrent('The previous ArrayList state has been restored');
-		this.updateUI()
-	}
-
-	speed() {
-		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
-	}
-
-	pause() {
-		const p = this.viz.togglePause();
-		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
-	}
-
-	toggleModal() {
-		const m = document.getElementById('helpModal');
-		m.style.display = m.style.display === 'block' ? 'none' : 'block'
-	}
-
-	updateUI() {
-		document.getElementById('btnUndo').disabled = this.history.length === 0
-	}
-
-	clearInputs() {
-		document.getElementById('val').value = '';
-		document.getElementById('idx').value = ''
-	}
+	constructor() { this.values=[]; this.capacity=8; this.storage=[]; this.history=[]; this.viz=null; }
+	makeDisplayStorage(vals, cap=this.capacity){return Array.from({length:cap},(_,i)=>i<vals.length?vals[i]:'?')}
+	cells(vals=this.values, cap=this.capacity, storageOverride=null, extra={}){return Array.from({length:cap},(_,i)=>{const v=storageOverride?(storageOverride[i]!==undefined?storageOverride[i]:'?'):(i<vals.length?vals[i]:(this.storage&&this.storage[i]!==undefined?this.storage[i]:'?'));return{id:'c'+i,v,i,range:extra.range&&i>=extra.range[0]&&i<=extra.range[1]&&i<vals.length}})}
+	snapshot(text, vals=this.values, cap=this.capacity, extra={}){const storageOverride=extra.storage??null;return{cells:extra.cells||this.cells(vals,cap,storageOverride,extra),size:extra.size??vals.length,capacity:cap,text,fitCamera:extra.fitCamera??true,...extra}}
+	init(){this.viz=new JavaSortedArraySetView('cv');this.values=[2,4,7];this.capacity=8;this.storage=[...this.values];this.showCurrent('The SortedArraySet is initialized with sample objects');this.updateUI()}
+	commitStorage(vals,cap=this.capacity){const clean=vals.filter(v=>v!=='?');this.storage=this.makeDisplayStorage(clean,cap)}
+	showCurrent(text='Ready.'){this.viz.sn=[];this.viz.pending=[];this.viz.idx=-1;this.viz.state='IDLE';this.viz.enqueue([this.snapshot(text,this.values,this.capacity,{size:this.values.length})])}
+	v(){return parseInt(document.getElementById('val').value)}
+	save(){this.history.push({values:[...this.values],capacity:this.capacity,storage:[...this.storage]});if(this.history.length>30)this.history.shift()}
+	box(label,index,y,fill,color){const b=this.viz.base();return{id:'searchBox:'+label,label,i:index,x:b.arrayLeftX+Math.max(index,0)*b.cellPitch,y,fill,color}}
+	finderSnaps(e,lead){const vals=[...this.values],cap=this.capacity,b=this.viz.base();let snaps=[],left=0,right=vals.length-1,mid=null;let finder={x:b.structLeftX,y:b.structTopY+190,left,right,mid,found:null,index:null};const boxes=()=>[this.box('left',left,b.arrayTopY-116,K.g,'#2E7D32'),...(mid===null?[]:[this.box('mid',mid,b.arrayTopY-184,K.p,K.v)]),this.box('right',right,b.arrayTopY-252,K.g,'#EF6C00')];const snap=(txt,extra={})=>this.snapshot(txt,vals,cap,{range:[left,right],finder,searchBoxes:boxes(),pause:true,...extra});snaps.push(snap(lead+': Finder is placed below the set; left = 0 and right = size - 1',{flashFinder:'left'}));while(left<=right){mid=left+Math.floor((right-left)/2);finder={...finder,left,right,mid};snaps.push(snap('mid is updated to '+mid+'; the three search boxes slide smoothly',{flashFinder:'mid',flashCells:[mid]}));snaps.push(snap('Compare '+e+' with elements['+mid+'] = '+vals[mid],{flashObjects:[mid]}));if(e===vals[mid]){finder={...finder,found:true,index:mid};snaps.push(snap('found is updated to true',{flashFinder:'found',flashCells:[mid]}));snaps.push(snap('index is updated to '+mid,{flashFinder:'index',flashCells:[mid]}));snaps.push(snap('Finder result: found = true, index = '+mid+'. Pause to inspect the final Finder fields.',{flashFinder:'index'}));snaps.push(snap('Finder result remains visible before continuing.'));snaps.push(snap('Finder result remains visible before continuing.'));return{snaps,found:true,index:mid}}else if(e>vals[mid]){left=mid+1;finder={...finder,left,right,mid};snaps.push(snap('left is updated to mid + 1 = '+left,{flashFinder:'left'}))}else{right=mid-1;finder={...finder,left,right,mid};snaps.push(snap('right is updated to mid - 1 = '+right,{flashFinder:'right'}))}}finder={...finder,left,right,mid,found:false,index:left};snaps.push(snap('found is updated to false',{flashFinder:'found'}));snaps.push(snap('index is updated to the insertion point '+left,{flashFinder:'index',flashCells:left<cap?[left]:[]}));snaps.push(snap('Finder result: found = false, index = '+left+'. Pause to inspect the final Finder fields.',{flashFinder:'index'}));snaps.push(snap('Finder result remains visible before continuing.'));snaps.push(snap('Finder result remains visible before continuing.'));return{snaps,found:false,index:left}}
+	reallocCells(vals,oldCap,newCap,copiedCount=0){const b=this.viz.base(),stored=this.storage||[];const oldCells=Array.from({length:oldCap},(_,i)=>({id:'old'+i,fromId:'c'+i,i,v:i<vals.length?vals[i]:(stored[i]!==undefined?stored[i]:'?'),x:b.arrayLeftX+i*b.cellPitch,y:b.reallocOldArrayY}));const newCells=Array.from({length:newCap},(_,i)=>({id:'new'+i,i,v:i<copiedCount?vals[i]:'?',x:b.arrayLeftX+i*b.cellPitch,y:b.reallocNewArrayY}));return[...oldCells,...newCells]}
+	reallocLabels(oldCap,newCap){const b=this.viz.base(),m=this.viz.layoutMetrics(),cx=cap=>b.arrayLeftX+(cap-1)*b.cellPitch/2+m.cellCenter;return[{text:'old elements',x:cx(oldCap),y:b.reallocOldArrayY-38,color:'#777'},{text:'new elements',x:cx(newCap),y:b.reallocNewArrayY-38,color:'#2E7D32'}]}
+	reallocSnapshot(text,vals,oldCap,newCap,copiedCount,extra={}){return this.snapshot(text,vals,oldCap,{size:vals.length,capacity:oldCap,cells:this.reallocCells(vals,oldCap,newCap,copiedCount),labels:this.reallocLabels(oldCap,newCap),arrayPointerId:'old0',...extra})}
+	reallocFinalSnapshot(text,vals,newCap,extra={}){const finalCells=this.cells(vals,newCap).map(c=>({...c,fromId:'new'+c.i}));return this.snapshot(text,vals,newCap,{size:vals.length,capacity:newCap,cells:finalCells,...extra})}
+	ensureSnaps(vals,cap,need,lead){let snaps=[];if(vals.length+need<=cap)return{cap,snaps};snaps.push(this.snapshot(lead+' the array is full, so capacity must be ensured',vals,cap,{size:vals.length,pause:true}));let newCap=Math.max(1,cap*2);while(vals.length+need>newCap)newCap*=2;snaps.push(this.reallocSnapshot('A new array with double capacity is allocated',vals,cap,newCap,0,{pause:true}));for(let i=0;i<vals.length;i++){const b=this.viz.base(),copyX=b.arrayLeftX+i*b.cellPitch;snaps.push(this.reallocSnapshot('Copying reference '+i+' from the old array to the new array',vals,cap,newCap,i,{ghosts:[{id:'copy'+i,i,v:vals[i],x:copyX,y:b.reallocOldArrayY,border:false}]}));snaps.push(this.reallocSnapshot('Reference '+i+' has been copied into the new array',vals,cap,newCap,i,{ghosts:[{id:'copy'+i,i,v:vals[i],x:copyX,y:b.reallocNewArrayY,border:false}],pause:true}));snaps.push(this.reallocSnapshot('The new array now contains the first '+(i+1)+' copied reference'+(i===0?'':'s'),vals,cap,newCap,i+1,{flashRefDots:[i],pause:true}))}snaps.push(this.reallocSnapshot('All existing elements have been copied; the set will now point to the new array',vals,cap,newCap,vals.length,{pause:true}));snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the SortedArraySet structure',vals,newCap,{flashElements:true,pause:true}));return{cap:newCap,snaps}}
+	insert(){const e=this.v();if(isNaN(e))return;this.save();const old=[...this.values],oldCap=this.capacity,fs=this.finderSnaps(e,'Insertion starts by creating Finder');let snaps=[...fs.snaps];if(fs.found){snaps.push(this.snapshot('Element '+e+' already exists. Insertion is aborted',old,oldCap,{pause:true}));snaps.push(this.snapshot('The operation is complete',old,oldCap));this.viz.enqueue(snaps);this.updateUI();return}const idx=fs.index;let ec=this.ensureSnaps(old,oldCap,1,'Before inserting,');snaps.push(...ec.snaps);let cap=ec.cap,work=[...old];if(idx<old.length){const b=this.viz.base(),source=[];for(let j=idx;j<old.length;j++)source.push(j);const hide=[...source],oldObjs=source.map(j=>({id:'shiftObj'+j,i:j,v:work[j],x:b.arrayLeftX+j*b.cellPitch,y:b.arrayTopY,border:false}));let changed=[];for(let j=old.length-1;j>=idx;j--){changed.push({from:j+1,objId:'shiftObj'+j});const unchanged=[];for(let k=idx;k<=j;k++)unchanged.push({from:k,objId:'shiftObj'+k});snaps.push(this.snapshot('The reference in cell '+(j+1)+' is changed to point to the object previously referenced by cell '+j,work,cap,{size:old.length,objBoxes:oldObjs,refArrows:[...changed,...unchanged],hideObjectIndices:hide,flashRefDots:[j+1],pause:true}))}snaps.push(this.snapshot('For an instant, the insertion cell and the next cell both reference the leftmost shifted object',work,cap,{size:old.length,objBoxes:oldObjs,refArrows:[...changed,{from:idx,objId:'shiftObj'+idx}],hideObjectIndices:hide,flashRefDots:[idx+1],pause:true}));const moved=source.map(j=>({id:'shiftObj'+j,fromId:'shiftObj'+j,i:j+1,v:work[j],x:b.arrayLeftX+(j+1)*b.cellPitch,y:b.arrayTopY,border:false}));snaps.push(this.snapshot('The shifted objects move one position to the right while the changed references follow them',work,cap,{size:old.length,objBoxes:moved,refArrows:[...changed,{from:idx,objId:'shiftObj'+idx}],hideObjectIndices:hide,pause:true}));let shifted=[...work];for(let j=old.length-1;j>=idx;j--)shifted[j+1]=shifted[j];work=shifted;const newObj={id:'newInsertObj',i:idx,v:e,x:b.arrayLeftX+idx*b.cellPitch,y:b.arrayTopY,border:false};snaps.push(this.snapshot('The reference in the insertion cell is overwritten so that it points to the new object',work,cap,{size:old.length,objBoxes:[...moved,newObj],refArrows:[...changed,{from:idx,objId:'newInsertObj'}],hideObjectIndices:[...hide,idx],flashRefDots:[idx],pause:true}))}else snaps.push(this.snapshot('The insertion position is the first free cell at the end of the set',work,cap,{size:old.length,flashRefDots:[idx],pause:true}));work[idx]=e;let final=work.slice(0,old.length+1);snaps.push(this.snapshot('The new object reference is stored at index '+idx,final,cap,{size:old.length,flashRefDots:[idx],pause:true}));snaps.push(this.snapshot('size is incremented after the insertion',final,cap,{size:old.length,flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',final,cap,{size:final.length,storage:this.makeDisplayStorage(final,cap)}));this.commitStorage(final,cap);this.values=final;this.capacity=cap;this.viz.enqueue(snaps);this.updateUI()}
+	del(){const e=this.v();if(isNaN(e))return;this.save();const old=[...this.values],cap=this.capacity,fs=this.finderSnaps(e,'Deletion starts by creating Finder');let snaps=[...fs.snaps];if(!fs.found){snaps.push(this.snapshot('Element '+e+' was not found. Deletion is aborted',old,cap,{pause:true}));snaps.push(this.snapshot('The operation is complete',old,cap));this.viz.enqueue(snaps);this.updateUI();return}const idx=fs.index,b=this.viz.base();let work=[...old];if(idx===old.length-1){const delObj={id:'deleteLastObj',i:idx,v:old[idx],x:b.arrayLeftX+idx*b.cellPitch,y:b.arrayTopY,border:false};snaps.push(this.snapshot('The last reference cell flashes before being set to null',old,cap,{size:old.length,flashRefDots:[idx],pause:true}));work[idx]='?';snaps.push(this.snapshot('The last reference is now null; its arrow is removed and the null-reference circle remains',old,cap,{size:old.length,storage:[...work],objBoxes:[delObj],hideObjectIndices:[idx],pause:true}));snaps.push(this.snapshot('The removed last object is no longer reachable and is crossed before disappearing',old,cap,{size:old.length,storage:[...work],objBoxes:[delObj],hideObjectIndices:[idx],crossObjectIds:['deleteLastObj'],pause:true}));snaps.push(this.snapshot('The unreachable value disappears',old,cap,{size:old.length,storage:[...work],pause:true}));const final=old.slice(0,old.length-1),finalStorage=this.makeDisplayStorage(final,cap);snaps.push(this.snapshot('size is decremented',final,cap,{size:final.length,storage:finalStorage,flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',final,cap,{size:final.length,storage:finalStorage}));this.commitStorage(work,cap);this.values=final;this.viz.enqueue(snaps);this.updateUI();return}const source=[];for(let j=idx;j<old.length;j++)source.push(j);const hide=[...source],objs=source.map(j=>({id:'shiftObj'+j,i:j,v:old[j],x:b.arrayLeftX+j*b.cellPitch,y:b.arrayTopY,border:false})),directRefs=source.map(j=>({from:j,objId:'shiftObj'+j}));snaps.push(this.snapshot('The affected references are exposed before shifting starts',work,cap,{size:old.length,objBoxes:objs,refArrows:directRefs,hideObjectIndices:hide,pause:true}));let changed=[];for(let j=idx+1;j<old.length;j++){changed.push({from:j-1,objId:'shiftObj'+j});const unchanged=[];for(let k=j;k<old.length;k++)unchanged.push({from:k,objId:'shiftObj'+k});snaps.push(this.snapshot('Cell '+(j-1)+' is overwritten to reference the object currently at cell '+j,work,cap,{size:old.length,objBoxes:objs,refArrows:[...changed,...unchanged],hideObjectIndices:hide,flashRefDots:[j-1],pause:true}))}snaps.push(this.snapshot('Before values move left, two references point to the last value: the old last cell and the new last cell',work,cap,{size:old.length,objBoxes:objs,refArrows:[...changed,{from:old.length-1,objId:'shiftObj'+(old.length-1)}],hideObjectIndices:hide,flashRefDots:[old.length-2],pause:true}));snaps.push(this.snapshot('The green value box at index '+idx+' is crossed with a flashing mark just before it disappears',work,cap,{size:old.length,objBoxes:objs,refArrows:[...changed,{from:old.length-1,objId:'shiftObj'+(old.length-1)}],hideObjectIndices:hide,crossObjectIds:['shiftObj'+idx],pause:true}));for(let j=idx+1;j<old.length;j++)work[j-1]=work[j];const moved=source.filter(j=>j!==idx).map(j=>({id:'shiftObj'+j,fromId:'shiftObj'+j,i:j-1,v:old[j],x:b.arrayLeftX+(j-1)*b.cellPitch,y:b.arrayTopY,border:false})),oldLastStillPoints={from:old.length-1,objId:'shiftObj'+(old.length-1)};snaps.push(this.snapshot('The remaining values move one position to the left; the old last cell still points to the former last value for an instant',work,cap,{size:old.length,objBoxes:moved,refArrows:[...changed,oldLastStillPoints],hideObjectIndices:hide,pause:true}));snaps.push(this.snapshot('The old last cell flashes only now, just before being set to null',work,cap,{size:old.length,objBoxes:moved,refArrows:[...changed,oldLastStillPoints],hideObjectIndices:hide,flashRefDots:[old.length-1],pause:true}));work[old.length-1]='?';snaps.push(this.snapshot('The old last cell is set to null',work,cap,{size:old.length,storage:[...work],objBoxes:moved,refArrows:[...changed],hideObjectIndices:hide,pause:true}));const final=old.filter((_,i)=>i!==idx),finalStorage=this.makeDisplayStorage(final,cap);snaps.push(this.snapshot('size is decremented',final,cap,{size:final.length,storage:finalStorage,flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',final,cap,{size:final.length,storage:finalStorage}));this.commitStorage(work,cap);this.values=final;this.viz.enqueue(snaps);this.updateUI()}
+	contains(){const e=this.v();if(isNaN(e))return;const fs=this.finderSnaps(e,'contains('+e+') starts by creating Finder');const snaps=[...fs.snaps,this.snapshot('contains('+e+') returns '+fs.found,this.values,this.capacity,{pause:true}),this.snapshot('The operation is complete',this.values,this.capacity)];this.viz.enqueue(snaps);this.updateUI()}
+	clear(){this.save();let old=[...this.values],work=this.makeDisplayStorage(this.values,this.capacity);const b=this.viz.base();let snaps=[this.snapshot('The algorithm starts from the current ArrayList state',old,this.capacity,{size:old.length,storage:work})];for(let j=0;j<old.length;j++){if(work[j]==='?')continue;const gcObj={id:'gcClearObj'+j,i:j,v:old[j],x:b.arrayLeftX+j*b.cellPitch,y:b.arrayTopY,border:false};snaps.push(this.snapshot('elements['+j+'] flashes: this reference cell is about to be set to null',old,this.capacity,{size:old.length,storage:[...work],flashRefDots:[j],pause:true}));work[j]='?';snaps.push(this.snapshot('elements['+j+'] is now null; the arrow has been removed but the null-reference circle remains',old,this.capacity,{size:old.length,storage:[...work],objBoxes:[gcObj],hideObjectIndices:[j],flashRefDots:[j],pause:true}));snaps.push(this.snapshot('The object formerly referenced by elements['+j+'] is no longer reachable; it is crossed before garbage collection releases it',old,this.capacity,{size:old.length,storage:[...work],objBoxes:[gcObj],hideObjectIndices:[j],crossObjectIds:['gcClearObj'+j],pause:true}));snaps.push(this.snapshot('The unreachable value disappears',old,this.capacity,{size:old.length,storage:[...work],pause:true}))}snaps.push(this.snapshot('size is set to 0. The allocated array is kept.',[],this.capacity,{size:0,storage:[...work],flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',[],this.capacity,{size:0,storage:[...work]}));this.storage=[...work];this.values=[];this.viz.enqueue(snaps);this.updateUI()}
+	iteratorSnapshot(text,idx,extra={}){const b=this.viz.base();const x=b.arrayLeftX+idx*b.cellPitch;const y=b.arrayTopY-185;return this.snapshot(text,this.values,this.capacity,{size:this.values.length,iterators:[{id:'iterator',label:'iterator',index:idx,x,y}],...extra})}
+	iterate(){const size=this.values.length;let snaps=[this.snapshot('The iterator is created. Its counter starts at 0.',this.values,this.capacity,{size})];if(size===0){snaps.push(this.iteratorSnapshot('The iterator counter is 0 and size is 0, so iteration is complete.',0,{pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI();return}for(let i=0;i<size;i++){snaps.push(this.iteratorSnapshot('Iterator counter = '+i+'; next() returns elements['+i+'] = '+this.values[i],i,{flashObjects:[i],pause:true}));snaps.push(this.iteratorSnapshot('The iterator counter is incremented to '+(i+1),i+1,{pause:true}))}snaps.push(this.iteratorSnapshot('The iterator counter is equal to size. Iteration is complete.',size,{flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI()}
+	parseOther(){return Array.from(new Set((document.getElementById('other').value||'').split(/[ ,;]+/).map(x=>parseInt(x)).filter(x=>!isNaN(x)))).sort((a,b)=>a-b)}
+	setOp(kind){const L=[...this.values],R=this.parseOther();this.save();let B=[],i=0,j=0,snaps=[this.snapshot(kind+': traverse both sorted arrays with elem1 and elem2',L,Math.max(this.capacity,L.length,1),{pause:true})];const add=(v,why)=>{B.push(v);snaps.push(this.snapshot(kind+': append '+v+' because '+why,B,Math.max(8,B.length+2),{flashRefDots:[B.length-1],flashSize:true,pause:true}))};while(kind==='Union'?(i<L.length||j<R.length):kind==='Intersection'?(i<L.length&&j<R.length):i<L.length){if(kind==='Union'){if(i>=L.length){add(R[j],'set1 is exhausted');j++}else if(j>=R.length){add(L[i],'set2 is exhausted');i++}else if(L[i]<R[j]){add(L[i],L[i]+' < '+R[j]);i++}else if(L[i]>R[j]){add(R[j],R[j]+' < '+L[i]);j++}else{add(L[i],'both elements are equal');i++;j++}}else if(kind==='Intersection'){if(L[i]<R[j])i++;else if(L[i]>R[j])j++;else{add(L[i],'both elements are equal');i++;j++}}else{if(j>=R.length){add(L[i],'set2 is exhausted');i++}else if(L[i]<R[j]){add(L[i],L[i]+' is not in set2');i++}else if(L[i]>R[j])j++;else{i++;j++}}}this.values=B;this.capacity=Math.max(8,B.length||1);snaps.push(this.snapshot('The result replaces the current SortedArraySet',this.values,this.capacity,{pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity));this.viz.enqueue(snaps);this.updateUI()}
+	union(){this.setOp('Union')}intersection(){this.setOp('Intersection')}difference(){this.setOp('Difference')}
+	random(){this.save();let c=parseInt(document.getElementById('cap').value);if(isNaN(c)||c<1)c=8;this.capacity=c;let s=new Set(),n=Math.max(1,Math.floor(Math.random()*Math.max(1,Math.floor(2*c/3)))+1);while(s.size<Math.min(n,c,20))s.add(Math.floor(Math.random()*20)+1);this.values=Array.from(s).sort((a,b)=>a-b);this.storage=[...this.values];this.showCurrent('A random sample SortedArraySet has been created');this.updateUI()}
+	reinit(){this.save();let c=parseInt(document.getElementById('cap').value);if(isNaN(c)||c<1)c=8;this.capacity=c;this.values=[];this.storage=[];this.showCurrent('A new empty SortedArraySet has been created');this.updateUI()}
+	undo(){if(!this.history.length)return;const h=this.history.pop();this.values=h.values;this.capacity=h.capacity;this.storage=h.storage??[...h.values];this.showCurrent('The previous SortedArraySet state has been restored');this.updateUI()}
+	speed(){this.viz.setSpeed(parseFloat(document.getElementById('speed').value))}pause(){const p=this.viz.togglePause();document.getElementById('btnPause').innerText=p?'Resume':'Pause'}toggleModal(){const m=document.getElementById('helpModal');m.style.display=m.style.display==='block'?'none':'block'}updateUI(){document.getElementById('btnUndo').disabled=this.history.length===0}clearInputs(){document.getElementById('val').value='';document.getElementById('idx').value=''}
 }
 const app = new App();
 window.app = app;
