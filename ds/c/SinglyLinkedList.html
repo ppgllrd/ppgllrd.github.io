@@ -125,6 +125,33 @@
             background: #455A64;
             width: 80px
         }
+        .teal {
+            background: #00796B
+        }
+        .step-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #ECEFF1;
+            color: #263238;
+            font-weight: 600;
+            box-shadow: 0 1px 3px #0002;
+            cursor: pointer;
+            user-select: none
+        }
+        .step-toggle input {
+            width: auto;
+            margin: 0;
+            cursor: pointer
+        }
+        .step-toggle-on {
+            outline: 3px solid #FFB300;
+            outline-offset: 2px;
+            background: #E0F2F1
+        }
+
 
         .help {
             background: #607D8B;
@@ -219,11 +246,13 @@
 
         .modal-content {
             background: white;
-            margin: 5% auto;
+            margin: 20px auto;
             padding: 20px;
             border-radius: 8px;
-            width: 80%;
-            max-width: 760px
+            width: min(90vw, 820px);
+            max-height: calc(100dvh - 40px);
+            overflow-y: auto;
+            touch-action: pan-y
         }
 
         .close {
@@ -259,34 +288,36 @@
                         type="number" placeholder="i">
 									</label>
 									<button class="green"
-                    onclick="app.append()" title="Append the value at the end of the list." aria-label="Append the value at the end of the list.">Append</button>
+                    onclick="app.append()" title="Append: allocate a new node and link it after the current last node." aria-label="Append: allocate a new node and link it after the current last node.">Append</button>
 									<button class="green"
-                    onclick="app.prepend()" title="Prepend the value at the beginning of the list." aria-label="Prepend the value at the beginning of the list.">Prepend</button>
+                    onclick="app.prepend()" title="Prepend: allocate a new node and update p_first so it becomes first." aria-label="Prepend: allocate a new node and update p_first so it becomes first.">Prepend</button>
 									<button class="blue"
-                    onclick="app.insert()" title="Insert the value at the selected index." aria-label="Insert the value at the selected index.">Insert</button>
+                    onclick="app.insert()" title="Insert: traverse to the index and reconnect links around a newly allocated node." aria-label="Insert: traverse to the index and reconnect links around a newly allocated node.">Insert</button>
 									<button class="blue" id="btnSortedInsert"
-                    onclick="app.sorted_insert()" title="Insert the value preserving ascending order. Enabled only when the list is sorted ascending." aria-label="Insert the value preserving ascending order. Enabled only when the list is sorted ascending.">Sorted Insert</button>
-									<button class="purple" onclick="app.get()" title="Get the value at the selected index." aria-label="Get the value at the selected index.">Get</button>
+                    onclick="app.sorted_insert()" title="Sorted Insert: insert the value while preserving ascending order. Enabled only when the list is sorted ascending." aria-label="Sorted Insert: insert the value while preserving ascending order. Enabled only when the list is sorted ascending.">Sorted Insert</button>
+									<button class="purple" onclick="app.get()" title="Get: traverse to the selected index and read the node value." aria-label="Get: traverse to the selected index and read the node value.">Get</button>
 									<button
-                    class="blue" onclick="app.set()" title="Replace the value at the selected index." aria-label="Replace the value at the selected index.">Set</button>
+                    class="blue" onclick="app.set()" title="Set: traverse to the selected index and replace only the element value." aria-label="Set: traverse to the selected index and replace only the element value.">Set</button>
 									<button class="red"
-                    onclick="app.del()" title="Delete the node at the selected index." aria-label="Delete the node at the selected index.">Delete</button>
-									<button class="purple" onclick="app.length()" title="Compute the number of nodes in the list." aria-label="Compute the number of nodes in the list.">Size</button>
+                    onclick="app.del()" title="Delete: bypass the selected node and release it." aria-label="Delete: bypass the selected node and release it.">Delete</button>
+									<button class="purple" onclick="app.length()" title="Size: traverse the list and count nodes." aria-label="Size: traverse the list and count nodes.">Size</button>
 									<div class="sep"></div>
-									<button class="orange" onclick="app.new()" title="Initializes a new empty list." aria-label="Initializes a new empty list.">New</button>
-									<button class="gray" onclick="app.clear()" title="Clear the list." aria-label="Clear the list.">Clear</button>
+									<button class="orange" onclick="app.new()" title="New: create a new empty practice list." aria-label="New: create a new empty practice list.">New</button>
+									<button class="gray" onclick="app.clear()" title="Clear: free every node and set p_first to NULL." aria-label="Clear: free every node and set p_first to NULL.">Clear</button>
 									<div class="sep"></div>
 																		<button class="orange"
-                    onclick="app.random()" title="Build a random sample list." aria-label="Build a random sample list.">Build Random</button>
+                    onclick="app.random()" title="Build Random: create a sample list for practice." aria-label="Build Random: create a sample list for practice.">Build Random</button>
 									<div class="sep"></div>
 									<button class="purple" onclick="app.undo()" id="btnUndo"
-                    disabled title="Undo the last operation that modified the list." aria-label="Undo the last operation that modified the list.">Undo</button>
+                    disabled title="Undo: restore the previous visual list state." aria-label="Undo: restore the previous visual list state.">Undo</button>
 								</div>
 								<div class="sub">
 									<label>Slowdown:</label>
 									<input id="speed" type="range" min="1" max="5" step="0.1" value="1"
                     oninput="app.speed()">
 										<button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button>
+                                        <label id="stepModeLabel" class="step-toggle" title="Toggle step-by-step execution. When enabled, operations wait at each explanation step."><input id="chkStepMode" type="checkbox" onchange="app.stepMode(this.checked)" aria-label="Turn step-by-step execution on or off."><span id="stepModeText">Step-by-step: Off</span></label>
+                                        <button id="btnNextStep" class="teal" onclick="app.stepOnce()" title="Turn Step-by-step mode ON first." aria-label="Turn Step-by-step mode ON first." disabled>Next step</button>
 									</div>
 								</div>
 								<div id="status">
@@ -315,59 +346,29 @@
 								<div class="modal-content">
 									<span class="close" onclick="app.toggleModal()">&times;</span>
 									<h2>Singly Linked List</h2>
-									<p>A 
-										<strong>singly linked list</strong> stores a sequence of values as nodes connected by pointers. Each node contains an 
-										<span class="code">element</span> field and a 
-										<span class="code">p_next</span> field.
-									</p>
-									<p>The list structure contains only 
-										<span class="code">p_first</span>, a pointer to the first node, or 
-										<span class="code">NULL</span> when the list is empty.
-									</p>
-									<h3>Operations and asymptotic complexity</h3>
-									<ul>
-										<li>
-											<strong>Append</strong>: 
-											<span class="code">O(n)</span>, because traversal starts at 
-											<span class="code">p_first</span>.
-										</li>
-										<li>
-											<strong>Prepend</strong>: 
-											<span class="code">O(1)</span>.
-										</li>
-										<li>
-											<strong>Insert</strong>: 
-											<span class="code">O(n)</span>.
-										</li>
-										<li>
-											<strong>Sorted Insert</strong>: 
-											<span class="code">O(n)</span>. It uses 
-											<span class="code">p_previous</span> and 
-											<span class="code">p_current</span> to insert in ascending order. The button is disabled if the current list is not sorted ascending.
-										</li>
-										<li>
-											<strong>Size</strong>: 
-											<span class="code">O(n)</span>. It traverses the list from 
-											<span class="code">p_first</span> using 
-											<span class="code">p_current</span> and updates a green counter box.
-										</li>
-										<li>
-											<strong>Get</strong>, 
-											<strong>Set</strong>, 
-											<strong>Delete</strong>: 
-											<span class="code">O(n)</span>.
-										</li>
-										<li>
-											<strong>Clear</strong>: 
-											<span class="code">O(n)</span>. It follows the C algorithm 
-											<span class="code">clear(struct Node** p_p_first)</span>, advancing 
-											<span class="code">p</span>, storing each node in 
-											<span class="code">p_delete</span>, freeing it, and finally setting 
-											<span class="code">p_first</span> to 
-											<span class="code">NULL</span>.
-										</li>
-									</ul>
-									<p>The visualization shows how links and temporary pointers change while each algorithm progresses.</p>
+                                    <p>A <strong>singly linked list</strong> is a chain of heap-allocated nodes. Each node contains an <span class="code">element</span> field and a <span class="code">p_next</span> field. The field <span class="code">p_next</span> stores the address of the next node, or <span class="code">NULL</span> when there is no next node.</p>
+                                    <p>The list object stores <span class="code">p_first</span>, a pointer to the first node. A pointer is not a node: a pointer variable stores an address; a node is the heap block reached through that address.</p>
+                                    <h3>Memory model shown by the animation</h3>
+                                    <ul>
+                                        <li>Green node data and cyan <span class="code">p_next</span> fields represent node objects allocated in heap memory.</li>
+                                        <li>Temporary pointers such as <span class="code">p_node</span>, <span class="code">p_current</span>, <span class="code">p_previous</span>, <span class="code">p_last</span>, and <span class="code">p_delete</span> represent function-local variables. They go out of scope when the function finishes.</li>
+                                        <li>Allocating a node creates a new heap object. Freeing a node releases that heap object. Any pointer that still stores its old address becomes dangling until it is assigned a safe value or goes out of scope.</li>
+                                        <li><span class="code">NULL</span> means “points to no node”. It is different from an uninitialized pointer and different from a dangling pointer.</li>
+                                    </ul>
+                                    <h3>What each operation does</h3>
+                                    <ul>
+                                        <li><strong>Append</strong>: allocates a new node whose <span class="code">p_next</span> is <span class="code">NULL</span>, then links it after the current last node. Complexity: <span class="code">O(n)</span>, because this list has no tail pointer.</li>
+                                        <li><strong>Prepend</strong>: allocates a new node, points it to the former first node, and updates <span class="code">p_first</span>. Complexity: <span class="code">O(1)</span>.</li>
+                                        <li><strong>Insert</strong>: traverses to the requested index, keeps track of the previous and current nodes, allocates a new node, and reconnects links so the new node appears at that position. Complexity: <span class="code">O(n)</span>.</li>
+                                        <li><strong>Sorted Insert</strong>: assumes the list is sorted ascending, finds the first node greater than the new value, and inserts the new node before it while preserving sorted order. Complexity: <span class="code">O(n)</span>.</li>
+                                        <li><strong>Get</strong>: traverses to the selected index and reads the value stored in that node without changing the list. Complexity: <span class="code">O(n)</span>.</li>
+                                        <li><strong>Set</strong>: traverses to the selected index and replaces only the node’s <span class="code">element</span> value; links do not change. Complexity: <span class="code">O(n)</span>.</li>
+                                        <li><strong>Delete</strong>: traverses to the selected index, bypasses the node by updating either <span class="code">p_first</span> or the previous node’s <span class="code">p_next</span>, and then releases the removed heap node. Complexity: <span class="code">O(n)</span>.</li>
+                                        <li><strong>Size</strong>: traverses the list from <span class="code">p_first</span> to <span class="code">NULL</span> and counts visited nodes. Complexity: <span class="code">O(n)</span>.</li>
+                                        <li><strong>New</strong>: creates a new empty list for the visualization, so <span class="code">p_first</span> is <span class="code">NULL</span>.</li>
+                                        <li><strong>Clear</strong>: visits every node, saves the next node before freeing the current node, releases all heap nodes, and finally sets <span class="code">p_first</span> to <span class="code">NULL</span>. Complexity: <span class="code">O(n)</span>.</li>
+                                    </ul>
+                                    <p>Use <strong>Step-by-step</strong> to make each conceptual step wait until you press <strong>Next step</strong>. Messages marked <strong>Visualization only</strong> describe drawing changes made only to make the animation easier to understand; those actions are not part of the C algorithm.</p>
 								</div>
 							</div>
 							<script>
@@ -432,7 +433,7 @@ const GEOMETRY = Object.freeze({
 const DRAW = Object.freeze({
     STRUCT_LABEL_FONT: '28px monospace',
     NODE_VALUE_FONT: '30px Arial',
-    NODE_INDEX_FONT: '25px arial',
+    NODE_INDEX_FONT: '25px monospace',
     POINTER_LABEL_FONT: '22px monospace',
     PNODE_LABEL_FONT: '22px monospace',
     SIZE_VALUE_FONT: '32px Arial',
@@ -502,7 +503,9 @@ class VisualizationEngine {
         		this.t = 0;
         		this.speedFactor = 1;
         		this.paused = false;
-        		this.last = 0;
+        		
+                this.stepModeEnabled = false;
+                this.waitingForStep = false;this.last = 0;
         		this.cell = GEOMETRY.NODE_FIELD_SIZE;
         		this.nodeW = GEOMETRY.NODE_WIDTH;
         		this.gap = GEOMETRY.NODE_GAP;
@@ -746,25 +749,35 @@ class VisualizationEngine {
         		} else if (this.state === 'MORPH') {
         			this.t += VIEW.MORPH_SPEED * this.speedFactor * dt;
         			if (this.t >= 1) {
-        				this.t = 1;
-        				if (this.sn[this.idx + 1]?.pause) {
-        					this.state = 'WAIT';
-        					this.wait = VIEW.WAIT_SECONDS / this.speedFactor
-        				} else this.finish()
-        			}
+                    this.t = 1;
+                    if (this.stepModeEnabled) {
+                        this.state = 'WAIT_STEP';
+                        this.waitingForStep = true;
+                        if (window.app && window.app.refreshStepButtons) window.app.refreshStepButtons();
+                    } else if (this.sn[this.idx + 1]?.pause) {
+                        this.state = 'WAIT';
+                        this.wait = VIEW.WAIT_SECONDS / this.speedFactor;
+                    } else this.finish()
+                }
         		} else if (this.state === 'WAIT') {
         			this.wait -= dt;
         			if (this.wait <= 0) this.finish()
-        		}
+        		} else if (this.state === 'WAIT_STEP') {
+                // Step-by-step mode: wait for the user to press Next step.
+            }
         	}
     next() {
         		const s = this.pending.shift();
         		this.sn.push(s);
         		document.getElementById('status-text').innerText = s.text || 'Ready.';
         		this.t = 0;
-        		this.state = 'MORPH'
+        		this.state = 'MORPH';
+                this.waitingForStep = false;
+                if (window.app && window.app.refreshStepButtons) window.app.refreshStepButtons();
         	}
     finish() {
+        this.waitingForStep = false;
+        if (window.app && window.app.refreshStepButtons) window.app.refreshStepButtons();
         this.idx++;
         if (this.pending.length) this.next();
         else {
@@ -867,7 +880,7 @@ class VisualizationEngine {
                 }
             }
     current() {
-        		if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
+        		if ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'WAIT_STEP') && this.idx + 1 < this.sn.length) return this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t));
         		return this.sn[Math.max(this.idx, 0)]
         	}
     flash() {
@@ -1054,9 +1067,17 @@ flashCircle(x, y, r) {
         		this.paused = !this.paused;
         		return this.paused
         	}
-
+    setStepModeEnabled(on) {
+        this.stepModeEnabled = !!on;
+        if (!this.stepModeEnabled && this.state === 'WAIT_STEP') this.finish();
+        if (window.app && window.app.refreshStepButtons) window.app.refreshStepButtons();
+        return this.stepModeEnabled;
+    }
+    advanceOneStep() {
+        if (this.state === 'WAIT_STEP') this.finish();
+        if (window.app && window.app.refreshStepButtons) window.app.refreshStepButtons();
+    }
 }
-
 /* View: C singly-linked-list drawing only. */
 class SinglyLinkedListView extends VisualizationEngine {drawStructBoxes(s) {
         const x = GEOMETRY.STRUCT_X, y = GEOMETRY.STRUCT_Y, w = this.cell, h = this.cell;
@@ -1078,8 +1099,8 @@ class SinglyLinkedListView extends VisualizationEngine {drawStructBoxes(s) {
                 ty = s.tipY ?? (f ? f.y + h / 2 : s.firstTargetY);
             if (tx !== undefined && ty !== undefined) {
                 const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-                if (amount > 0.001) this.detourArrow(x + w / 2, y + h / 2, tx, ty, firstColor, 3, amount);
-                else this.arrow(x + w / 2, y + h / 2, tx, ty, firstColor, 3)
+                if (amount > 0.001) this.detourArrow(x + w / 2 - 5, y + h / 2, tx, ty, firstColor, 3, amount);
+                else this.arrow(x + w / 2 - 5, y + h / 2, tx, ty, firstColor, 3)
             }
         }
     drawOverlays(s) {
@@ -1259,8 +1280,9 @@ class App {
         		this.viz = new SinglyLinkedListView('cv');
         		this.randomFill();
         		this.ids = this.values.map(_ => nextId++);
-        		this.showCurrent('The list is initialized with sample values');
-        		this.updateUI()
+        		this.showCurrent('Visualization only: the list starts with sample values for practice.');
+        		this.updateUI();
+                this.refreshStepButtons()
         	}
 
     baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
@@ -1312,7 +1334,7 @@ class App {
         			size: oldSize
         		}));
         		let shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
-        		snaps.push(this.snapshot('Existing nodes are moved aside to make room for the new first node', shiftedOld, {
+        		snaps.push(this.snapshot('Visualization only: existing nodes shift right to make room visible for the new first node.', shiftedOld, {
         			size: oldSize,
         			firstId: oldFirst,
         			lastId: oldIds.at(-1) ?? null,
@@ -1363,14 +1385,14 @@ class App {
         			...newUp,
         			y: b.y
         		};
-        		snaps.push(this.snapshot('The new node is placed in its final list position', [newDown, ...shiftedOld], {
+        		snaps.push(this.snapshot('Visualization only: the new node is drawn in its final position in the list.', [newDown, ...shiftedOld], {
         			size: oldSize,
         			pnode,
         			firstId: newId,
         			lastId: oldIds.at(-1) ?? newId,
         			pause: true
         		}));
-        		snaps.push(this.snapshot('The node indices are about to be refreshed', [newDown, ...shiftedOld], {
+        		snaps.push(this.snapshot('Visualization only: displayed indices are about to be refreshed. Indices are labels in the drawing, not fields stored in the nodes.', [newDown, ...shiftedOld], {
         			size: oldSize,
         			pnode,
         			firstId: newId,
@@ -1378,7 +1400,7 @@ class App {
         			flashSize: true,
         			pause: true
         		}));
-        		snaps.push(this.snapshot('The node indices have been refreshed', [newDown, ...shiftedOld], {
+        		snaps.push(this.snapshot('Visualization only: displayed indices now match the logical order of the list.', [newDown, ...shiftedOld], {
         			size: oldSize + 1,
         			pnode,
         			firstId: newId,
@@ -1491,7 +1513,7 @@ class App {
         			next: j < oldIds.length - 1 ? oldIds[j + 1] : null
         		}));
         		const withShiftedPtrs = () => ptrsFor(oldIds[i - 1], oldIds[i], shiftedNodes);
-        		snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shiftedNodes, {
+        		snaps.push(this.snapshot('Visualization only: nodes at and after the insertion point shift right to show where the new node will appear.', shiftedNodes, {
         			size: oldSize,
         			firstId: oldIds[0],
         			lastId: oldIds.at(-1),
@@ -1554,7 +1576,7 @@ class App {
         			...newNode,
         			y: b.y
         		};
-        		snaps.push(this.snapshot('The new node is placed into the main list sequence', [...linkedNodes, newUp], {
+        		snaps.push(this.snapshot('Visualization only: the new node is drawn inside the main visible chain.', [...linkedNodes, newUp], {
         			size: oldSize,
         			pnode,
         			firstId: oldIds[0],
@@ -1563,7 +1585,7 @@ class App {
         			preserveLinks: true,
         			pause: true
         		}));
-        		snaps.push(this.snapshot('The node indices are about to be refreshed', [...linkedNodes, newUp], {
+        		snaps.push(this.snapshot('Visualization only: displayed indices are about to be refreshed. Indices are labels in the drawing, not fields stored in the nodes.', [...linkedNodes, newUp], {
         			size: oldSize,
         			pnode,
         			firstId: oldIds[0],
@@ -1573,7 +1595,7 @@ class App {
         			preserveLinks: true,
         			pause: true
         		}));
-        		snaps.push(this.snapshot('The node indices have been refreshed', [...linkedNodes, newUp], {
+        		snaps.push(this.snapshot('Visualization only: displayed indices now match the logical order of the list.', [...linkedNodes, newUp], {
         			size: oldSize + 1,
         			pnode,
         			firstId: oldIds[0],
@@ -1671,17 +1693,17 @@ class App {
     		const twoNodeDeleteFirst = oldSize === 2 && prevId === null && currentNext !== null;
     		snaps.push(this.snapshot('The node selected for deletion is freed', crossNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
     		let freedGoneNodes = linkedNodes.filter(n => n.id !== curId).map(n => ({ ...n }));
-    		snaps.push(this.snapshot('The released node is removed from the list representation', freedGoneNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, freedGoneNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('Visualization only: the freed node disappears from the drawing of heap memory.', freedGoneNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, freedGoneNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 1 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
     		let straightNodes = freedGoneNodes.map(n => n.id === prevId ? ({ ...n, detourNext: needsDetour, detourAmount: 0 }) : ({ ...n }));
-    		snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'The bypass link settles into its final shape' : 'The final link between the remaining nodes is established', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 0 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'Visualization only: the bypass link is redrawn in its final straight shape.' : 'Visualization only: the remaining links are drawn in their final shape.', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: firstNeedsDetour, pFirstDetourAmount: firstNeedsDetour ? 0 : undefined, keepCurvedPLastArrow: twoNodeDeleteFirst, preserveLinks: true, pause: true }));
     		if (twoNodeDeleteFirst) {
-    			snaps.push(this.snapshot('The remaining pointer settles into its final shape', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: true, pFirstDetourAmount: 0, preserveLinks: true, pause: true }));
+    			snaps.push(this.snapshot('Visualization only: the remaining pointer is redrawn in its final shape.', straightNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId, straightNodes), detourPFirst: true, pFirstDetourAmount: 0, preserveLinks: true, pause: true }));
     		}
     		const newVals = oldVals.filter((_, idx) => idx !== i), newIds = oldIds.filter((_, idx) => idx !== i), newFirst = newIds[0] ?? null, newLast = newIds.at(-1) ?? null;
     		const compactNodes = this.baseNodes(newVals, newIds, 0, b.y);
-    		snaps.push(this.snapshot('The remaining nodes close the gap left by the removed node', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
-    		snaps.push(this.snapshot('The node indices are about to be refreshed', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashSize: true, preserveLinks: true, pause: true }));
-    		snaps.push(this.snapshot('The node indices have been refreshed', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('Visualization only: remaining nodes close the visual gap left by the freed node.', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('Visualization only: displayed indices are about to be refreshed. Indices are labels in the drawing, not fields stored in the nodes.', compactNodes, { size: oldSize, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashSize: true, preserveLinks: true, pause: true }));
+    		snaps.push(this.snapshot('Visualization only: displayed indices now match the logical order of the list.', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), preserveLinks: true, pause: true }));
     		snaps.push(this.snapshot('The temporary pointers are deallocated after exiting the function', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, ptrs: ptrsFor(prevId, curId, compactNodes), flashAuxCross: true, preserveLinks: true, pause: true }));
     		snaps.push(this.snapshot('The operation is complete', compactNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true }));
     		this.values = newVals;
@@ -1729,7 +1751,7 @@ class App {
         		this.values = [];
     			this.randomFill()
         		this.ids = this.values.map(_ => nextId++);
-        		this.showCurrent('A random sample list has been created');
+        		this.showCurrent('Visualization only: a random sample list has been created for practice.');
         		this.updateUI()
         	}
 
@@ -1737,7 +1759,7 @@ class App {
         		this.save();
         		this.values = [];
         		this.ids = [];
-        		this.showCurrent('A new empty list has been initialized');
+        		this.showCurrent('Visualization only: a new empty list has been initialized for practice.');
         		this.updateUI()
         	}
 
@@ -1746,7 +1768,7 @@ class App {
         		const h = this.history.pop();
         		this.values = h.values;
         		this.ids = h.ids;
-        		this.showCurrent('The previous list state has been restored');
+        		this.showCurrent('Visualization only: the previous visual list state has been restored.');
         		this.updateUI()
         	}
 
@@ -1758,7 +1780,51 @@ class App {
         		const p = this.viz.togglePause();
         		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
         	}
-
+    stepMode(forceValue = null) {
+        if (!this.viz) return;
+        const requested = forceValue === null ? !this.viz.stepModeEnabled : !!forceValue;
+        const on = this.viz.setStepModeEnabled(requested);
+        this.refreshStepButtons();
+        document.getElementById('status-text').innerText = on
+            ? 'Step-by-step mode is ON. Choose an operation; each explanation step will wait for Next step.'
+            : 'Step-by-step mode is OFF. Animations advance automatically.';
+    }
+    stepOnce() {
+        if (!this.viz) return;
+        if (!this.viz.stepModeEnabled) {
+            document.getElementById('status-text').innerText = 'Turn Step-by-step mode ON before using Next step.';
+            this.refreshStepButtons();
+            return;
+        }
+        if (this.viz.state === 'WAIT_STEP') {
+            this.viz.advanceOneStep();
+        } else if (this.viz.state === 'IDLE') {
+            document.getElementById('status-text').innerText = 'Step-by-step mode is ON. Choose an operation to start stepping.';
+        } else {
+            document.getElementById('status-text').innerText = 'The animation is moving to the next step. Press Next step when it stops.';
+        }
+        this.refreshStepButtons();
+    }
+    refreshStepButtons() {
+        if (!this.viz) return;
+        const on = !!this.viz.stepModeEnabled;
+        const chk = document.getElementById('chkStepMode');
+        const label = document.getElementById('stepModeLabel');
+        const text = document.getElementById('stepModeText');
+        const next = document.getElementById('btnNextStep');
+        if (chk) { chk.disabled = false; chk.checked = on; }
+        if (label) {
+            label.classList.toggle('step-toggle-on', on);
+            label.style.pointerEvents = 'auto';
+            label.style.opacity = '1';
+        }
+        if (text) text.innerText = on ? 'Step-by-step: On' : 'Step-by-step: Off';
+        if (next) {
+            next.disabled = !on;
+            next.title = on ? 'Advance when an operation is waiting at a step. If no operation is running, choose an operation first.' : 'Turn Step-by-step mode ON first.';
+            next.setAttribute('aria-label', next.title);
+        }
+    }
     toggleModal() {
         		const m = document.getElementById('helpModal');
         		m.style.display = m.style.display === 'block' ? 'none' : 'block'
@@ -1833,7 +1899,7 @@ class App {
     const finalPtr = makePtr(curId, null, linked);
     
     snaps.push(this.snapshot(
-        'The new node is placed in its final list position',
+        'Visualization only: the new node is drawn in its final position in the list.',
         [...linked, nd],
         {
             pnode,
@@ -2008,7 +2074,7 @@ class App {
             }
             snaps.push(this.snapshot(curId !== null ? 'The first node larger than ' + e + ' has been found' : 'No remaining node is greater than ' + e + ', so insertion will be at the end', oldNodes, { ptrs: ptrsFor(prevId, curId), flashElement: curId ?? undefined, pause: true }));
             const shifted = oldVals.map((val, j) => ({ id: oldIds[j], e: val, index: j < pos ? j : j + 1, x: b.x + (j + (j >= pos ? 1 : 0)) * GEOMETRY.NODE_STEP, y: b.y, next: j < oldIds.length - 1 ? oldIds[j + 1] : null }));
-            snaps.push(this.snapshot('Nodes from the insertion point are moved to open a gap', shifted, { firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('Visualization only: nodes at and after the insertion point shift right to show where the new node will appear.', shifted, { firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
             const pnode = { x: b.x + pos * GEOMETRY.NODE_STEP - GEOMETRY.PNODE_INSERT_LEFT_OF_TARGET, y: newNodeY, target: newId, label: 'p_node' };
             let newNode = { id: newId, e, index: pos, x: b.x + pos * GEOMETRY.NODE_STEP, y: newNodeY, next: curId, flashNew: true };
             snaps.push(this.snapshot('A new node is allocated and its p_next points to p_current', [...shifted, newNode], { pnode, firstId: oldIds[0] ?? null, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
@@ -2025,7 +2091,7 @@ class App {
                 snaps.push(this.snapshot('p_previous->p_next now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
             }
             const newUp = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('The new node is placed into the main list sequence', [...linked, newUp], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('Visualization only: the new node is drawn inside the main visible chain.', [...linked, newUp], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
             const newVals = [...oldVals], newIds = [...oldIds]; newVals.splice(pos, 0, e); newIds.splice(pos, 0, newId);
     const compact = this.baseNodes(newVals, newIds, 0, b.y);
     
@@ -2086,8 +2152,8 @@ class App {
                 snaps.push(this.snapshot('p_current is initialized with p_first, which is NULL; size = 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
                 snaps.push(this.snapshot('The loop is not entered; the final size is 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
                 snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), flashAuxCross: true, pause: true }));
-                snaps.push(this.snapshot('The size result remains visible briefly: 0', nodes, { lengthBox: lengthBox(0), pause: true }));
-                snaps.push(this.snapshot('The size display is removed', nodes));
+                snaps.push(this.snapshot('Visualization only: the computed size remains visible briefly: 0', nodes, { lengthBox: lengthBox(0), pause: true }));
+                snaps.push(this.snapshot('Visualization only: the temporary size display is removed from the drawing.', nodes));
                 this.viz.enqueue(snaps);
                 this.updateUI();
                 return
@@ -2108,8 +2174,8 @@ class App {
             const finalPtr = makePtr(null);
             snaps.push(this.snapshot('No more nodes remain; the final size is ' + count, nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), pause: true }));
             snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [finalPtr], lengthBox: lengthBox(count), flashAuxCross: true, pause: true }));
-            snaps.push(this.snapshot('The size result remains visible briefly: ' + count, nodes, { lengthBox: lengthBox(count), pause: true }));
-            snaps.push(this.snapshot('The size display is removed', nodes));
+            snaps.push(this.snapshot('Visualization only: the computed size remains visible briefly: ' + count, nodes, { lengthBox: lengthBox(count), pause: true }));
+            snaps.push(this.snapshot('Visualization only: the temporary size display is removed from the drawing.', nodes));
             this.viz.enqueue(snaps);
             this.updateUI()
         
@@ -2203,7 +2269,7 @@ class App {
                 const pToDeleteAfterFree = pToDeleteAt(pAfterFree, pToDeleteCurrentValue, remainingNodes);
                 // p_first is not made NULL here. After the first node is freed it is dangling,
                 // and it stays dangling until the final explicit assignment *p_p_first = NULL.
-                snaps.push(this.snapshot('The freed node is removed; p_delete remains dangling until the next assignment', remainingNodes, { ...firstDanglingRef(), ptrs: [pAfterFree, pToDeleteAfterFree], preserveLinks: true, pause: true }));
+                snaps.push(this.snapshot('Visualization only: the freed node disappears from the drawing; p_delete remains dangling until reassigned or until the function returns.', remainingNodes, { ...firstDanglingRef(), ptrs: [pAfterFree, pToDeleteAfterFree], preserveLinks: true, pause: true }));
             }
     
             // p_first is intentionally kept dangling until the explicit final assignment *p_p_first = NULL.
@@ -2224,7 +2290,13 @@ class App {
 }
 const app = new App();
 window.app = app;
-window.onload = () => app.init();
+window.onload = () => {
+    app.init();
+    const chk = document.getElementById('chkStepMode');
+    const label = document.getElementById('stepModeLabel');
+    if (chk) chk.disabled = false;
+    if (label) { label.style.pointerEvents = 'auto'; label.style.opacity = '1'; }
+};
 window.onclick = e => { if (e.target === document.getElementById('helpModal')) app.toggleModal(); };
 
 </script>

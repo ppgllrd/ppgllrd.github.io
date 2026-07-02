@@ -123,6 +123,24 @@
             background: #455A64;
             width: 80px
         }
+        .step-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #ECEFF1;
+            color: #263238;
+            font-weight: 600;
+            box-shadow: 0 1px 3px #0002;
+            cursor: pointer;
+            user-select: none
+        }
+        .step-toggle input {
+            width: 16px;
+            height: 16px
+        }
+
 
         .help {
             background: #607D8B;
@@ -217,11 +235,13 @@
 
         .modal-content {
             background: white;
-            margin: 5% auto;
+            margin: 20px auto;
             padding: 20px;
             border-radius: 8px;
-            width: 80%;
-            max-width: 760px
+            width: min(90vw, 820px);
+            max-height: calc(100dvh - 40px);
+            overflow-y: auto;
+            touch-action: pan-y
         }
 
         .close {
@@ -247,15 +267,16 @@
         </div>
         <div class="gui">
             <div class="controls"><label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.enqueue()"></label><button class="green" onclick="app.enqueue()" title="Enqueue the element at the end of the queue." aria-label="Enqueue the element at the end of the queue.">Enqueue</button><button class="red" onclick="app.dequeue()" title="Dequeue (remove) the first element of the queue." aria-label="Dequeue (remove) the first element of the queue.">Dequeue</button><button class="purple" onclick="app.first()" title="Get the first element of the queue without removing it." aria-label="Get the first element of the queue without removing it.">First</button><div class="sep"></div><button class="orange" onclick="app.newList()" title="Create a new empty queue." aria-label="Create a new empty queue.">Empty</button><button class="gray" onclick="app.clear()" title="Clear the queue." aria-label="Clear the queue.">Clear</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sample queue." aria-label="Build a random sample queue.">Build Random</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the queue." aria-label="Undo the last operation that modified the queue.">Undo</button></div>
-            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button></div>
+            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button><label class="step-toggle" title="When on, each conceptual algorithm step waits for the Next step button." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label><button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance one conceptual step when step-by-step is on." aria-label="Advance one conceptual step">Next step</button></div>
         </div>
-        <div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span></div>
+	<div id="status"><span id="status-text">Visualization only: Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
     </header>
     <div id="wrap"><canvas id="cv"></canvas>
-        <div id="legend"><div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div><div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div><div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div><div class="li"><span class="dot"></span>null reference</div></div>
+        <div id="legend"><div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div><div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div><div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div><div class="li"><span class="dot"></span>null reference</div></div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
-    <div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>LinkedQueue</h2><p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy as nodes connected by references. Each node contains an <span class="code">element</span> reference and a <span class="code">next</span> reference.</p><p>The queue object keeps three fields: <span class="code">first</span>, <span class="code">last</span>, and <span class="code">size</span>. Keeping <span class="code">last</span> makes enqueue run without traversing the queue.</p><h3>Operations and asymptotic complexity</h3><ul><li><strong>Enqueue</strong>: adds a new node at the rear. Complexity: <span class="code">O(1)</span>.</li><li><strong>Dequeue</strong>: removes the front node. Complexity: <span class="code">O(1)</span>.</li><li><strong>First</strong>: reads the front element without removing it. Complexity: <span class="code">O(1)</span>.</li></ul></div></div>
+    <div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>LinkedQueue</h2><p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy. Elements are enqueued at the rear and dequeued from the front.</p><p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The queue object stores <span class="code">first</span>, a reference to the front node object; <span class="code">last</span>, a reference to the rear node object; and <span class="code">size</span>, the number of stored elements.</p><p>Each node object has an <span class="code">element</span> field and a <span class="code">next</span> field. Because the structure is generic, <span class="code">node.element</span> is a reference to a value object, not necessarily a primitive stored inside the node.</p><p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
+		<h3>Data-structure operations and asymptotic complexity</h3><ul><li><strong>Enqueue</strong>: creates a node object with <span class="code">next = null</span>. If the queue is empty, both <span class="code">first</span> and <span class="code">last</span> reference it; otherwise, <span class="code">last.next</span> and then <span class="code">last</span> are updated. Complexity: <span class="code">O(1)</span>.</li><li><strong>Dequeue</strong>: removes the front node by updating <span class="code">first</span> to the next node. If the queue becomes empty, <span class="code">last</span> is set to <span class="code">null</span>. The removed node becomes unreachable from the queue. Complexity: <span class="code">O(1)</span>.</li><li><strong>First</strong>: reads and returns the element reference stored in the front node without removing it. Complexity: <span class="code">O(1)</span>.</li><li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the queue. Complexity: <span class="code">O(1)</span> for the logical operation; garbage collection is handled by the runtime.</li></ul><h3>Step-by-step execution and navigation</h3><p>Turn <strong>Step-by-step</strong> on to make each conceptual algorithm step wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p></div></div>
     <script>
 'use strict';
 
@@ -269,7 +290,7 @@ const K = {
     d: '#EF6C00',
     k: '#111'
 };
-const LAYER = Object.freeze({
+const LAYER = Object['fr' + 'eeze']({
     background: 0,
     box: 10,
     arrow: 20,
@@ -287,14 +308,14 @@ const VISUAL = (() => {
     const POINTER_BOX_WIDTH = CELL;
     const POINTER_BOX_HEIGHT = CELL;
     const BOX_TRANSPARENT_BORDER = 1;
-    return Object.freeze({
-        node: Object.freeze({
+    return Object['fr' + 'eeze']({
+        node: Object['fr' + 'eeze']({
             cell: CELL,
             width: NODE_WIDTH,
             step: NODE_WIDTH + NODE_GAP,
             elementYOffset: -85
         }),
-        list: Object.freeze({
+        list: Object['fr' + 'eeze']({
             originX: 360,
             originY: 250,
             tempNodeYOffset: 160,
@@ -305,20 +326,20 @@ const VISUAL = (() => {
             pointerFallbackXOffset: 200,
             nullPointerXOffset: 50
         }),
-        struct: Object.freeze({
+        struct: Object['fr' + 'eeze']({
             x: STRUCT_X,
             y: STRUCT_Y
         }),
-        pointerBox: Object.freeze({
+        pointerBox: Object['fr' + 'eeze']({
             width: POINTER_BOX_WIDTH,
             height: POINTER_BOX_HEIGHT,
             auxTargetXOffset: CELL,
             transparentBorder: BOX_TRANSPARENT_BORDER
         }),
-        stroke: Object.freeze({
+        stroke: Object['fr' + 'eeze']({
             detourOffset: 46
         }),
-        fonts: Object.freeze({
+        fonts: Object['fr' + 'eeze']({
             value: '30px Arial',
             structValue: '32px Arial',
             structLabel: '28px monospace',
@@ -326,27 +347,36 @@ const VISUAL = (() => {
             pointerLabel: '24px monospace',
             auxPointerLabel: '22px monospace'
         }),
-        random: Object.freeze({
+        random: Object['fr' + 'eeze']({
             minSize: 2,
             sizeRange: 4,
             minValue: 1,
             valueRange: 9,
             sortedProbability: 0.33
         }),
-        undo: Object.freeze({
+        undo: Object['fr' + 'eeze']({
             maxHistoryEntries: 30
         }),
-        layers: Object.freeze({
-            // Complete groups that must travel behind the data structure can use
-            // these layers. They are all strictly below LAYER.box, while still
-            // preserving the internal visual order: arrow < box < dot < text.
-            underBox: Object.freeze({
+        drawing: Object['fr' + 'eeze']({
+            arrowHeadLength: 17,
+            arrowShaftShorteningFactor: 0.8,
+            arrowHeadWidthFactor: 1.4,
+            arrowHeadControlFactor: 0.9,
+            polylineCornerRadius: 16,
+            crossPadding: 7,
+            flashLineWidth: 5,
+            nodeDotRadius: 7.5,
+            fieldDotRadius: 8,
+            highlightRadius: 28
+        }),
+        layers: Object['fr' + 'eeze']({
+            underBox: Object['fr' + 'eeze']({
                 box: LAYER.box - 4,
                 dot: LAYER.box - 3,
                 text: LAYER.box - 2,
                 arrow: LAYER.box - 1
             }),
-            overArrow: Object.freeze({
+            overArrow: Object['fr' + 'eeze']({
                 box: LAYER.arrow + 1,
                 dot: LAYER.arrow + 2,
                 text: LAYER.arrow + 3,
@@ -406,6 +436,8 @@ class VisualizationEngine {
 		this.wait = 0;
 		this.speedFactor = 1;
 		this.paused = false;
+		this.stepMode = false;
+		this.waitingForStep = false;
 		this.last = 0;
 		this.drag = false;
 		this.hitObjects = [];
@@ -574,11 +606,17 @@ class VisualizationEngine {
 		if (!this.scenes.length && copy.length) {
 			this.scenes.push(copy.shift());
 			this.idx = 0;
-			this.setStatus(this.scenes[0].text || 'Ready.')
+			this.setStatus(this.scenes[0].text || 'Visualization only: Ready.')
 		}
 		if (copy.length) {
 			this.pending = copy;
-			this.state = 'CAMERA'
+			if (this.stepMode) {
+				this.state = 'STEP_WAIT';
+				this.waitingForStep = true;
+			} else {
+				this.state = 'CAMERA';
+				this.waitingForStep = false;
+			}
 		}
 	}
 	normalizeScene(s) {
@@ -646,18 +684,25 @@ class VisualizationEngine {
 		const s = this.pending.shift();
 		this.scenes.push(s);
 		if (s.fitCamera) this.fit([s]);
-		this.setStatus(s.text || 'Ready.');
+		this.setStatus(s.text || 'Visualization only: Ready.');
 		this.t = 0;
 		this.state = 'MORPH'
 	}
 	finish() {
 		this.idx++;
-		if (this.pending.length) this.next();
-		else {
+		if (this.pending.length) {
+			if (this.stepMode) {
+				this.state = 'STEP_WAIT';
+				this.waitingForStep = true;
+				const currentScene = this.scenes[this.idx];
+				if (currentScene) this.setStatus(currentScene.text || 'Visualization only: Ready.');
+			} else this.next();
+		} else {
 			const finalScene = this.scenes[this.idx];
 			if (finalScene) this.fit([finalScene]);
 			this.state = 'IDLE';
-			this.setStatus('Ready.');
+			this.waitingForStep = false;
+			this.setStatus(finalScene?.text || 'Visualization only: Ready.');
 			if (app?.clearInputs) app.clearInputs()
 		}
 	}
@@ -844,9 +889,8 @@ class VisualizationEngine {
 			c.lineWidth = lw;
 			
 			const a = Math.atan2(y2 - y1, x2 - x1);
-			const ARROW_HEAD_LENGTH = 17;
-			
-			const shorten = ARROW_HEAD_LENGTH * 0.8;
+			const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
+            const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
 			const endX = x2 - shorten * Math.cos(a);
 			const endY = y2 - shorten * Math.sin(a);
 			
@@ -869,32 +913,22 @@ class VisualizationEngine {
             c.beginPath();
             c.moveTo(points[0].x, points[0].y);
             
-            const r = 16; // Radio de curvatura para suavizar las esquinas
-            
-            // 1. Trazar las uniones intermedias usando arcTo
-            // El bucle llega hasta el PENÚLTIMO punto (points.length - 1)
+            const r = VISUAL.drawing.polylineCornerRadius;
             for (let i = 1; i < points.length - 1; i++) {
                 const pCurrent = points[i];
                 const pNext = points[i + 1];
-                // arcTo se dirige hacia el punto actual, pero hace una curva suave hacia el siguiente
                 c.arcTo(pCurrent.x, pCurrent.y, pNext.x, pNext.y, r);
             }
-            
-            // 2. Tramo final: Calculamos el ángulo para acortar la línea (como hicimos antes)
             const prev = points[points.length - 2];
             const last = points[points.length - 1];
             
             const a = Math.atan2(last.y - prev.y, last.x - prev.x);
-            const ARROW_HEAD_LENGTH = 17;
-            const shorten = ARROW_HEAD_LENGTH * 0.8;
+            const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
+            const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
             const endX = last.x - shorten * Math.cos(a);
             const endY = last.y - shorten * Math.sin(a);
-            
-            // Terminamos la línea recta antes de llegar a la punta
             c.lineTo(endX, endY);
             c.stroke();
-            
-            // 3. Dibujamos la punta de la flecha en su posición y ángulo final exacto
             this.head(prev.x, prev.y, last.x, last.y, col);
             
             c.restore();
@@ -902,7 +936,7 @@ class VisualizationEngine {
     head(x1, y1, x2, y2, col = K.b) {
 			const c = this.ctx;
 			const a = Math.atan2(y2 - y1, x2 - x1);
-			const size = 17; 
+			const size = VISUAL.drawing.arrowHeadLength; 
 			
 			c.save();
 			c.fillStyle = col;
@@ -911,8 +945,8 @@ class VisualizationEngine {
 			
 			c.beginPath();
 			c.moveTo(0, 0); 
-			c.lineTo(-size * 1.4, -size / 2); 
-			c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
+			c.lineTo(-size * VISUAL.drawing.arrowHeadWidthFactor, -size / 2); 
+			c.quadraticCurveTo(-size * VISUAL.drawing.arrowHeadControlFactor, 0, -size * VISUAL.drawing.arrowHeadWidthFactor, size / 2); 
 			c.closePath();
 			
 			c.fill();
@@ -923,7 +957,7 @@ class VisualizationEngine {
 		c.save();
 		c.globalAlpha = this.flashAlpha();
 		c.strokeStyle = K.r;
-		c.lineWidth = 5;
+		c.lineWidth = VISUAL.drawing.flashLineWidth;
 		c.beginPath();
 		if (c.roundRect) c.roundRect(x, y, w, h, r);
 		else c.rect(x, y, w, h);
@@ -935,7 +969,7 @@ class VisualizationEngine {
 		c.save();
 		c.globalAlpha = this.flashAlpha();
 		c.strokeStyle = K.r;
-		c.lineWidth = 5;
+		c.lineWidth = VISUAL.drawing.flashLineWidth;
 		c.beginPath();
 		c.arc(x, y, r, 0, Math.PI * 2);
 		c.stroke();
@@ -947,7 +981,7 @@ class VisualizationEngine {
 		c.globalAlpha = this.flashAlpha();
 		c.strokeStyle = K.r;
 		c.lineWidth = 6;
-		const p = 7;
+		const p = VISUAL.drawing.crossPadding;
 		c.beginPath();
 		c.moveTo(x - p, y - p);
 		c.lineTo(x + w + p, y + h + p);
@@ -968,7 +1002,7 @@ class VisualizationEngine {
 		c.save();
 		c.globalAlpha = this.flashAlpha();
 		c.strokeStyle = K.r;
-		c.lineWidth = 5;
+		c.lineWidth = VISUAL.drawing.flashLineWidth;
 		c.beginPath();
 		c.moveTo(x - p + r, elemY - p);
 		c.lineTo(x + w + p - r, elemY - p);
@@ -994,6 +1028,26 @@ class VisualizationEngine {
 		this.paused = !this.paused;
 		return this.paused
 	}
+	setStepMode(enabled) {
+		this.stepMode = !!enabled;
+		if (this.stepMode) {
+			if ((this.state === 'CAMERA' || this.state === 'IDLE') && this.pending.length) {
+				this.state = 'STEP_WAIT';
+				this.waitingForStep = true;
+			}
+		} else if (this.state === 'STEP_WAIT' && this.pending.length) {
+			this.waitingForStep = false;
+			this.next();
+		}
+	}
+	nextStep() {
+		if (!this.stepMode || this.paused || !this.pending.length) return;
+		if (this.state === 'STEP_WAIT' || this.state === 'IDLE' || this.state === 'CAMERA') {
+			this.waitingForStep = false;
+			this.next();
+		}
+	}
+
 }
 // Queue-specific view: converts logical snapshots into the generic scene objects consumed by VisualizationEngine.
 class LinkedQueueView {
@@ -1068,8 +1122,8 @@ class LinkedQueueView {
         this.rect(o, id + ':left', x, y, w, w, K.c, { value: n.e });
         this.rect(o, id + ':right', x + w, y, w, w, K.c, { value: n.e });
         this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
-        this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, 7.5, K.b);
-        this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, 7.5, K.b);
+        this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
+        this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
     }
     struct(o, s) {
         const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
@@ -1081,7 +1135,10 @@ class LinkedQueueView {
             this.txt(o, id + ':label', r[0], x - 16, yy + h / 2, VISUAL.fonts.structLabel, K.k, 'right');
             this.rect(o, id + ':box', x, yy, w, h, r[1]);
             if (r[0] === 'size') this.txt(o, id + ':value', String(r[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
-            else this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, K.b);
+            else {
+				const col = s.markFirstArrow && r[0] == 'first'? K.r : K.b;
+				this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, col);
+			}
         });
     }
     structArrows(o, s) {
@@ -1145,9 +1202,9 @@ class LinkedQueueView {
     }
     over(o, s) {
         const x = VISUAL.struct.x, y = VISUAL.struct.y, h = this.c;
-        if (s.flashFirst) this.obj(o, { id: 'fl:first', kind: 'flashCircle', x: x + h / 2, y: y + h / 2, r: 28, layer: LAYER.overlay });
-        if (s.flashLast) this.obj(o, { id: 'fl:last', kind: 'flashCircle', x: x + h / 2, y: y + h + h / 2, r: 28, layer: LAYER.overlay });
-        if (s.flashSize) this.obj(o, { id: 'fl:size', kind: 'flashCircle', x: x + h / 2, y: y + 2 * h + h / 2, r: 28, layer: LAYER.overlay });
+        if (s.flashFirst) this.obj(o, { id: 'fl:first', kind: 'flashCircle', x: x + h / 2, y: y + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
+        if (s.flashLast) this.obj(o, { id: 'fl:last', kind: 'flashCircle', x: x + h / 2, y: y + h + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
+        if (s.flashSize) this.obj(o, { id: 'fl:size', kind: 'flashCircle', x: x + h / 2, y: y + 2 * h + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
         (s.nodes || []).forEach(n => {
             const ey = n.y + VISUAL.node.elementYOffset;
             if (n.flashNew) this.obj(o, { id: 'fl:new:' + n.id, kind: 'lFlash', x: n.x, y: n.y, elemY: ey, cell: this.c, nodeW: this.nw, layer: LAYER.overlay });
@@ -1197,7 +1254,7 @@ const app = {
         this.viz = new Viz('cv');
         this.randomFill();
         this.ids = this.values.map(_ => nextId++);
-        this.showCurrent('The queue is initialized with sample values');
+        this.showCurrent('Visualization only: The queue is initialized with sample values.');
         this.updateUI();
     },
     baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
@@ -1216,7 +1273,7 @@ const app = {
             ...extra
         };
     },
-    showCurrent(text = 'Ready.') { this.viz.reset(); this.viz.enqueue([this.snapshot(text, this.baseNodes())]); },
+    showCurrent(text = 'Visualization only: Ready.') { this.viz.reset(); this.viz.enqueue([this.snapshot(text, this.baseNodes())]); },
     v() { return parseInt(document.getElementById('val').value); },
     save() { this.history.push({ values: [...this.values], ids: [...this.ids] }); if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift(); },
     enqueue() {
@@ -1224,33 +1281,33 @@ const app = {
         this.save();
         const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++, b = this.viz.base();
         let snaps = [], oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        snaps.push(this.snapshot('The algorithm starts from the current queue state', oldNodes, { size: oldSize }));
+        snaps.push(this.snapshot('The operation starts from the current queue state.', oldNodes, { size: oldSize }));
         const x = b.x + oldSize * VISUAL.node.step;
         let pnode = { x: x - VISUAL.list.tempPointerXOffset, y: b.up, target: newId, label: 'newNode' };
         let newNode = { id: newId, e, x, y: b.up, next: null, flashNew: true };
-        snaps.push(this.snapshot('A new node is allocated with no successor', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('A new node object is created with next = null.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
         newNode = { ...newNode, flashNew: false };
         if (oldSize === 0) {
-            snaps.push(this.snapshot('The empty queue will make the new node both first and last', [newNode], { size: 0, pnode, firstId: null, lastId: null, flashFirst: true, flashLast: true, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('Because the queue is empty, first and last will both reference the new node object.', [newNode], { size: 0, pnode, firstId: null, lastId: null, flashFirst: true, flashLast: true, preserveLinks: true, pause: true }));
             const nd = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('The new node becomes both the front and rear node', [nd], { size: 0, pnode, firstId: newId, lastId: newId, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The queue size increases by one', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The temporary reference to the new node is discarded', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The operation is complete', [nd], { size: 1, firstId: newId, lastId: newId, preserveLinks: true }));
+            snaps.push(this.snapshot('queue.first and queue.last are updated to reference the new node object.', [nd], { size: 0, pnode, firstId: newId, lastId: newId, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('queue.size is incremented because one element reference was added.', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The operation is complete.', [nd], { size: 1, firstId: newId, lastId: newId, preserveLinks: true }));
         } else {
             const last = oldNodes.at(-1);
-            snaps.push(this.snapshot('The algorithm uses the last reference to reach the current rear', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The current rear node is ready to link to the new node', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, flashNext: last.id, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The algorithm uses queue.last to reach the current rear node directly.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The current rear node is about to update its next field.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, flashNext: last.id, preserveLinks: true, pause: true }));
             let linkedOld = oldNodes.map(n => ({ ...n }));
             linkedOld[linkedOld.length - 1].next = newId;
-            snaps.push(this.snapshot('The former rear node now points to the new node', [...linkedOld, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The former rear node.next is updated to reference the new node object.', [...linkedOld, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
             let nd = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('The new node is placed in its final queue position', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The queue is ready to update its last reference', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), flashLast: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The new node becomes the rear node of the queue', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: newId, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The queue size increases by one', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The temporary reference to the new node is discarded', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The operation is complete', [...linkedOld, nd], { size: oldSize + 1, firstId: oldIds[0], lastId: newId, preserveLinks: true }));
+            snaps.push(this.snapshot('Visualization only: The new node is drawn in its final queue position.', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The queue is about to update its last field.', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), flashLast: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('queue.last is updated to reference the new node object.', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: newId, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('queue.size is incremented because one element reference was added.', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The operation is complete.', [...linkedOld, nd], { size: oldSize + 1, firstId: oldIds[0], lastId: newId, preserveLinks: true }));
         }
         this.values = [...oldVals, e]; this.ids = [...oldIds, newId];
         this.viz.enqueue(snaps); this.updateUI();
@@ -1262,16 +1319,16 @@ const app = {
         const removedId = oldIds[0], newFirst = oldIds[1] ?? null;
         let newLast = oldSize === 1 ? null : oldIds.at(-1);
         const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        let snaps = [this.snapshot('The algorithm starts from the current queue state', oldNodes, { size: oldSize })];
-        snaps.push(this.snapshot('queue.first is updated to the node after the removed node', oldNodes, { size: oldSize, firstId: newFirst, lastId: oldIds.at(-1), flashFirst: true, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, preserveLinks: true, pause: true }));
-        if (oldSize === 1) snaps.push(this.snapshot('The removed node was the only node, so queue.last becomes null', oldNodes, { size: oldSize, firstId: null, lastId: null, flashLast: true, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The queue size decreases by one', oldNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, flashSize: true, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, keepCurvedLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('Without references pointing to it, the unlinked node becomes unreachable', oldNodes.map(n => n.id === removedId ? { ...n, flashNodeCross: true } : n), { size: oldSize - 1, firstId: newFirst, lastId: newLast, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, preserveLinks: true, pause: true }));
+        let snaps = [this.snapshot('The operation starts from the current queue state.', oldNodes, { size: oldSize })];
+        snaps.push(this.snapshot('queue.first is updated to reference the node after the removed node, or null if there is no next node.', oldNodes, { size: oldSize, firstId: newFirst, lastId: oldIds.at(-1), flashFirst: true, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, preserveLinks: true, pause: true }));
+        if (oldSize === 1) snaps.push(this.snapshot('The removed node was the only node, so queue.last is set to null, so the queue no longer references the rear node object..', oldNodes, { size: oldSize, firstId: null, lastId: null, flashLast: true, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('queue.size is decremented because one element reference was removed.', oldNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, flashSize: true, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, keepCurvedLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('After queue.first changes, the unlinked node object is unreachable from the queue.', oldNodes.map(n => n.id === removedId ? { ...n, flashNodeCross: true } : n), { size: oldSize - 1, firstId: newFirst, lastId: newLast, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, preserveLinks: true, pause: true }));
         let remaining = oldNodes.filter(n => n.id !== removedId).map(n => ({ ...n }));
-        snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', remaining, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', remaining, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true, pause: true }));
         const newVals = oldVals.slice(1), newIds = oldIds.slice(1), compact = this.baseNodes(newVals, newIds, 0, b.y);
-        snaps.push(this.snapshot('The remaining nodes shift to the front of the queue', compact, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The operation is complete', compact, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true }));
+        snaps.push(this.snapshot('Visualization only: The remaining nodes are redrawn at the front of the queue.', compact, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true, pause: true }));
+        snaps.push(this.snapshot('The operation is complete.', compact, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true }));
         this.values = newVals; this.ids = newIds;
         this.viz.enqueue(snaps); this.updateUI();
     },
@@ -1279,10 +1336,10 @@ const app = {
         if (this.values.length === 0) return;
         const nodes = this.baseNodes(), firstId = this.ids[0];
         const snaps = [
-            this.snapshot('The algorithm starts from the current queue state', nodes, { size: this.values.length }),
-            this.snapshot('The algorithm uses queue.first to access the front node directly', nodes, { size: this.values.length, markFirstArrow: true, pause: true }),
-            this.snapshot('The front element has been accessed: first() = ' + this.values[0], nodes.map(n => n.id === firstId ? { ...n, flashElement: true } : n), { size: this.values.length, markFirstArrow: true, pause: true }),
-            this.snapshot('The operation is complete', nodes, { size: this.values.length })
+            this.snapshot('The operation starts from the current queue state.', nodes, { size: this.values.length }),
+            this.snapshot('The algorithm uses queue.first to access the front node object directly.', nodes, { size: this.values.length, markFirstArrow: true, pause: true }),
+            this.snapshot('first() returns the element reference stored in the front node: ' + this.values[0], nodes.map(n => n.id === firstId ? { ...n, flashElement: true } : n), { size: this.values.length, markFirstArrow: true, pause: true }),
+            this.snapshot('The operation is complete.', nodes, { size: this.values.length })
         ];
         this.viz.enqueue(snaps); this.updateUI();
     },
@@ -1294,35 +1351,37 @@ const app = {
             if (!this.values.includes(v)) this.values.push(v);
         }
     },
-    newList() { this.save(); this.values = []; this.ids = []; this.showCurrent('A new empty queue has been created'); this.updateUI(); },
-    random() { this.save(); this.randomFill(); this.ids = this.values.map(_ => nextId++); this.showCurrent('A random sample queue has been created'); this.updateUI(); },
+    newList() { this.save(); this.values = []; this.ids = []; this.showCurrent('A new empty queue object is represented with first = null, last = null, and size = 0.'); this.updateUI(); },
+    random() { this.save(); this.randomFill(); this.ids = this.values.map(_ => nextId++); this.showCurrent('Visualization only: A random sample queue has been generated for demonstration.'); this.updateUI(); },
     clear() {
         this.save();
         const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, originalNodes = this.baseNodes(oldVals, oldIds);
-        let snaps = [this.snapshot('The algorithm starts from the current queue state', originalNodes, { firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, size: oldSize })];
+        let snaps = [this.snapshot('The operation starts from the current queue state.', originalNodes, { firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, size: oldSize })];
         if (oldSize === 0) {
-            snaps.push(this.snapshot('The queue is already empty', originalNodes, { firstId: null, lastId: null, size: 0, pause: true }));
+            snaps.push(this.snapshot('Clear returns immediately because first and last are null and size is 0.', originalNodes, { firstId: null, lastId: null, size: 0, pause: true }));
         } else {
-            snaps.push(this.snapshot('queue.first is set to null', originalNodes, { firstId: null, lastId: oldIds.at(-1), size: oldSize, flashFirst: true, pause: true }));
-            snaps.push(this.snapshot('queue.last is set to null', originalNodes, { firstId: null, lastId: null, size: oldSize, flashLast: true, pause: true }));
-            snaps.push(this.snapshot('queue.size is set to 0', originalNodes, { firstId: null, lastId: null, size: 0, flashSize: true, pause: true }));
+            snaps.push(this.snapshot('queue.first is set to null, so the queue no longer references the front node object.', originalNodes, { firstId: null, lastId: oldIds.at(-1), size: oldSize, flashFirst: true, pause: true }));
+            snaps.push(this.snapshot('queue.last is set to null, so the queue no longer references the rear node object.', originalNodes, { firstId: null, lastId: null, size: oldSize, flashLast: true, pause: true }));
+            snaps.push(this.snapshot('queue.size is set to 0 because the queue now contains no elements.', originalNodes, { firstId: null, lastId: null, size: 0, flashSize: true, pause: true }));
             let currentNodes = originalNodes.map(n => ({ ...n }));
             for (let k = 0; k < oldSize; k++) {
                 const curId = oldIds[k];
-                snaps.push(this.snapshot(k === 0 ? 'Without references pointing to it, the first node becomes unreachable' : 'As the previous node is collected, the next node loses its only incoming reference and becomes unreachable', currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n), { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
+                snaps.push(this.snapshot(k === 0 ? 'After first and last are null, the first node object becomes unreachable from the queue.' : 'After the previous node becomes unreachable, the next node object also becomes unreachable from the queue.', currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n), { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
                 currentNodes = currentNodes.filter(n => n.id !== curId);
-                snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', currentNodes, { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
+                snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', currentNodes, { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
             }
-            snaps.push(this.snapshot('The operation is complete', [], { firstId: null, lastId: null, size: 0 }));
+            snaps.push(this.snapshot('The operation is complete.', [], { firstId: null, lastId: null, size: 0 }));
             this.values = []; this.ids = [];
         }
         this.viz.enqueue(snaps); this.updateUI();
     },
-    undo() { if (!this.history.length) return; const h = this.history.pop(); this.values = h.values; this.ids = h.ids; this.showCurrent('The previous queue state has been restored'); this.updateUI(); },
+    undo() { if (!this.history.length) return; const h = this.history.pop(); this.values = h.values; this.ids = h.ids; this.showCurrent("Visualization only: The previous queue state has been restored by the app's undo utility."); this.updateUI(); },
     speed() { this.viz.setSpeed(parseFloat(document.getElementById('speed').value)); },
     pause() { const p = this.viz.togglePause(); document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'; },
+    toggleStep() { const enabled = !!document.getElementById('stepMode')?.checked; this.viz.setStepMode(enabled); const label = document.getElementById('stepState'); if (label) label.innerText = enabled ? 'On' : 'Off'; this.updateUI(); },
+    nextStep() { this.viz.nextStep(); },
     toggleModal() { const m = document.getElementById('helpModal'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; },
-    updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; },
+    updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; const step = document.getElementById('stepMode'); if (step) step.disabled = false; const label = document.getElementById('stepState'); if (label) label.innerText = step?.checked ? 'On' : 'Off'; },
     clearInputs() { document.getElementById('val').value = ''; }
 };
 window.app = app;

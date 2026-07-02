@@ -34,19 +34,45 @@
         .gray { background: #546E7A }
         .orange { background: #EF6C00 }
         .pause { background: #455A64; width: 80px }
+        .step-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #ECEFF1;
+            color: #263238;
+            font-weight: 600;
+            box-shadow: 0 1px 3px #0002;
+            cursor: pointer;
+            user-select: none
+        }
+        .step-toggle input {
+            width: 16px;
+            height: 16px
+        }
         .help { background: #607D8B; border-radius: 50%; font-size: 1.1rem; padding: 4px 10px }
         .sep { width: 1px; height: 20px; background: #ccc; margin: 0 5px }
         #status { border-top: 1px solid #ddd; padding-top: 8px; font-size: .85rem; color: #555 }
         #status-text { font-weight: bold; color: #222 }
         #wrap { position: relative; flex: 1; min-height: 0; overflow: hidden; background: white }
-        canvas { display: block; width: 100%; height: 100% }
+        canvas { display: block; width: 100%; height: 100%; touch-action: none }
         #legend { position: absolute; top: 18px; left: 18px; background: #fffffff2; border: 1px solid #ddd; border-radius: 8px; padding: 10px; font-size: .8rem; box-shadow: 0 2px 5px #0002; pointer-events: none }
         .li { display: flex; gap: 8px; align-items: center; margin-bottom: 5px }
         .sw { width: 18px; height: 18px; display: inline-block }
         .dot { width: 12px; height: 12px; background: var(--b); border-radius: 50%; display: inline-block }
         #author { background: #f4f7f6; color: #777; text-align: center; line-height: 2.5; font-size: .75em; flex-shrink: 0 }
         .modal { display: none; position: fixed; inset: 0; background: #0008; z-index: 10 }
-        .modal-content { background: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 820px }
+        .modal-content {
+            background: white;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: min(90vw, 820px);
+            max-height: calc(100dvh - 40px);
+            overflow-y: auto;
+            touch-action: pan-y
+        }
         .close { float: right; font-size: 28px; color: #aaa; cursor: pointer }
         .code { font-family: Consolas, monospace; background: #eee; border-radius: 4px; padding: 2px 5px; color: #c62828 }
     </style>
@@ -87,16 +113,18 @@
                 <label>Slowdown:</label>
                 <input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()">
                 <button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button>
+                <label class="step-toggle" title="When on, each conceptual algorithm step waits for the Next step button." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label>
+                <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance one conceptual step when step-by-step is on." aria-label="Advance one conceptual step">Next step</button>
             </div>
         </div>
         <div id="status">
-            <span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span>
+            <span id="status-text">Visualization only: Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span>
         </div>
     </header>
     <div id="wrap">
         <canvas id="cv"></canvas>
         <div id="legend">
-            <div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div>
+            <div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div>
             <div class="li"><span class="sw" style="background:#91f4f4"></span>array reference slot</div>
             <div class="li"><span class="sw" style="background:#c78cff"></span>list reference</div>
             <div class="li"><span class="dot"></span>object reference</div>
@@ -107,14 +135,14 @@
         <div class="modal-content">
             <span class="close" onclick="app.toggleModal()">&times;</span>
             <h2>ArrayList</h2>
-            <p>A Java <strong>ArrayList</strong> stores the sequence in a heap allocated array of references <span class="code">elements</span>. The object also tracks <span class="code">size</span>. The <span class="code">capacity</span> is implicitly the length of the internal array.</p>
+            <p>A Java <strong>ArrayList</strong> stores the sequence in a internal array of references <span class="code">elements</span>. The object also tracks <span class="code">size</span>. The <span class="code">capacity</span> is implicitly the length of the internal array.</p>
             <ul>
                 <li><strong>Append</strong>: ensure capacity, write the object reference at <span class="code">elements[size]</span>, then increment <span class="code">size</span>. Complexity: <strong>amortized O(1)</strong>; <strong>O(n)</strong> in the occasional worst case when reallocation occurs.</li>
                 <li><strong>Prepend</strong>: insert at index <span class="code">0</span>, shifting all current references one position to the right. Complexity: <strong>O(n)</strong>.</li>
                 <li><strong>Insert</strong>: shift references from the insertion point to the right, write the new reference, then increment <span class="code">size</span>. Complexity: <strong>O(n)</strong> in the worst case.</li>
                 <li><strong>Get</strong>: direct access to <span class="code">elements[index]</span>. Complexity: <strong>O(1)</strong>.</li>
                 <li><strong>Set</strong>: replace the reference at the selected index. Complexity: <strong>O(1)</strong>.</li>
-                <li><strong>Delete</strong>: shift elements to the left and explicitly set the last position to <span class="code">null</span> to allow Java's Garbage Collector to free the memory. Complexity: <strong>O(n)</strong>.</li>
+                <li><strong>Delete</strong>: shift elements to the left and explicitly set the last position to <span class="code">null</span> so the object may become unreachable and later be reclaimed by Java's garbage collector. Complexity: <strong>O(n)</strong>.</li>
                 <li><strong>Clear</strong>: iterates the array setting all references to <span class="code">null</span> and sets <span class="code">size</span> to <span class="code">0</span>. Complexity: <strong>O(n)</strong> (in standard Java implementation).</li>
                 <li><strong>Ensure capacity</strong>: when full, <span class="code">Arrays.copyOf</span> allocates a larger array and copies the references over. Complexity: <strong>O(n)</strong>.</li>
             </ul>
@@ -131,6 +159,13 @@ const K = {
 	v: '#8d35c9',
 	k: '#111',
 	y: '#fff7b3'
+};
+const DRAWING = {
+    arrowHeadLength: 17,
+    arrowShaftShorteningFactor: 0.8,
+    arrowHeadWidthFactor: 1.4,
+    arrowHeadControlFactor: 0.9,
+    flashLineWidth: 5
 };
 let gid = 0;
 
@@ -154,6 +189,8 @@ class VisualizationEngine {
 		this.t = 0;
 		this.speedFactor = 1;
 		this.paused = false;
+		this.stepMode = false;
+		this.waitingForStep = false;
 		this.last = 0;
 		this.cell = 58;
 		this.lastCells = [];
@@ -166,6 +203,10 @@ class VisualizationEngine {
 		this.cv.addEventListener('mousemove', e => this.move(e));
 		this.cv.addEventListener('mouseup', () => this.up());
 		this.cv.addEventListener('mouseleave', () => this.up());
+		this.cv.addEventListener('touchstart', e => this.touchStart(e), { passive: false });
+		this.cv.addEventListener('touchmove', e => this.touchMove(e), { passive: false });
+		this.cv.addEventListener('touchend', () => this.up());
+		this.cv.addEventListener('touchcancel', () => this.up());
 		requestAnimationFrame(t => this.loop(t))
 	}
 
@@ -301,8 +342,55 @@ class VisualizationEngine {
 
 	up() {
 		this.drag = false;
+		this.pinch = null;
 		this.cv.style.cursor = 'default'
 	}
+	touchDistance(touches) {
+		return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY)
+	}
+	touchCenter(touches, rect) {
+		return { x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left, y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top }
+	}
+	touchStart(e) {
+		e.preventDefault();
+		const r = this.cv.getBoundingClientRect();
+		if (e.touches.length === 1) {
+			const sx = e.touches[0].clientX - r.left, sy = e.touches[0].clientY - r.top, w = this.screenToWorld(sx, sy);
+			for (const c of this.lastCells) {
+				let ch = this.cell;
+				if (c.v !== '?') ch += 30 + this.cell;
+				if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + ch) {
+					document.getElementById('val').value = c.v === '?' ? '' : c.v;
+					document.getElementById('idx').value = c.i;
+					return
+				}
+			}
+			this.drag = true;
+			this.start = { x: sx, y: sy };
+			this.c0 = { x: this.cam.targetX, y: this.cam.targetY }
+		} else if (e.touches.length === 2) {
+			this.drag = false;
+			const c = this.touchCenter(e.touches, r);
+			this.pinch = { distance: this.touchDistance(e.touches), scale: this.cam.targetScale, wx: (c.x - this.cam.targetX) / this.cam.targetScale, wy: (c.y - this.cam.targetY) / this.cam.targetScale }
+		}
+	}
+	touchMove(e) {
+		e.preventDefault();
+		const r = this.cv.getBoundingClientRect();
+		if (e.touches.length === 1 && this.drag) {
+			const sx = e.touches[0].clientX - r.left, sy = e.touches[0].clientY - r.top;
+			this.cam.targetX = this.c0.x + sx - this.start.x;
+			this.cam.targetY = this.c0.y + sy - this.start.y
+		} else if (e.touches.length === 2 && this.pinch) {
+			const c = this.touchCenter(e.touches, r);
+			let ns = this.pinch.scale * this.touchDistance(e.touches) / this.pinch.distance;
+			ns = Math.min(5, Math.max(.2, ns));
+			this.cam.targetScale = ns;
+			this.cam.targetX = c.x - this.pinch.wx * ns;
+			this.cam.targetY = c.y - this.pinch.wy * ns
+		}
+	}
+
 
 	layout(s) {
 		const b = this.base();
@@ -368,11 +456,17 @@ class VisualizationEngine {
 		if (!this.sn.length) {
 			this.sn.push(snaps.shift());
 			this.idx = 0;
-			document.getElementById('status-text').innerText = this.sn[0].text || 'Ready.'
+			document.getElementById('status-text').innerText = this.sn[0].text || 'Visualization only: Ready.'
 		}
 		if (snaps.length) {
 			this.pending = snaps;
-			this.state = 'CAMERA'
+			if (this.stepMode) {
+				this.state = 'STEP_WAIT';
+				this.waitingForStep = true
+			} else {
+				this.state = 'CAMERA';
+				this.waitingForStep = false
+			}
 		}
 	}
 
@@ -411,21 +505,28 @@ class VisualizationEngine {
 		const s = this.pending.shift();
 		this.sn.push(s);
 		if (s.fitCamera) this.fit([s]);
-		document.getElementById('status-text').innerText = s.text || 'Ready.';
+		document.getElementById('status-text').innerText = s.text || 'Visualization only: Ready.';
 		this.t = 0;
 		this.state = 'MORPH'
 	}
 
 	finish() {
 		this.idx++;
-		if (this.pending.length) this.next();
-		else {
+		if (this.pending.length) {
+			if (this.stepMode) {
+				this.state = 'STEP_WAIT';
+				this.waitingForStep = true;
+				const currentScene = this.sn[this.idx];
+				if (currentScene) document.getElementById('status-text').innerText = currentScene.text || 'Visualization only: Ready.'
+			} else this.next()
+		} else {
 			this.state = 'IDLE';
-			document.getElementById('status-text').innerText = 'Ready.';
+			this.waitingForStep = false;
+			const finalScene = this.sn[this.idx];
+			document.getElementById('status-text').innerText = finalScene?.text || 'Visualization only: Ready.';
 			window.app?.clearInputs()
 		}
 	}
-
 	ease(t) {
 		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 	}
@@ -517,6 +618,25 @@ class VisualizationEngine {
 		this.paused = !this.paused;
 		return this.paused
 	}
+	setStepMode(enabled) {
+		this.stepMode = !!enabled;
+		if (this.stepMode) {
+			if ((this.state === 'CAMERA' || this.state === 'IDLE') && this.pending.length) {
+				this.state = 'STEP_WAIT';
+				this.waitingForStep = true
+			}
+		} else if (this.state === 'STEP_WAIT' && this.pending.length) {
+			this.waitingForStep = false;
+			this.next()
+		}
+	}
+	nextStep() {
+		if (!this.stepMode || this.paused || !this.pending.length) return;
+		if (this.state === 'STEP_WAIT' || this.state === 'IDLE' || this.state === 'CAMERA') {
+			this.waitingForStep = false;
+			this.next()
+		}
+	}
 
 	draw() {
 		const s = this.current();
@@ -579,7 +699,7 @@ class VisualizationEngine {
 		c.save();
 		c.globalAlpha = this.flash();
 		c.strokeStyle = K.r;
-		c.lineWidth = 5;
+		c.lineWidth = DRAWING.flashLineWidth;
 		c.beginPath();
 		c.arc(x, y, r, 0, Math.PI * 2);
 		c.stroke();
@@ -590,7 +710,7 @@ class VisualizationEngine {
 		c.save();
 		c.globalAlpha = this.flash();
 		c.strokeStyle = K.r;
-		c.lineWidth = 5;
+		c.lineWidth = DRAWING.flashLineWidth;
 		c.beginPath();
 		if (c.roundRect) c.roundRect(x, y, w, h, this.layoutMetrics().cellCornerRadius);
 		else c.rect(x, y, w, h);
@@ -619,9 +739,8 @@ class VisualizationEngine {
 			c.lineWidth = lw;
 			
 			const a = Math.atan2(y2 - y1, x2 - x1);
-			const ARROW_HEAD_LENGTH = 17;
-			
-			const shorten = ARROW_HEAD_LENGTH * 0.8;
+			const arrowHeadLength = DRAWING.arrowHeadLength;
+			const shorten = arrowHeadLength * DRAWING.arrowShaftShorteningFactor;
 			const endX = x2 - shorten * Math.cos(a);
 			const endY = y2 - shorten * Math.sin(a);
 			
@@ -637,7 +756,7 @@ class VisualizationEngine {
 	head(x1, y1, x2, y2, col = K.b) {
 			const c = this.ctx;
 			const a = Math.atan2(y2 - y1, x2 - x1);
-			const size = 17; 
+			const size = DRAWING.arrowHeadLength; 
 			
 			c.save();
 			c.fillStyle = col;
@@ -646,8 +765,8 @@ class VisualizationEngine {
 			
 			c.beginPath();
 			c.moveTo(0, 0); 
-			c.lineTo(-size * 1.4, -size / 2); 
-			c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
+			c.lineTo(-size * DRAWING.arrowHeadWidthFactor, -size / 2); 
+			c.quadraticCurveTo(-size * DRAWING.arrowHeadControlFactor, 0, -size * DRAWING.arrowHeadWidthFactor, size / 2); 
 			c.closePath();
 			
 			c.fill();
@@ -982,7 +1101,7 @@ class App {
 		this.storage = next
 	}
 
-	showCurrent(text = 'Ready.') {
+	showCurrent(text = 'Visualization only: Ready.') {
 		this.viz.sn = [];
 		this.viz.pending = [];
 		this.viz.idx = -1;
@@ -1239,7 +1358,7 @@ class App {
 				flashRefDots: [idx],
 				pause: true
 			}));
-		} else snaps.push(this.snapshot('The insertion position is the first free cell at the end of the list', work, cap, {
+		} else snaps.push(this.snapshot('The insertion position is the first available cell at the end of the list', work, cap, {
 			size: old.length,
 			flashRefDots: [idx],
 			pause: true
@@ -1335,7 +1454,7 @@ class App {
 			work[idx] = '?';
 			snaps.push(this.snapshot('The last reference is now null; its arrow is removed and the null-reference circle remains', old, cap, { size: old.length, storage: [...work], objBoxes: [delObj], hideObjectIndices: [idx], pause: true }));
 			snaps.push(this.snapshot('The removed last object is no longer reachable and is crossed before disappearing', old, cap, { size: old.length, storage: [...work], objBoxes: [delObj], hideObjectIndices: [idx], crossObjectIds: ['deleteLastObj'], pause: true }));
-			snaps.push(this.snapshot('The unreachable value disappears', old, cap, { size: old.length, storage: [...work], pause: true }));
+			snaps.push(this.snapshot('Visualization only: the unreachable value object is removed from the drawing', old, cap, { size: old.length, storage: [...work], pause: true }));
 			const final = old.slice(0, old.length - 1), finalStorage = this.makeDisplayStorage(final, cap);
 			snaps.push(this.snapshot('size is decremented', final, cap, { size: final.length, storage: finalStorage, flashSize: true, pause: true }));
 			snaps.push(this.snapshot('The operation is complete', final, cap, { size: final.length, storage: finalStorage }));
@@ -1399,8 +1518,8 @@ class App {
 			snaps.push(this.snapshot('elements[' + j + '] flashes: this reference cell is about to be set to null', old, this.capacity, { size: old.length, storage: [...work], flashRefDots: [j], pause: true }));
 			work[j] = '?';
 			snaps.push(this.snapshot('elements[' + j + '] is now null; the arrow has been removed but the null-reference circle remains', old, this.capacity, { size: old.length, storage: [...work], objBoxes: [gcObj], hideObjectIndices: [j], flashRefDots: [j], pause: true }));
-			snaps.push(this.snapshot('The object formerly referenced by elements[' + j + '] is no longer reachable; it is crossed before garbage collection releases it', old, this.capacity, { size: old.length, storage: [...work], objBoxes: [gcObj], hideObjectIndices: [j], crossObjectIds: ['gcClearObj' + j], pause: true }));
-			snaps.push(this.snapshot('The unreachable value disappears', old, this.capacity, { size: old.length, storage: [...work], pause: true }));
+			snaps.push(this.snapshot('The object formerly referenced by elements[' + j + '] is no longer reachable; it is crossed before the Java garbage collector may reclaim it', old, this.capacity, { size: old.length, storage: [...work], objBoxes: [gcObj], hideObjectIndices: [j], crossObjectIds: ['gcClearObj' + j], pause: true }));
+			snaps.push(this.snapshot('Visualization only: the unreachable value object is removed from the drawing', old, this.capacity, { size: old.length, storage: [...work], pause: true }));
 		}
 		snaps.push(this.snapshot('size is set to 0. The allocated array is kept.', [], this.capacity, { size: 0, storage: [...work], flashSize: true, pause: true }));
 		snaps.push(this.snapshot('The operation is complete', [], this.capacity, { size: 0, storage: [...work] }));
@@ -1446,7 +1565,7 @@ class App {
 		}
 		if (Math.random() < 0.33) this.values.sort();
 		this.storage = [...this.values];
-		this.showCurrent('A random sample ArrayList has been created');
+		this.showCurrent('Visualization only: A random sample ArrayList has been generated for demonstration');
 		this.updateUI()
 	}
 
@@ -1532,6 +1651,16 @@ class App {
 		const p = this.viz.togglePause();
 		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
 	}
+	toggleStep() {
+		const enabled = !!document.getElementById('stepMode')?.checked;
+		this.viz.setStepMode(enabled);
+		const label = document.getElementById('stepState');
+		if (label) label.innerText = enabled ? 'On' : 'Off';
+		this.updateUI()
+	}
+	nextStep() {
+		this.viz.nextStep()
+	}
 
 	toggleModal() {
 		const m = document.getElementById('helpModal');
@@ -1539,7 +1668,11 @@ class App {
 	}
 
 	updateUI() {
-		document.getElementById('btnUndo').disabled = this.history.length === 0
+		document.getElementById('btnUndo').disabled = this.history.length === 0;
+		const step = document.getElementById('stepMode');
+		if (step) step.disabled = false;
+		const label = document.getElementById('stepState');
+		if (label) label.innerText = step?.checked ? 'On' : 'Off'
 	}
 
 	clearInputs() {

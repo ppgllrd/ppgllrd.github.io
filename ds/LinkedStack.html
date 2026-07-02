@@ -14,11 +14,9 @@
             --v: #8d35c9;
             --panel: #f5f5f5
         }
-
         * {
             box-sizing: border-box
         }
-
         body {
             margin: 0;
             height: 100vh;
@@ -30,7 +28,6 @@
             background: white;
             user-select: none
         }
-
         header {
             background: var(--panel);
             border-bottom: 1px solid #ddd;
@@ -40,7 +37,6 @@
             gap: 10px;
             flex-shrink: 0
         }
-
         .top,
         .gui {
             display: flex;
@@ -48,16 +44,13 @@
             align-items: center;
             gap: 12px
         }
-
         .gui {
             align-items: flex-start
         }
-
         h1 {
             font-size: 1.2rem;
             margin: 0
         }
-
         .controls,
         .sub {
             display: flex;
@@ -65,12 +58,10 @@
             align-items: center;
             flex-wrap: wrap
         }
-
         .sub {
             font-size: .9rem;
             color: #555
         }
-
         input[type=number] {
             width: 64px;
             padding: 6px;
@@ -79,7 +70,6 @@
             text-align: center;
             font-weight: bold
         }
-
         button {
             border: 0;
             border-radius: 4px;
@@ -87,69 +77,73 @@
             font-weight: 600;
             padding: 6px 12px;
             box-shadow: 0 1px 3px #0003;
-            cursor: pointer;
+            cursor: pointer
         }
-
         button:disabled {
             opacity: .4;
-            cursor: default;
+            cursor: default
         }
-
         .green {
             background: #2E7D32
         }
-
         .red {
             background: #c62828
         }
-
         .purple {
             background: #6A1B9A
         }
-
         .blue {
             background: #1668BD
         }
-
         .gray {
             background: #546E7A
         }
-
         .orange {
             background: #EF6C00
         }
-
         .pause {
             background: #455A64;
             width: 80px
         }
-
+        .step-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #ECEFF1;
+            color: #263238;
+            font-weight: 600;
+            box-shadow: 0 1px 3px #0002;
+            cursor: pointer;
+            user-select: none
+        }
+        .step-toggle input {
+            width: 16px;
+            height: 16px
+        }
         .help {
             background: #607D8B;
             border-radius: 50%;
             font-size: 1.1rem;
             padding: 4px 10px
         }
-
         .sep {
             width: 1px;
             height: 20px;
             background: #ccc;
             margin: 0 5px
         }
-
         #status {
             border-top: 1px solid #ddd;
             padding-top: 8px;
             font-size: .85rem;
             color: #555
         }
-
         #status-text {
             font-weight: bold;
             color: #222
         }
-
         #wrap {
             position: relative;
             flex: 1;
@@ -157,13 +151,12 @@
             overflow: hidden;
             background: white
         }
-
         canvas {
             display: block;
             width: 100%;
-            height: 100%
+            height: 100%;
+            touch-action: none
         }
-
         #legend {
             position: absolute;
             top: 18px;
@@ -176,20 +169,17 @@
             box-shadow: 0 2px 5px #0002;
             pointer-events: none
         }
-
         .li {
             display: flex;
             gap: 8px;
             align-items: center;
             margin-bottom: 5px
         }
-
         .sw {
             width: 18px;
             height: 18px;
             display: inline-block
         }
-
         .dot {
             width: 12px;
             height: 12px;
@@ -197,7 +187,6 @@
             border-radius: 50%;
             display: inline-block
         }
-
         #author {
             background: #f4f7f6;
             color: #777;
@@ -206,7 +195,6 @@
             font-size: .75em;
             flex-shrink: 0
         }
-
         .modal {
             display: none;
             position: fixed;
@@ -214,23 +202,22 @@
             background: #0008;
             z-index: 10
         }
-
         .modal-content {
             background: white;
-            margin: 5% auto;
+            margin: 20px auto;
             padding: 20px;
             border-radius: 8px;
-            width: 80%;
-            max-width: 760px
+            width: min(90vw, 820px);
+            max-height: calc(100dvh - 40px);
+            overflow-y: auto;
+            touch-action: pan-y
         }
-
         .close {
             float: right;
             font-size: 28px;
             color: #aaa;
             cursor: pointer
         }
-
         .code {
             font-family: Consolas, monospace;
             background: #eee;
@@ -241,18 +228,71 @@
     </style>
 </head>
 <body>
-    <header>
-        <div class="top"><h1>LinkedStack Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button></div>
-        <div class="gui">
-            <div class="controls"><label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.push()"></label><button class="green" onclick="app.push()" title="Push the element onto the top of the stack." aria-label="Push the element onto the top of the stack.">Push</button><button class="red" onclick="app.pop()" title="Pop (remove) the top element of the stack." aria-label="Pop (remove) the top element of the stack.">Pop</button><button class="purple" onclick="app.getTop()" title="Get the top element of the stack without removing it." aria-label="Get the top element of the stack without removing it.">Top</button><div class="sep"></div><button class="orange" onclick="app.newList()" title="Create a new empty stack." aria-label="Create a new empty stack.">Empty</button><button class="gray" onclick="app.clear()" title="Clear the stack." aria-label="Clear the stack.">Clear</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sample stack." aria-label="Build a random sample stack.">Build Random</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the stack." aria-label="Undo the last operation that modified the stack.">Undo</button></div>
-            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button></div>
+<header>
+    <div class="top">
+        <h1>LinkedStack Visualizer</h1>
+        <button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
+    </div>
+    <div class="gui">
+        <div class="controls">
+            <label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.push()"></label>
+            <button class="green" onclick="app.push()" title="Push the element onto the top of the stack." aria-label="Push the element onto the top of the stack.">Push</button>
+            <button class="red" onclick="app.pop()" title="Pop the top element of the stack." aria-label="Pop the top element of the stack.">Pop</button>
+            <button class="purple" onclick="app.getTop()" title="Get the top element of the stack without removing it." aria-label="Get the top element of the stack without removing it.">Top</button>
+            <div class="sep"></div>
+            <button class="orange" onclick="app.newList()" title="Create a new empty stack." aria-label="Create a new empty stack.">Empty</button>
+            <button class="gray" onclick="app.clear()" title="Clear the stack." aria-label="Clear the stack.">Clear</button>
+            <div class="sep"></div>
+            <button class="orange" onclick="app.random()" title="Build a random sample stack." aria-label="Build a random sample stack.">Build Random</button>
+            <div class="sep"></div>
+            <button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the stack." aria-label="Undo the last operation that modified the stack.">Undo</button>
         </div>
-        <div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, or drag to pan the view.</span></div>
-    </header>
-    <div id="wrap"><canvas id="cv"></canvas><div id="legend"><div class="li"><span class="sw" style="background:#b6f8b6"></span>element object / size</div><div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div><div class="li"><span class="sw" style="background:#c78cff"></span>stack reference</div><div class="li"><span class="dot"></span>null reference</div></div></div>
-    <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
-    <div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>LinkedStack</h2><p>A <strong>LinkedStack</strong> stores elements using a Last-In-First-Out (LIFO) policy as nodes connected by references.</p><p>The stack object keeps two fields: <span class="code">top</span> and <span class="code">size</span>. All insertions and removals happen at <span class="code">top</span>.</p><h3>Operations and asymptotic complexity</h3><ul><li><strong>Push</strong>: adds a new node at the top. Complexity: <span class="code">O(1)</span>.</li><li><strong>Pop</strong>: removes the node at the top. Complexity: <span class="code">O(1)</span>.</li><li><strong>Top</strong>: reads the top element without removing it. Complexity: <span class="code">O(1)</span>.</li></ul></div></div>
-    <script>
+        <div class="sub">
+            <label>Slowdown:</label>
+            <input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()">
+            <button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button>
+            <label class="step-toggle" title="When on, each conceptual algorithm step waits for Next step." aria-label="Step-by-step toggle">
+                <input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span>
+            </label>
+            <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance one conceptual step when step-by-step is on." aria-label="Advance one conceptual step.">Next step</button>
+        </div>
+    </div>
+    <div id="status"><span id="status-text">Visualization only: Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
+</header>
+
+<div id="wrap">
+    <canvas id="cv"></canvas>
+    <div id="legend">
+        <div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div>
+        <div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div>
+        <div class="li"><span class="sw" style="background:#c78cff"></span>stack reference</div>
+        <div class="li"><span class="dot"></span>null reference</div>
+    </div>
+</div>
+
+<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+
+<div id="helpModal" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>LinkedStack</h2>
+        <p>A <strong>LinkedStack</strong> stores elements using a Last-In-First-Out (LIFO) policy. The most recently pushed element is the first one returned by pop or top.</p>
+        <p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The stack object stores <span class="code">top</span>, a reference to the top node object, and <span class="code">size</span>, the number of stored elements.</p>
+        <p>Each node object has an <span class="code">element</span> field and a <span class="code">next</span> field. Because the structure is generic, <span class="code">node.element</span> is a reference to a value object, not necessarily a primitive stored inside the node.</p>
+        <p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
+        <h3>Data-structure operations and asymptotic complexity</h3>
+        <ul>
+            <li><strong>Push</strong>: creates a node object, sets its <span class="code">next</span> field to the former top node, updates <span class="code">top</span>, and increments <span class="code">size</span>. Complexity: <span class="code">O(1)</span>.</li>
+            <li><strong>Pop</strong>: updates <span class="code">top</span> to the second node, decrements <span class="code">size</span>, and returns the former top element reference. The former top node becomes unreachable from the stack. Complexity: <span class="code">O(1)</span>.</li>
+            <li><strong>Top</strong>: reads and returns the element reference stored in the top node without removing it. Complexity: <span class="code">O(1)</span>.</li>
+            <li><strong>Clear</strong>: sets <span class="code">top</span> to <span class="code">null</span> and sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the stack. Complexity: <span class="code">O(1)</span> for the logical operation; garbage collection is handled by the runtime.</li>
+        </ul>
+        <h3>Step-by-step execution and navigation</h3>
+        <p>Turn <strong>Step-by-step</strong> on to make each conceptual algorithm step wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
+    </div>
+</div>
+
+<script>
 'use strict';
 
 const K = {
@@ -262,129 +302,118 @@ const K = {
     r: '#e60000',
     p: '#c78cff',
     v: '#8d35c9',
-    d: '#EF6C00',
     k: '#111'
 };
-const LAYER = Object.freeze({
+
+const LAYER = {
     background: 0,
     box: 10,
     arrow: 20,
     dot: 30,
     text: 40,
     overlay: 100
-});
+};
 
-const VISUAL = (() => {
-    const CELL = 60;
-    const NODE_WIDTH = CELL * 2;
-    const NODE_GAP = CELL;
-    const STRUCT_X = 205;
-    const STRUCT_Y = 250;
-    const POINTER_BOX_WIDTH = CELL;
-    const POINTER_BOX_HEIGHT = CELL;
-    const BOX_TRANSPARENT_BORDER = 1;
-    return Object.freeze({
-        node: Object.freeze({
-            cell: CELL,
-            width: NODE_WIDTH,
-            step: NODE_WIDTH + NODE_GAP,
-            elementYOffset: -85
-        }),
-        list: Object.freeze({
-            originX: 360,
-            tempNodeYOffset: 160,
-            tempPointerXOffset: 100,
-            insertPointerXOffset: 120,
-            pointerTraversalYOffset: 190,
-            pointerTraversalLevelGap: 0,
-            pointerFallbackXOffset: 200,
-            nullPointerXOffset: 50
-        }),
-        struct: Object.freeze({
-            x: STRUCT_X,
-            y: STRUCT_Y
-        }),
-        pointerBox: Object.freeze({
-            width: POINTER_BOX_WIDTH,
-            height: POINTER_BOX_HEIGHT,
-            auxTargetXOffset: CELL,
-            transparentBorder: BOX_TRANSPARENT_BORDER
-        }),
-        stroke: Object.freeze({
-            detourOffset: 46
-        }),
-        fonts: Object.freeze({
-            value: '30px Arial',
-            structValue: '32px Arial',
-            structLabel: '28px monospace',
-            index: '25px monospace',
-            pointerLabel: '24px monospace',
-            auxPointerLabel: '22px monospace'
-        }),
-        random: Object.freeze({
-            minSize: 2,
-            sizeRange: 4,
-            minValue: 1,
-            valueRange: 9,
-            sortedProbability: 0.33
-        }),
-        undo: Object.freeze({
-            maxHistoryEntries: 30
-        }),
-        layers: Object.freeze({
-            // Complete groups that must travel behind the data structure can use
-            // these layers. They are all strictly below LAYER.box, while still
-            // preserving the internal visual order: arrow < box < dot < text.
-            underBox: Object.freeze({
-                box: LAYER.box - 4,
-                dot: LAYER.box - 3,
-                text: LAYER.box - 2,
-                arrow: LAYER.box - 1
-            }),
-            overArrow: Object.freeze({
-                box: LAYER.arrow + 1,
-                dot: LAYER.arrow + 2,
-                text: LAYER.arrow + 3,
-                arrow: LAYER.arrow + 4
-            }),
+const VISUAL = {
+    node: {
+        cell: 60,
+        width: 120,
+        step: 180,
+        elementYOffset: -85
+    },
+    list: {
+        originX: 360,
+        originY: 250,
+        tempNodeYOffset: 160,
+        tempPointerXOffset: 100,
+        nullPointerXOffset: 50
+    },
+    struct: {
+        x: 205,
+        y: 250
+    },
+    pointerBox: {
+        width: 60,
+        height: 60,
+        auxTargetXOffset: 60,
+        transparentBorder: 1
+    },
+    stroke: {
+        detourOffset: 46
+    },
+    fonts: {
+        value: '30px Arial',
+        structValue: '32px Arial',
+        structLabel: '28px monospace',
+        pointerLabel: '24px monospace',
+        auxPointerLabel: '22px monospace'
+    },
+    random: {
+        minSize: 2,
+        sizeRange: 4,
+        minValue: 1,
+        valueRange: 9
+    },
+    undo: {
+        maxHistoryEntries: 30
+    },
+    layers: {
+        underBox: {
+            box: LAYER.box - 4,
+            dot: LAYER.box - 3,
+            text: LAYER.box - 2,
+            arrow: LAYER.box - 1
+        },
+        overArrow: {
+            box: LAYER.arrow + 1,
+            dot: LAYER.arrow + 2,
+            text: LAYER.arrow + 3,
+            arrow: LAYER.arrow + 4
+        }
+    },
+    drawing: {
+        arrowHeadLength: 17,
+        arrowShaftShorteningFactor: 0.8,
+        arrowHeadWidthFactor: 1.4,
+        arrowHeadControlFactor: 0.9,
+        polylineCornerRadius: 16,
+        crossPadding: 7,
+        flashLineWidth: 5,
+        nodeDotRadius: 7.5,
+        fieldDotRadius: 8,
+        highlightRadius: 28
+    },
+    timing: {
+        automaticStepSeconds: 0.75,
+        morphSeconds: 0.45,
+        maxFrameDelta: 0.1
+    },
+    camera: {
+        minScale: 0.2,
+        maxScale: 5,
+        maxFitScale: 1.25,
+        wheelSensitivity: 0.001,
+        smoothing: 10,
+        snapPx: 5,
+        snapScale: 0.01,
+        fitPadding: 150
+    }
+};
 
-        })
-    });
-})();
 let nextId = 0;
+
 class VisualizationEngine {
     constructor({
         canvasId,
         wrapId,
         statusId,
-        onHit = null,
-        options = {}
+        onHit = null
     }) {
         this.cv = document.getElementById(canvasId);
         this.ctx = this.cv.getContext('2d');
         this.wrap = document.getElementById(wrapId);
         this.statusEl = document.getElementById(statusId);
         this.onHit = onHit;
-        this.options = Object.assign({
-            minScale: .2,
-            maxScale: 5,
-            maxFitScale: 1.22,
-            wheelSensitivity: .001,
-            cameraSmoothing: 10,
-            cameraSnapPx: 5,
-            cameraSnapScale: .01,
-            maxFrameDelta: .1,
-            morphSpeed: 2.5,
-            waitSeconds: .75,
-            fadeCutoff: .95,
-            fitPadding: 150,
-            worldFallback: {
-                minX: 20,
-                minY: 35,
-                maxX: 760,
-                maxY: 470
-            }
-        }, options);
 
         this.cam = {
             scale: 1,
@@ -394,6 +423,7 @@ class VisualizationEngine {
             y: 0,
             targetY: 0
         };
+
         this.scenes = [];
         this.pending = [];
         this.idx = -1;
@@ -402,26 +432,25 @@ class VisualizationEngine {
         this.wait = 0;
         this.speedFactor = 1;
         this.paused = false;
+        this.stepMode = false;
+        this.waitingForStep = false;
         this.last = 0;
         this.drag = false;
+        this.pinch = null;
         this.hitObjects = [];
 
         this.resize();
         window.addEventListener('resize', () => this.resize());
-        this.cv.addEventListener('wheel', e => this.wheel(e), {
-            passive: false
-        });
+        this.cv.addEventListener('wheel', e => this.wheel(e), { passive: false });
         this.cv.addEventListener('mousedown', e => this.pointerStart(e));
         this.cv.addEventListener('mousemove', e => this.pointerMove(e));
         this.cv.addEventListener('mouseup', () => this.pointerEnd());
         this.cv.addEventListener('mouseleave', () => this.pointerEnd());
-        this.cv.addEventListener('touchstart', e => this.touchStart(e), {
-            passive: false
-        });
-        this.cv.addEventListener('touchmove', e => this.touchMove(e), {
-            passive: false
-        });
+        this.cv.addEventListener('touchstart', e => this.touchStart(e), { passive: false });
+        this.cv.addEventListener('touchmove', e => this.touchMove(e), { passive: false });
         this.cv.addEventListener('touchend', () => this.pointerEnd());
+        this.cv.addEventListener('touchcancel', () => this.pointerEnd());
+
         requestAnimationFrame(ts => this.loop(ts));
     }
 
@@ -436,50 +465,58 @@ class VisualizationEngine {
             this.cam.y = this.cam.targetY;
         }
     }
+
+    reset() {
+        this.scenes = [];
+        this.pending = [];
+        this.idx = -1;
+        this.state = 'IDLE';
+        this.t = 0;
+        this.wait = 0;
+        this.waitingForStep = false;
+    }
+
     screenToWorld(x, y) {
         return {
             x: (x - this.cam.x) / this.cam.scale,
             y: (y - this.cam.y) / this.cam.scale
         };
     }
+
     wheel(e) {
         e.preventDefault();
-        const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
-        let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
-        ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
-        const wx = (sx - this.cam.targetX) / this.cam.targetScale,
-            wy = (sy - this.cam.targetY) / this.cam.targetScale;
+        const r = this.cv.getBoundingClientRect();
+        const sx = e.clientX - r.left;
+        const sy = e.clientY - r.top;
+        let ns = this.cam.targetScale * (1 - e.deltaY * VISUAL.camera.wheelSensitivity);
+        ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, ns));
+        const wx = (sx - this.cam.targetX) / this.cam.targetScale;
+        const wy = (sy - this.cam.targetY) / this.cam.targetScale;
         this.cam.targetScale = ns;
         this.cam.targetX = sx - wx * ns;
         this.cam.targetY = sy - wy * ns;
     }
+
     pointerStart(e) {
-        const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
-        const w = this.screenToWorld(sx, sy),
-            hit = this.findHit(w.x, w.y);
+        const r = this.cv.getBoundingClientRect();
+        const sx = e.clientX - r.left;
+        const sy = e.clientY - r.top;
+        const w = this.screenToWorld(sx, sy);
+        const hit = this.findHit(w.x, w.y);
         if (hit && this.onHit) {
             this.onHit(hit);
             return;
         }
         this.drag = true;
-        this.start = {
-            x: sx,
-            y: sy
-        };
-        this.c0 = {
-            x: this.cam.targetX,
-            y: this.cam.targetY
-        };
+        this.start = { x: sx, y: sy };
+        this.c0 = { x: this.cam.targetX, y: this.cam.targetY };
         this.cv.style.cursor = 'grabbing';
     }
+
     pointerMove(e) {
-        const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
+        const r = this.cv.getBoundingClientRect();
+        const sx = e.clientX - r.left;
+        const sy = e.clientY - r.top;
         if (this.drag) {
             this.cam.targetX = this.c0.x + sx - this.start.x;
             this.cam.targetY = this.c0.y + sy - this.start.y;
@@ -488,69 +525,72 @@ class VisualizationEngine {
         const w = this.screenToWorld(sx, sy);
         this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default';
     }
+
     pointerEnd() {
         this.drag = false;
-        this.cv.style.cursor = 'default';
         this.pinch = null;
+        this.cv.style.cursor = 'default';
     }
-    td(t) {
-        return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY);
+
+    touchDistance(touches) {
+        return Math.hypot(
+            touches[0].clientX - touches[1].clientX,
+            touches[0].clientY - touches[1].clientY
+        );
     }
-    tc(t, r) {
+
+    touchCenter(touches, rect) {
         return {
-            x: (t[0].clientX + t[1].clientX) / 2 - r.left,
-            y: (t[0].clientY + t[1].clientY) / 2 - r.top
+            x: (touches[0].clientX + touches[1].clientX) / 2 - rect.left,
+            y: (touches[0].clientY + touches[1].clientY) / 2 - rect.top
         };
     }
+
     touchStart(e) {
         e.preventDefault();
         const r = this.cv.getBoundingClientRect();
         if (e.touches.length === 1) {
-            const x = e.touches[0].clientX - r.left,
-                y = e.touches[0].clientY - r.top;
-            const w = this.screenToWorld(x, y);
+            const sx = e.touches[0].clientX - r.left;
+            const sy = e.touches[0].clientY - r.top;
+            const w = this.screenToWorld(sx, sy);
             const hit = this.findHit(w.x, w.y);
             if (hit && this.onHit) {
                 this.onHit(hit);
                 return;
             }
             this.drag = true;
-            this.start = {
-                x,
-                y
-            };
-            this.c0 = {
-                x: this.cam.targetX,
-                y: this.cam.targetY
-            };
+            this.start = { x: sx, y: sy };
+            this.c0 = { x: this.cam.targetX, y: this.cam.targetY };
         } else if (e.touches.length === 2) {
             this.drag = false;
-            const c = this.tc(e.touches, r);
+            const c = this.touchCenter(e.touches, r);
             this.pinch = {
-                d: this.td(e.touches),
-                s: this.cam.targetScale,
+                distance: this.touchDistance(e.touches),
+                scale: this.cam.targetScale,
                 wx: (c.x - this.cam.targetX) / this.cam.targetScale,
                 wy: (c.y - this.cam.targetY) / this.cam.targetScale
             };
         }
     }
+
     touchMove(e) {
         e.preventDefault();
         const r = this.cv.getBoundingClientRect();
         if (e.touches.length === 1 && this.drag) {
-            const x = e.touches[0].clientX - r.left,
-                y = e.touches[0].clientY - r.top;
-            this.cam.targetX = this.c0.x + x - this.start.x;
-            this.cam.targetY = this.c0.y + y - this.start.y;
+            const sx = e.touches[0].clientX - r.left;
+            const sy = e.touches[0].clientY - r.top;
+            this.cam.targetX = this.c0.x + sx - this.start.x;
+            this.cam.targetY = this.c0.y + sy - this.start.y;
         } else if (e.touches.length === 2 && this.pinch) {
-            const c = this.tc(e.touches, r);
-            let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
-            ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+            const c = this.touchCenter(e.touches, r);
+            let ns = this.pinch.scale * this.touchDistance(e.touches) / this.pinch.distance;
+            ns = Math.min(VISUAL.camera.maxScale, Math.max(VISUAL.camera.minScale, ns));
             this.cam.targetScale = ns;
             this.cam.targetX = c.x - this.pinch.wx * ns;
             this.cam.targetY = c.y - this.pinch.wy * ns;
         }
     }
+
     findHit(x, y) {
         for (let i = this.hitObjects.length - 1; i >= 0; i--) {
             const o = this.hitObjects[i];
@@ -559,207 +599,268 @@ class VisualizationEngine {
         return null;
     }
 
-    reset() {
-        this.scenes = [];
-        this.pending = [];
-        this.idx = -1;
-        this.state = 'IDLE';
-        this.t = 0;
-    }
-    enqueue(scenes) {
-        const copy = scenes.map(s => this.normalizeScene(s));
-        this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
-        if (!this.scenes.length && copy.length) {
-            this.scenes.push(copy.shift());
-            this.idx = 0;
-            this.setStatus(this.scenes[0].text || 'Ready.');
-        }
-        if (copy.length) {
-            this.pending = copy;
-            this.state = 'CAMERA';
-        }
-    }
-    normalizeScene(s) {
-        const scene = Object.assign({
-            objects: [],
-            pause: false
-        }, s);
-        scene.objects = this.normalizeObjects(scene.objects);
-        return scene;
-    }
-    normalizeObjects(objects = []) {
-        return objects.map((o, order) => this.normalizeObject(o, order));
-    }
-    normalizeObject(o, order = 0) {
-        const copy = Object.assign({}, o);
-        copy.layer = this.resolveLayer(copy);
-        copy.order = copy.order ?? order;
+    normalizeScene(scene) {
+        const copy = Object.assign({ objects: [], pause: false }, scene);
+        copy.objects = copy.objects.map((o, order) => {
+            const r = Object.assign({}, o);
+            r.order = r.order ?? order;
+            r.layer = Number.isFinite(r.layer) ? r.layer : this.resolveLayer(r);
+            return r;
+        });
         return copy;
     }
+
     resolveLayer(o) {
-        if (Number.isFinite(o.layer)) return o.layer;
         if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
         if (o.kind === 'text') return LAYER.text;
         if (o.kind === 'circle') return LAYER.dot;
         if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
         if (o.kind === 'rect') return LAYER.box;
-        return Number.isFinite(o.z) ? o.z : LAYER.background;
+        return LAYER.background;
     }
-    sortObjects(objects = []) {
-        return [...objects].sort((a, b) =>
-            ((a.layer ?? LAYER.background) - (b.layer ?? LAYER.background)) ||
-            ((a.order ?? 0) - (b.order ?? 0))
-        );
+
+    sortObjects(objects) {
+        return [...objects].sort((a, b) => ((a.layer ?? 0) - (b.layer ?? 0)) || ((a.order ?? 0) - (b.order ?? 0)));
     }
+
+    enqueue(scenes) {
+        const copy = scenes.map(s => this.normalizeScene(s));
+
+        this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
+
+        if (!this.scenes.length && copy.length) {
+            this.scenes.push(copy.shift());
+            this.idx = 0;
+            this.setStatus(this.scenes[0].text || 'Visualization only: Ready.');
+        }
+
+        if (copy.length) {
+            this.pending = copy;
+
+            if (this.stepMode) {
+                this.state = 'STEP_WAIT';
+                this.waitingForStep = true;
+            } else {
+                this.state = 'CAMERA';
+                this.waitingForStep = false;
+            }
+        }
+    }
+
     setStatus(txt) {
         if (this.statusEl) this.statusEl.innerText = txt;
     }
+
     loop(ts) {
         if (!this.last) this.last = ts;
-        const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
+        const dt = Math.min((ts - this.last) / 1000, VISUAL.timing.maxFrameDelta);
         this.last = ts;
         if (!this.paused) this.update(dt);
         this.draw();
         requestAnimationFrame(t => this.loop(t));
     }
+
     update(dt) {
-        const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
+        const f = 1 - Math.exp(-VISUAL.camera.smoothing * dt);
         this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
         this.cam.x += (this.cam.targetX - this.cam.x) * f;
         this.cam.y += (this.cam.targetY - this.cam.y) * f;
+
         if (this.state === 'CAMERA') {
-            if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next();
+            const closeCamera = Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < VISUAL.camera.snapPx &&
+                Math.abs(this.cam.scale - this.cam.targetScale) < VISUAL.camera.snapScale;
+            if (closeCamera) this.next();
         } else if (this.state === 'MORPH') {
-            this.t += this.options.morphSpeed * this.speedFactor * dt;
+            this.t += dt / (VISUAL.timing.morphSeconds * this.speedFactor);
             if (this.t >= 1) {
                 this.t = 1;
-                if (this.scenes[this.idx + 1]?.pause) {
+                if (this.stepMode) {
+                    this.finish();
+                } else if (this.scenes[this.idx + 1]?.pause) {
                     this.state = 'WAIT';
-                    this.wait = this.options.waitSeconds / this.speedFactor;
-                } else this.finish();
+                    this.wait = VISUAL.timing.automaticStepSeconds * this.speedFactor;
+                } else {
+                    this.finish();
+                }
             }
         } else if (this.state === 'WAIT') {
             this.wait -= dt;
             if (this.wait <= 0) this.finish();
         }
     }
+
     next() {
+        if (!this.pending.length) return;
+
         const s = this.pending.shift();
         this.scenes.push(s);
-        if (s.fitCamera) this.fit([s]);
-        this.setStatus(s.text || 'Ready.');
+
+        this.setStatus(s.text || 'Visualization only: Ready.');
         this.t = 0;
         this.state = 'MORPH';
     }
+
     finish() {
         this.idx++;
-        if (this.pending.length) this.next();
-        else {
+        if (this.pending.length) {
+            if (this.stepMode) {
+                this.state = 'STEP_WAIT';
+                this.waitingForStep = true;
+                const currentScene = this.scenes[this.idx];
+                if (currentScene) this.setStatus(currentScene.text || 'Visualization only: Ready.');
+            } else {
+                this.next();
+            }
+        } else {
+            const finalScene = this.scenes[this.idx];
+            if (finalScene) this.fit([finalScene]);
             this.state = 'IDLE';
-            this.setStatus('Ready.');
+            this.waitingForStep = false;
+            this.setStatus(finalScene?.text || 'Visualization only: Ready.');
             if (app?.clearInputs) app.clearInputs();
         }
     }
+
+    setStepMode(enabled) {
+        this.stepMode = !!enabled;
+        if (this.stepMode) {
+            if ((this.state === 'CAMERA' || this.state === 'IDLE') && this.pending.length) {
+                this.state = 'STEP_WAIT';
+                this.waitingForStep = true;
+            }
+        } else if (this.state === 'STEP_WAIT' && this.pending.length) {
+            this.waitingForStep = false;
+            this.next();
+        }
+    }
+
+    nextStep() {
+        if (!this.stepMode || this.paused || !this.pending.length) return;
+        if (this.state === 'STEP_WAIT' || this.state === 'IDLE' || this.state === 'CAMERA') {
+            this.waitingForStep = false;
+            this.next();
+        }
+    }
+
+    togglePause() {
+        this.paused = !this.paused;
+        return this.paused;
+    }
+
+    setSpeed(v) {
+        this.speedFactor = Math.max(0.2, Number(v) || 1);
+    }
+
     ease(t) {
         return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
     }
+
     current() {
-        return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)];
+        if ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) {
+            return this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t));
+        }
+        return this.scenes[Math.max(this.idx, 0)];
     }
-    interpolateScene(A, B, t) {
-        return Object.assign({}, B, {
-            objects: this.mixObjects(A.objects, B.objects, t)
-        });
+
+    interpolateScene(a, b, t) {
+        return Object.assign({}, b, { objects: this.mixObjects(a.objects, b.objects, t) });
     }
+
     mixObjects(a = [], b = [], t) {
-        const ma = new Map(a.map(o => [o.id, o])),
-            mb = new Map(b.map(o => [o.id, o])),
-            ids = new Set([...ma.keys(), ...mb.keys()]);
-        const sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined));
+        const ma = new Map(a.map(o => [o.id, o]));
+        const mb = new Map(b.map(o => [o.id, o]));
+        const ids = new Set([...ma.keys(), ...mb.keys()]);
         const out = [];
         ids.forEach(id => {
-            const A = ma.get(id),
-                B = mb.get(id);
+            const A = ma.get(id);
+            const B = mb.get(id);
             if (A && B) out.push(this.mixObject(A, B, t));
-            else if (B) {
-                const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-                out.push(S ? this.mixObject(S, B, t) : Object.assign({}, B, {
-                    alpha: B.alpha ?? 1
-                }));
-            } else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
-                alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
-            }));
+            else if (B) out.push(Object.assign({}, B, { alpha: (B.alpha ?? 1) * Math.min(1, t / 0.95) }));
+            else if (A && t < 0.95) out.push(Object.assign({}, A, { alpha: (A.alpha ?? 1) * (1 - t / 0.95) }));
         });
         return this.sortObjects(out);
     }
-    mixObject(A, B, t) {
-        const o = Object.assign({}, B);
+
+    mixObject(a, b, t) {
+        const o = Object.assign({}, b);
         ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
-            if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t;
+            if (a[k] !== undefined && b[k] !== undefined) o[k] = a[k] + (b[k] - a[k]) * t;
         });
-        if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
-            x: A.points[i].x + (p.x - A.points[i].x) * t,
-            y: A.points[i].y + (p.y - A.points[i].y) * t
-        }));
+        if (Array.isArray(a.points) && Array.isArray(b.points) && a.points.length === b.points.length) {
+            o.points = b.points.map((p, i) => ({
+                x: a.points[i].x + (p.x - a.points[i].x) * t,
+                y: a.points[i].y + (p.y - a.points[i].y) * t
+            }));
+        }
         return o;
     }
+
     bounds(scene) {
-        const fb = this.options.worldFallback;
-        let b = {
-            minX: fb.minX,
-            minY: fb.minY,
-            maxX: fb.maxX,
-            maxY: fb.maxY
-        };
+        let b = { minX: 20, minY: 35, maxX: 760, maxY: 560 };
         for (const o of scene.objects || []) {
-            let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
-                maxX = (o.x !== undefined ? (o.x + (o.w ?? 0)) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity));
-            let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
-                maxY = (o.y !== undefined ? (o.y + (o.h ?? 0)) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity));
-            if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
-            b.minX = Math.min(b.minX, minX - 180);
-            b.maxX = Math.max(b.maxX, maxX + 180);
-            b.minY = Math.min(b.minY, minY - 135);
-            b.maxY = Math.max(b.maxY, maxY + 170);
+            let xs = [];
+            let ys = [];
+            if (o.x !== undefined) {
+                xs.push(o.x, o.x + (o.w || 0));
+                ys.push(o.y, o.y + (o.h || 0));
+            }
+            if (o.x1 !== undefined) {
+                xs.push(o.x1, o.x2);
+                ys.push(o.y1, o.y2);
+            }
+            if (o.points) {
+                o.points.forEach(p => {
+                    xs.push(p.x);
+                    ys.push(p.y);
+                });
+            }
+            if (xs.length) {
+                b.minX = Math.min(b.minX, Math.min(...xs) - 180);
+                b.maxX = Math.max(b.maxX, Math.max(...xs) + 230);
+                b.minY = Math.min(b.minY, Math.min(...ys) - 200);
+                b.maxY = Math.max(b.maxY, Math.max(...ys) + 210);
+            }
         }
         return scene.bounds || b;
     }
+
     fit(scenes) {
-        let B = {
-            minX: 1e9,
-            minY: 1e9,
-            maxX: -1e9,
-            maxY: -1e9
-        };
+        if (!scenes.length || !this.cv.width || !this.cv.height) return;
+        const box = { minX: 1e9, minY: 1e9, maxX: -1e9, maxY: -1e9 };
         scenes.forEach(s => {
             const b = this.bounds(s);
-            B.minX = Math.min(B.minX, b.minX);
-            B.maxX = Math.max(B.maxX, b.maxX);
-            B.minY = Math.min(B.minY, b.minY);
-            B.maxY = Math.max(B.maxY, b.maxY);
+            box.minX = Math.min(box.minX, b.minX);
+            box.maxX = Math.max(box.maxX, b.maxX);
+            box.minY = Math.min(box.minY, b.minY);
+            box.maxY = Math.max(box.maxY, b.maxY);
         });
-        const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
+        const sc = Math.min(
+            VISUAL.camera.maxFitScale,
+            this.cv.width / (box.maxX - box.minX + VISUAL.camera.fitPadding),
+            this.cv.height / (box.maxY - box.minY + VISUAL.camera.fitPadding)
+        );
         this.cam.targetScale = sc;
-        this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-        this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc;
+        this.cam.targetX = this.cv.width / 2 - ((box.minX + box.maxX) / 2) * sc;
+        this.cam.targetY = this.cv.height / 2 - ((box.minY + box.maxY) / 2) * sc;
     }
+
     flashAlpha() {
         return .3 + .7 * Math.abs(Math.sin(performance.now() / 110));
     }
+
     draw() {
-        const s = this.current(),
-            c = this.ctx;
+        const s = this.current();
+        const c = this.ctx;
         c.clearRect(0, 0, this.cv.width, this.cv.height);
         this.hitObjects = [];
         c.save();
         c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-        if (!s) {
-            c.restore();
-            return;
+        if (s) {
+            for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
         }
-        for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
         c.restore();
     }
+
     drawObject(o) {
         const c = this.ctx;
         c.save();
@@ -771,18 +872,11 @@ class VisualizationEngine {
         c.font = st.font || '24px Arial';
         c.textAlign = st.align || 'center';
         c.textBaseline = st.baseline || 'middle';
+
         if (o.kind === 'rect') {
             this.roundOrRect(o, st);
             if (st.stroke) c.stroke();
-            if (o.hit) this.hitObjects.push({
-                x: o.x,
-                y: o.y,
-                w: o.w,
-                h: o.h,
-                hit: o.hit,
-                layer: o.layer ?? LAYER.box,
-                order: o.order ?? 0
-            });
+            if (o.hit) this.hitObjects.push({ x: o.x, y: o.y, w: o.w, h: o.h, hit: o.hit });
         } else if (o.kind === 'text') {
             c.fillStyle = st.fill || '#111';
             c.fillText(String(o.text), o.x, o.y);
@@ -791,15 +885,10 @@ class VisualizationEngine {
             c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
             if (st.fill) c.fill();
             if (st.stroke) c.stroke();
-        } else if (o.kind === 'line') {
-            c.beginPath();
-            c.moveTo(o.x1, o.y1);
-            c.lineTo(o.x2, o.y2);
-            c.stroke();
         } else if (o.kind === 'arrow') {
-            this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || '#1565c0', o.lineWidth ?? st.lineWidth ?? 3);
+            this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || K.b, o.lineWidth ?? 3);
         } else if (o.kind === 'polylineArrow') {
-            this.polylineArrow(o.points, st.stroke || '#1565c0', o.lineWidth ?? 3);
+            this.polylineArrow(o.points, st.stroke || K.b, o.lineWidth ?? 3);
         } else if (o.kind === 'cross') {
             this.cross(o.x, o.y, o.w, o.h);
         } else if (o.kind === 'flashRect') {
@@ -811,14 +900,15 @@ class VisualizationEngine {
         }
         c.restore();
     }
+
     roundOrRect(o, st) {
         const c = this.ctx;
-        const border = o.transparentBorder ?? VISUAL.pointerBox.transparentBorder ?? 0;
-        const ix = o.x + border,
-            iy = o.y + border,
-            iw = Math.max(0, o.w - 2 * border),
-            ih = Math.max(0, o.h - 2 * border),
-            ir = Math.max(0, (o.radius ?? 0) - border);
+        const b = o.transparentBorder ?? VISUAL.pointerBox.transparentBorder;
+        const ix = o.x + b;
+        const iy = o.y + b;
+        const iw = Math.max(0, o.w - 2 * b);
+        const ih = Math.max(0, o.h - 2 * b);
+        const ir = Math.max(0, (o.radius ?? 0) - b);
         c.beginPath();
         if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
         else c.rect(ix, iy, iw, ih);
@@ -829,117 +919,97 @@ class VisualizationEngine {
             else c.rect(o.x, o.y, o.w, o.h);
         }
     }
-	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-			const c = this.ctx;
-			c.save();
-			c.strokeStyle = col;
-			c.lineWidth = lw;
-			
-			const a = Math.atan2(y2 - y1, x2 - x1);
-			const ARROW_HEAD_LENGTH = 17;
-			
-			const shorten = ARROW_HEAD_LENGTH * 0.8;
-			const endX = x2 - shorten * Math.cos(a);
-			const endY = y2 - shorten * Math.sin(a);
-			
-			c.beginPath();
-			c.moveTo(x1, y1);
-			c.lineTo(endX, endY);
-			c.stroke();
-			
-			this.head(x1, y1, x2, y2, col);
-			c.restore();
+
+    arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        const a = Math.atan2(y2 - y1, x2 - x1);
+        const shorten = VISUAL.drawing.arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
+        const endX = x2 - shorten * Math.cos(a);
+        const endY = y2 - shorten * Math.sin(a);
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.lineTo(endX, endY);
+        c.stroke();
+        this.head(x1, y1, x2, y2, col);
+        c.restore();
     }
+
     polylineArrow(points, col = K.b, lw = 3) {
-            if (!points || points.length < 2) return;
-            
-            const c = this.ctx;
-            c.save();
-            c.strokeStyle = col;
-            c.lineWidth = lw;
-            
-            c.beginPath();
-            c.moveTo(points[0].x, points[0].y);
-            
-            const r = 16; // Radio de curvatura para suavizar las esquinas
-            
-            // 1. Trazar las uniones intermedias usando arcTo
-            // El bucle llega hasta el PENÚLTIMO punto (points.length - 1)
-            for (let i = 1; i < points.length - 1; i++) {
-                const pCurrent = points[i];
-                const pNext = points[i + 1];
-                // arcTo se dirige hacia el punto actual, pero hace una curva suave hacia el siguiente
-                c.arcTo(pCurrent.x, pCurrent.y, pNext.x, pNext.y, r);
-            }
-            
-            // 2. Tramo final: Calculamos el ángulo para acortar la línea (como hicimos antes)
-            const prev = points[points.length - 2];
-            const last = points[points.length - 1];
-            
-            const a = Math.atan2(last.y - prev.y, last.x - prev.x);
-            const ARROW_HEAD_LENGTH = 17;
-            const shorten = ARROW_HEAD_LENGTH * 0.8;
-            const endX = last.x - shorten * Math.cos(a);
-            const endY = last.y - shorten * Math.sin(a);
-            
-            // Terminamos la línea recta antes de llegar a la punta
-            c.lineTo(endX, endY);
-            c.stroke();
-            
-            // 3. Dibujamos la punta de la flecha en su posición y ángulo final exacto
-            this.head(prev.x, prev.y, last.x, last.y, col);
-            
-            c.restore();
+        if (!points || points.length < 2) return;
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        c.beginPath();
+        c.moveTo(points[0].x, points[0].y);
+        const r = VISUAL.drawing.polylineCornerRadius;
+        for (let i = 1; i < points.length - 1; i++) {
+            const current = points[i];
+            const next = points[i + 1];
+            c.arcTo(current.x, current.y, next.x, next.y, r);
+        }
+        const prev = points[points.length - 2];
+        const last = points[points.length - 1];
+        const a = Math.atan2(last.y - prev.y, last.x - prev.x);
+        const shorten = VISUAL.drawing.arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
+        c.lineTo(last.x - shorten * Math.cos(a), last.y - shorten * Math.sin(a));
+        c.stroke();
+        this.head(prev.x, prev.y, last.x, last.y, col);
+        c.restore();
     }
+
     head(x1, y1, x2, y2, col = K.b) {
-			const c = this.ctx;
-			const a = Math.atan2(y2 - y1, x2 - x1);
-			const size = 17; 
-			
-			c.save();
-			c.fillStyle = col;
-			c.translate(x2, y2);
-			c.rotate(a);
-			
-			c.beginPath();
-			c.moveTo(0, 0); 
-			c.lineTo(-size * 1.4, -size / 2); 
-			c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
-			c.closePath();
-			
-			c.fill();
-			c.restore();
+        const c = this.ctx;
+        const a = Math.atan2(y2 - y1, x2 - x1);
+        const size = VISUAL.drawing.arrowHeadLength;
+        c.save();
+        c.fillStyle = col;
+        c.translate(x2, y2);
+        c.rotate(a);
+        c.beginPath();
+        c.moveTo(0, 0);
+        c.lineTo(-size * VISUAL.drawing.arrowHeadWidthFactor, -size / 2);
+        c.quadraticCurveTo(-size * VISUAL.drawing.arrowHeadControlFactor, 0, -size * VISUAL.drawing.arrowHeadWidthFactor, size / 2);
+        c.closePath();
+        c.fill();
+        c.restore();
     }
+
     flashRect(x, y, w, h, r = 8) {
         const c = this.ctx;
         c.save();
         c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
-        c.lineWidth = 5;
+        c.strokeStyle = K.r;
+        c.lineWidth = VISUAL.drawing.flashLineWidth;
         c.beginPath();
         if (c.roundRect) c.roundRect(x, y, w, h, r);
         else c.rect(x, y, w, h);
         c.stroke();
         c.restore();
     }
+
     flashCircle(x, y, r) {
         const c = this.ctx;
         c.save();
         c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
-        c.lineWidth = 5;
+        c.strokeStyle = K.r;
+        c.lineWidth = VISUAL.drawing.flashLineWidth;
         c.beginPath();
         c.arc(x, y, r, 0, Math.PI * 2);
         c.stroke();
         c.restore();
     }
+
     cross(x, y, w, h) {
         const c = this.ctx;
+        const p = VISUAL.drawing.crossPadding;
         c.save();
         c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
+        c.strokeStyle = K.r;
         c.lineWidth = 6;
-        const p = 7;
         c.beginPath();
         c.moveTo(x - p, y - p);
         c.lineTo(x + w + p, y + h + p);
@@ -948,19 +1018,20 @@ class VisualizationEngine {
         c.stroke();
         c.restore();
     }
+
     lFlash(o) {
-        const c = this.ctx,
-            p = o.padding ?? 8,
-            r = o.radius ?? 8,
-            w = o.cell ?? 58,
-            nodeW = o.nodeW ?? 116,
-            x = o.x,
-            y = o.y,
-            elemY = o.elemY;
+        const c = this.ctx;
+        const p = o.padding ?? 8;
+        const r = o.radius ?? 8;
+        const w = o.cell ?? VISUAL.node.cell;
+        const nodeW = o.nodeW ?? VISUAL.node.width;
+        const x = o.x;
+        const y = o.y;
+        const elemY = o.elemY;
         c.save();
         c.globalAlpha = this.flashAlpha();
-        c.strokeStyle = '#e60000';
-        c.lineWidth = o.lineWidth ?? 5;
+        c.strokeStyle = K.r;
+        c.lineWidth = VISUAL.drawing.flashLineWidth;
         c.beginPath();
         c.moveTo(x - p + r, elemY - p);
         c.lineTo(x + w + p - r, elemY - p);
@@ -979,36 +1050,46 @@ class VisualizationEngine {
         c.stroke();
         c.restore();
     }
-    setSpeed(v) {
-        this.speedFactor = 1 / v;
-    }
-    togglePause() {
-        this.paused = !this.paused;
-        return this.paused;
-    }
 }
 
-
-
 class LinkedStackView {
-    constructor() { this.c = VISUAL.node.cell; this.nw = VISUAL.node.width; }
-    n(s, id) { return (s.nodes || []).find(n => n.id === id); }
-    obj(o, x) { o.push(x); }
+    constructor() {
+        this.c = VISUAL.node.cell;
+        this.nw = VISUAL.node.width;
+    }
+
+    obj(o, x) {
+        o.push(x);
+    }
+
     txt(o, id, text, x, y, font = VISUAL.fonts.value, fill = K.k, align = 'center', base = 'middle', layer = LAYER.text) {
         this.obj(o, { id, kind: 'text', text, x, y, style: { font, fill, align, baseline: base }, layer });
     }
+
     rect(o, id, x, y, w, h, fill, hit = null, layer = LAYER.box) {
         this.obj(o, { id, kind: 'rect', x, y, w, h, style: { fill }, hit, layer });
     }
+
     cir(o, id, x, y, r, fill, layer = LAYER.dot) {
         this.obj(o, { id, kind: 'circle', x, y, r, style: { fill }, layer });
     }
+
     ar(o, id, x1, y1, x2, y2, col = K.b, layer = LAYER.arrow) {
         this.obj(o, { id, kind: 'arrow', x1, y1, x2, y2, style: { stroke: col, fill: col }, lineWidth: 3, layer });
     }
+
     poly(o, id, points, col = K.b, layer = LAYER.arrow) {
         this.obj(o, { id, kind: 'polylineArrow', points, style: { stroke: col }, lineWidth: 3, layer });
     }
+
+    n(s, id) {
+        return (s.nodes || []).find(n => n.id === id);
+    }
+
+    ptr(n) {
+        return { x: n.x + this.c + this.c / 2, y: n.y + this.c / 2 };
+    }
+
     det(o, id, x1, y1, x2, y2, col = K.b, amount = 1) {
         if (Math.abs(amount) < .001) {
             this.poly(o, id, [
@@ -1019,10 +1100,16 @@ class LinkedStackView {
             ], col);
             return;
         }
-        const d = VISUAL.stroke.detourOffset * amount, my = y1 + d;
-        this.poly(o, id, [{ x: x1, y: y1 }, { x: x1 + d, y: my }, { x: x2 - d, y: my }, { x: x2, y: y2 }], col);
+        const d = VISUAL.stroke.detourOffset * amount;
+        const my = y1 + d;
+        this.poly(o, id, [
+            { x: x1, y: y1 },
+            { x: x1 + d, y: my },
+            { x: x2 - d, y: my },
+            { x: x2, y: y2 }
+        ], col);
     }
-    ptr(n) { return { x: n.x + this.c + this.c / 2, y: n.y + this.c / 2 }; }
+
     scene(s) {
         const o = [];
         this.struct(o, s);
@@ -1034,8 +1121,14 @@ class LinkedStackView {
         this.over(o, s);
         return { text: s.text, pause: !!s.pause, objects: o, bounds: this.bounds(o) };
     }
+
     node(o, s, n) {
-        const w = this.c, x = n.x, y = n.y, ey = y + VISUAL.node.elementYOffset, id = 'node:' + n.id;
+        const w = this.c;
+        const x = n.x;
+        const y = n.y;
+        const ey = y + VISUAL.node.elementYOffset;
+        const id = 'node:' + n.id;
+
         const reachableIds = [];
         let cur = s.topId;
         const seen = new Set();
@@ -1049,170 +1142,596 @@ class LinkedStackView {
         const bottomId = reachableIds.length ? reachableIds[reachableIds.length - 1] : null;
         const isTop = n.id === s.topId;
         const isBottom = n.id === bottomId;
+
         this.rect(o, id + ':elem', x, ey, w, w, K.g, { value: n.e });
         this.txt(o, id + ':val', n.e, x + w / 2, ey + w / 2 + 2, VISUAL.fonts.value, K.r);
-        if (isTop && isBottom) this.txt(o, id + ':top-label', 'top-bottom', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
+        if (isTop && isBottom) this.txt(o, id + ':top-bottom-label', 'top-bottom', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
         else {
             if (isTop) this.txt(o, id + ':top-label', 'top', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
             if (isBottom) this.txt(o, id + ':bottom-label', 'bottom', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
         }
+
         this.rect(o, id + ':left', x, y, w, w, K.c, { value: n.e });
         this.rect(o, id + ':right', x + w, y, w, w, K.c, { value: n.e });
         this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
-        this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, 7.5, K.b);
-        this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, 7.5, K.b);
+        this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
+        this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
     }
+
     struct(o, s) {
-        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
+        const x = VISUAL.struct.x;
+        const y = VISUAL.struct.y;
+        const w = this.c;
+        const h = this.c;
+
         this.txt(o, 'stack:label', 'stack', x - 135, y - 70, VISUAL.fonts.structLabel, K.k, 'right');
         this.rect(o, 'stack:box', x - 125, y - 108, w, h, K.p);
-        this.cir(o, 'stack:dot', x - 125 + w / 2, y - 108 + h / 2, 8, K.v);
-        [['top', K.c, s.topId], ['size', K.g, s.size]].forEach((r, i) => {
-            const yy = y + i * h, id = 'st:' + r[0];
-            this.txt(o, id + ':label', r[0], x - 16, yy + h / 2, VISUAL.fonts.structLabel, K.k, 'right');
-            this.rect(o, id + ':box', x, yy, w, h, r[1]);
-            if (r[0] === 'size') this.txt(o, id + ':value', String(r[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
-            else this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, K.b);
+        this.cir(o, 'stack:dot', x - 125 + w / 2, y - 108 + h / 2, VISUAL.drawing.fieldDotRadius, K.v);
+
+        [
+            ['top', K.c, s.topId],
+            ['size', K.g, s.size]
+        ].forEach((row, i) => {
+            const yy = y + i * h;
+            const id = 'st:' + row[0];
+            this.txt(o, id + ':label', row[0], x - 16, yy + h / 2, VISUAL.fonts.structLabel, K.k, 'right');
+            this.rect(o, id + ':box', x, yy, w, h, row[1]);
+            if (row[0] === 'size') this.txt(o, id + ':value', String(row[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
+            else {
+                const col = s.markTopArrow ? K.r : K.b;
+                this.cir(o, id + ':dot', x + w / 2, yy + h / 2, VISUAL.drawing.fieldDotRadius, col);
+            }
         });
     }
+
     structArrows(o, s) {
-        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
+        const x = VISUAL.struct.x;
+        const y = VISUAL.struct.y;
+        const w = this.c;
+        const h = this.c;
+
         this.ar(o, 'a:stack', x - 125 + w / 2, y - 108 + h / 2, x, y + 8, K.v);
         const top = this.n(s, s.topId);
         if (top) {
-            const a = s.topDetourAmount ?? (s.detourTop ? 1 : 0), col = s.markTopArrow ? K.r : K.b;
-            this.det(o, 'a:top', x + w / 2, y + h / 2, top.x, top.y + h / 2, col, a);
+            const amount = s.topDetourAmount ?? (s.detourTop ? 1 : 0);
+            const col = s.markTopArrow ? K.r : K.b;
+            this.det(o, 'a:top', x + w / 2, y + h / 2, top.x, top.y + h / 2, col, amount);
         }
     }
+
     links(o, s) {
         (s.nodes || []).forEach(n => {
             if (n.next != null) {
                 const t = this.n(s, n.next);
                 if (t) {
-                    const p = this.ptr(n), a = n.detourAmount ?? (n.detourNext ? 1 : 0);
-                    this.det(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2, K.b, a);
+                    const p = this.ptr(n);
+                    const amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
+                    this.det(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2, K.b, amount);
                 }
             }
         });
     }
+
     pnode(o, s) {
-        const p = s.pnode, under = VISUAL.layers.underBox;
+        const p = s.pnode;
+        const under = VISUAL.layers.underBox;
         this.txt(o, 'pn:label', p.label || 'newNode', p.x - 12, p.y + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic', under.text);
         this.rect(o, 'pn:box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c, null, under.box);
-        this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, 8, K.b, under.dot);
+        this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, VISUAL.drawing.fieldDotRadius, K.b, under.dot);
     }
+
     pnodeArrow(o, s) {
-        const p = s.pnode, t = this.n(s, p.target), under = VISUAL.layers.underBox;
+        const p = s.pnode;
+        const t = this.n(s, p.target);
+        const under = VISUAL.layers.underBox;
         if (t) this.ar(o, 'pn:arrow', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, t.x, t.y + this.c / 2, K.b, under.arrow);
     }
+
     over(o, s) {
-        const x = VISUAL.struct.x, y = VISUAL.struct.y, h = this.c;
-        if (s.flashTop) this.obj(o, { id: 'fl:top', kind: 'flashCircle', x: x + h / 2, y: y + h / 2, r: 28, layer: LAYER.overlay });
-        if (s.flashSize) this.obj(o, { id: 'fl:size', kind: 'flashCircle', x: x + h / 2, y: y + h + h / 2, r: 28, layer: LAYER.overlay });
+        const x = VISUAL.struct.x;
+        const y = VISUAL.struct.y;
+        const h = this.c;
+
+        if (s.flashTop) this.obj(o, { id: 'fl:top', kind: 'flashCircle', x: x + h / 2, y: y + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
+        if (s.flashSize) this.obj(o, { id: 'fl:size', kind: 'flashCircle', x: x + h / 2, y: y + h + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
+
         (s.nodes || []).forEach(n => {
             const ey = n.y + VISUAL.node.elementYOffset;
             if (n.flashNew) this.obj(o, { id: 'fl:new:' + n.id, kind: 'lFlash', x: n.x, y: n.y, elemY: ey, cell: this.c, nodeW: this.nw, layer: LAYER.overlay });
             if (n.flashElement) this.obj(o, { id: 'fl:elem:' + n.id, kind: 'flashRect', x: n.x - 1, y: ey - 1, w: this.c, h: this.c, radius: 8, layer: LAYER.overlay });
             if (n.flashNodeCross) this.obj(o, { id: 'cr:node:' + n.id, kind: 'cross', x: n.x, y: n.y, w: this.nw, h: this.c, layer: LAYER.overlay });
         });
-        if (s.flashPNodeCross && s.pnode) this.obj(o, { id: 'cr:pnode', kind: 'cross', x: s.pnode.x, y: s.pnode.y, w: VISUAL.pointerBox.width, h: VISUAL.pointerBox.height, layer: LAYER.overlay });
+
+        if (s.flashPNodeCross && s.pnode) this.obj(o, {
+            id: 'cr:pnode',
+            kind: 'cross',
+            x: s.pnode.x,
+            y: s.pnode.y,
+            w: VISUAL.pointerBox.width,
+            h: VISUAL.pointerBox.height,
+            layer: LAYER.overlay
+        });
     }
+
     bounds(o) {
         let b = { minX: 20, minY: 35, maxX: 760, maxY: 560 };
         for (const q of o) {
-            let xs = [], ys = [];
-            if (q.x !== undefined) { xs.push(q.x, q.x + (q.w || 0)); ys.push(q.y, q.y + (q.h || 0)); }
-            if (q.x1 !== undefined) { xs.push(q.x1, q.x2); ys.push(q.y1, q.y2); }
-            if (q.points) q.points.forEach(p => { xs.push(p.x); ys.push(p.y); });
-            if (xs.length) { b.minX = Math.min(b.minX, Math.min(...xs) - 180); b.maxX = Math.max(b.maxX, Math.max(...xs) + 230); b.minY = Math.min(b.minY, Math.min(...ys) - 200); b.maxY = Math.max(b.maxY, Math.max(...ys) + 210); }
+            let xs = [];
+            let ys = [];
+            if (q.x !== undefined) {
+                xs.push(q.x, q.x + (q.w || 0));
+                ys.push(q.y, q.y + (q.h || 0));
+            }
+            if (q.x1 !== undefined) {
+                xs.push(q.x1, q.x2);
+                ys.push(q.y1, q.y2);
+            }
+            if (q.points) q.points.forEach(p => {
+                xs.push(p.x);
+                ys.push(p.y);
+            });
+            if (xs.length) {
+                b.minX = Math.min(b.minX, Math.min(...xs) - 180);
+                b.maxX = Math.max(b.maxX, Math.max(...xs) + 230);
+                b.minY = Math.min(b.minY, Math.min(...ys) - 200);
+                b.maxY = Math.max(b.maxY, Math.max(...ys) + 210);
+            }
         }
         return b;
     }
 }
+
 class Viz extends VisualizationEngine {
     constructor(id) {
-        super({ canvasId: id, wrapId: 'wrap', statusId: 'status-text', onHit: h => { document.getElementById('val').value = h.value; }, options: { worldFallback: { minX: 20, minY: 35, maxX: 760, maxY: 560 }, maxFitScale: 1.25 } });
-        this.view = new LinkedStackView(); this.cell = VISUAL.node.cell; this.nodeW = VISUAL.node.width; this.gap = VISUAL.node.cell;
+        super({
+            canvasId: id,
+            wrapId: 'wrap',
+            statusId: 'status-text',
+            onHit: h => {
+                document.getElementById('val').value = h.value;
+            }
+        });
+        this.view = new LinkedStackView();
+        this.cell = VISUAL.node.cell;
+        this.nodeW = VISUAL.node.width;
+        this.gap = VISUAL.node.cell;
     }
-    get sn() { return this.scenes; } set sn(v) { this.scenes = v; }
-    base() { return { x: 360, y: 250, up: 110 }; }
-    enqueue(snaps) { super.enqueue(snaps.map(s => this.view.scene(s))); }
-}
-function relink(nodes) { nodes.forEach((n, i) => { n.index = undefined; n.next = i < nodes.length - 1 ? nodes[i + 1].id : null; }); }
-const app = {
-    values: [], ids: [], history: [], viz: null,
-    init() { this.viz = new Viz('cv'); this.randomFill(); this.ids = this.values.map(_ => nextId++); this.showCurrent('The stack is initialized with sample values'); this.updateUI(); },
-    baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) { const yy = y ?? this.viz.base().y; return vals.map((e, i) => ({ id: ids[i], e, x: VISUAL.list.originX + shift + i * VISUAL.node.step, y: yy, next: i < ids.length - 1 ? ids[i + 1] : null })); },
-    snapshot(text, nodes, extra = {}) { nodes = nodes.map(n => ({ ...n })); if (!extra.preserveLinks) relink(nodes); return { nodes, topId: extra.topId !== undefined ? extra.topId : (nodes[0]?.id ?? null), size: extra.size ?? nodes.length, text, ...extra }; },
-    showCurrent(text = 'Ready.') { this.viz.reset(); this.viz.enqueue([this.snapshot(text, this.baseNodes())]); },
-    v() { return parseInt(document.getElementById('val').value); },
-    save() { this.history.push({ values: [...this.values], ids: [...this.ids] }); if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift(); },
-    push() {
-        const e = this.v(); if (isNaN(e)) return; this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++, b = this.viz.base(), gap = VISUAL.node.step, oldTop = oldIds[0] ?? null;
-        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y), shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
-        let pnode = { x: b.x - VISUAL.list.tempPointerXOffset, y: b.up, target: newId, label: 'newNode' }, newUp = { id: newId, e, x: b.x, y: b.up, next: oldTop, flashNew: true };
-        const snaps = [
-            this.snapshot('The algorithm starts from the current stack state', oldNodes, { size: oldSize }),
-            this.snapshot('Existing nodes are moved aside to make room for the new top node', shiftedOld, { size: oldSize, topId: oldTop, pause: true }),
-            this.snapshot('A new node is allocated and linked to the former top node', [newUp, ...shiftedOld], { size: oldSize, pnode, topId: oldTop, preserveLinks: true, pause: true })
-        ];
-        newUp = { ...newUp, flashNew: false };
-        snaps.push(this.snapshot('The stack is ready to update its top reference', [newUp, ...shiftedOld], { size: oldSize, pnode, topId: oldTop, flashTop: true, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The new node becomes the top node of the stack', [newUp, ...shiftedOld], { size: oldSize, pnode, topId: newId, preserveLinks: true, pause: true }));
-        let newDown = { ...newUp, y: b.y };
-        snaps.push(this.snapshot('The new node is placed in its final stack position', [newDown, ...shiftedOld], { size: oldSize, pnode, topId: newId, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The stack size increases by one', [newDown, ...shiftedOld], { size: oldSize + 1, pnode, topId: newId, flashSize: true, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The temporary reference to the new node is discarded', [newDown, ...shiftedOld], { size: oldSize + 1, pnode, topId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The operation is complete', [newDown, ...shiftedOld], { size: oldSize + 1, topId: newId, preserveLinks: true }));
-        this.values = [e, ...oldVals]; this.ids = [newId, ...oldIds]; this.viz.enqueue(snaps); this.updateUI();
-    },
-    pop() {
-        if (this.values.length === 0) return; this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, b = this.viz.base(), removedId = oldIds[0], newTop = oldIds[1] ?? null, needsDetour = newTop !== null;
-        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        let snaps = [this.snapshot('The algorithm starts from the current stack state', oldNodes, { size: oldSize })];
-        snaps.push(this.snapshot('stack.top is updated to the node after the removed node', oldNodes, { size: oldSize, topId: newTop, flashTop: true, detourTop: needsDetour, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The stack size decreases by one', oldNodes, { size: oldSize - 1, topId: newTop, flashSize: true, detourTop: needsDetour, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('Without references pointing to it, the unlinked node becomes unreachable', oldNodes.map(n => n.id === removedId ? { ...n, flashNodeCross: true } : n), { size: oldSize - 1, topId: newTop, detourTop: needsDetour, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
-        let remaining = oldNodes.filter(n => n.id !== removedId);
-        snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', remaining, { size: oldSize - 1, topId: newTop, topDetourAmount: needsDetour ? 1 : 0, preserveLinks: true, pause: true }));
-        const newVals = oldVals.slice(1), newIds = oldIds.slice(1), compact = this.baseNodes(newVals, newIds, 0, b.y);
-        snaps.push(this.snapshot('The remaining nodes shift into their final stack positions', compact, { size: oldSize - 1, topId: newTop, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The operation is complete', compact, { size: oldSize - 1, topId: newTop, preserveLinks: true }));
-        this.values = newVals; this.ids = newIds; this.viz.enqueue(snaps); this.updateUI();
-    },
-    getTop() {
-        if (this.values.length === 0) return; const nodes = this.baseNodes(), topId = this.ids[0];
-        const snaps = [this.snapshot('The algorithm starts from the current stack state', nodes, { size: this.values.length }), this.snapshot('The algorithm uses stack.top to access the top node directly', nodes, { size: this.values.length, markTopArrow: true, pause: true }), this.snapshot('The top element has been accessed: top() = ' + this.values[0], nodes.map(n => n.id === topId ? { ...n, flashElement: true } : n), { size: this.values.length, markTopArrow: true, pause: true }), this.snapshot('The operation is complete', nodes, { size: this.values.length })];
-        this.viz.enqueue(snaps); this.updateUI();
-    },
-    randomFill() { this.values = []; const sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize; while (this.values.length < sz) { const v = Math.floor(Math.random() * VISUAL.random.valueRange) + VISUAL.random.minValue; if (!this.values.includes(v)) this.values.push(v); } },
-    newList() { this.save(); this.values = []; this.ids = []; this.showCurrent('A new empty stack has been created'); this.updateUI(); },
-    random() { this.save(); this.randomFill(); this.ids = this.values.map(_ => nextId++); this.showCurrent('A random sample stack has been created'); this.updateUI(); },
-    clear() {
-        this.save(); const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, originalNodes = this.baseNodes(oldVals, oldIds);
-        let snaps = [this.snapshot('The algorithm starts from the current stack state', originalNodes, { topId: oldIds[0] ?? null, size: oldSize })];
-        if (oldSize === 0) snaps.push(this.snapshot('The stack is already empty', originalNodes, { topId: null, size: 0, pause: true }));
-        else {
-            snaps.push(this.snapshot('stack.top is set to null', originalNodes, { topId: null, size: oldSize, flashTop: true, pause: true }));
-            snaps.push(this.snapshot('stack.size is set to 0', originalNodes, { topId: null, size: 0, flashSize: true, pause: true }));
-            let currentNodes = originalNodes.map(n => ({ ...n }));
-            for (let k = 0; k < oldSize; k++) { const curId = oldIds[k]; snaps.push(this.snapshot('An unreachable node is ready to be reclaimed', currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n), { topId: null, size: 0, preserveLinks: true, pause: true })); currentNodes = currentNodes.filter(n => n.id !== curId); snaps.push(this.snapshot('The garbage collector reclaims the memory of the unreachable node', currentNodes, { topId: null, size: 0, preserveLinks: true, pause: true })); }
-            snaps.push(this.snapshot('The operation is complete', [], { topId: null, size: 0 })); this.values = []; this.ids = [];
-        }
-        this.viz.enqueue(snaps); this.updateUI();
-    },
-    undo() { if (!this.history.length) return; const h = this.history.pop(); this.values = h.values; this.ids = h.ids; this.showCurrent('The previous stack state has been restored'); this.updateUI(); },
-    speed() { this.viz.setSpeed(parseFloat(document.getElementById('speed').value)); },
-    pause() { const p = this.viz.togglePause(); document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'; },
-    toggleModal() { const m = document.getElementById('helpModal'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; },
-    updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; },
-    clearInputs() { document.getElementById('val').value = ''; }
-};
-window.onload = () => app.init();
-window.onclick = e => { if (e.target === document.getElementById('helpModal')) app.toggleModal(); };
 
-    </script>
+    base() {
+        return {
+            x: VISUAL.list.originX,
+            y: VISUAL.list.originY,
+            up: VISUAL.list.originY - VISUAL.list.tempNodeYOffset
+        };
+    }
+
+    enqueue(snaps) {
+        super.enqueue(snaps.map(s => this.view.scene(s)));
+    }
+}
+
+function relink(nodes) {
+    nodes.forEach((n, i) => {
+        n.next = i < nodes.length - 1 ? nodes[i + 1].id : null;
+    });
+}
+
+const app = {
+    values: [],
+    ids: [],
+    history: [],
+    viz: null,
+
+    init() {
+        this.viz = new Viz('cv');
+        this.randomFill();
+        this.ids = this.values.map(() => nextId++);
+        this.showCurrent('Visualization only: The stack is initialized with sample values.');
+        this.updateUI();
+    },
+
+    baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
+        const yy = y ?? this.viz.base().y;
+        return vals.map((e, i) => ({
+            id: ids[i],
+            e,
+            x: VISUAL.list.originX + shift + i * VISUAL.node.step,
+            y: yy,
+            next: i < ids.length - 1 ? ids[i + 1] : null
+        }));
+    },
+
+    snapshot(text, nodes, extra = {}) {
+        nodes = nodes.map(n => ({ ...n }));
+        if (!extra.preserveLinks) relink(nodes);
+        return {
+            nodes,
+            topId: extra.topId !== undefined ? extra.topId : (nodes[0]?.id ?? null),
+            size: extra.size ?? nodes.length,
+            text,
+            ...extra
+        };
+    },
+
+    showCurrent(text = 'Visualization only: Ready.') {
+        this.viz.reset();
+        this.viz.enqueue([this.snapshot(text, this.baseNodes())]);
+    },
+
+    v() {
+        return parseInt(document.getElementById('val').value);
+    },
+
+    save() {
+        this.history.push({ values: [...this.values], ids: [...this.ids] });
+        if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift();
+    },
+
+    push() {
+        const e = this.v();
+        if (isNaN(e)) return;
+        this.save();
+
+        const oldVals = [...this.values];
+        const oldIds = [...this.ids];
+        const oldSize = oldVals.length;
+        const newId = nextId++;
+        const b = this.viz.base();
+        const oldTop = oldIds[0] ?? null;
+        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+        const shiftedOld = this.baseNodes(oldVals, oldIds, VISUAL.node.step, b.y);
+
+        let pnode = {
+            x: b.x - VISUAL.list.tempPointerXOffset,
+            y: b.up,
+            target: newId,
+            label: 'newNode'
+        };
+
+        let newUp = {
+            id: newId,
+            e,
+            x: b.x,
+            y: b.up,
+            next: oldTop,
+            flashNew: true
+        };
+
+        const snaps = [
+            this.snapshot('Push starts from the current stack state.', oldNodes, { size: oldSize }),
+            this.snapshot('Visualization only: Existing nodes are drawn with extra spacing so the new top node is visible.', shiftedOld, {
+                size: oldSize,
+                topId: oldTop,
+                pause: true
+            }),
+            this.snapshot('A new node object is created. The local variable newNode references it, and newNode.next references the former top node.', [newUp, ...shiftedOld], {
+                size: oldSize,
+                pnode,
+                topId: oldTop,
+                preserveLinks: true,
+                pause: true
+            })
+        ];
+
+        newUp = { ...newUp, flashNew: false };
+
+        snaps.push(this.snapshot('stack.top is about to be updated to the new node object.', [newUp, ...shiftedOld], {
+            size: oldSize,
+            pnode,
+            topId: oldTop,
+            flashTop: true,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        snaps.push(this.snapshot('stack.top is updated to reference the new node object.', [newUp, ...shiftedOld], {
+            size: oldSize,
+            pnode,
+            topId: newId,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        const newDown = { ...newUp, y: b.y };
+
+        snaps.push(this.snapshot('Visualization only: The new node is drawn in its final stack position.', [newDown, ...shiftedOld], {
+            size: oldSize,
+            pnode,
+            topId: newId,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        snaps.push(this.snapshot('stack.size is incremented because one element reference was added.', [newDown, ...shiftedOld], {
+            size: oldSize + 1,
+            pnode,
+            topId: newId,
+            flashSize: true,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        snaps.push(this.snapshot('The method exits: the local variable newNode goes out of scope.', [newDown, ...shiftedOld], {
+            size: oldSize + 1,
+            pnode,
+            topId: newId,
+            flashPNodeCross: true,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        this.values = [e, ...oldVals];
+        this.ids = [newId, ...oldIds];
+
+        snaps.push(this.snapshot('The operation is complete.', this.baseNodes(this.values, this.ids), {
+            size: this.values.length,
+            topId: this.ids[0] ?? null
+        }));
+
+        this.viz.enqueue(snaps);
+        this.updateUI();
+    },
+
+    pop() {
+        if (this.values.length === 0) return;
+        this.save();
+
+        const oldVals = [...this.values];
+        const oldIds = [...this.ids];
+        const oldSize = oldVals.length;
+        const b = this.viz.base();
+        const removedId = oldIds[0];
+        const newTop = oldIds[1] ?? null;
+        const needsDetour = newTop !== null;
+        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+
+        let snaps = [
+            this.snapshot('Pop starts from the current stack state.', oldNodes, { size: oldSize })
+        ];
+
+        snaps.push(this.snapshot('stack.top is updated to reference the node after the former top node.', oldNodes, {
+            size: oldSize,
+            topId: newTop,
+            flashTop: true,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : 0,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        snaps.push(this.snapshot('stack.size is decremented because one element reference was removed from the stack.', oldNodes, {
+            size: oldSize - 1,
+            topId: newTop,
+            flashSize: true,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : 0,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        snaps.push(this.snapshot('After stack.top changes, the former top node object is unreachable from the stack.', oldNodes.map(n => n.id === removedId ? { ...n, flashNodeCross: true } : n), {
+            size: oldSize - 1,
+            topId: newTop,
+            detourTop: needsDetour,
+            topDetourAmount: needsDetour ? 1 : 0,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        const remaining = oldNodes.filter(n => n.id !== removedId);
+
+        snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', remaining, {
+            size: oldSize - 1,
+            topId: newTop,
+            topDetourAmount: needsDetour ? 1 : 0,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        const newVals = oldVals.slice(1);
+        const newIds = oldIds.slice(1);
+        const compact = this.baseNodes(newVals, newIds, 0, b.y);
+
+        snaps.push(this.snapshot('Visualization only: The remaining nodes are redrawn in their final stack positions.', compact, {
+            size: oldSize - 1,
+            topId: newTop,
+            preserveLinks: true,
+            pause: true
+        }));
+
+        this.values = newVals;
+        this.ids = newIds;
+
+        snaps.push(this.snapshot('The operation is complete.', this.baseNodes(this.values, this.ids), {
+            size: this.values.length,
+            topId: this.ids[0] ?? null
+        }));
+
+        this.viz.enqueue(snaps);
+        this.updateUI();
+    },
+
+    getTop() {
+        if (this.values.length === 0) return;
+
+        const nodes = this.baseNodes();
+        const topId = this.ids[0];
+
+        const snaps = [
+            this.snapshot('Top starts from the current stack state.', nodes, { size: this.values.length }),
+            this.snapshot('The algorithm uses stack.top to access the top node object directly.', nodes, {
+                size: this.values.length,
+                markTopArrow: true,
+                pause: true
+            }),
+            this.snapshot('top() returns the element reference stored in the top node.', nodes.map(n => n.id === topId ? { ...n, flashElement: true } : n), {
+                size: this.values.length,
+                markTopArrow: true,
+                pause: true
+            }),
+            this.snapshot('The operation is complete.', nodes, { size: this.values.length })
+        ];
+
+        this.viz.enqueue(snaps);
+        this.updateUI();
+    },
+
+    clear() {
+        this.save();
+
+        const oldVals = [...this.values];
+        const oldIds = [...this.ids];
+        const oldSize = oldVals.length;
+        const originalNodes = this.baseNodes(oldVals, oldIds);
+
+        let snaps = [
+            this.snapshot('Clear starts from the current stack state.', originalNodes, {
+                topId: oldIds[0] ?? null,
+                size: oldSize
+            })
+        ];
+
+        if (oldSize === 0) {
+            snaps.push(this.snapshot('Clear returns immediately because top is null and size is 0.', originalNodes, {
+                topId: null,
+                size: 0,
+                pause: true
+            }));
+            this.viz.enqueue(snaps);
+            this.updateUI();
+            return;
+        }
+
+        snaps.push(this.snapshot('stack.top is set to null, so the stack no longer references the node chain.', originalNodes, {
+            topId: null,
+            size: oldSize,
+            flashTop: true,
+            pause: true
+        }));
+
+        snaps.push(this.snapshot('stack.size is set to 0 because the stack now contains no elements.', originalNodes, {
+            topId: null,
+            size: 0,
+            flashSize: true,
+            pause: true
+        }));
+
+        let currentNodes = originalNodes.map(n => ({ ...n }));
+
+        for (let k = 0; k < oldSize; k++) {
+            const curId = oldIds[k];
+
+            const msg = k === 0
+                ? 'After top becomes null, the former top node object is unreachable from the stack.'
+                : 'After the previous node becomes unreachable, the next node object is also unreachable from the stack.';
+
+            snaps.push(this.snapshot(msg, currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n), {
+                topId: null,
+                size: 0,
+                preserveLinks: true,
+                pause: true
+            }));
+
+            currentNodes = currentNodes.filter(n => n.id !== curId);
+
+            snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', currentNodes, {
+                topId: null,
+                size: 0,
+                preserveLinks: true,
+                pause: true
+            }));
+        }
+
+        this.values = [];
+        this.ids = [];
+
+        snaps.push(this.snapshot('The operation is complete.', [], {
+            topId: null,
+            size: 0
+        }));
+
+        this.viz.enqueue(snaps);
+        this.updateUI();
+    },
+
+    newList() {
+        this.save();
+        this.values = [];
+        this.ids = [];
+        this.showCurrent('A new empty stack object is represented with top = null and size = 0.');
+        this.updateUI();
+    },
+
+    randomFill() {
+        this.values = [];
+        const sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
+        while (this.values.length < sz) {
+            const v = Math.floor(Math.random() * VISUAL.random.valueRange) + VISUAL.random.minValue;
+            if (!this.values.includes(v)) this.values.push(v);
+        }
+    },
+
+    random() {
+        this.save();
+        this.randomFill();
+        this.ids = this.values.map(() => nextId++);
+        this.showCurrent('Visualization only: A random sample stack has been generated for demonstration.');
+        this.updateUI();
+    },
+
+    undo() {
+        if (!this.history.length) return;
+        const h = this.history.pop();
+        this.values = h.values;
+        this.ids = h.ids;
+        this.showCurrent("Visualization only: The previous stack state has been restored by the app's undo utility.");
+        this.updateUI();
+    },
+
+    speed() {
+        this.viz.setSpeed(parseFloat(document.getElementById('speed').value));
+    },
+
+    pause() {
+        const p = this.viz.togglePause();
+        document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause';
+    },
+
+    toggleStep() {
+        const enabled = !!document.getElementById('stepMode')?.checked;
+        this.viz.setStepMode(enabled);
+        const label = document.getElementById('stepState');
+        if (label) label.innerText = enabled ? 'On' : 'Off';
+        this.updateUI();
+    },
+
+    nextStep() {
+        this.viz.nextStep();
+    },
+
+    toggleModal() {
+        const m = document.getElementById('helpModal');
+        m.style.display = m.style.display === 'block' ? 'none' : 'block';
+    },
+
+    updateUI() {
+        document.getElementById('btnUndo').disabled = this.history.length === 0;
+        const step = document.getElementById('stepMode');
+        if (step) step.disabled = false;
+        const label = document.getElementById('stepState');
+        if (label) label.innerText = step?.checked ? 'On' : 'Off';
+    },
+
+    clearInputs() {
+        document.getElementById('val').value = '';
+    }
+};
+
+window.app = app;
+window.onload = () => app.init();
+window.onclick = e => {
+    if (e.target === document.getElementById('helpModal')) app.toggleModal();
+};
+</script>
 </body>
 </html>
