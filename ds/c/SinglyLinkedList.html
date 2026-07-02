@@ -346,7 +346,7 @@
 											<span class="code">p_current</span> to insert in ascending order. The button is disabled if the current list is not sorted ascending.
 										</li>
 										<li>
-											<strong>Length</strong>: 
+											<strong>Size</strong>: 
 											<span class="code">O(n)</span>. It traverses the list from 
 											<span class="code">p_first</span> using 
 											<span class="code">p_current</span> and updates a green counter box.
@@ -955,65 +955,96 @@ flashCircle(x, y, r) {
             	}
 
     arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-            		const c = this.ctx;
-            		c.save();
-            		c.strokeStyle = col;
-            		c.fillStyle = col;
-            		c.lineWidth = lw;
-            		c.beginPath();
-            		c.moveTo(x1, y1);
-            		c.lineTo(x2, y2);
-            		c.stroke();
-            		this.head(x1, y1, x2, y2, col);
-            		c.restore()
-            	}
-
-    head(x1, y1, x2, y2, col = K.b) {
-            		const c = this.ctx,
-            			a = Math.atan2(y2 - y1, x2 - x1),
-            			h = DRAW.ARROW_HEAD_LENGTH;
-            		c.fillStyle = col;
-            		c.beginPath();
-            		c.moveTo(x2, y2);
-            		c.lineTo(x2 - h * Math.cos(a - DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a - DRAW.ARROW_HEAD_HALF_ANGLE));
-            		c.lineTo(x2 - h * Math.cos(a + DRAW.ARROW_HEAD_HALF_ANGLE), y2 - h * Math.sin(a + DRAW.ARROW_HEAD_HALF_ANGLE));
-            		c.closePath();
-            		c.fill()
-            	}
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        
+        const a = Math.atan2(y2 - y1, x2 - x1);
+        
+        const shorten = DRAW.ARROW_HEAD_LENGTH * 0.8;
+        const endX = x2 - shorten * Math.cos(a);
+        const endY = y2 - shorten * Math.sin(a);
+        
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.lineTo(endX, endY);
+        c.stroke();
+        
+        this.head(x1, y1, x2, y2, col);
+        c.restore();
+    }
 
     lastArrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-            		const c = this.ctx;
-            		c.save();
-            		c.strokeStyle = col;
-            		c.fillStyle = col;
-            		c.lineWidth = lw;
-            		c.beginPath();
-            		c.moveTo(x1, y1);
-            		const d = DRAW.LAST_ARROW_HORIZONTAL_OFFSET,
-            			midY = y1;
-            		c.lineTo(x2 - d, midY);
-            		c.lineTo(x2, y2);
-            		c.stroke();
-            		this.head(x2 - d, midY, x2, y2, col);
-            		c.restore()
-            	}
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        
+        const d = DRAW.LAST_ARROW_HORIZONTAL_OFFSET;
+        const midY = y1;
+        const r = 16;
+        
+        const a = Math.atan2(y2 - midY, x2 - (x2 - d));
+        const shorten = DRAW.ARROW_HEAD_LENGTH * 0.8;
+        const endX = x2 - shorten * Math.cos(a);
+        const endY = y2 - shorten * Math.sin(a);
+        
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.arcTo(x2 - d, midY, x2, y2, r);
+        c.lineTo(endX, endY); 
+        c.stroke();
+        
+        this.head(x2 - d, midY, x2, y2, col);
+        c.restore();
+    }
 
     detourArrow(x1, y1, x2, y2, col = K.b, lw = 3, amount = 1) {
-        		const c = this.ctx;
-        		c.save();
-        		c.strokeStyle = col;
-        		c.fillStyle = col;
-        		c.lineWidth = lw;
-        		const d = DRAW.DETOUR_DISTANCE * amount, midY = y1 + d;
-        		c.beginPath();
-        		c.moveTo(x1, y1);
-        		c.lineTo(x1 + d, midY);
-        		c.lineTo(x2 - d, midY);
-        		c.lineTo(x2, y2);
-        		c.stroke();
-        		this.head(x2 - d, midY, x2, y2, col);
-        		c.restore()
-        	}
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        
+        const d = DRAW.DETOUR_DISTANCE * amount;
+        const midY = y1 + d;
+        const r = 16 * amount; 
+        
+        const a = Math.atan2(y2 - midY, x2 - (x2 - d));
+        const shorten = DRAW.ARROW_HEAD_LENGTH * 0.8;
+        const endX = x2 - shorten * Math.cos(a);
+        const endY = y2 - shorten * Math.sin(a);
+        
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.arcTo(x1 + d, midY, x2 - d, midY, r);
+        c.arcTo(x2 - d, midY, x2, y2, r);
+        c.lineTo(endX, endY); 
+        c.stroke();
+        
+        this.head(x2 - d, midY, x2, y2, col);
+        c.restore();
+    }
+
+    head(x1, y1, x2, y2, col = K.b) {
+        const c = this.ctx;
+        const a = Math.atan2(y2 - y1, x2 - x1);
+        const size = DRAW.ARROW_HEAD_LENGTH; 
+        
+        c.save();
+        c.fillStyle = col;
+        c.translate(x2, y2);
+        c.rotate(a);
+        
+        c.beginPath();
+        c.moveTo(0, 0); 
+        c.lineTo(-size * 1.4, -size / 2); 
+        c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
+        c.closePath();
+        
+        c.fill();
+        c.restore();
+    }
 
 
     setSpeed(v) {

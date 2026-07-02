@@ -793,22 +793,34 @@ paintRect(x, y, w, h, fill) {
         		return VISUAL.animation.flashMinAlpha + VISUAL.animation.flashMaxAlphaDelta * Math.abs(Math.sin(performance.now() / VISUAL.animation.flashPeriodMs))
         	}
 
-    detourArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth, amount = 1) {
-    		const c = this.ctx;
-    		c.save();
-    		c.strokeStyle = col;
-    		c.fillStyle = col;
-    		c.lineWidth = lw;
-    		const d = VISUAL.stroke.detourOffset * amount, midY = y1 + d;
-    		c.beginPath();
-    		c.moveTo(x1, y1);
-    		c.lineTo(x1 + d, midY);
-    		c.lineTo(x2 - d, midY);
-    		c.lineTo(x2, y2);
-    		c.stroke();
-    		this.head(x2 - d, midY, x2, y2, col);
-    		c.restore()
-    	}
+	detourArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth, amount = 1) {
+        const c = this.ctx;
+		const DETOUR_DISTANCE = 46;
+        const d = DETOUR_DISTANCE * amount;
+		const ARROW_HEAD_LENGTH = 17;
+
+		c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        
+        const midY = y1 + d;
+        const r = 16 * amount; 
+        
+        const a = Math.atan2(y2 - midY, x2 - (x2 - d));
+        const shorten = ARROW_HEAD_LENGTH * 0.8;
+        const endX = x2 - shorten * Math.cos(a);
+        const endY = y2 - shorten * Math.sin(a);
+        
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.arcTo(x1 + d, midY, x2 - d, midY, r);
+        c.arcTo(x2 - d, midY, x2, y2, r);
+        c.lineTo(endX, endY); 
+        c.stroke();
+        
+        this.head(x2 - d, midY, x2, y2, col);
+        c.restore();
+    }
 
     flashCircle(x, y, r) {
         		const c = this.ctx;
@@ -849,49 +861,77 @@ paintRect(x, y, w, h, fill) {
         		c.restore()
         	}
 
-    arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
-        		const c = this.ctx;
-        		c.save();
-        		c.strokeStyle = col;
-        		c.fillStyle = col;
-        		c.lineWidth = lw;
-        		c.beginPath();
-        		c.moveTo(x1, y1);
-        		c.lineTo(x2, y2);
-        		c.stroke();
-        		this.head(x1, y1, x2, y2, col);
-        		c.restore()
-        	}
+	arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
+        const c = this.ctx;
+        c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        
+        const a = Math.atan2(y2 - y1, x2 - x1);
+		const ARROW_HEAD_LENGTH = 17;
+        
+        const shorten = ARROW_HEAD_LENGTH * 0.8;
+        const endX = x2 - shorten * Math.cos(a);
+        const endY = y2 - shorten * Math.sin(a);
+        
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.lineTo(endX, endY);
+        c.stroke();
+        
+        this.head(x1, y1, x2, y2, col);
+        c.restore();
+    }
+		
 
-    head(x1, y1, x2, y2, col = K.b) {
-        		const c = this.ctx,
-        			a = Math.atan2(y2 - y1, x2 - x1),
-        			h = VISUAL.stroke.arrowHeadLength;
-        		c.fillStyle = col;
-        		c.beginPath();
-        		c.moveTo(x2, y2);
-        		c.lineTo(x2 - h * Math.cos(a - VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a - VISUAL.stroke.arrowHeadHalfAngle));
-        		c.lineTo(x2 - h * Math.cos(a + VISUAL.stroke.arrowHeadHalfAngle), y2 - h * Math.sin(a + VISUAL.stroke.arrowHeadHalfAngle));
-        		c.closePath();
-        		c.fill()
-        	}
+	head(x1, y1, x2, y2, col = K.b) {
+        const c = this.ctx;
+        const a = Math.atan2(y2 - y1, x2 - x1);
+        const size = 17; 
+        
+        c.save();
+        c.fillStyle = col;
+        c.translate(x2, y2);
+        c.rotate(a);
+        
+        c.beginPath();
+        c.moveTo(0, 0); 
+        c.lineTo(-size * 1.4, -size / 2); 
+        c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
+        c.closePath();
+        
+        c.fill();
+        c.restore();
+    }
 
-    lastArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
-        		const c = this.ctx;
-        		c.save();
-        		c.strokeStyle = col;
-        		c.fillStyle = col;
-        		c.lineWidth = lw;
-        		c.beginPath();
-        		c.moveTo(x1, y1);
-        		const d = VISUAL.stroke.lastArrowHorizontalOffset,
-        			midY = y1;
-        		c.lineTo(x2 - d, midY);
-        		c.lineTo(x2, y2);
-        		c.stroke();
-        		this.head(x2 - d, midY, x2, y2, col);
-        		c.restore()
-        	}
+
+	lastArrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
+        const c = this.ctx;
+		const ARROW_HEAD_LENGTH = 17;
+
+        c.save();
+        c.strokeStyle = col;
+        c.lineWidth = lw;
+        
+        const d = VISUAL.stroke.lastArrowHorizontalOffset;;
+        const midY = y1;
+        const r = 16;
+        
+        const a = Math.atan2(y2 - midY, x2 - (x2 - d));
+        const shorten = ARROW_HEAD_LENGTH * 0.8;
+        const endX = x2 - shorten * Math.cos(a);
+        const endY = y2 - shorten * Math.sin(a);
+        
+        c.beginPath();
+        c.moveTo(x1, y1);
+        c.arcTo(x2 - d, midY, x2, y2, r);
+        c.lineTo(endX, endY); 
+        c.stroke();
+        
+        this.head(x2 - d, midY, x2, y2, col);
+        c.restore();
+    }
+
 
     setSpeed(v) {
         		this.speedFactor = 1 / v

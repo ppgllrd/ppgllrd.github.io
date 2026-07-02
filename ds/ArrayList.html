@@ -613,30 +613,46 @@ class VisualizationEngine {
 		c.restore();
 	}
 	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-		const c = this.ctx;
-		c.save();
-		c.strokeStyle = col;
-		c.fillStyle = col;
-		c.lineWidth = lw;
-		c.beginPath();
-		c.moveTo(x1, y1);
-		c.lineTo(x2, y2);
-		c.stroke();
-		this.head(x1, y1, x2, y2, col);
-		c.restore();
-	}
+			const c = this.ctx;
+			c.save();
+			c.strokeStyle = col;
+			c.lineWidth = lw;
+			
+			const a = Math.atan2(y2 - y1, x2 - x1);
+			const ARROW_HEAD_LENGTH = 17;
+			
+			const shorten = ARROW_HEAD_LENGTH * 0.8;
+			const endX = x2 - shorten * Math.cos(a);
+			const endY = y2 - shorten * Math.sin(a);
+			
+			c.beginPath();
+			c.moveTo(x1, y1);
+			c.lineTo(endX, endY);
+			c.stroke();
+			
+			this.head(x1, y1, x2, y2, col);
+			c.restore();
+		}
+
 	head(x1, y1, x2, y2, col = K.b) {
-		const c = this.ctx,
-			a = Math.atan2(y2 - y1, x2 - x1),
-			h = 17;
-		c.fillStyle = col;
-		c.beginPath();
-		c.moveTo(x2, y2);
-		c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
-		c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
-		c.closePath();
-		c.fill();
-	}
+			const c = this.ctx;
+			const a = Math.atan2(y2 - y1, x2 - x1);
+			const size = 17; 
+			
+			c.save();
+			c.fillStyle = col;
+			c.translate(x2, y2);
+			c.rotate(a);
+			
+			c.beginPath();
+			c.moveTo(0, 0); 
+			c.lineTo(-size * 1.4, -size / 2); 
+			c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
+			c.closePath();
+			
+			c.fill();
+			c.restore();
+    	}
 }
 
 /* View: Java ArrayList-specific semantic rendering only. */

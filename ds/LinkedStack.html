@@ -829,46 +829,86 @@ class VisualizationEngine {
             else c.rect(o.x, o.y, o.w, o.h);
         }
     }
-    arrow(x1, y1, x2, y2, col = '#1565c0', lw = 3) {
-        const c = this.ctx;
-        c.save();
-        c.strokeStyle = col;
-        c.fillStyle = col;
-        c.lineWidth = lw;
-        c.beginPath();
-        c.moveTo(x1, y1);
-        c.lineTo(x2, y2);
-        c.stroke();
-        this.head(x1, y1, x2, y2, col);
-        c.restore();
+	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+			const c = this.ctx;
+			c.save();
+			c.strokeStyle = col;
+			c.lineWidth = lw;
+			
+			const a = Math.atan2(y2 - y1, x2 - x1);
+			const ARROW_HEAD_LENGTH = 17;
+			
+			const shorten = ARROW_HEAD_LENGTH * 0.8;
+			const endX = x2 - shorten * Math.cos(a);
+			const endY = y2 - shorten * Math.sin(a);
+			
+			c.beginPath();
+			c.moveTo(x1, y1);
+			c.lineTo(endX, endY);
+			c.stroke();
+			
+			this.head(x1, y1, x2, y2, col);
+			c.restore();
     }
-    polylineArrow(points, col = '#1565c0', lw = 3) {
-        if (!points || points.length < 2) return;
-        const c = this.ctx;
-        c.save();
-        c.strokeStyle = col;
-        c.fillStyle = col;
-        c.lineWidth = lw;
-        c.beginPath();
-        c.moveTo(points[0].x, points[0].y);
-        for (let i = 1; i < points.length; i++) c.lineTo(points[i].x, points[i].y);
-        c.stroke();
-        const a = points[points.length - 2],
-            b = points[points.length - 1];
-        this.head(a.x, a.y, b.x, b.y, col);
-        c.restore();
+    polylineArrow(points, col = K.b, lw = 3) {
+            if (!points || points.length < 2) return;
+            
+            const c = this.ctx;
+            c.save();
+            c.strokeStyle = col;
+            c.lineWidth = lw;
+            
+            c.beginPath();
+            c.moveTo(points[0].x, points[0].y);
+            
+            const r = 16; // Radio de curvatura para suavizar las esquinas
+            
+            // 1. Trazar las uniones intermedias usando arcTo
+            // El bucle llega hasta el PENÚLTIMO punto (points.length - 1)
+            for (let i = 1; i < points.length - 1; i++) {
+                const pCurrent = points[i];
+                const pNext = points[i + 1];
+                // arcTo se dirige hacia el punto actual, pero hace una curva suave hacia el siguiente
+                c.arcTo(pCurrent.x, pCurrent.y, pNext.x, pNext.y, r);
+            }
+            
+            // 2. Tramo final: Calculamos el ángulo para acortar la línea (como hicimos antes)
+            const prev = points[points.length - 2];
+            const last = points[points.length - 1];
+            
+            const a = Math.atan2(last.y - prev.y, last.x - prev.x);
+            const ARROW_HEAD_LENGTH = 17;
+            const shorten = ARROW_HEAD_LENGTH * 0.8;
+            const endX = last.x - shorten * Math.cos(a);
+            const endY = last.y - shorten * Math.sin(a);
+            
+            // Terminamos la línea recta antes de llegar a la punta
+            c.lineTo(endX, endY);
+            c.stroke();
+            
+            // 3. Dibujamos la punta de la flecha en su posición y ángulo final exacto
+            this.head(prev.x, prev.y, last.x, last.y, col);
+            
+            c.restore();
     }
-    head(x1, y1, x2, y2, col) {
-        const c = this.ctx,
-            a = Math.atan2(y2 - y1, x2 - x1),
-            h = 17;
-        c.fillStyle = col;
-        c.beginPath();
-        c.moveTo(x2, y2);
-        c.lineTo(x2 - h * Math.cos(a - Math.PI / 6), y2 - h * Math.sin(a - Math.PI / 6));
-        c.lineTo(x2 - h * Math.cos(a + Math.PI / 6), y2 - h * Math.sin(a + Math.PI / 6));
-        c.closePath();
-        c.fill();
+    head(x1, y1, x2, y2, col = K.b) {
+			const c = this.ctx;
+			const a = Math.atan2(y2 - y1, x2 - x1);
+			const size = 17; 
+			
+			c.save();
+			c.fillStyle = col;
+			c.translate(x2, y2);
+			c.rotate(a);
+			
+			c.beginPath();
+			c.moveTo(0, 0); 
+			c.lineTo(-size * 1.4, -size / 2); 
+			c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
+			c.closePath();
+			
+			c.fill();
+			c.restore();
     }
     flashRect(x, y, w, h, r = 8) {
         const c = this.ctx;
