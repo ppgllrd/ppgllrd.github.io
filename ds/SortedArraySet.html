@@ -48,7 +48,16 @@
         .dot { width: 12px; height: 12px; background: var(--b); border-radius: 50%; display: inline-block }
         #author { background: #f4f7f6; color: #777; text-align: center; line-height: 2.5; font-size: .75em; flex-shrink: 0 }
         .modal { display: none; position: fixed; inset: 0; background: #0008; z-index: 10 }
-        .modal-content { background: white; margin: 5% auto; padding: 20px; border-radius: 8px; width: 80%; max-width: 820px }
+                .modal-content {
+            background: white;
+            margin: 20px auto;
+            padding: 20px;
+            border-radius: 8px;
+            width: min(90vw, 820px);
+            max-height: calc(100dvh - 40px);
+            overflow-y: auto;
+            touch-action: pan-y
+        }
         .close { float: right; font-size: 28px; color: #aaa; cursor: pointer }
         .code { font-family: Consolas, monospace; background: #eee; border-radius: 4px; padding: 2px 5px; color: #c62828 }
     </style>
@@ -69,7 +78,6 @@
                 <button class="purple" onclick="app.contains()" title="Binary-search membership test. Complexity: O(log n).">Contains</button>
                 <button class="purple" onclick="app.iterate()" title="Iterate exactly as the ArrayList iterator visualization. Complexity: O(n).">Iterate</button>
                 <div class="sep"></div><button class="orange" onclick="app.reinit()" title="Create a new empty sorted set">Empty</button><button class="gray" onclick="app.clear()" title="Clear exactly as ArrayList.clear, setting references to null. Complexity: O(n).">Clear</button>
-                <div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sorted set">Build Random</button>
                 <div class="sep"></div><label>Other set <input id="other" type="text" placeholder="2,4,9" style="width:120px;padding:6px;border:1px solid #999;border-radius:4px;font-weight:bold"></label>
                 <button class="blue" onclick="app.union()" title="Union of two sorted sets by merge traversal. Complexity: O(n + m).">Union</button><button class="blue" onclick="app.intersection()" title="Intersection of two sorted sets by merge traversal. Complexity: O(n + m).">Intersection</button><button class="blue" onclick="app.difference()" title="Difference set1 - set2 by merge traversal. Complexity: O(n + m).">Difference</button>
                 <div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled>Undo</button>
@@ -103,7 +111,7 @@
             <p>A Java <strong>SortedArraySet</strong> stores unique elements in sorted order in an internal array of references <span class="code">elements</span>. The object tracks <span class="code">size</span>; the capacity is the length of the internal array.</p>
             <h3>Operations</h3>
             <ul>
-                <li><strong>Insert</strong>: binary-searches the element. If it is not found, the insertion point is used and references are shifted right to keep the set sorted. Complexity: <strong>O(log n)</strong> for search plus <strong>O(n)</strong> for shifting.</li>
+                <li><strong>Insert</strong>: binary-searches the element. If it is not found, the insertion point is used and references are shifted right to keep the set sorted. Complexity: <strong>O(log n)</strong> for search plus <strong>O(n)</strong> for shifting. <strong>O(n)</strong> in the occasional worst case when reallocation occurs.</li>
                 <li><strong>Delete</strong>: binary-searches the element. If it is found, following references are shifted left and the old last reference is set to <span class="code">null</span>. Complexity: <strong>O(log n)</strong> for search plus <strong>O(n)</strong> for shifting.</li>
                 <li><strong>Contains</strong>: binary-searches membership and returns whether the element appears in the set. Complexity: <strong>O(log n)</strong>.</li>
                 <li><strong>Iterate</strong>: visits elements in sorted order from index <span class="code">0</span> to <span class="code">size - 1</span>. Complexity: <strong>O(n)</strong>.</li>
@@ -113,6 +121,7 @@
                 <li><strong>Union</strong>: merges two sorted sets and keeps every value that appears in either set. Complexity: <strong>O(n + m)</strong>.</li>
                 <li><strong>Intersection</strong>: merges two sorted sets and keeps only values that appear in both sets. Complexity: <strong>O(n + m)</strong>.</li>
                 <li><strong>Difference</strong>: merges two sorted sets and keeps values from the first set that do not appear in the second. Complexity: <strong>O(n + m)</strong>.</li>
+				<li><strong>Ensure capacity</strong>: when full, <span class="code">Arrays.copyOf</span> allocates a larger array and copies the references over. Complexity: <strong>O(n)</strong>.</li>
             </ul>
             <h3>Finder</h3>
             <p>The Finder object contains only <span class="code">found</span> and <span class="code">index</span>. During binary search, <span class="code">left</span>, <span class="code">right</span>, and <span class="code">mid</span> are shown as animated local variables, not as Finder attributes.</p>
@@ -495,6 +504,7 @@ class VisualizationEngine {
 			this.state = 'IDLE';
 			this.waitingForStep = false;
 			const finalScene = this.sn[this.idx];
+			if (finalScene) this.fit([finalScene]);
 			document.getElementById('status-text').innerText = finalScene?.text || 'Visualization only: Ready.';
 			window.app?.clearInputs()
 		}

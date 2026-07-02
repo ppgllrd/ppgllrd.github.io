@@ -78,26 +78,59 @@
 							<div id="helpModal" class="modal">
 								<div class="modal-content">
 									<span class="close" onclick="app.toggleModal()">&times;</span>
-									<h2>ArrayStack</h2>
-                                    <p>An <strong>ArrayStack</strong> stores object references in an internal Java array <span class="code">elements</span>. The field <span class="code">size</span> is both the number of elements and the first available array position. The top element is stored at <span class="code">elements[size - 1]</span>.</p>
-                                    <h3>Operations</h3>
-                                    <ul>
-                                        <li><strong>Push</strong>: stores the new reference at <span class="code">elements[size]</span> and then increments <span class="code">size</span>. If the internal array is full, a larger array is created first and the existing references are copied.</li>
-                                        <li><strong>Top</strong>: reads <span class="code">elements[size - 1]</span>, the current top element, without modifying the stack. If the stack is empty, the operation would fail.</li>
-                                        <li><strong>Pop</strong>: removes the current top element by clearing its array reference and decrementing <span class="code">size</span>. The removed object may later be reclaimed by Java's garbage collector if no references to it remain.</li>
-                                        <li><strong>isEmpty</strong>: checks whether <span class="code">size == 0</span>.</li>
-                                        <li><strong>Size</strong>: returns the current value of the <span class="code">size</span> field.</li>
-                                        <li><strong>Empty</strong>: creates a new empty stack with the selected initial capacity.</li>
-                                        <li><strong>Clear</strong>: sets all used array references to <span class="code">null</span> and then sets <span class="code">size</span> to <span class="code">0</span>, keeping the allocated array.</li>
-                                        <li><strong>Build Random</strong>: creates a demonstration stack with random values.</li>
-                                        <li><strong>Undo</strong>: restores the previous visualizer state.</li>
-                                    </ul>
-                                    <h3>Complexity summary</h3>
-                                    <ul>
-                                        <li><strong>Push</strong>: amortized O(1), O(n) when resizing is required.</li>
-                                        <li><strong>Top</strong>, <strong>Pop</strong>, <strong>isEmpty</strong>, <strong>Size</strong>: O(1).</li>
-                                        <li><strong>Clear</strong>: O(n), where n is the number of used references cleared.</li>
-                                    </ul>
+<div class="modal-content">
+    <span class="close" onclick="app.toggleModal()">&times;</span>
+    <h2>ArrayStack</h2>
+
+    <p>
+        An <strong>ArrayStack</strong> stores object references in an internal array 
+        <span class="code">elements</span>. The field <span class="code">size</span> is both the number 
+        of stored elements and the next free position. The top element is at 
+        <span class="code">elements[size - 1]</span>.
+    </p>
+
+    <h3>Operations</h3>
+    <ul>
+        <li>
+            <strong>Push</strong>: stores the new reference at 
+            <span class="code">elements[size]</span> and increments 
+            <span class="code">size</span>.  
+            If the array is full, a new array with double capacity is created and all existing 
+            elements are copied over before inserting the new one.
+        </li>
+
+        <li>
+            <strong>Top</strong>: returns <span class="code">elements[size - 1]</span> without modifying 
+            the stack.
+        </li>
+
+        <li>
+            <strong>Pop</strong>: clears the top reference and decrements 
+            <span class="code">size</span>.
+        </li>
+
+        <li><strong>isEmpty</strong>: checks whether <span class="code">size == 0</span>.</li>
+
+        <li><strong>Size</strong>: returns the current value of <span class="code">size</span>.</li>
+
+        <li><strong>Empty</strong>: creates a new empty stack with the chosen initial capacity.</li>
+
+        <li>
+            <strong>Clear</strong>: sets all used references to <span class="code">null</span> and resets 
+            <span class="code">size</span> to <span class="code">0</span>.
+        </li>
+		<li><strong>Ensure capacity</strong>: when full, <span class="code">Arrays.copyOf</span> allocates a larger array and copies the references over. Complexity: <strong>O(n)</strong>.</li>
+
+    </ul>
+
+    <h3>Complexity summary</h3>
+    <ul>
+        <li><strong>Push</strong>: amortized O(1), O(n) when resizing.</li>
+        <li><strong>Top</strong>, <strong>Pop</strong>, <strong>isEmpty</strong>, <strong>Size</strong>: O(1).</li>
+        <li><strong>Clear</strong>: O(n) for clearing references.</li>
+    </ul>
+</div>
+
                                     <h3>Step-by-step execution and navigation</h3>
                                     <p>Turn <strong>Step-by-step</strong> on to make each conceptual animation step wait for <strong>Next step</strong>. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
                                 </div>
@@ -417,6 +450,7 @@ class VisualizationEngine {
             this.state = 'IDLE';
             this.waitingForStep = false;
             const finalScene = this.sn[this.idx];
+			if (finalScene) this.fit([finalScene]);
             document.getElementById('status-text').innerText = finalScene?.text || 'Visualization only: Ready.';
             window.app?.clearInputs()
         }

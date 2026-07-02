@@ -75,26 +75,61 @@
 							</div>
 							<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
 							<div id="helpModal" class="modal">
-								<div class="modal-content">
-									<span class="close" onclick="app.toggleModal()">&times;</span>
-									<h2>ArrayQueue</h2>
-                                    <p>An <strong>ArrayQueue</strong> stores object references in a circular internal Java array <span class="code">elements</span>. The fields <span class="code">first</span>, <span class="code">last</span>, and <span class="code">size</span> define the logical queue inside the physical array. Movement uses <span class="code">advance(index) = (index + 1) % elements.length</span>.</p>
-                                    <h3>Operations</h3>
-                                    <ul>
-                                        <li><strong>Enqueue</strong>: ensures there is capacity, advances <span class="code">last</span>, stores the new reference in <span class="code">elements[last]</span>, and increments <span class="code">size</span>.</li>
-                                        <li><strong>First</strong>: reads <span class="code">elements[first]</span> without removing it. If the queue is empty, the operation would fail.</li>
-                                        <li><strong>Dequeue</strong>: clears <span class="code">elements[first]</span>, advances <span class="code">first</span>, and decrements <span class="code">size</span>. The removed value may later be reclaimed by Java's garbage collector if no references remain.</li>
-                                        <li><strong>isEmpty</strong>: checks whether <span class="code">size == 0</span>.</li>
-                                        <li><strong>Size</strong>: returns the current value of <span class="code">size</span>.</li>
-                                        <li><strong>Empty</strong>: creates a new empty queue with the selected initial capacity.</li>
-                                        <li><strong>Clear</strong>: sets used references to <span class="code">null</span>, resets <span class="code">first</span> to <span class="code">0</span>, resets <span class="code">last</span> to <span class="code">elements.length - 1</span>, and sets <span class="code">size</span> to <span class="code">0</span>.</li>
-                                    </ul>
-                                    <h3>Complexity summary</h3>
-                                    <ul>
-                                        <li><strong>Enqueue</strong>: amortized O(1), O(n) when resizing is required.</li>
-                                        <li><strong>First</strong>, <strong>Dequeue</strong>, <strong>isEmpty</strong>, <strong>Size</strong>: O(1).</li>
-                                        <li><strong>Clear</strong>: O(n), where n is the number of used references cleared.</li>
-                                    </ul>
+<div class="modal-content">
+    <span class="close" onclick="app.toggleModal()">&times;</span>
+    <h2>ArrayQueue</h2>
+
+    <p>
+        An <strong>ArrayQueue</strong> stores object references in a circular internal array 
+        <span class="code">elements</span>. The fields <span class="code">first</span>, 
+        <span class="code">last</span>, and <span class="code">size</span> define the logical queue. 
+        Movement uses <span class="code">advance(i) = (i + 1) % elements.length</span>.
+    </p>
+
+    <h3>Operations</h3>
+    <ul>
+        <li>
+            <strong>Enqueue</strong>: ensures capacity, advances <span class="code">last</span>, stores the
+            new reference, and increments <span class="code">size</span>.  
+            If the array is full, a new array with double capacity is created and all active
+            elements are copied in logical order. After copying, the queue becomes contiguous with 
+            <span class="code">first = 0</span> and <span class="code">last = size - 1</span>.
+        </li>
+
+        <li><strong>First</strong>: returns <span class="code">elements[first]</span> without removing it.</li>
+
+        <li>
+            <strong>Dequeue</strong>: clears <span class="code">elements[first]</span>, advances 
+            <span class="code">first</span>, and decrements <span class="code">size</span>.
+        </li>
+
+        <li><strong>isEmpty</strong>: checks whether <span class="code">size == 0</span>.</li>
+
+        <li><strong>Size</strong>: returns the current queue size.</li>
+
+        <li><strong>Empty</strong>: creates a new empty queue with the chosen initial capacity.</li>
+
+        <li>
+            <strong>Clear</strong>: sets used references to <span class="code">null</span>, resets 
+            <span class="code">first</span> to <span class="code">0</span>, 
+            <span class="code">last</span> to <span class="code">elements.length - 1</span>, and 
+            <span class="code">size</span> to <span class="code">0</span>.
+        </li>
+
+        <li>
+            <strong>Ensure capacity</strong>: when full, allocates a new array with double capacity and 
+            copies elements in logical order. After copying, the queue is contiguous again.  
+            Complexity: <strong>O(n)</strong>.
+        </li>
+    </ul>
+
+    <h3>Complexity summary</h3>
+    <ul>
+        <li><strong>Enqueue</strong>: amortized O(1), O(n) when resizing.</li>
+        <li><strong>First</strong>, <strong>Dequeue</strong>, <strong>isEmpty</strong>, <strong>Size</strong>: O(1).</li>
+        <li><strong>Clear</strong>: O(n) for clearing references.</li>
+    </ul>
+</div>
                                     <h3>Step-by-step execution and navigation</h3>
                                     <p>Turn <strong>Step-by-step</strong> on to make each conceptual animation step wait for <strong>Next step</strong>. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
                                 </div>
@@ -411,6 +446,7 @@ class VisualizationEngine {
             this.state = 'IDLE';
             this.waitingForStep = false;
             const finalScene = this.sn[this.idx];
+			if (finalScene) this.fit([finalScene]);
             document.getElementById('status-text').innerText = finalScene?.text || 'Visualization only: Ready.';
             window.app?.clearInputs()
         }
