@@ -531,11 +531,18 @@ class VisualizationEngine {
 		ids.forEach(id => {
 			const A = ma.get(id),
 				B = mb.get(id);
-			if (A && B) out.push({
-				...B,
-				x: A.x + (B.x - A.x) * t,
-				y: A.y + (B.y - A.y) * t
-			});
+			if (A && B) {
+				const mixed = { ...B };
+				if (A.x !== undefined && B.x !== undefined) mixed.x = A.x + (B.x - A.x) * t;
+				if (A.y !== undefined && B.y !== undefined) mixed.y = A.y + (B.y - A.y) * t;
+				if (A.kind === 'arrow' && B.kind === 'arrow') {
+					mixed.x1 = A.x1 + (B.x1 - A.x1) * t;
+					mixed.y1 = A.y1 + (B.y1 - A.y1) * t;
+					mixed.x2 = A.x2 + (B.x2 - A.x2) * t;
+					mixed.y2 = A.y2 + (B.y2 - A.y2) * t;
+				}
+				out.push(mixed);
+			}
 			else if (B) {
 				let S = B.fromId !== undefined ? ma.get(B.fromId) : null;
 				if (!S && B.fromId !== undefined) S = this.findAnimSource(sourceCtx, B.fromId);
@@ -789,7 +796,7 @@ class JavaSortedArraySetView extends VisualizationEngine {
 			listBoxY = structTop - m.listPointerBoxOffsetY,
 			listDotX = listBoxX + m.cellCenter,
 			listDotY = listBoxY + m.cellCenter;
-		this.paintText('set', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
+			this.paintText('set', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
 			font: '28px monospace',
 			fill: K.k,
 			align: 'right',
@@ -804,7 +811,7 @@ class JavaSortedArraySetView extends VisualizationEngine {
 		].forEach((r, i) => {
 			const rowTop = structTop + i * rowHeight,
 				rowCenterY = rowTop + m.cellCenter;
-			this.paintText(r[0], labelRightX, rowCenterY, {
+				this.paintText(r[0], labelRightX, rowCenterY, {
 				font: '28px monospace',
 				fill: K.k,
 				align: 'right',
@@ -963,8 +970,8 @@ class JavaSortedArraySetView extends VisualizationEngine {
 		[['found', f.found == null ? '?' : f.found], ['index', f.index == null ? '?' : f.index]].forEach((r, i) => {
 			const yy = y + i * cell;
 			this.paintText(r[0], x - 16, yy + m.cellCenter, { font: '21px monospace', align: 'right' });
-			this.paintRect(x, yy, cell, cell, K.g);
-			this.paintText(String(r[1]), x + m.cellCenter, yy + m.cellCenter + 2, { font: 'bold 18px monospace', fill: K.r });
+			this.paintRect(x, yy, cell, cell*0.96, K.g);
+			this.paintText(String(r[1]), x + m.cellCenter, yy + m.cellCenter + 2, { font: '22px arial', fill: K.r });
 		});
 	}
 	drawCustomObjects(s) {
@@ -973,6 +980,18 @@ class JavaSortedArraySetView extends VisualizationEngine {
 			else if (o.kind === 'text') this.paintText(o.text, o.x, o.y, {font: o.font || '24px Arial', fill: o.fill || K.k, align: o.align || 'center', baseline: o.baseline || 'middle', alpha: o.alpha ?? 1});
 			else if (o.kind === 'circle') this.paintDot(o.x, o.y, o.r || 8, o.fill || K.b, {alpha: o.alpha ?? 1});
 			else if (o.kind === 'arrow') this.arrow(o.x1, o.y1, o.x2, o.y2, o.color || K.b, o.lineWidth || 3);
+			else if (o.kind === 'roundStrokeRect') {
+				const c = this.ctx;
+				c.save();
+				c.globalAlpha *= o.alpha ?? 1;
+				c.strokeStyle = o.stroke || K.r;
+				c.lineWidth = o.lineWidth || 4;
+				c.beginPath();
+				if (c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, this.layoutMetrics().cellCornerRadius);
+				else c.rect(o.x, o.y, o.w, o.h);
+				c.stroke();
+				c.restore();
+			}
 			else if (o.kind === 'flashRect') this.roundFlash(o.x, o.y, o.w, o.h);
 			else if (o.kind === 'flashCircle') this.flashCircle(o.x, o.y, o.r || 28);
 			else if (o.kind === 'cross') this.cross(o.x, o.y, o.w, o.h);
@@ -1081,7 +1100,7 @@ class App {
 	v(){return parseInt(document.getElementById('val').value)}
 	save(){this.history.push({values:[...this.values],capacity:this.capacity,storage:[...this.storage]});if(this.history.length>30)this.history.shift()}
 	box(label,index,y,fill,color){const b=this.viz.base();return{id:'searchBox:'+label,label,i:index,x:b.arrayLeftX+Math.max(index,0)*b.cellPitch,y,fill,color}}
-	finderSnaps(e,lead){const vals=[...this.values],cap=this.capacity,b=this.viz.base();let snaps=[],left=0,right=vals.length-1,mid=null;let finder={x:b.structLeftX,y:b.structTopY+190,found:null,index:null};const boxes=()=>[this.box('left',left,b.arrayTopY-116,K.g,'#2E7D32'),...(mid===null?[]:[this.box('mid',mid,b.arrayTopY-184,K.p,K.v)]),this.box('right',right,b.arrayTopY-252,K.g,'#EF6C00')];const snap=(txt,extra={})=>this.snapshot(txt,vals,cap,{range:[left,right],finder,searchBoxes:boxes(),fitCamera:false,pause:true,...extra});snaps.push(snap(lead+': Finder is placed below the set; left = 0 and right = size - 1',{flashFinder:'left',fitCamera:true}));while(left<=right){mid=left+Math.floor((right-left)/2);finder={...finder};snaps.push(snap('mid is updated to '+mid+'; the three search boxes slide smoothly',{flashFinder:'mid',flashCells:[mid]}));snaps.push(snap('Compare '+e+' with elements['+mid+'] = '+vals[mid],{flashObjects:[mid]}));if(e===vals[mid]){finder={...finder,found:true,index:mid};snaps.push(snap('found is updated to true',{flashFinder:'found',flashCells:[mid]}));snaps.push(snap('index is updated to '+mid,{flashFinder:'index',flashCells:[mid]}));snaps.push(snap('Finder result: found = true, index = '+mid+'. Pause to inspect the final Finder fields.',{flashFinder:'index'}));snaps.push(snap('Finder result remains visible before continuing.'));snaps.push(snap('Finder result remains visible before continuing.'));return{snaps,found:true,index:mid}}else if(e>vals[mid]){left=mid+1;finder={...finder};snaps.push(snap('left is updated to mid + 1 = '+left,{flashFinder:'left'}))}else{right=mid-1;finder={...finder};snaps.push(snap('right is updated to mid - 1 = '+right,{flashFinder:'right'}))}}finder={...finder,found:false,index:left};snaps.push(snap('found is updated to false',{flashFinder:'found'}));snaps.push(snap('index is updated to the insertion point '+left,{flashFinder:'index',flashCells:left<cap?[left]:[]}));snaps.push(snap('Finder result: found = false, index = '+left+'. Pause to inspect the final Finder fields.',{flashFinder:'index'}));snaps.push(snap('Finder result remains visible before continuing.'));snaps.push(snap('Finder result remains visible before continuing.'));return{snaps,found:false,index:left}}
+	finderSnaps(e,lead){const vals=[...this.values],cap=this.capacity,b=this.viz.base();let snaps=[],left=0,right=vals.length-1,mid=null;let finder={x:b.structLeftX,y:b.structTopY+240,found:null,index:null};const boxes=()=>[this.box('left',left,b.arrayTopY-116,K.g,'#2E7D32'),...(mid===null?[]:[this.box('mid',mid,b.arrayTopY-184,K.p,K.v)]),this.box('right',right,b.arrayTopY-252,K.g,'#EF6C00')];const snap=(txt,extra={})=>this.snapshot(txt,vals,cap,{range:[left,right],finder,searchBoxes:boxes(),fitCamera:false,pause:true,...extra});snaps.push(snap(lead+': Finder is placed below the set; left = 0 and right = size - 1',{flashFinder:'left',fitCamera:true}));while(left<=right){mid=left+Math.floor((right-left)/2);finder={...finder};snaps.push(snap('mid is updated to '+mid+'',{flashFinder:'mid',flashCells:[]}));snaps.push(snap('Compare '+e+' with elements['+mid+'] = '+vals[mid],{flashObjects:[mid]}));if(e===vals[mid]){finder={...finder,found:true,index:mid};snaps.push(snap('found is updated to true',{flashFinder:'found',flashCells:[mid]}));snaps.push(snap('index is updated to '+mid,{flashFinder:'index',flashCells:[mid]}));snaps.push(snap('Finder result: found = true, index = '+mid+'.',{flashFinder:'index'}));snaps.push(snap(''));snaps.push(snap('Finder result remains visible before continuing.'));return{snaps,found:true,index:mid}}else if(e>vals[mid]){left=mid+1;finder={...finder};snaps.push(snap('left is updated to mid + 1 = '+left,{flashFinder:'left'}))}else{right=mid-1;finder={...finder};snaps.push(snap('right is updated to mid - 1 = '+right,{flashFinder:'right'}))}}finder={...finder,found:false,index:left};snaps.push(snap('found is updated to false',{flashFinder:'found'}));snaps.push(snap('index is updated to the insertion point '+left,{flashFinder:'index',flashCells:left<cap?[left]:[]}));snaps.push(snap('Finder result: found = false, index = '+left+'.',{flashFinder:'index'}));snaps.push(snap('Finder result remains visible before continuing.'));snaps.push(snap('Finder result remains visible before continuing.'));return{snaps,found:false,index:left}}
 	reallocCells(vals,oldCap,newCap,copiedCount=0){const b=this.viz.base(),stored=this.storage||[];const oldCells=Array.from({length:oldCap},(_,i)=>({id:'old'+i,fromId:'c'+i,i,v:i<vals.length?vals[i]:(stored[i]!==undefined?stored[i]:'?'),x:b.arrayLeftX+i*b.cellPitch,y:b.reallocOldArrayY}));const newCells=Array.from({length:newCap},(_,i)=>({id:'new'+i,i,v:i<copiedCount?vals[i]:'?',x:b.arrayLeftX+i*b.cellPitch,y:b.reallocNewArrayY}));return[...oldCells,...newCells]}
 	reallocLabels(oldCap,newCap){const b=this.viz.base(),m=this.viz.layoutMetrics(),cx=cap=>b.arrayLeftX+(cap-1)*b.cellPitch/2+m.cellCenter;return[{text:'old elements',x:cx(oldCap),y:b.reallocOldArrayY-38,color:'#777'},{text:'new elements',x:cx(newCap),y:b.reallocNewArrayY-38,color:'#2E7D32'}]}
 	reallocSnapshot(text,vals,oldCap,newCap,copiedCount,extra={}){return this.snapshot(text,vals,oldCap,{size:vals.length,capacity:oldCap,cells:this.reallocCells(vals,oldCap,newCap,copiedCount),labels:this.reallocLabels(oldCap,newCap),arrayPointerId:'old0',fitCamera:true,...extra})}
@@ -1093,12 +1112,137 @@ class App {
 	clear(){this.save();let old=[...this.values],work=this.makeDisplayStorage(this.values,this.capacity);const b=this.viz.base();let snaps=[this.snapshot('The algorithm starts from the current ArrayList state',old,this.capacity,{size:old.length,storage:work})];for(let j=0;j<old.length;j++){if(work[j]==='?')continue;const gcObj={id:'gcClearObj'+j,i:j,v:old[j],x:b.arrayLeftX+j*b.cellPitch,y:b.arrayTopY,border:false};snaps.push(this.snapshot('elements['+j+'] flashes: this reference cell is about to be set to null',old,this.capacity,{size:old.length,storage:[...work],flashRefDots:[j],pause:true}));work[j]='?';snaps.push(this.snapshot('elements['+j+'] is now null; the arrow has been removed but the null-reference circle remains',old,this.capacity,{size:old.length,storage:[...work],objBoxes:[gcObj],hideObjectIndices:[j],flashRefDots:[j],pause:true}));snaps.push(this.snapshot('The object formerly referenced by elements['+j+'] is no longer reachable; it is crossed before the Java garbage collector may reclaim it',old,this.capacity,{size:old.length,storage:[...work],objBoxes:[gcObj],hideObjectIndices:[j],crossObjectIds:['gcClearObj'+j],pause:true}));snaps.push(this.snapshot('Visualization only: the unreachable value object is removed from the drawing',old,this.capacity,{size:old.length,storage:[...work],pause:true}))}snaps.push(this.snapshot('size is set to 0. The allocated array is kept.',[],this.capacity,{size:0,storage:[...work],flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',[],this.capacity,{size:0,storage:[...work]}));this.storage=[...work];this.values=[];this.viz.enqueue(snaps);this.updateUI()}
 	iteratorSnapshot(text,idx,extra={}){const b=this.viz.base();const x=b.arrayLeftX+idx*b.cellPitch;const y=b.arrayTopY-185;return this.snapshot(text,this.values,this.capacity,{size:this.values.length,iterators:[{id:'iterator',label:'iterator',index:idx,x,y}],...extra})}
 	iterate(){const size=this.values.length;let snaps=[this.snapshot('The iterator is created. Its counter starts at 0.',this.values,this.capacity,{size})];if(size===0){snaps.push(this.iteratorSnapshot('The iterator counter is 0 and size is 0, so iteration is complete.',0,{pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI();return}for(let i=0;i<size;i++){snaps.push(this.iteratorSnapshot('Iterator counter = '+i+'; next() returns elements['+i+'] = '+this.values[i],i,{flashObjects:[i],pause:true}));snaps.push(this.iteratorSnapshot('The iterator counter is incremented to '+(i+1),i+1,{pause:true}))}snaps.push(this.iteratorSnapshot('The iterator counter is equal to size. Iteration is complete.',size,{flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI()}
-	customText(o,id,text,x,y,font='24px Arial',fill=K.k,align='center'){o.push({id,kind:'text',text,x,y,font,fill,align})}customRect(o,id,x,y,w,h,fill=K.c){o.push({id,kind:'rect',x,y,w,h,fill})}customCircle(o,id,x,y,r=8,fill=K.b){o.push({id,kind:'circle',x,y,r,fill})}customArrow(o,id,x1,y1,x2,y2,color=K.b){o.push({id,kind:'arrow',x1,y1,x2,y2,color})}customFlashRect(o,id,x,y,w,h){o.push({id,kind:'flashRect',x,y,w,h})}customFlashCircle(o,id,x,y,r=28){o.push({id,kind:'flashCircle',x,y,r})}
-	miniStruct(o,p,label,x,y,vals,cap,size){this.customText(o,p+':lab',label,x-105,y-55,'28px monospace',K.k,'right');this.customRect(o,p+':ref',x-90,y-90,CELL,CELL,K.p);this.customCircle(o,p+':rd',x-61,y-61,8,K.v);this.customArrow(o,p+':ra',x-61,y-61,x,y,K.v);this.customText(o,p+':elab','elements',x-16,y+CELL/2,'28px monospace',K.k,'right');this.customText(o,p+':slab','size',x-16,y+CELL+CELL/2,'28px monospace',K.k,'right');this.customRect(o,p+':elements',x,y,CELL,CELL,K.c);this.customRect(o,p+':size',x,y+CELL,CELL,CELL,K.g);this.customCircle(o,p+':edot',x+CELL/2,y+CELL/2,8,K.b);this.customText(o,p+':sizev',size,x+CELL/2,y+CELL+CELL/2+2,'32px Arial',K.r);const ax=x+115,ay=y;this.customArrow(o,p+':earr',x+CELL/2,y+CELL/2,ax,ay+CELL/2,K.b);for(let i=0;i<cap;i++){const cx=ax+i*62,v=i<vals.length?vals[i]:'?';this.customText(o,p+':idx:'+i,i,cx+CELL/2,ay-8,'22px monospace',K.k);this.customRect(o,p+':cell:'+i,cx,ay,CELL,CELL,K.c);this.customCircle(o,p+':dot:'+i,cx+CELL/2,ay+CELL/2,8,K.b);if(v!=='?'){this.customArrow(o,p+':ref:'+i,cx+CELL/2,ay+CELL/2,cx+CELL/2,ay+CELL+30,K.b);this.customRect(o,p+':obj:'+i,cx,ay+CELL+30,CELL,CELL,K.g);this.customText(o,p+':val:'+i,v,cx+CELL/2,ay+CELL+30+CELL/2+2,'30px Arial',K.r)}}}
-	opScene(kind,L,R,B,i,j,text,extra={}){const o=[];this.customText(o,'kind',kind,50,35,'bold 24px Arial',K.k,'left');this.miniStruct(o,'set1','set1',210,150,L,Math.max(1,L.length),L.length);this.miniStruct(o,'set2','set2',210,410,R,Math.max(1,R.length),R.length);this.miniStruct(o,'builder','builder',210,690,B,Math.max(4,B.length+2),B.length);const px1=325+Math.max(i,0)*62,py1=150+CELL+125,px2=325+Math.max(j,0)*62,py2=410+CELL+125;this.localElem(o,'elem1','elem1',px1,py1,i<L.length?325+i*62+CELL/2:null,i<L.length?150+CELL+30:null,i<L.length?L[i]:'null');this.localElem(o,'elem2','elem2',px2,py2,j<R.length?325+j*62+CELL/2:null,j<R.length?410+CELL+30:null,j<R.length?R[j]:'null');if(extra.flashBuilderElements)this.customFlashCircle(o,'fbe',210+CELL/2,690+CELL/2,28);if(extra.flashBuilderSize)this.customFlashCircle(o,'fbs',210+CELL/2,690+CELL+CELL/2,28);if(extra.flashBuilderCell!==undefined)this.customFlashRect(o,'fbc',325+extra.flashBuilderCell*62,690,CELL,CELL);return{customObjects:o,skipStruct:true,text,pause:true,fitCamera:extra.fitCamera??false}}
-	localElem(o,id,label,x,y,tx,ty,value){this.customText(o,id+':lab',label,x-12,y+CELL/2,'22px monospace',K.k,'right');this.customRect(o,id+':box',x,y,CELL,CELL,K.c);this.customCircle(o,id+':dot',x+CELL/2,y+CELL/2,8,K.b);if(tx!=null)this.customArrow(o,id+':arr',x+CELL/2,y+CELL/2,tx,ty,K.b);this.customText(o,id+':val',value,x+CELL/2,y+CELL+25,'18px monospace',K.r)}
+	customText(o,id,text,x,y,font='24px Arial',fill=K.k,align='center'){o.push({id,kind:'text',text,x,y,font,fill,align})}
+	customRect(o,id,x,y,w,h,fill=K.c){o.push({id,kind:'rect',x,y,w,h,fill})}
+	customStrokeRect(o,id,x,y,w,h,stroke=K.r,lineWidth=4){o.push({id,kind:'roundStrokeRect',x,y,w,h,stroke,lineWidth})}
+	customCircle(o,id,x,y,r=8,fill=K.b){o.push({id,kind:'circle',x,y,r,fill})}
+	customArrow(o,id,x1,y1,x2,y2,color=K.b){o.push({id,kind:'arrow',x1,y1,x2,y2,color})}
+	customFlashRect(o,id,x,y,w,h){o.push({id,kind:'flashRect',x,y,w,h})}
+	customFlashCircle(o,id,x,y,r=28){o.push({id,kind:'flashCircle',x,y,r})}
+	miniStruct(o,p,label,x,y,vals,cap,size){
+		this.customText(o,p+':lab',label,x-105,y-55,'28px monospace',K.k,'right');
+		this.customRect(o,p+':ref',x-90,y-90,CELL,CELL,K.p);
+		this.customCircle(o,p+':rd',x-61,y-61,8,K.v);
+		this.customArrow(o,p+':ra',x-61,y-61,x,y,K.v);
+		this.customText(o,p+':elab','elements',x-16,y+CELL/2,'28px monospace',K.k,'right');
+		this.customText(o,p+':slab','size',x-16,y+CELL+CELL/2,'28px monospace',K.k,'right');
+		this.customRect(o,p+':elements',x,y,CELL,CELL,K.c);
+		this.customRect(o,p+':size',x,y+CELL,CELL,CELL,K.g);
+		this.customCircle(o,p+':edot',x+CELL/2,y+CELL/2,8,K.b);
+		this.customText(o,p+':sizev',size,x+CELL/2,y+CELL+CELL/2+2,'32px Arial',K.r);
+		const ax=x+115,ay=y;
+		this.customArrow(o,p+':earr',x+CELL/2,y+CELL/2,ax,ay+CELL/2,K.b);
+		for(let i=0;i<cap;i++){
+			const cx=ax+i*62,hasValue=i<vals.length,v=hasValue?vals[i]:'?';
+			this.customText(o,p+':idx:'+i,i,cx+CELL/2,ay-8,'22px monospace',K.k);
+			this.customRect(o,p+':cell:'+i,cx,ay,CELL,CELL,K.c);
+			this.customCircle(o,p+':dot:'+i,cx+CELL/2,ay+CELL/2,8,K.b);
+			if(hasValue){
+				this.customArrow(o,p+':ref:'+i,cx+CELL/2,ay+CELL/2,cx+CELL/2,ay+CELL+30,K.b);
+				this.customRect(o,p+':obj:'+i,cx,ay+CELL+30,CELL,CELL,K.g);
+				this.customText(o,p+':val:'+i,v,cx+CELL/2,ay+CELL+30+CELL/2+2,'30px Arial',K.r)
+			}
+		}
+	}
+	opScene(kind,L,R,B,i,j,text,extra={}) {
+		const o=[];
+		this.customText(o,'kind',kind,50,35,'bold 24px Arial',K.k,'left');
+		const resultCap=extra.resultCap??Math.max(4,B.length+2);
+		if(!extra.onlyResult){
+			this.miniStruct(o,'set1','set1',210,150,L,extra.set1Cap ?? Math.max(1,L.length),L.length);
+			this.miniStruct(o,'set2','set2',210,450,R,Math.max(1,R.length),R.length)
+		}
+		this.miniStruct(o,'result','result',210,730,B,resultCap,B.length);
+		if(!extra.onlyResult){
+			const boxI=extra.elem1BoxIndex??i,boxJ=extra.elem2BoxIndex??j;
+			const targetI=extra.elem1TargetIndex??i,targetJ=extra.elem2TargetIndex??j;
+			const px1=325+Math.max(boxI,0)*62,py1=150+CELL+125,px2=325+Math.max(boxJ,0)*62,py2=450+CELL+125;
+			this.localElem(o,'elem1','elem1',px1,py1,targetI<L.length?325+targetI*62+CELL/2:null,targetI<L.length?150+CELL+30:null);
+			this.localElem(o,'elem2','elem2',px2,py2,targetJ<R.length?325+targetJ*62+CELL/2:null,targetJ<R.length?450+CELL+30:null);
+			if(targetI>=0&&targetI<L.length)this.customStrokeRect(o,'elem1:targetBorder',325+targetI*62,150+CELL+30,CELL,CELL,K.r,4);
+			if(targetJ>=0&&targetJ<R.length)this.customStrokeRect(o,'elem2:targetBorder',325+targetJ*62,450+CELL+30,CELL,CELL,K.r,4)
+		}
+		if(extra.flashBuilderElements)this.customFlashCircle(o,'fbe',210+CELL/2,730+CELL/2,28);
+		if(extra.flashBuilderSize)this.customFlashCircle(o,'fbs',210+CELL/2,730+CELL+CELL/2,28);
+		if(extra.flashBuilderCell!==undefined)this.customFlashCircle(o,'fbc',325+extra.flashBuilderCell*62+CELL/2,730+CELL/2,28);
+		return{customObjects:o,skipStruct:true,text,pause:true,fitCamera:extra.fitCamera??false}
+	}
+	localElem(o,id,label,x,y,tx,ty){
+		this.customText(o,id+':lab',label,x-12,y+CELL/2,'22px monospace',K.k,'right');
+		this.customRect(o,id+':box',x,y,CELL,CELL,K.c);
+		this.customCircle(o,id+':dot',x+CELL/2,y+CELL/2,8,K.b);
+		if(tx!=null)this.customArrow(o,id+':arr',x+CELL/2,y+CELL/2,tx,ty+CELL,K.b)
+	}
 	parseOther(){return Array.from(new Set((document.getElementById('other').value||'').split(/[ ,;]+/).map(x=>parseInt(x)).filter(x=>!isNaN(x)))).sort((a,b)=>a-b)}
-	setOp(kind){const L=[...this.values],R=this.parseOther();this.save();let B=[],i=0,j=0,snaps=[this.opScene(kind,L,R,B,i,j,kind+': elem1 and elem2 start below their sorted arrays',{fitCamera:true})];const add=(v,why)=>{B.push(v);snaps.push(this.opScene(kind,L,R,B,i,j,kind+': append '+v+' because '+why,{flashBuilderElements:true,flashBuilderSize:true,flashBuilderCell:B.length-1}))};const adv=(ni,nj,msg)=>{i=ni;j=nj;snaps.push(this.opScene(kind,L,R,B,i,j,msg))};while(kind==='Union'?(i<L.length||j<R.length):kind==='Intersection'?(i<L.length&&j<R.length):i<L.length){if(kind==='Union'){if(i>=L.length){add(R[j],'set1 is exhausted');adv(i,j+1,'elem2 advances')}else if(j>=R.length){add(L[i],'set2 is exhausted');adv(i+1,j,'elem1 advances')}else if(L[i]<R[j]){add(L[i],L[i]+' < '+R[j]);adv(i+1,j,'elem1 advances')}else if(L[i]>R[j]){add(R[j],R[j]+' < '+L[i]);adv(i,j+1,'elem2 advances')}else{add(L[i],'both elements are equal');adv(i+1,j+1,'elem1 and elem2 advance')}}else if(kind==='Intersection'){if(L[i]<R[j])adv(i+1,j,L[i]+' < '+R[j]+', so elem1 advances');else if(L[i]>R[j])adv(i,j+1,R[j]+' < '+L[i]+', so elem2 advances');else{add(L[i],'both elements are equal');adv(i+1,j+1,'elem1 and elem2 advance')}}else{if(j>=R.length){add(L[i],'set2 is exhausted');adv(i+1,j,'elem1 advances')}else if(L[i]<R[j]){add(L[i],L[i]+' is not in set2');adv(i+1,j,'elem1 advances')}else if(L[i]>R[j])adv(i,j+1,R[j]+' < '+L[i]+', so elem2 advances');else adv(i+1,j+1,L[i]+' appears in both sets; it is skipped')}}snaps.push(this.opScene(kind,L,R,B,i,j,kind+': builder contains the result'));this.values=B;this.capacity=Math.max(8,B.length||1);snaps.push(this.opScene(kind,L,R,B,i,j,'The builder is used to create the new SortedArraySet',{flashBuilderElements:true,flashBuilderSize:true}));snaps.push(this.snapshot('The result replaces the current SortedArraySet',this.values,this.capacity,{pause:true,fitCamera:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity));this.viz.enqueue(snaps);this.updateUI()}
+	setOp(kind){
+		const L=[...this.values],R=this.parseOther(),LCap=this.capacity;
+		this.save();
+		let B=[],i=0,j=0,resultCap=8;
+
+		let snaps=[
+			this.opScene(
+				kind,
+				L,
+				R,
+				B,
+				i,
+				j,
+				kind+': elem1 and elem2 start below their sorted arrays',
+				{fitCamera:true,resultCap,set1Cap:LCap}
+			)
+		];
+		const ensureResultCapacity=()=>{
+			if(B.length<resultCap)return;
+			const oldCap=resultCap;
+			resultCap=Math.max(1,resultCap*2);
+			snaps.push(this.opScene(kind,L,R,B,i,j,kind+': result is full (capacity '+oldCap+'), so its array grows to double capacity ('+resultCap+'). The new cells initially contain only null-reference dots.',{resultCap,flashBuilderElements:true,fitCamera:true,set1Cap:LCap}))
+		};
+		const add=(v,why)=>{
+			ensureResultCapacity();
+			B.push(v);
+			snaps.push(this.opScene(kind,L,R,B,i,j,kind+': append '+v+' because '+why,{resultCap,flashBuilderElements:true,flashBuilderSize:true,flashBuilderCell:B.length-1,set1Cap:LCap}))
+		};
+		const adv=(ni,nj,msg)=>{
+			const oldI=i,oldJ=j;
+			snaps.push(this.opScene(kind,L,R,B,ni,nj,msg+' — first, the arrow tip moves to the next cell',{resultCap,elem1BoxIndex:oldI,elem2BoxIndex:oldJ,elem1TargetIndex:ni,elem2TargetIndex:nj,set1Cap:LCap}));
+			i=ni;j=nj;
+			snaps.push(this.opScene(kind,L,R,B,i,j,msg+' — then the cyan local-variable box moves right and the arrow origin moves with it',{resultCap,elem1BoxIndex:i,elem2BoxIndex:j,elem1TargetIndex:i,elem2TargetIndex:j,set1Cap:LCap}))
+		};
+		while(kind==='Union'?(i<L.length||j<R.length):kind==='Intersection'?(i<L.length&&j<R.length):i<L.length){
+			if(kind==='Union'){
+				if(i>=L.length){add(R[j],'set1 is exhausted');adv(i,j+1,'elem2 advances')}
+				else if(j>=R.length){add(L[i],'set2 is exhausted');adv(i+1,j,'elem1 advances')}
+				else if(L[i]<R[j]){add(L[i],L[i]+' < '+R[j]);adv(i+1,j,'elem1 advances')}
+				else if(L[i]>R[j]){add(R[j],R[j]+' < '+L[i]);adv(i,j+1,'elem2 advances')}
+				else{add(L[i],'both elements are equal');adv(i+1,j+1,'elem1 and elem2 advance')}
+			}else if(kind==='Intersection'){
+				if(L[i]<R[j])adv(i+1,j,L[i]+' < '+R[j]+', so elem1 advances');
+				else if(L[i]>R[j])adv(i,j+1,R[j]+' < '+L[i]+', so elem2 advances');
+				else{add(L[i],'both elements are equal');adv(i+1,j+1,'elem1 and elem2 advance')}
+			}else{
+				if(j>=R.length){add(L[i],'set2 is exhausted');adv(i+1,j,'elem1 advances')}
+				else if(L[i]<R[j]){add(L[i],L[i]+' is not in set2');adv(i+1,j,'elem1 advances')}
+				else if(L[i]>R[j])adv(i,j+1,R[j]+' < '+L[i]+', so elem2 advances');
+				else adv(i+1,j+1,L[i]+' appears in both sets; it is skipped')
+			}
+		}
+		snaps.push(this.opScene(kind,L,R,B,i,j,kind+': result contains the result',{resultCap,set1Cap:LCap}));
+		snaps.push(this.opScene('',L,R,B,i,j,'set1 and set2 are removed from the screen; only result remains before it moves up',{resultCap,onlyResult:true,fitCamera:true,set1Cap:LCap}));
+		this.values=B;
+		this.capacity=resultCap;
+		this.storage=this.makeDisplayStorage(B,resultCap);
+		snaps.push(this.snapshot('The result replaces the current SortedArraySet with capacity '+resultCap,this.values,this.capacity,{pause:true,fitCamera:true,storage:this.storage}));
+		snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{storage:this.storage}));
+		this.viz.sn = [];
+		this.viz.pending = [];
+		this.viz.idx = -1;
+		this.viz.state = 'IDLE';
+		this.viz.t = 0;
+		this.viz.waitingForStep = false;
+
+		this.viz.enqueue(snaps);
+		this.updateUI()
+	}
 	union(){this.setOp('Union')}intersection(){this.setOp('Intersection')}difference(){this.setOp('Difference')}
 	random(){this.save();let c=parseInt(document.getElementById('cap').value);if(isNaN(c)||c<1)c=8;this.capacity=c;let s=new Set(),n=Math.max(1,Math.floor(Math.random()*Math.max(1,Math.floor(2*c/3)))+1);while(s.size<Math.min(n,c,20))s.add(Math.floor(Math.random()*20)+1);this.values=Array.from(s).sort((a,b)=>a-b);this.storage=[...this.values];this.showCurrent('Visualization only: A random sample SortedArraySet has been generated for demonstration.');this.updateUI()}
 	reinit(){this.save();let c=parseInt(document.getElementById('cap').value);if(isNaN(c)||c<1)c=8;this.capacity=c;this.values=[];this.storage=[];this.showCurrent('Visualization only: A new empty SortedArraySet has been created.');this.updateUI()}
