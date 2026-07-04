@@ -271,6 +271,18 @@
             padding: 2px 5px;
             color: #c62828
         }
+        @keyframes shake-error {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+
+        .input-error {
+            animation: shake-error 0.4s ease-in-out !important;
+            border-color: #e60000 !important; 
+            background-color: #ffe6e6 !important;
+            color: #c62828 !important;
+        }
     </style>
 			</head>
 			<body>
@@ -1322,8 +1334,28 @@ class App {
         		this.viz.enqueue([this.snapshot(text, this.baseNodes())])
         	}
 
+    // Función para mostrar error visual en un input específico
+    showInputError(inputId) {
+        const el = document.getElementById(inputId);
+        if (!el) return;
+        el.classList.remove('input-error');
+        void el.offsetWidth; // Fuerza un "reflow" para que la animación se reinicie
+        el.classList.add('input-error');
+        setTimeout(() => el.classList.remove('input-error'), 400);
+    }            
     v() {
-        		return parseInt(document.getElementById('val').value)
+        		let value = parseInt(document.getElementById('val').value);
+                if (isNaN(value)) {
+                    this.showInputError('val');
+                }
+                return value;
+        	}
+    idx() {
+        		let value = parseInt(document.getElementById('idx').value);
+                if (isNaN(value)) {
+                    this.showInputError('idx');
+                }
+                return value;
         	}
 
     save() {
@@ -1444,7 +1476,7 @@ class App {
         	}
 
     insert() {
-        		const i = parseInt(document.getElementById('idx').value),
+        		const i = this.idx(),
         			e = this.v();
         		if (isNaN(i) || isNaN(e) || i < 0 || i > this.values.length) return;
         		if (i === 0) {
@@ -1647,7 +1679,7 @@ class App {
         	}
 
     del() {
-    		const i = parseInt(document.getElementById('idx').value);
+    		const i = this.idx();
     		if (isNaN(i) || i < 0 || i >= this.values.length) return;
     		this.save();
     		const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length;
@@ -1962,7 +1994,7 @@ class App {
         }
 
     get() {
-            const i = parseInt(document.getElementById('idx').value);
+            const i = this.idx();
             if (isNaN(i) || i < 0 || i >= this.values.length) return;
             const nodes = this.baseNodes();
             const snaps = [this.snapshot('The algorithm starts from the current list state', nodes)];
@@ -2006,7 +2038,7 @@ class App {
         }
 
     set() {
-            const i = parseInt(document.getElementById('idx').value), e = this.v();
+            const i = this.idx(), e = this.v();
             if (isNaN(i) || isNaN(e) || i < 0 || i >= this.values.length) return;
             this.save();
             const oldVals = [...this.values], oldIds = [...this.ids], nodes = this.baseNodes(oldVals, oldIds);
@@ -2317,7 +2349,8 @@ window.onload = () => {
     const chk = document.getElementById('chkStepMode');
     const label = document.getElementById('stepModeLabel');
     if (chk) chk.disabled = false;
-    if (label) { label.style.pointerEvents = 'auto'; label.style.opacity = '1'; }
+    if (label) { label.style.pointerEvents = 'auto'; label.style.opacity = '1'; };
+    if (app) { app.clearInputs()};
 };
 window.onclick = e => { if (e.target === document.getElementById('helpModal')) app.toggleModal(); };
 
