@@ -34,11 +34,32 @@
         .gray { background: #546E7A }
         .orange { background: #EF6C00 }
         .pause { background: #455A64; width: 80px }
-        .step-toggle { display: inline-flex; align-items: center; gap: 6px; padding: 6px 10px; border-radius: 4px; background: #ECEFF1; color: #263238; font-weight: 600; box-shadow: 0 1px 3px #0002; cursor: pointer; user-select: none }
-        .step-toggle input { width: 16px; height: 16px }
+                .step-toggle {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 10px;
+            border-radius: 4px;
+            background: #ECEFF1;
+            color: #263238;
+            font-weight: 600;
+            box-shadow: 0 1px 3px #0002;
+            cursor: pointer;
+            user-select: none
+        }
+        .step-toggle input {
+            width: auto;
+            margin: 0;
+            cursor: pointer
+        }
+        .step-toggle-on {
+            outline: 3px solid #FFB300;
+            outline-offset: 2px;
+            background: #E0F2F1
+        }
         .help { background: #607D8B; border-radius: 50%; font-size: 1.1rem; padding: 4px 10px }
         .sep { width: 1px; height: 20px; background: #ccc; margin: 0 5px }
-        #status { border-top: 1px solid #ddd; padding-top: 8px; font-size: .85rem; color: #555 }
+        #status { border-top: 1px solid #ddd; padding-top: 8px; font-size: .85rem; color: #555; min-height: 32px; line-height: 1.3 }
         #status-text { font-weight: bold; color: #222 }
         #wrap { position: relative; flex: 1; min-height: 0; overflow: hidden; background: white }
         canvas { display: block; width: 100%; height: 100%; touch-action: none }
@@ -78,6 +99,9 @@
                 <button class="purple" onclick="app.contains()" title="Binary-search membership test. Complexity: O(log n).">Contains</button>
                 <button class="purple" onclick="app.iterate()" title="Iterate exactly as the ArrayList iterator visualization. Complexity: O(n).">Iterate</button>
                 <div class="sep"></div><button class="orange" onclick="app.reinit()" title="Create a new empty sorted set">Empty</button><button class="gray" onclick="app.clear()" title="Clear exactly as ArrayList.clear, setting references to null. Complexity: O(n).">Clear</button>
+				<div class="sep"></div>
+					<button class="orange"
+                    onclick="app.random()" title="Build a random sample sorted set." aria-label="Build a random sample sorted set.">Build Random</button>
                 <div class="sep"></div><label>Other set <input id="other" type="text" placeholder="2,4,9" style="width:120px;padding:6px;border:1px solid #999;border-radius:4px;font-weight:bold"></label>
                 <button class="blue" onclick="app.union()" title="Union of two sorted sets by merge traversal. Complexity: O(n + m).">Union</button><button class="blue" onclick="app.intersection()" title="Intersection of two sorted sets by merge traversal. Complexity: O(n + m).">Intersection</button><button class="blue" onclick="app.difference()" title="Difference set1 - set2 by merge traversal. Complexity: O(n + m).">Difference</button>
                 <div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled>Undo</button>
@@ -86,12 +110,12 @@
                 <label>Slowdown:</label>
                 <input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()">
                 <button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button>
-                <label class="step-toggle" title="When on, each conceptual algorithm step waits for the Next step button." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label>
-                <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance one conceptual step when step-by-step is on." aria-label="Advance one conceptual step">Next step</button>
+                <label class="step-toggle"  id="stepModeLabel" title="When on, only real Java SortedArraySet steps wait for Next step; visual-only steps run automatically." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label>
+                <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java SortedArraySet step." aria-label="Advance to the next non-visual Java SortedArraySet step">Next step</button>
             </div>
         </div>
         <div id="status">
-            <span id="status-text">Visualization only: Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span>
+            <span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span>
         </div>
     </header>
     <div id="wrap">
@@ -108,6 +132,10 @@
         <div class="modal-content">
             <span class="close" onclick="app.toggleModal()">&times;</span>
             <h2>SortedArraySet</h2>
+            <h3>Step-by-step semantics</h3>
+            <p><strong>Step-by-step</strong> stops only at real Java SortedArraySet actions: binary-search comparisons, Finder updates, reference writes, shifts, null assignments, resizing, updating <span class="code">elements</span>, reading results, and updating <span class="code">size</span>. Visual-only movements run automatically and show no status message.</p>
+            <p>Array cells store Java object references. Unreachable objects are not manually freed; they may later be reclaimed by the garbage collector.</p>
+
             <p>A Java <strong>SortedArraySet</strong> stores unique elements in sorted order in an internal array of references <span class="code">elements</span>. The object tracks <span class="code">size</span>; the capacity is the length of the internal array.</p>
             <h3>Operations</h3>
             <ul>
@@ -126,7 +154,7 @@
             <h3>Finder</h3>
             <p>The Finder object contains only <span class="code">found</span> and <span class="code">index</span>. During binary search, <span class="code">left</span>, <span class="code">right</span>, and <span class="code">mid</span> are shown as animated local variables, not as Finder attributes.</p>
             <h3>Step-by-step execution and navigation</h3>
-            <p>Turn <strong>Step-by-step</strong> on to make each conceptual animation step wait for <strong>Next step</strong>. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
+            <p>Turn <strong>Step-by-step</strong> on to make only non-visual Java SortedArraySet steps wait for <strong>Next step</strong>. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
         </div>
 <script>
 'use strict';
@@ -437,17 +465,15 @@ class VisualizationEngine {
 		if (!this.sn.length) {
 			this.sn.push(snaps.shift());
 			this.idx = 0;
-			document.getElementById('status-text').innerText = this.sn[0].text || 'Visualization only: Ready.'
+			const firstStatus = document.getElementById('status-text');
+			const firstScene = this.sn[0];
+			if (firstStatus) firstStatus.innerText = firstScene?.visualOnly ? '' : (firstScene?.text || 'Ready.')
 		}
 		if (snaps.length) {
 			this.pending = snaps;
-			if (this.stepMode) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true
-			} else {
-				this.state = 'CAMERA';
-				this.waitingForStep = false
-			}
+			this.state = 'CAMERA';
+			this.waitingForStep = false;
+			this.updateStepControls();
 		}
 	}
 
@@ -471,7 +497,13 @@ class VisualizationEngine {
 			this.t += 2.5 * this.speedFactor * dt;
 			if (this.t >= 1) {
 				this.t = 1;
-				if (this.sn[this.idx + 1]?.pause) {
+				const arrivedScene = this.sn[this.idx + 1];
+				const isVisualOnlyStep = !!arrivedScene?.visualOnly;
+				if (this.stepMode && !isVisualOnlyStep) {
+					this.state = 'STEP_WAIT';
+					this.waitingForStep = true;
+					this.updateStepControls();
+				} else if (arrivedScene?.pause && !isVisualOnlyStep) {
 					this.state = 'WAIT';
 					this.wait = .75 / this.speedFactor
 				} else this.finish()
@@ -486,27 +518,26 @@ class VisualizationEngine {
 		const s = this.pending.shift();
 		this.sn.push(s);
 		if (s.fitCamera) this.fit([s]);
-		document.getElementById('status-text').innerText = s.text || 'Visualization only: Ready.';
+		const status = document.getElementById('status-text');
+		if (status) status.innerText = s.visualOnly ? '' : (s.text || 'Ready.');
 		this.t = 0;
-		this.state = 'MORPH'
+		this.waitingForStep = false;
+		this.state = 'MORPH';
+		this.updateStepControls();
 	}
 
 	finish() {
 		this.idx++;
-		if (this.pending.length) {
-			if (this.stepMode) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true;
-				const currentScene = this.sn[this.idx];
-				if (currentScene) document.getElementById('status-text').innerText = currentScene.text || 'Visualization only: Ready.'
-			} else this.next()
-		} else {
+		this.waitingForStep = false;
+		if (this.pending.length) this.next();
+		else {
 			this.state = 'IDLE';
-			this.waitingForStep = false;
 			const finalScene = this.sn[this.idx];
 			if (finalScene) this.fit([finalScene]);
-			document.getElementById('status-text').innerText = finalScene?.text || 'Visualization only: Ready.';
-			window.app?.clearInputs()
+			const status = document.getElementById('status-text');
+			if (status) status.innerText = 'Ready.';
+			this.updateStepControls();
+			window.app?.clearInputs();
 		}
 	}
 	ease(t) {
@@ -594,7 +625,7 @@ class VisualizationEngine {
 	}
 
 	current() {
-		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)]
+		return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)]
 	}
 
 	flash() {
@@ -612,21 +643,37 @@ class VisualizationEngine {
 
 	setStepMode(enabled) {
 		this.stepMode = !!enabled;
-		if (this.stepMode) {
-			if ((this.state === 'CAMERA' || this.state === 'IDLE') && this.pending.length) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true
-			}
-		} else if (this.state === 'STEP_WAIT' && this.pending.length) {
+		if (!this.stepMode && this.state === 'STEP_WAIT') {
 			this.waitingForStep = false;
-			this.next()
+			this.finish();
 		}
+		this.updateStepControls();
 	}
 	nextStep() {
-		if (!this.stepMode || this.paused || !this.pending.length) return;
-		if (this.state === 'STEP_WAIT' || this.state === 'IDLE' || this.state === 'CAMERA') {
+		if (!this.stepMode || this.paused) return;
+		if (this.state === 'STEP_WAIT') {
 			this.waitingForStep = false;
-			this.next()
+			this.finish();
+		}
+		this.updateStepControls();
+	}
+	updateStepControls() {
+		const step = document.getElementById('stepMode');
+		const label = document.getElementById('stepState');
+		const next = document.getElementById('btnNext');
+		if (step) step.checked = this.stepMode;
+		if (label) label.innerText = this.stepMode ? 'On' : 'Off';
+		const lbl = document.getElementById('stepModeLabel');
+		if (lbl) {
+            lbl.classList.toggle('step-toggle-on', !!this.stepMode);
+            lbl.style.pointerEvents = 'auto';
+            lbl.style.opacity = '1';
+        }
+		if (next) {
+			const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
+			next.disabled = !canAdvance;
+			next.title = !this.stepMode ? 'Turn Step-by-step mode ON first.' : (canAdvance ? 'Advance to the next non-visual Java SortedArraySet step.' : 'Visual-only steps advance automatically. The button becomes available at the next Java SortedArraySet step.');
+			next.setAttribute('aria-label', next.title);
 		}
 	}
 	draw() {
@@ -1093,7 +1140,43 @@ class App {
 	constructor(){this.values=[];this.capacity=8;this.storage=[];this.history=[];this.viz=null}
 	makeDisplayStorage(vals,cap=this.capacity){return Array.from({length:cap},(_,i)=>i<vals.length?vals[i]:'?')}
 	cells(vals=this.values,cap=this.capacity,storageOverride=null,extra={}){return Array.from({length:cap},(_,i)=>{const v=storageOverride?(storageOverride[i]!==undefined?storageOverride[i]:'?'):(i<vals.length?vals[i]:(this.storage&&this.storage[i]!==undefined?this.storage[i]:'?'));return{id:'c'+i,v,i,range:extra.range&&i>=extra.range[0]&&i<=extra.range[1]&&i<vals.length}})}
-	snapshot(text,vals=this.values,cap=this.capacity,extra={}){const storageOverride=extra.storage??null;return{cells:extra.cells||this.cells(vals,cap,storageOverride,extra),size:extra.size??vals.length,capacity:cap,text,fitCamera:extra.fitCamera??false,...extra}}
+	snapshot(text,vals=this.values,cap=this.capacity,extra={}){const storageOverride=extra.storage??null;const normalizedText=this.statusMessage(text);const visualOnly=extra.visualOnly!==undefined?!!extra.visualOnly:/^\s*Visualization only:/i.test(normalizedText);return{cells:extra.cells||this.cells(vals,cap,storageOverride,extra),size:extra.size??vals.length,capacity:cap,fitCamera:extra.fitCamera??false,...extra,visualOnly,text:visualOnly?'':normalizedText}}
+	statusMessage(text=''){let t=String(text||'');if(/^\s*Visualization only:/i.test(t))return t;if(t==='The operation is complete')return 'Visualization only: the completed SortedArraySet state is displayed.';t=t.replace(/^The iterator is created\. Its counter starts at 0\.$/,'The iterator is created at index 0.')
+	.replace(/^Iterator counter = (\d+); next\(\) returns elements\[(\d+)\] = (.*)$/,'The iterator visits index $2 and reads value $3.')
+	.replace(/^The iterator counter is incremented to (\d+)$/,'The iterator counter is incremented to $1.')
+	.replace(/^The iterator counter is equal to size\. Iteration is complete\.$/,'The iterator counter has reached size, so iteration is complete.')
+	.replace(/^Insertion starts by creating Finder: Finder is placed below the set; left = 0 and right = size - 1$/,'A Finder is created; binary search starts with the full sorted range.')
+	.replace(/^Deletion starts by creating Finder: Finder is placed below the set; left = 0 and right = size - 1$/,'A Finder is created; binary search starts with the full sorted range.')
+	.replace(/^contains\((.*)\) starts by creating Finder: Finder is placed below the set; left = 0 and right = size - 1$/,'A Finder is created; binary search starts with the full sorted range.')
+	.replace(/^mid is updated to (\d+)$/,'The middle index is updated to $1.')
+	.replace(/^Compare (.*) with elements\[(\d+)\] = (.*)$/,'The searched value is compared with the object reference at index $2.')
+	.replace(/^found is updated to true$/,'The Finder found field is set to true.')
+	.replace(/^found is updated to false$/,'The Finder found field is set to false.')
+	.replace(/^index is updated to (\d+)$/,'The Finder index field is set to $1.')
+	.replace(/^index is updated to the insertion point (\d+)$/,'The Finder index field is set to the insertion point $1.')
+	.replace(/^Finder result: found = (true|false), index = (\d+)\.$/,'The Finder result is finalized: found = $1, index = $2.')
+	.replace(/^Finder result remains visible before continuing\.$/,'Visualization only: the Finder result remains visible before continuing.')
+	.replace(/^Copying reference (\d+) from the old array to the new array$/,'Copying the object reference at index $1 to the new internal array.')
+	.replace(/^Reference (\d+) has been copied into the new array$/,'Visualization only: the copied reference is animated into the new internal array.')
+	.replace(/^The new array now contains the first (\d+) copied reference(s?)$/,'The destination reference slot in the new internal array is filled.')
+	.replace(/^All existing elements have been copied; the set will now point to the new array$/,'All active set references have been copied; the set will now refer to the new internal array.')
+	.replace(/^The shifted objects move one position to the right while the changed references follow them$/,'Visualization only: shifted value objects are redrawn one position to the right.')
+	.replace(/^The remaining values move one position to the left; the old last cell still points to the former last value for an instant$/,'Visualization only: remaining value objects are redrawn one position to the left.')
+	.replace(/^The green value box at index (\d+) is crossed with a flashing mark just before it disappears$/,'Visualization only: the removed value object is marked before disappearing.')
+	.replace(/^The removed last object is no longer reachable and is crossed before disappearing$/,'The removed object is no longer reachable and may later be reclaimed by the garbage collector.')
+	.replace(/^The last reference is now null; its arrow is removed and the null-reference circle remains$/,'The last array slot is set to null.')
+	.replace(/^The old last cell is set to null$/,'The old last array slot is set to null.')
+	.replace(/^elements\[(\d+)\] flashes: this reference cell is about to be set to null$/,'The reference at index $1 is about to be set to null.')
+	.replace(/^elements\[(\d+)\] is now null; the arrow has been removed but the null-reference circle remains$/,'The reference at index $1 is now null.')
+	.replace(/^size is incremented/,'The size field is incremented')
+	.replace(/^size is decremented/,'The size field is decremented')
+	.replace(/^size is set to 0/,'The size field is set to 0')
+	.replace(/^contains\((.*)\) returns (true|false)$/,'Visualization only: the contains result is displayed: $2.')
+	.replace(/^(Union|Intersection|Difference): elem1 and elem2 are created and initialized at the first elements of their sorted sets$/,'The local references elem1 and elem2 are created and initialized at the first elements of set1 and set2.')
+	.replace(/^(Union|Intersection|Difference): the merge calculation is complete; result now contains all selected values$/,'The merge calculation is complete; the result set now contains all selected values.')
+	.replace(/^(Union|Intersection|Difference): result is full .*$/,'The result set grows because its internal array is full.')
+	.replace(/^(Union|Intersection|Difference): append (.*) because (.*)$/,'The value $2 is appended to the result set because $3.')
+	.replace(/^The result replaces the current SortedArraySet with capacity (\d+)$/,'Visualization only: the result set is moved into the main display.');return t;}
 	init(){this.viz=new JavaSortedArraySetView('cv');this.values=[2,4,7];this.capacity=8;this.storage=[...this.values];this.showCurrent('Visualization only: The SortedArraySet is initialized with sample objects.');this.updateUI()}
 	commitStorage(vals,cap=this.capacity){const clean=vals.filter(v=>v!=='?');this.storage=this.makeDisplayStorage(clean,cap)}
 	showCurrent(text='Visualization only: Ready.'){this.viz.sn=[];this.viz.pending=[];this.viz.idx=-1;this.viz.state='IDLE';this.viz.enqueue([this.snapshot(text,this.values,this.capacity,{size:this.values.length})])}
@@ -1105,13 +1188,13 @@ class App {
 	reallocLabels(oldCap,newCap){const b=this.viz.base(),m=this.viz.layoutMetrics(),cx=cap=>b.arrayLeftX+(cap-1)*b.cellPitch/2+m.cellCenter;return[{text:'old elements',x:cx(oldCap),y:b.reallocOldArrayY-38,color:'#777'},{text:'new elements',x:cx(newCap),y:b.reallocNewArrayY-38,color:'#2E7D32'}]}
 	reallocSnapshot(text,vals,oldCap,newCap,copiedCount,extra={}){return this.snapshot(text,vals,oldCap,{size:vals.length,capacity:oldCap,cells:this.reallocCells(vals,oldCap,newCap,copiedCount),labels:this.reallocLabels(oldCap,newCap),arrayPointerId:'old0',fitCamera:true,...extra})}
 	reallocFinalSnapshot(text,vals,newCap,extra={}){const finalCells=this.cells(vals,newCap).map(c=>({...c,fromId:'new'+c.i}));return this.snapshot(text,vals,newCap,{size:vals.length,capacity:newCap,cells:finalCells,fitCamera:true,...extra})}
-	ensureSnaps(vals,cap,need,lead){let snaps=[];if(vals.length+need<=cap)return{cap,snaps};snaps.push(this.snapshot(lead+' the array is full, so capacity must be ensured',vals,cap,{size:vals.length,pause:true}));let newCap=Math.max(1,cap*2);while(vals.length+need>newCap)newCap*=2;snaps.push(this.reallocSnapshot('A new array with double capacity is allocated',vals,cap,newCap,0,{pause:true}));for(let i=0;i<vals.length;i++){const b=this.viz.base(),copyX=b.arrayLeftX+i*b.cellPitch;snaps.push(this.reallocSnapshot('Copying reference '+i+' from the old array to the new array',vals,cap,newCap,i,{ghosts:[{id:'copy'+i,i,v:vals[i],x:copyX,y:b.reallocOldArrayY,border:false}]}));snaps.push(this.reallocSnapshot('Reference '+i+' has been copied into the new array',vals,cap,newCap,i,{ghosts:[{id:'copy'+i,i,v:vals[i],x:copyX,y:b.reallocNewArrayY,border:false}],pause:true}));snaps.push(this.reallocSnapshot('The new array now contains the first '+(i+1)+' copied reference'+(i===0?'':'s'),vals,cap,newCap,i+1,{flashRefDots:[i],pause:true}))}snaps.push(this.reallocSnapshot('All existing elements have been copied; the set will now point to the new array',vals,cap,newCap,vals.length,{pause:true}));snaps.push(this.reallocFinalSnapshot('The new array replaces the old one in the SortedArraySet structure',vals,newCap,{flashElements:true,pause:true}));return{cap:newCap,snaps}}
+	ensureSnaps(vals,cap,need,lead){let snaps=[];if(vals.length+need<=cap)return{cap,snaps};snaps.push(this.snapshot(lead+' the array is full, so capacity must be ensured',vals,cap,{size:vals.length,pause:true}));let newCap=Math.max(1,cap*2);while(vals.length+need>newCap)newCap*=2;snaps.push(this.reallocSnapshot('A new array with double capacity is allocated',vals,cap,newCap,0,{pause:true}));for(let i=0;i<vals.length;i++){const b=this.viz.base(),copyX=b.arrayLeftX+i*b.cellPitch;snaps.push(this.reallocSnapshot('Copying reference '+i+' from the old array to the new array',vals,cap,newCap,i,{ghosts:[{id:'copy'+i,i,v:vals[i],x:copyX,y:b.reallocOldArrayY,border:false}]}));snaps.push(this.reallocSnapshot('Reference '+i+' has been copied into the new array',vals,cap,newCap,i,{ghosts:[{id:'copy'+i,i,v:vals[i],x:copyX,y:b.reallocNewArrayY,border:false}],pause:true}));snaps.push(this.reallocSnapshot('The new array now contains the first '+(i+1)+' copied reference'+(i===0?'':'s'),vals,cap,newCap,i+1,{flashRefDots:[i],pause:true}))}snaps.push(this.reallocSnapshot('All existing elements have been copied; the set will now point to the new array',vals,cap,newCap,vals.length,{pause:true}));snaps.push(this.reallocFinalSnapshot('The elements reference is updated to refer to the new internal array',vals,newCap,{capacity:cap,flashElements:true,pause:true}));snaps.push(this.reallocFinalSnapshot('The effective capacity is now the length of the new internal array: '+newCap,vals,newCap,{pause:true}));return{cap:newCap,snaps}}
 	insert(){const e=this.v();if(isNaN(e))return;this.save();const old=[...this.values],oldCap=this.capacity,fs=this.finderSnaps(e,'Insertion starts by creating Finder');let snaps=[...fs.snaps];if(fs.found){snaps.push(this.snapshot('Element '+e+' already exists. Insertion is aborted',old,oldCap,{pause:true}));snaps.push(this.snapshot('The operation is complete',old,oldCap));this.viz.enqueue(snaps);this.updateUI();return}const idx=fs.index;let ec=this.ensureSnaps(old,oldCap,1,'Before inserting,');snaps.push(...ec.snaps);let cap=ec.cap,work=[...old];if(idx<old.length){const b=this.viz.base(),source=[];for(let j=idx;j<old.length;j++)source.push(j);const hide=[...source],oldObjs=source.map(j=>({id:'shiftObj'+j,i:j,v:work[j],x:b.arrayLeftX+j*b.cellPitch,y:b.arrayTopY,border:false}));let changed=[];for(let j=old.length-1;j>=idx;j--){changed.push({from:j+1,objId:'shiftObj'+j});const unchanged=[];for(let k=idx;k<=j;k++)unchanged.push({from:k,objId:'shiftObj'+k});snaps.push(this.snapshot('The reference in cell '+(j+1)+' is changed to point to the object previously referenced by cell '+j,work,cap,{size:old.length,objBoxes:oldObjs,refArrows:[...changed,...unchanged],hideObjectIndices:hide,flashRefDots:[j+1],pause:true}))}snaps.push(this.snapshot('For an instant, the insertion cell and the next cell both reference the leftmost shifted object',work,cap,{size:old.length,objBoxes:oldObjs,refArrows:[...changed,{from:idx,objId:'shiftObj'+idx}],hideObjectIndices:hide,flashRefDots:[idx+1],pause:true}));const moved=source.map(j=>({id:'shiftObj'+j,fromId:'shiftObj'+j,i:j+1,v:work[j],x:b.arrayLeftX+(j+1)*b.cellPitch,y:b.arrayTopY,border:false}));snaps.push(this.snapshot('The shifted objects move one position to the right while the changed references follow them',work,cap,{size:old.length,objBoxes:moved,refArrows:[...changed,{from:idx,objId:'shiftObj'+idx}],hideObjectIndices:hide,pause:true}));let shifted=[...work];for(let j=old.length-1;j>=idx;j--)shifted[j+1]=shifted[j];work=shifted;const newObj={id:'newInsertObj',i:idx,v:e,x:b.arrayLeftX+idx*b.cellPitch,y:b.arrayTopY,border:false};snaps.push(this.snapshot('The reference in the insertion cell is overwritten so that it points to the new object',work,cap,{size:old.length,objBoxes:[...moved,newObj],refArrows:[...changed,{from:idx,objId:'newInsertObj'}],hideObjectIndices:[...hide,idx],flashRefDots:[idx],pause:true}))}else snaps.push(this.snapshot('The insertion position is the first available cell at the end of the set',work,cap,{size:old.length,flashRefDots:[idx],pause:true}));work[idx]=e;let final=work.slice(0,old.length+1);snaps.push(this.snapshot('The new object reference is stored at index '+idx,final,cap,{size:old.length,flashRefDots:[idx],pause:true}));snaps.push(this.snapshot('size is incremented after the insertion',final,cap,{size:old.length,flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',final,cap,{size:final.length,storage:this.makeDisplayStorage(final,cap)}));this.commitStorage(final,cap);this.values=final;this.capacity=cap;this.viz.enqueue(snaps);this.updateUI()}
 	del(){const e=this.v();if(isNaN(e))return;this.save();const old=[...this.values],cap=this.capacity,fs=this.finderSnaps(e,'Deletion starts by creating Finder');let snaps=[...fs.snaps];if(!fs.found){snaps.push(this.snapshot('Element '+e+' was not found. Deletion is aborted',old,cap,{pause:true}));snaps.push(this.snapshot('The operation is complete',old,cap));this.viz.enqueue(snaps);this.updateUI();return}const idx=fs.index,b=this.viz.base();let work=[...old];if(idx===old.length-1){const delObj={id:'deleteLastObj',i:idx,v:old[idx],x:b.arrayLeftX+idx*b.cellPitch,y:b.arrayTopY,border:false};snaps.push(this.snapshot('The last reference cell flashes before being set to null',old,cap,{size:old.length,flashRefDots:[idx],pause:true}));work[idx]='?';snaps.push(this.snapshot('The last reference is now null; its arrow is removed and the null-reference circle remains',old,cap,{size:old.length,storage:[...work],objBoxes:[delObj],hideObjectIndices:[idx],pause:true}));snaps.push(this.snapshot('The removed last object is no longer reachable and is crossed before disappearing',old,cap,{size:old.length,storage:[...work],objBoxes:[delObj],hideObjectIndices:[idx],crossObjectIds:['deleteLastObj'],pause:true}));snaps.push(this.snapshot('Visualization only: the unreachable value object is removed from the drawing',old,cap,{size:old.length,storage:[...work],pause:true}));const final=old.slice(0,old.length-1),finalStorage=this.makeDisplayStorage(final,cap);snaps.push(this.snapshot('size is decremented',final,cap,{size:final.length,storage:finalStorage,flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',final,cap,{size:final.length,storage:finalStorage}));this.commitStorage(work,cap);this.values=final;this.viz.enqueue(snaps);this.updateUI();return}const source=[];for(let j=idx;j<old.length;j++)source.push(j);const hide=[...source],objs=source.map(j=>({id:'shiftObj'+j,i:j,v:old[j],x:b.arrayLeftX+j*b.cellPitch,y:b.arrayTopY,border:false})),directRefs=source.map(j=>({from:j,objId:'shiftObj'+j}));snaps.push(this.snapshot('The affected references are exposed before shifting starts',work,cap,{size:old.length,objBoxes:objs,refArrows:directRefs,hideObjectIndices:hide,pause:true}));let changed=[];for(let j=idx+1;j<old.length;j++){changed.push({from:j-1,objId:'shiftObj'+j});const unchanged=[];for(let k=j;k<old.length;k++)unchanged.push({from:k,objId:'shiftObj'+k});snaps.push(this.snapshot('Cell '+(j-1)+' is overwritten to reference the object currently at cell '+j,work,cap,{size:old.length,objBoxes:objs,refArrows:[...changed,...unchanged],hideObjectIndices:hide,flashRefDots:[j-1],pause:true}))}snaps.push(this.snapshot('Before values move left, two references point to the last value: the old last cell and the new last cell',work,cap,{size:old.length,objBoxes:objs,refArrows:[...changed,{from:old.length-1,objId:'shiftObj'+(old.length-1)}],hideObjectIndices:hide,flashRefDots:[old.length-2],pause:true}));snaps.push(this.snapshot('The green value box at index '+idx+' is crossed with a flashing mark just before it disappears',work,cap,{size:old.length,objBoxes:objs,refArrows:[...changed,{from:old.length-1,objId:'shiftObj'+(old.length-1)}],hideObjectIndices:hide,crossObjectIds:['shiftObj'+idx],pause:true}));for(let j=idx+1;j<old.length;j++)work[j-1]=work[j];const moved=source.filter(j=>j!==idx).map(j=>({id:'shiftObj'+j,fromId:'shiftObj'+j,i:j-1,v:old[j],x:b.arrayLeftX+(j-1)*b.cellPitch,y:b.arrayTopY,border:false})),oldLastStillPoints={from:old.length-1,objId:'shiftObj'+(old.length-1)};snaps.push(this.snapshot('The remaining values move one position to the left; the old last cell still points to the former last value for an instant',work,cap,{size:old.length,objBoxes:moved,refArrows:[...changed,oldLastStillPoints],hideObjectIndices:hide,pause:true}));snaps.push(this.snapshot('The old last cell flashes only now, just before being set to null',work,cap,{size:old.length,objBoxes:moved,refArrows:[...changed,oldLastStillPoints],hideObjectIndices:hide,flashRefDots:[old.length-1],pause:true}));work[old.length-1]='?';snaps.push(this.snapshot('The old last cell is set to null',work,cap,{size:old.length,storage:[...work],objBoxes:moved,refArrows:[...changed],hideObjectIndices:hide,pause:true}));const final=old.filter((_,i)=>i!==idx),finalStorage=this.makeDisplayStorage(final,cap);snaps.push(this.snapshot('size is decremented',final,cap,{size:final.length,storage:finalStorage,flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',final,cap,{size:final.length,storage:finalStorage}));this.commitStorage(work,cap);this.values=final;this.viz.enqueue(snaps);this.updateUI()}
 	contains(){const e=this.v();if(isNaN(e))return;const fs=this.finderSnaps(e,'contains('+e+') starts by creating Finder');const snaps=[...fs.snaps,this.snapshot('contains('+e+') returns '+fs.found,this.values,this.capacity,{pause:true}),this.snapshot('The operation is complete',this.values,this.capacity)];this.viz.enqueue(snaps);this.updateUI()}
 	clear(){this.save();let old=[...this.values],work=this.makeDisplayStorage(this.values,this.capacity);const b=this.viz.base();let snaps=[this.snapshot('The algorithm starts from the current ArrayList state',old,this.capacity,{size:old.length,storage:work})];for(let j=0;j<old.length;j++){if(work[j]==='?')continue;const gcObj={id:'gcClearObj'+j,i:j,v:old[j],x:b.arrayLeftX+j*b.cellPitch,y:b.arrayTopY,border:false};snaps.push(this.snapshot('elements['+j+'] flashes: this reference cell is about to be set to null',old,this.capacity,{size:old.length,storage:[...work],flashRefDots:[j],pause:true}));work[j]='?';snaps.push(this.snapshot('elements['+j+'] is now null; the arrow has been removed but the null-reference circle remains',old,this.capacity,{size:old.length,storage:[...work],objBoxes:[gcObj],hideObjectIndices:[j],flashRefDots:[j],pause:true}));snaps.push(this.snapshot('The object formerly referenced by elements['+j+'] is no longer reachable; it is crossed before the Java garbage collector may reclaim it',old,this.capacity,{size:old.length,storage:[...work],objBoxes:[gcObj],hideObjectIndices:[j],crossObjectIds:['gcClearObj'+j],pause:true}));snaps.push(this.snapshot('Visualization only: the unreachable value object is removed from the drawing',old,this.capacity,{size:old.length,storage:[...work],pause:true}))}snaps.push(this.snapshot('size is set to 0. The allocated array is kept.',[],this.capacity,{size:0,storage:[...work],flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',[],this.capacity,{size:0,storage:[...work]}));this.storage=[...work];this.values=[];this.viz.enqueue(snaps);this.updateUI()}
 	iteratorSnapshot(text,idx,extra={}){const b=this.viz.base();const x=b.arrayLeftX+idx*b.cellPitch;const y=b.arrayTopY-185;return this.snapshot(text,this.values,this.capacity,{size:this.values.length,iterators:[{id:'iterator',label:'iterator',index:idx,x,y}],...extra})}
-	iterate(){const size=this.values.length;let snaps=[this.snapshot('The iterator is created. Its counter starts at 0.',this.values,this.capacity,{size})];if(size===0){snaps.push(this.iteratorSnapshot('The iterator counter is 0 and size is 0, so iteration is complete.',0,{pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI();return}for(let i=0;i<size;i++){snaps.push(this.iteratorSnapshot('Iterator counter = '+i+'; next() returns elements['+i+'] = '+this.values[i],i,{flashObjects:[i],pause:true}));snaps.push(this.iteratorSnapshot('The iterator counter is incremented to '+(i+1),i+1,{pause:true}))}snaps.push(this.iteratorSnapshot('The iterator counter is equal to size. Iteration is complete.',size,{flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI()}
+	iterate(){const size=this.values.length;let snaps=[this.iteratorSnapshot('The iterator is created. Its counter starts at 0.',0,{pause:true})];if(size===0){snaps.push(this.iteratorSnapshot('The iterator counter is 0 and size is 0, so iteration is complete.',0,{pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI();return}for(let i=0;i<size;i++){snaps.push(this.iteratorSnapshot('Iterator counter = '+i+'; next() returns elements['+i+'] = '+this.values[i],i,{flashObjects:[i],pause:true}));snaps.push(this.iteratorSnapshot('The iterator counter is incremented to '+(i+1),i+1,{pause:true}))}snaps.push(this.iteratorSnapshot('The iterator counter is equal to size. Iteration is complete.',size,{flashSize:true,pause:true}));snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{size}));this.viz.enqueue(snaps);this.updateUI()}
 	customText(o,id,text,x,y,font='24px Arial',fill=K.k,align='center'){o.push({id,kind:'text',text,x,y,font,fill,align})}
 	customRect(o,id,x,y,w,h,fill=K.c){o.push({id,kind:'rect',x,y,w,h,fill})}
 	customStrokeRect(o,id,x,y,w,h,stroke=K.r,lineWidth=4){o.push({id,kind:'roundStrokeRect',x,y,w,h,stroke,lineWidth})}
@@ -1180,16 +1263,8 @@ class App {
 		let B=[],i=0,j=0,resultCap=8;
 
 		let snaps=[
-			this.opScene(
-				kind,
-				L,
-				R,
-				B,
-				i,
-				j,
-				kind+': elem1 and elem2 start below their sorted arrays',
-				{fitCamera:true,resultCap,set1Cap:LCap}
-			)
+			this.opScene(kind,L,R,B,i,j,'Visualization only: the input sets and the empty result set are laid out before the merge traversal',{fitCamera:true,resultCap,set1Cap:LCap,visualOnly:true}),
+			this.opScene(kind,L,R,B,i,j,kind+': elem1 and elem2 are created and initialized at the first elements of their sorted sets',{resultCap,set1Cap:LCap})
 		];
 		const ensureResultCapacity=()=>{
 			if(B.length<resultCap)return;
@@ -1203,10 +1278,8 @@ class App {
 			snaps.push(this.opScene(kind,L,R,B,i,j,kind+': append '+v+' because '+why,{resultCap,flashBuilderElements:true,flashBuilderSize:true,flashBuilderCell:B.length-1,set1Cap:LCap}))
 		};
 		const adv=(ni,nj,msg)=>{
-			const oldI=i,oldJ=j;
-			snaps.push(this.opScene(kind,L,R,B,ni,nj,msg+' — first, the arrow tip moves to the next cell',{resultCap,elem1BoxIndex:oldI,elem2BoxIndex:oldJ,elem1TargetIndex:ni,elem2TargetIndex:nj,set1Cap:LCap}));
 			i=ni;j=nj;
-			snaps.push(this.opScene(kind,L,R,B,i,j,msg+' — then the cyan local-variable box moves right and the arrow origin moves with it',{resultCap,elem1BoxIndex:i,elem2BoxIndex:j,elem1TargetIndex:i,elem2TargetIndex:j,set1Cap:LCap}))
+			snaps.push(this.opScene(kind,L,R,B,i,j,msg,{resultCap,elem1BoxIndex:i,elem2BoxIndex:j,elem1TargetIndex:i,elem2TargetIndex:j,set1Cap:LCap}))
 		};
 		while(kind==='Union'?(i<L.length||j<R.length):kind==='Intersection'?(i<L.length&&j<R.length):i<L.length){
 			if(kind==='Union'){
@@ -1226,12 +1299,12 @@ class App {
 				else adv(i+1,j+1,L[i]+' appears in both sets; it is skipped')
 			}
 		}
-		snaps.push(this.opScene(kind,L,R,B,i,j,kind+': result contains the result',{resultCap,set1Cap:LCap}));
-		snaps.push(this.opScene('',L,R,B,i,j,'set1 and set2 are removed from the screen; only result remains before it moves up',{resultCap,onlyResult:true,fitCamera:true,set1Cap:LCap}));
+		snaps.push(this.opScene(kind,L,R,B,i,j,kind+': the merge calculation is complete; result now contains all selected values',{resultCap,set1Cap:LCap}));
+		snaps.push(this.opScene('',L,R,B,i,j,'Visualization only: set1 and set2 are removed; only result remains on screen',{resultCap,onlyResult:true,fitCamera:true,set1Cap:LCap,visualOnly:true}));
 		this.values=B;
 		this.capacity=resultCap;
 		this.storage=this.makeDisplayStorage(B,resultCap);
-		snaps.push(this.snapshot('The result replaces the current SortedArraySet with capacity '+resultCap,this.values,this.capacity,{pause:true,fitCamera:true,storage:this.storage}));
+		snaps.push(this.snapshot('The result replaces the current SortedArraySet with capacity '+resultCap,this.values,this.capacity,{pause:true,fitCamera:true,storage:this.storage,visualOnly:true}));
 		snaps.push(this.snapshot('The operation is complete',this.values,this.capacity,{storage:this.storage}));
 		this.viz.sn = [];
 		this.viz.pending = [];
@@ -1247,7 +1320,7 @@ class App {
 	random(){this.save();let c=parseInt(document.getElementById('cap').value);if(isNaN(c)||c<1)c=8;this.capacity=c;let s=new Set(),n=Math.max(1,Math.floor(Math.random()*Math.max(1,Math.floor(2*c/3)))+1);while(s.size<Math.min(n,c,20))s.add(Math.floor(Math.random()*20)+1);this.values=Array.from(s).sort((a,b)=>a-b);this.storage=[...this.values];this.showCurrent('Visualization only: A random sample SortedArraySet has been generated for demonstration.');this.updateUI()}
 	reinit(){this.save();let c=parseInt(document.getElementById('cap').value);if(isNaN(c)||c<1)c=8;this.capacity=c;this.values=[];this.storage=[];this.showCurrent('Visualization only: A new empty SortedArraySet has been created.');this.updateUI()}
 	undo(){if(!this.history.length)return;const h=this.history.pop();this.values=h.values;this.capacity=h.capacity;this.storage=h.storage??[...h.values];this.showCurrent("Visualization only: The previous SortedArraySet state has been restored by the app's undo utility.");this.updateUI()}
-	speed(){this.viz.setSpeed(parseFloat(document.getElementById('speed').value))}pause(){const p=this.viz.togglePause();document.getElementById('btnPause').innerText=p?'Resume':'Pause'}toggleStep(){const enabled=!!document.getElementById('stepMode')?.checked;this.viz.setStepMode(enabled);const label=document.getElementById('stepState');if(label)label.innerText=enabled?'On':'Off';this.updateUI()}nextStep(){this.viz.nextStep()}toggleModal(){const m=document.getElementById('helpModal');m.style.display=m.style.display==='block'?'none':'block'}updateUI(){document.getElementById('btnUndo').disabled=this.history.length===0;const step=document.getElementById('stepMode');if(step)step.disabled=false;const label=document.getElementById('stepState');if(label)label.innerText=step?.checked?'On':'Off'}clearInputs(){document.getElementById('val').value='';document.getElementById('idx').value=''}
+	speed(){this.viz.setSpeed(parseFloat(document.getElementById('speed').value))}pause(){const p=this.viz.togglePause();document.getElementById('btnPause').innerText=p?'Resume':'Pause'}toggleStep(){const enabled=!!document.getElementById('stepMode')?.checked;this.viz.setStepMode(enabled);const label=document.getElementById('stepState');if(label)label.innerText=enabled?'On':'Off';this.updateUI()}nextStep(){this.viz.nextStep()}toggleModal(){const m=document.getElementById('helpModal');m.style.display=m.style.display==='block'?'none':'block'}updateUI(){document.getElementById('btnUndo').disabled=this.history.length===0;const step=document.getElementById('stepMode');if(step)step.disabled=false;const label=document.getElementById('stepState');if(label)label.innerText=step?.checked?'On':'Off';if(this.viz?.updateStepControls)this.viz.updateStepControls()}clearInputs(){document.getElementById('val').value='';document.getElementById('idx').value=''}
 }
 const app = new App();
 window.app = app;

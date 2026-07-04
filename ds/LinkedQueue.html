@@ -123,7 +123,7 @@
             background: #455A64;
             width: 80px
         }
-        .step-toggle {
+                .step-toggle {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -137,8 +137,14 @@
             user-select: none
         }
         .step-toggle input {
-            width: 16px;
-            height: 16px
+            width: auto;
+            margin: 0;
+            cursor: pointer
+        }
+        .step-toggle-on {
+            outline: 3px solid #FFB300;
+            outline-offset: 2px;
+            background: #E0F2F1
         }
 
 
@@ -156,12 +162,7 @@
             margin: 0 5px
         }
 
-        #status {
-            border-top: 1px solid #ddd;
-            padding-top: 8px;
-            font-size: .85rem;
-            color: #555
-        }
+        #status { border-top: 1px solid #ddd; padding-top: 8px; font-size: .85rem; color: #555; min-height: 32px; line-height: 1.3 }
 
         #status-text {
             font-weight: bold;
@@ -267,16 +268,16 @@
         </div>
         <div class="gui">
             <div class="controls"><label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.enqueue()"></label><button class="green" onclick="app.enqueue()" title="Enqueue the element at the end of the queue." aria-label="Enqueue the element at the end of the queue.">Enqueue</button><button class="red" onclick="app.dequeue()" title="Dequeue (remove) the first element of the queue." aria-label="Dequeue (remove) the first element of the queue.">Dequeue</button><button class="purple" onclick="app.first()" title="Get the first element of the queue without removing it." aria-label="Get the first element of the queue without removing it.">First</button><div class="sep"></div><button class="orange" onclick="app.newList()" title="Create a new empty queue." aria-label="Create a new empty queue.">Empty</button><button class="gray" onclick="app.clear()" title="Clear the queue." aria-label="Clear the queue.">Clear</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sample queue." aria-label="Build a random sample queue.">Build Random</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the queue." aria-label="Undo the last operation that modified the queue.">Undo</button></div>
-            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button><label class="step-toggle" title="When on, each conceptual algorithm step waits for the Next step button." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label><button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance one conceptual step when step-by-step is on." aria-label="Advance one conceptual step">Next step</button></div>
+            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button><label  id="stepModeLabel" class="step-toggle" title="When on, only real Java LinkedQueue steps wait for Next step; visual-only steps run automatically." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label><button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java LinkedQueue step." aria-label="Advance to the next non-visual Java LinkedQueue step">Next step</button></div>
         </div>
-	<div id="status"><span id="status-text">Visualization only: Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
+	<div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
     </header>
     <div id="wrap"><canvas id="cv"></canvas>
         <div id="legend"><div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div><div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div><div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div><div class="li"><span class="dot"></span>null reference</div></div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
-    <div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>LinkedQueue</h2><p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy. Elements are enqueued at the rear and dequeued from the front.</p><p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The queue object stores <span class="code">first</span>, a reference to the front node object; <span class="code">last</span>, a reference to the rear node object; and <span class="code">size</span>, the number of stored elements.</p><p>Each node object has an <span class="code">element</span> field and a <span class="code">next</span> field. Because the structure is generic, <span class="code">node.element</span> is a reference to a value object, not necessarily a primitive stored inside the node.</p><p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
-		<h3>Data-structure operations and asymptotic complexity</h3><ul><li><strong>Enqueue</strong>: creates a node object with <span class="code">next = null</span>. If the queue is empty, both <span class="code">first</span> and <span class="code">last</span> reference it; otherwise, <span class="code">last.next</span> and then <span class="code">last</span> are updated. Complexity: <span class="code">O(1)</span>.</li><li><strong>Dequeue</strong>: removes the front node by updating <span class="code">first</span> to the next node. If the queue becomes empty, <span class="code">last</span> is set to <span class="code">null</span>. The removed node becomes unreachable from the queue. Complexity: <span class="code">O(1)</span>.</li><li><strong>First</strong>: reads and returns the element reference stored in the front node without removing it. Complexity: <span class="code">O(1)</span>.</li><li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the queue. Complexity: <span class="code">O(1)</span> for the logical operation; garbage collection is handled by the runtime.</li></ul><h3>Step-by-step execution and navigation</h3><p>Turn <strong>Step-by-step</strong> on to make each conceptual algorithm step wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p></div></div>
+    <div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>LinkedQueue</h2><h3>Step-by-step semantics</h3><p><strong>Step-by-step</strong> stops only at real Java LinkedQueue actions: creating node objects, updating <span class="code">first</span>, <span class="code">last</span>, <span class="code">size</span>, assigning <span class="code">next</span> references, reading the front element reference, variables going out of scope when a method returns, and explicitly noting when an object has become unreachable and may later be reclaimed by the garbage collector.</p><p>Highlight-only preparation steps are merged into the actual semantic update step. Purely visual rearrangements run automatically, show no status message, and do not wait for <strong>Next step</strong>. When a node is crossed out, that same non-visual semantic step states that the node is unreachable and that the Java garbage collector may reclaim it later, including in <strong>Clear</strong>.</p><p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy. Elements are enqueued at the rear and dequeued from the front.</p><p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The queue object stores <span class="code">first</span>, a reference to the front node object; <span class="code">last</span>, a reference to the rear node object; and <span class="code">size</span>, the number of stored elements.</p><p>Each node object has an <span class="code">element</span> field and a <span class="code">next</span> field. Because the structure is generic, <span class="code">node.element</span> is a reference to a value object, not necessarily a primitive stored inside the node.</p><p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
+		<h3>Data-structure operations and asymptotic complexity</h3><ul><li><strong>Enqueue</strong>: creates a node object with <span class="code">next = null</span>. If the queue is empty, both <span class="code">first</span> and <span class="code">last</span> reference it; otherwise, <span class="code">last.next</span> and then <span class="code">last</span> are updated. Complexity: <span class="code">O(1)</span>.</li><li><strong>Dequeue</strong>: removes the front node by updating <span class="code">first</span> to the next node. If the queue becomes empty, <span class="code">last</span> is set to <span class="code">null</span>. The removed node becomes unreachable from the queue. Complexity: <span class="code">O(1)</span>.</li><li><strong>First</strong>: reads and returns the element reference stored in the front node without removing it. Complexity: <span class="code">O(1)</span>.</li><li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the queue. Complexity: <span class="code">O(1)</span> for the logical operation; garbage collection is handled by the runtime.</li></ul><h3>Step-by-step execution and navigation</h3><p>Turn <strong>Step-by-step</strong> on to make only non-visual Java LinkedQueue steps wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p></div></div>
     <script>
 'use strict';
 
@@ -606,17 +607,14 @@ class VisualizationEngine {
 		if (!this.scenes.length && copy.length) {
 			this.scenes.push(copy.shift());
 			this.idx = 0;
-			this.setStatus(this.scenes[0].text || 'Visualization only: Ready.')
+			const firstScene = this.scenes[0];
+			this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
 		}
 		if (copy.length) {
 			this.pending = copy;
-			if (this.stepMode) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true;
-			} else {
-				this.state = 'CAMERA';
-				this.waitingForStep = false;
-			}
+			this.state = 'CAMERA';
+			this.waitingForStep = false;
+			this.updateStepControls();
 		}
 	}
 	normalizeScene(s) {
@@ -670,7 +668,13 @@ class VisualizationEngine {
 			this.t += this.options.morphSpeed * this.speedFactor * dt;
 			if (this.t >= 1) {
 				this.t = 1;
-				if (this.scenes[this.idx + 1]?.pause) {
+				const arrivedScene = this.scenes[this.idx + 1];
+				const isVisualOnlyStep = !!arrivedScene?.visualOnly;
+				if (this.stepMode && !isVisualOnlyStep) {
+					this.state = 'STEP_WAIT';
+					this.waitingForStep = true;
+					this.updateStepControls();
+				} else if (arrivedScene?.pause && !isVisualOnlyStep) {
 					this.state = 'WAIT';
 					this.wait = this.options.waitSeconds / this.speedFactor
 				} else this.finish()
@@ -684,25 +688,22 @@ class VisualizationEngine {
 		const s = this.pending.shift();
 		this.scenes.push(s);
 		if (s.fitCamera) this.fit([s]);
-		this.setStatus(s.text || 'Visualization only: Ready.');
+		this.setStatus(s.visualOnly ? '' : (s.text || 'Ready.'));
 		this.t = 0;
-		this.state = 'MORPH'
+		this.waitingForStep = false;
+		this.state = 'MORPH';
+		this.updateStepControls();
 	}
 	finish() {
 		this.idx++;
-		if (this.pending.length) {
-			if (this.stepMode) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true;
-				const currentScene = this.scenes[this.idx];
-				if (currentScene) this.setStatus(currentScene.text || 'Visualization only: Ready.');
-			} else this.next();
-		} else {
+		this.waitingForStep = false;
+		if (this.pending.length) this.next();
+		else {
 			const finalScene = this.scenes[this.idx];
 			if (finalScene) this.fit([finalScene]);
 			this.state = 'IDLE';
-			this.waitingForStep = false;
-			this.setStatus(finalScene?.text || 'Visualization only: Ready.');
+			this.setStatus('Ready.');
+			this.updateStepControls();
 			if (app?.clearInputs) app.clearInputs()
 		}
 	}
@@ -710,7 +711,7 @@ class VisualizationEngine {
 		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 	}
 	current() {
-		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
+		return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
 	}
 	interpolateScene(A, B, t) {
 		return Object.assign({}, B, {
@@ -1030,21 +1031,37 @@ class VisualizationEngine {
 	}
 	setStepMode(enabled) {
 		this.stepMode = !!enabled;
-		if (this.stepMode) {
-			if ((this.state === 'CAMERA' || this.state === 'IDLE') && this.pending.length) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true;
-			}
-		} else if (this.state === 'STEP_WAIT' && this.pending.length) {
+		if (!this.stepMode && this.state === 'STEP_WAIT') {
 			this.waitingForStep = false;
-			this.next();
+			this.finish();
 		}
+		this.updateStepControls();
 	}
 	nextStep() {
-		if (!this.stepMode || this.paused || !this.pending.length) return;
-		if (this.state === 'STEP_WAIT' || this.state === 'IDLE' || this.state === 'CAMERA') {
+		if (!this.stepMode || this.paused) return;
+		if (this.state === 'STEP_WAIT') {
 			this.waitingForStep = false;
-			this.next();
+			this.finish();
+		}
+		this.updateStepControls();
+	}
+	updateStepControls() {
+		const step = document.getElementById('stepMode');
+		const label = document.getElementById('stepState');
+		const next = document.getElementById('btnNext');
+		if (step) step.checked = this.stepMode;
+		if (label) label.innerText = this.stepMode ? 'On' : 'Off';
+		const lbl = document.getElementById('stepModeLabel');
+		if (lbl) {
+            lbl.classList.toggle('step-toggle-on', !!this.stepMode);
+            lbl.style.pointerEvents = 'auto';
+            lbl.style.opacity = '1';
+        }
+		if (next) {
+			const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
+			next.disabled = !canAdvance;
+			next.title = !this.stepMode ? 'Turn Step-by-step mode ON first.' : (canAdvance ? 'Advance to the next non-visual Java LinkedQueue step.' : 'Visual-only steps advance automatically. The button becomes available at the next Java LinkedQueue step.');
+			next.setAttribute('aria-label', next.title);
 		}
 	}
 
@@ -1109,7 +1126,7 @@ class LinkedQueueView {
         this.links(o, s);
         if (s.pnode) this.pnodeArrow(o, s);
         this.over(o, s);
-        return { text: s.text, pause: !!s.pause, objects: o, bounds: this.bounds(o) };
+        return { text: s.text, visualOnly: !!s.visualOnly, pause: !!s.pause, objects: o, bounds: this.bounds(o) };
     }
     node(o, s, n) {
         const w = this.c, x = n.x, y = n.y, ey = y + VISUAL.node.elementYOffset, id = 'node:' + n.id;
@@ -1136,7 +1153,7 @@ class LinkedQueueView {
             this.rect(o, id + ':box', x, yy, w, h, r[1]);
             if (r[0] === 'size') this.txt(o, id + ':value', String(r[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
             else {
-				const col = s.markFirstArrow && r[0] == 'first'? K.r : K.b;
+				const col = (s.markFirstArrow && r[0] == 'first') || (s.markLastArrow && r[0] == 'last')? K.r : K.b;
 				this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, col);
 			}
         });
@@ -1264,14 +1281,44 @@ const app = {
     snapshot(text, nodes, extra = {}) {
         nodes = nodes.map(n => ({ ...n }));
         if (!extra.preserveLinks) relink(nodes);
+        const normalizedText = this.statusMessage(text);
+        const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(normalizedText);
         return {
             nodes,
             firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
             lastId: extra.lastId !== undefined ? extra.lastId : (nodes[nodes.length - 1]?.id ?? null),
             size: extra.size ?? nodes.length,
-            text,
-            ...extra
+            ...extra,
+            visualOnly,
+            text: visualOnly ? '' : normalizedText
         };
+    },
+    statusMessage(text = '') {
+        let t = String(text || '');
+        if (/^\s*Visualization only:/i.test(t)) return t;
+        if (t === 'The operation starts from the current queue state.') return 'Visualization only: the current LinkedQueue state is displayed before the operation begins.';
+        if (t === 'The operation is complete.') return 'Visualization only: the completed LinkedQueue state is displayed.';
+        if (/drawn in|redrawn|Get returns|first\(\) returns/.test(t)) return 'Visualization only: ' + t.charAt(0).toLowerCase() + t.slice(1);
+        t = t
+            .replace(/^The local variable newNode goes out of scope after the method exits\.$/, 'The method returns, so the local variable newNode is removed from the call stack.')
+            .replace(/^After queue\.first changes, the unlinked node object is unreachable from the queue\.$/, 'The unlinked node object is unreachable from the queue; the Java garbage collector may reclaim it later.')
+            .replace(/^After first and last are null, the first node object becomes unreachable from the queue\.$/, 'After first and last are null, this node object is unreachable from the queue; the Java garbage collector may reclaim it later.')
+            .replace(/^After the previous node becomes unreachable, the next node object also becomes unreachable from the queue\.$/, 'After the previous node is unreachable, this next node object is also unreachable from the queue; the Java garbage collector may reclaim it later.')
+            .replace(/^The unreachable node object may be reclaimed by the Java garbage collector\.$/, 'Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.')
+            .replace(/^queue\.first and queue\.last are updated/, 'The first and last fields are updated')
+            .replace(/^queue\.first is updated/, 'The first field is updated')
+            .replace(/^queue\.last is updated/, 'The last field is updated')
+            .replace(/^queue\.first is set to null.*$/, 'The first field is set to null.')
+            .replace(/^queue\.last is set to null.*$/, 'The last field is set to null.')
+            .replace(/^The removed node was the only node, so queue\.last is set to null.*$/, 'The last field is set to null because the removed node was the only node.')
+            .replace(/^queue\.size is incremented/, 'The size field is incremented')
+            .replace(/^queue\.size is decremented/, 'The size field is decremented')
+            .replace(/^queue\.size is set to 0.*$/, 'The size field is set to 0.')
+            .replace(/^The former rear node\.next is updated/, 'The former rear node.next field is updated')
+            .replace(/^The algorithm uses queue\.last to reach the current rear node directly\.$/, 'The algorithm reads queue.last to reach the current rear node directly.')
+            .replace(/^The algorithm uses queue\.first to access the front node object directly\.$/, 'The algorithm reads queue.first to access the front node object directly.')
+            .replace(/^first\(\) returns the element reference stored in the front node: (.*)$/, 'The front node element reference is read: $1.');
+        return t;
     },
     showCurrent(text = 'Visualization only: Ready.') { this.viz.reset(); this.viz.enqueue([this.snapshot(text, this.baseNodes())]); },
     v() { return parseInt(document.getElementById('val').value); },
@@ -1288,23 +1335,20 @@ const app = {
         snaps.push(this.snapshot('A new node object is created with next = null.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
         newNode = { ...newNode, flashNew: false };
         if (oldSize === 0) {
-            snaps.push(this.snapshot('Because the queue is empty, first and last will both reference the new node object.', [newNode], { size: 0, pnode, firstId: null, lastId: null, flashFirst: true, flashLast: true, preserveLinks: true, pause: true }));
-            const nd = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('queue.first and queue.last are updated to reference the new node object.', [nd], { size: 0, pnode, firstId: newId, lastId: newId, preserveLinks: true, pause: true }));
+const nd = { ...newNode, y: b.y };
+            snaps.push(this.snapshot('queue.first and queue.last are updated to reference the new node object.', [nd], { flashFirst: true, flashLast: true,  size: 0, pnode, firstId: newId, lastId: newId, preserveLinks: true, pause: true }));
             snaps.push(this.snapshot('queue.size is incremented because one element reference was added.', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
             snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
             snaps.push(this.snapshot('The operation is complete.', [nd], { size: 1, firstId: newId, lastId: newId, preserveLinks: true }));
         } else {
             const last = oldNodes.at(-1);
             snaps.push(this.snapshot('The algorithm uses queue.last to reach the current rear node directly.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The current rear node is about to update its next field.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, flashNext: last.id, preserveLinks: true, pause: true }));
-            let linkedOld = oldNodes.map(n => ({ ...n }));
+let linkedOld = oldNodes.map(n => ({ ...n }));
             linkedOld[linkedOld.length - 1].next = newId;
-            snaps.push(this.snapshot('The former rear node.next is updated to reference the new node object.', [...linkedOld, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('The former rear node.next is updated to reference the new node object.', [...linkedOld, newNode], { flashNext: last.id,  size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
             let nd = { ...newNode, y: b.y };
             snaps.push(this.snapshot('Visualization only: The new node is drawn in its final queue position.', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The queue is about to update its last field.', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), flashLast: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('queue.last is updated to reference the new node object.', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: newId, preserveLinks: true, pause: true }));
+snaps.push(this.snapshot('queue.last is updated to reference the new node object.', [...linkedOld, nd], { flashLast: true,  size: oldSize, pnode, firstId: oldIds[0], lastId: newId, preserveLinks: true, pause: true }));
             snaps.push(this.snapshot('queue.size is incremented because one element reference was added.', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
             snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
             snaps.push(this.snapshot('The operation is complete.', [...linkedOld, nd], { size: oldSize + 1, firstId: oldIds[0], lastId: newId, preserveLinks: true }));
@@ -1381,7 +1425,7 @@ const app = {
     toggleStep() { const enabled = !!document.getElementById('stepMode')?.checked; this.viz.setStepMode(enabled); const label = document.getElementById('stepState'); if (label) label.innerText = enabled ? 'On' : 'Off'; this.updateUI(); },
     nextStep() { this.viz.nextStep(); },
     toggleModal() { const m = document.getElementById('helpModal'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; },
-    updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; const step = document.getElementById('stepMode'); if (step) step.disabled = false; const label = document.getElementById('stepState'); if (label) label.innerText = step?.checked ? 'On' : 'Off'; },
+    updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; const step = document.getElementById('stepMode'); if (step) step.disabled = false; const label = document.getElementById('stepState'); if (label) label.innerText = step?.checked ? 'On' : 'Off'; if (this.viz?.updateStepControls) this.viz.updateStepControls(); },
     clearInputs() { document.getElementById('val').value = ''; }
 };
 window.app = app;

@@ -171,7 +171,9 @@
             border-top: 1px solid #ddd;
             padding-top: 8px;
             font-size: .85rem;
-            color: #555
+            color: #555;
+            min-height: 32px;
+            line-height: 1.3;
         }
 
         #status-text {
@@ -368,7 +370,7 @@
                                         <li><strong>New</strong>: creates a new empty list for the visualization, so <span class="code">p_first</span> is <span class="code">NULL</span>.</li>
                                         <li><strong>Clear</strong>: visits every node, saves the next node before freeing the current node, releases all heap nodes, and finally sets <span class="code">p_first</span> to <span class="code">NULL</span>. Complexity: <span class="code">O(n)</span>.</li>
                                     </ul>
-                                    <p>Use <strong>Step-by-step</strong> to make each conceptual step wait until you press <strong>Next step</strong>. Messages marked <strong>Visualization only</strong> describe drawing changes made only to make the animation easier to understand; those actions are not part of the C algorithm.</p>
+                                    <p>Use <strong>Step-by-step</strong> to stop only at steps that describe a real operation on the underlying linked-list structure. Purely visual rearrangements still run, but they show no message and do not wait for <strong>Next step</strong>. The messages explain the semantic action without showing the implementation code, so students can write that code afterwards.</p>
 								</div>
 							</div>
 							<script>
@@ -750,11 +752,13 @@ class VisualizationEngine {
         			this.t += VIEW.MORPH_SPEED * this.speedFactor * dt;
         			if (this.t >= 1) {
                     this.t = 1;
-                    if (this.stepModeEnabled) {
+                    const arrivedScene = this.sn[this.idx + 1];
+                    const isVisualOnlyStep = !!arrivedScene?.visualOnly;
+                    if (this.stepModeEnabled && !isVisualOnlyStep) {
                         this.state = 'WAIT_STEP';
                         this.waitingForStep = true;
                         if (window.app && window.app.refreshStepButtons) window.app.refreshStepButtons();
-                    } else if (this.sn[this.idx + 1]?.pause) {
+                    } else if (arrivedScene?.pause && !isVisualOnlyStep) {
                         this.state = 'WAIT';
                         this.wait = VIEW.WAIT_SECONDS / this.speedFactor;
                     } else this.finish()
@@ -769,7 +773,8 @@ class VisualizationEngine {
     next() {
         		const s = this.pending.shift();
         		this.sn.push(s);
-        		document.getElementById('status-text').innerText = s.text || 'Ready.';
+                const status = document.getElementById('status-text');
+                if (status) status.innerText = s.visualOnly ? '' : (s.text || 'Ready.');
         		this.t = 0;
         		this.state = 'MORPH';
                 this.waitingForStep = false;
@@ -1250,8 +1255,18 @@ class App {
     snapshot(text, nodes, extra = {}) {
             nodes = nodes.map(n => ({ ...n }));
             if (!extra.preserveLinks) this.relink(nodes);
-            return { nodes, firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null), text, ...extra }
-        
+            const originalText = String(text ?? '');
+            const visualOnly = extra.visualOnly !== undefined
+                ? !!extra.visualOnly
+                : /^\s*Visualization only:/i.test(originalText);
+            const semanticText = visualOnly ? '' : originalText;
+            return {
+                nodes,
+                firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
+                ...extra,
+                visualOnly,
+                text: semanticText
+            }
         }
 
     isSortedAscending() {
@@ -1689,7 +1704,7 @@ class App {
     		if (curId === oldIds.at(-1)) {
     			snaps.push(this.snapshot('The removed node has no successor, so only the bypass link is needed', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: oldIds.at(-1), ptrs: ptrsFor(prevId, curId), flashPLast: true, preserveLinks: true, pause: true }));
     			lastAfterLink = prevId;
-    			snaps.push(this.snapshot('The previous node now ends the list with p_next = NULL', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
+    			snaps.push(this.snapshot('The previous node now ends the list because it has no successor', linkedNodes, { size: oldSize, firstId: firstAfterLink, lastId: lastAfterLink, ptrs: ptrsFor(prevId, curId), preserveLinks: true, pause: true }));
     		}
     		const crossNodes = linkedNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
     		const twoNodeDeleteFirst = oldSize === 2 && prevId === null && currentNext !== null;
@@ -1822,8 +1837,13 @@ class App {
         }
         if (text) text.innerText = on ? 'Step-by-step: On' : 'Step-by-step: Off';
         if (next) {
-            next.disabled = !on;
-            next.title = on ? 'Advance when an operation is waiting at a step. If no operation is running, choose an operation first.' : 'Turn Step-by-step mode ON first.';
+            const canAdvance = on && this.viz.state === 'WAIT_STEP';
+            next.disabled = !canAdvance;
+            next.title = !on
+                ? 'Turn Step-by-step mode ON first.'
+                : (canAdvance
+                    ? 'Advance to the next non-visual algorithm step.'
+                    : 'Visual-only steps advance automatically. The button becomes available at the next algorithm step.');
             next.setAttribute('aria-label', next.title);
         }
     }
@@ -1847,7 +1867,7 @@ class App {
             const snaps = [this.snapshot('The algorithm starts from the current list state', oldNodes)];
             let newNode = { id: newId, e, index: oldSize, x: b.x + oldSize * GEOMETRY.NODE_STEP, y: b.up, next: null, flashNew: true };
             const pnode = { x: newNode.x - GEOMETRY.PNODE_LEFT_OF_TARGET, y: b.up, target: newId, label: 'p_node' };
-            snaps.push(this.snapshot('A new node is allocated with p_next = NULL', [...oldNodes, newNode], { pnode, firstId: oldIds[0] ?? null, preserveLinks: true, pause: true }));
+            snaps.push(this.snapshot('A new node is allocated with no successor', [...oldNodes, newNode], { pnode, firstId: oldIds[0] ?? null, preserveLinks: true, pause: true }));
             newNode = { ...newNode, flashNew: false };
             if (oldSize === 0) {
                 const nd = { ...newNode, y: b.y };
@@ -2071,7 +2091,7 @@ class App {
                 snaps.push(this.snapshot('p_current is advanced to the next node', oldNodes, { ptrs: prevUpdated, flashPtrs: ['p_current'], pause: true }));
                 curId = nextCur; pos++;
                 const currentUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
-                snaps.push(this.snapshot(curId === null ? 'p_current is now NULL: the new value belongs at the end' : 'p_current now refers to the next node', oldNodes, { ptrs: currentUpdated, pause: true }));
+                snaps.push(this.snapshot(curId === null ? 'The traversal pointer has reached the end: the new value belongs there' : 'p_current now refers to the next node', oldNodes, { ptrs: currentUpdated, pause: true }));
                 snaps.push(this.snapshot('The traversal pointers are positioned for the next comparison', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
             }
             snaps.push(this.snapshot(curId !== null ? 'The first node larger than ' + e + ' has been found' : 'No remaining node is greater than ' + e + ', so insertion will be at the end', oldNodes, { ptrs: ptrsFor(prevId, curId), flashElement: curId ?? undefined, pause: true }));
@@ -2090,7 +2110,7 @@ class App {
             } else {
                 snaps.push(this.snapshot('p_previous is ready to link to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), flashPNext: prevId, preserveLinks: true, pause: true }));
                 const prevNode = linked.find(n => n.id === prevId); if (prevNode) prevNode.next = newId;
-                snaps.push(this.snapshot('p_previous->p_next now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
+                snaps.push(this.snapshot('The link stored in the previous node now points to the new node', [...linked, newNode], { pnode, firstId: oldIds[0], ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
             }
             const newUp = { ...newNode, y: b.y };
             snaps.push(this.snapshot('Visualization only: the new node is drawn inside the main visible chain.', [...linked, newUp], { pnode, firstId: newFirst, ptrs: ptrsFor(prevId, curId, shifted), preserveLinks: true, pause: true }));
@@ -2151,7 +2171,7 @@ class App {
     
             if (n === 0) {
                 const nullPtr = makePtr(null);
-                snaps.push(this.snapshot('p_current is initialized with p_first, which is NULL; size = 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
+                snaps.push(this.snapshot('The traversal pointer starts from an empty list; size = 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
                 snaps.push(this.snapshot('The loop is not entered; the final size is 0', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), pause: true }));
                 snaps.push(this.snapshot('The temporary pointer p_current is deallocated after exiting the function', nodes, { ptrs: [nullPtr], lengthBox: lengthBox(0), flashAuxCross: true, pause: true }));
                 snaps.push(this.snapshot('Visualization only: the computed size remains visible briefly: 0', nodes, { lengthBox: lengthBox(0), pause: true }));
@@ -2170,7 +2190,7 @@ class App {
                 snaps.push(this.snapshot('p_current is advanced to the next node', nodes, { ptrs: [currentPtr], lengthBox: lengthBox(count), flashPtrs: ['p_current'], pause: true }));
                 curId = this.ids[k + 1] ?? null;
                 const nextPtr = makePtr(curId, currentPtr);
-                snaps.push(this.snapshot(curId === null ? 'p_current is now NULL, so the traversal stops' : 'p_current now refers to the next node', nodes, { ptrs: [nextPtr], lengthBox: lengthBox(count), pause: true }));
+                snaps.push(this.snapshot(curId === null ? 'The traversal pointer has reached the end, so the traversal stops' : 'p_current now refers to the next node', nodes, { ptrs: [nextPtr], lengthBox: lengthBox(count), pause: true }));
                 if (curId !== null) snaps.push(this.snapshot('The next iteration continues with size = ' + count, nodes, { ptrs: [makePtr(curId)], lengthBox: lengthBox(count), pause: true }));
             }
             const finalPtr = makePtr(null);
@@ -2230,7 +2250,7 @@ class App {
             snaps.push(this.snapshot('p_current is initialized with p_first', originalNodes, { ...firstRef(), ptrs: [pPtr, pToDeletePtr], flashPtrs: ['p_current'], pause: true }));
     
             if (oldSize === 0) {
-                snaps.push(this.snapshot('p_current is NULL, so the loop is not entered', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], pause: true }));
+                snaps.push(this.snapshot('The traversal pointer is already at the end, so the loop is not entered', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], pause: true }));
                 snaps.push(this.snapshot('p_first is already NULL', originalNodes, { firstId: null, flashPFirst: true, ptrs: [pPtr, pToDeletePtr], pause: true }));
                 snaps.push(this.snapshot('The function-local pointers are deallocated after exiting the function', originalNodes, { firstId: null, ptrs: [pPtr, pToDeletePtr], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
                 snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
@@ -2260,11 +2280,11 @@ class App {
     
                 const pNext = makePtr('p_current', nextId, visibleNodes);
                 const pToDeleteLeftOfNextP = pToDeleteAt(pNext, pToDeleteCurrentValue, visibleNodes);
-                snaps.push(this.snapshot(nextId === null ? 'p_current is now NULL; this is the last node to free' : 'p now points to the next node', visibleNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], pause: true }));
+                snaps.push(this.snapshot(nextId === null ? 'The traversal pointer has reached the end; this is the last node to free' : 'p now points to the next node', visibleNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], pause: true }));
     
                 const crossedNodes = visibleNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n);
                 // Only the node is flashed/crossed here. p_delete is not crossed during the loop.
-                snaps.push(this.snapshot('free the selected node; p_delete becomes dangling', crossedNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], preserveLinks: true, pause: true }));
+                snaps.push(this.snapshot('The selected node is released; the deletion pointer becomes dangling', crossedNodes, { ...firstState, ptrs: [pNext, pToDeleteLeftOfNextP], preserveLinks: true, pause: true }));
     
                 const remainingNodes = compactRemaining(k + 1);
                 const pAfterFree = makePtr('p_current', nextId, remainingNodes);
@@ -2277,9 +2297,9 @@ class App {
             // p_first is intentionally kept dangling until the explicit final assignment *p_p_first = NULL.
             const nullPtr = makePtr('p_current', null, [], { x: currentNullX, y: b.y - GEOMETRY.AUX_POINTER_ROW_ABOVE_LIST });
             const pToDeleteFinal = pToDeleteAt(nullPtr, pToDeleteCurrentValue, []);
-            snaps.push(this.snapshot('All nodes have been freed; p_current is NULL and p_delete is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
-            snaps.push(this.snapshot('p_first is set to NULL', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], flashPFirst: true, pause: true }));
-            snaps.push(this.snapshot('p_first now contains NULL', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+            snaps.push(this.snapshot('All nodes have been freed; the traversal pointer has reached the end and the deletion pointer is still dangling', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], pause: true }));
+            snaps.push(this.snapshot('The first-node pointer is cleared so the list becomes empty', [], { ...firstDanglingRef(), ptrs: [nullPtr, pToDeleteFinal], flashPFirst: true, pause: true }));
+            snaps.push(this.snapshot('The first-node pointer now represents an empty list', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], pause: true }));
             snaps.push(this.snapshot('The function-local pointers p_current and p_delete are deallocated after exiting the function', [], { firstId: null, ptrs: [nullPtr, pToDeleteFinal], flashPtrCross: ['p_current', 'p_delete'], pause: true }));
             snaps.push(this.snapshot('The operation is complete', [], { firstId: null }));
     

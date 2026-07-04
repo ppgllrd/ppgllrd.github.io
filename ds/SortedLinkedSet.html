@@ -124,7 +124,7 @@
             background: #455A64;
             width: 80px
         }
-		.step-toggle {
+        .step-toggle {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -138,8 +138,14 @@
             user-select: none
         }
         .step-toggle input {
-            width: 16px;
-            height: 16px;
+            width: auto;
+            margin: 0;
+            cursor: pointer
+        }
+        .step-toggle-on {
+            outline: 3px solid #FFB300;
+            outline-offset: 2px;
+            background: #E0F2F1
         }
 
 
@@ -157,12 +163,7 @@
             margin: 0 5px
         }
 
-        #status {
-            border-top: 1px solid #ddd;
-            padding-top: 8px;
-            font-size: .85rem;
-            color: #555
-        }
+        #status { border-top: 1px solid #ddd; padding-top: 8px; font-size: .85rem; color: #555; min-height: 32px; line-height: 1.3 }
 
         #status-text {
             font-weight: bold;
@@ -293,10 +294,10 @@
             </div>
             <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1"
                     oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button>
-                <label class="step-toggle" title="When on, each conceptual algorithm step waits for the Next step button." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label>
-                <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance one conceptual step when step-by-step is on." aria-label="Advance one conceptual step">Next step</button></div>
+                <label class="step-toggle"  id="stepModeLabel" title="When on, only real Java SortedLinkedSet steps wait for Next step; visual-only steps run automatically." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label>
+                <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java SortedLinkedSet step." aria-label="Advance to the next non-visual Java SortedLinkedSet step">Next step</button></div>
         </div>
-        <div id="status"><span id="status-text">Visualization only: Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
+        <div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
     </header>
     <div id="wrap"><canvas id="cv"></canvas>
         <div id="legend">
@@ -310,6 +311,10 @@
     <div id="helpModal" class="modal">
         <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
             <h2>SortedLinkedSet</h2>
+            <h3>Step-by-step semantics</h3>
+            <p><strong>Step-by-step</strong> stops only at real Java SortedLinkedSet actions: creating node objects, updating <span class="code">first</span>, <span class="code">size</span>, assigning <span class="code">next</span> references, advancing Finder/local/iterator references, reading element references, variables going out of scope when a method returns, and explicitly noting when an object has become unreachable and may later be reclaimed by the garbage collector.</p>
+            <p>Highlight-only preparation steps are merged into the actual semantic update step. Purely visual rearrangements run automatically, show no status message, and do not wait for <strong>Next step</strong>. Transient flash/highlight overlays are switched off immediately when the next step moves the highlighted object, so the flash does not remain behind while the object slides.</p>
+
             <p>A <strong>SortedLinkedSet</strong> stores unique elements in ascending order. It is represented as a chain of node objects. Each node has an <span class="code">element</span> field and a <span class="code">next</span> field.</p>
             <p>This is a Java-style reference/object visualization. A variable or field does not contain another object directly; it contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The set object keeps <span class="code">first</span>, a reference to the first node object, and <span class="code">size</span>, the number of stored elements.</p>
             <p>Because the structure is generic, <span class="code">node.element</span> is shown as a reference to a value object. The value object might wrap an integer in this demonstration, but conceptually it is not necessarily a primitive stored inside the node.</p>
@@ -330,7 +335,7 @@
                 <li><strong>Difference</strong>: traverses both sorted sets in parallel and appends elements from the first set that are absent from the second set. Complexity: <span class="code">O(n + m)</span>.</li>
             </ul>
             <h3>Step-by-step execution and navigation</h3>
-            <p>Turn <strong>Step-by-step</strong> on to make each conceptual algorithm step wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
+            <p>Turn <strong>Step-by-step</strong> on to make only non-visual Java SortedLinkedSet steps wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
         </div>
     </div>
     <script>
@@ -638,17 +643,14 @@ class VisualizationEngine {
 		if (!this.scenes.length && copy.length) {
 			this.scenes.push(copy.shift());
 			this.idx = 0;
-			this.setStatus(this.scenes[0].text || 'Visualization only: Ready.')
+			const firstScene = this.scenes[0];
+			this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
 		}
 		if (copy.length) {
 			this.pending = copy;
-			if (this.stepMode) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true;
-			} else {
-				this.state = 'CAMERA';
-				this.waitingForStep = false;
-			}
+			this.state = 'CAMERA';
+			this.waitingForStep = false;
+			this.updateStepControls();
 		}
 	}
 	normalizeScene(s) {
@@ -702,7 +704,13 @@ class VisualizationEngine {
 			this.t += this.options.morphSpeed * this.speedFactor * dt;
 			if (this.t >= 1) {
 				this.t = 1;
-				if (this.scenes[this.idx + 1]?.pause) {
+				const arrivedScene = this.scenes[this.idx + 1];
+				const isVisualOnlyStep = !!arrivedScene?.visualOnly;
+				if (this.stepMode && !isVisualOnlyStep) {
+					this.state = 'STEP_WAIT';
+					this.waitingForStep = true;
+					this.updateStepControls();
+				} else if (arrivedScene?.pause && !isVisualOnlyStep) {
 					this.state = 'WAIT';
 					this.wait = this.options.waitSeconds / this.speedFactor
 				} else this.finish()
@@ -716,25 +724,22 @@ class VisualizationEngine {
 		const s = this.pending.shift();
 		this.scenes.push(s);
 		if (s.fitCamera) this.fit([s]);
-		this.setStatus(s.text || 'Visualization only: Ready.');
+		this.setStatus(s.visualOnly ? '' : (s.text || 'Ready.'));
 		this.t = 0;
-		this.state = 'MORPH'
+		this.waitingForStep = false;
+		this.state = 'MORPH';
+		this.updateStepControls();
 	}
 	finish() {
 		this.idx++;
-		if (this.pending.length) {
-			if (this.stepMode) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true;
-				const currentScene = this.scenes[this.idx];
-				if (currentScene) this.setStatus(currentScene.text || 'Visualization only: Ready.');
-			} else this.next();
-		} else {
+		this.waitingForStep = false;
+		if (this.pending.length) this.next();
+		else {
 			const finalScene = this.scenes[this.idx];
 			if (finalScene) this.fit([finalScene]);
 			this.state = 'IDLE';
-			this.waitingForStep = false;
-			this.setStatus(finalScene?.text || 'Visualization only: Ready.');
+			this.setStatus('Ready.');
+			this.updateStepControls();
 			if (app?.clearInputs) app.clearInputs()
 		}
 	}
@@ -742,7 +747,7 @@ class VisualizationEngine {
 		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
 	}
 	current() {
-		return ((this.state === 'MORPH' || this.state === 'WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
+		return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
 	}
 	interpolateScene(A, B, t) {
 		return Object.assign({}, B, {
@@ -768,9 +773,15 @@ class VisualizationEngine {
 						alpha: (B.alpha ?? 1) * fadeT
 					}))
 				}
-			} else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
-				alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
-			}))
+			} else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) {
+				// Transient flashing/highlight overlays are intentionally not interpolated
+				// into the next step. If the highlighted object moves, the flash must
+				// switch off immediately instead of fading behind at the old position.
+				if (A.kind === 'flashRect' || A.kind === 'flashCircle' || A.kind === 'lFlash') return;
+				out.push(Object.assign({}, A, {
+					alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
+				}))
+			}
 		});
 		return this.sortObjects(out)
 	}
@@ -1073,21 +1084,37 @@ class VisualizationEngine {
 	}
 	setStepMode(enabled) {
 		this.stepMode = !!enabled;
-		if (this.stepMode) {
-			if ((this.state === 'CAMERA' || this.state === 'IDLE') && this.pending.length) {
-				this.state = 'STEP_WAIT';
-				this.waitingForStep = true;
-			}
-		} else if (this.state === 'STEP_WAIT' && this.pending.length) {
+		if (!this.stepMode && this.state === 'STEP_WAIT') {
 			this.waitingForStep = false;
-			this.next();
+			this.finish();
 		}
+		this.updateStepControls();
 	}
 	nextStep() {
-		if (!this.stepMode || this.paused || !this.pending.length) return;
-		if (this.state === 'STEP_WAIT' || this.state === 'IDLE' || this.state === 'CAMERA') {
+		if (!this.stepMode || this.paused) return;
+		if (this.state === 'STEP_WAIT') {
 			this.waitingForStep = false;
-			this.next();
+			this.finish();
+		}
+		this.updateStepControls();
+	}
+	updateStepControls() {
+		const step = document.getElementById('stepMode');
+		const label = document.getElementById('stepState');
+		const next = document.getElementById('btnNext');
+		if (step) step.checked = this.stepMode;
+		if (label) label.innerText = this.stepMode ? 'On' : 'Off';
+		const lbl = document.getElementById('stepModeLabel');
+		if (lbl) {
+            lbl.classList.toggle('step-toggle-on', !!this.stepMode);
+            lbl.style.pointerEvents = 'auto';
+            lbl.style.opacity = '1';
+        }
+		if (next) {
+			const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
+			next.disabled = !canAdvance;
+			next.title = !this.stepMode ? 'Turn Step-by-step mode ON first.' : (canAdvance ? 'Advance to the next non-visual Java SortedLinkedSet step.' : 'Visual-only steps advance automatically. The button becomes available at the next Java SortedLinkedSet step.');
+			next.setAttribute('aria-label', next.title);
 		}
 	}
 }
@@ -1209,6 +1236,7 @@ class SortedLinkedSetView {
 		this.over(o, s);
 		return {
 			text: s.text,
+			visualOnly: !!s.visualOnly,
 			pause: !!s.pause,
 			objects: o,
 			bounds: this.bounds(o)
@@ -1338,9 +1366,29 @@ class SortedLinkedSetView {
 		this.cir(o, id + ':dot', v.x + w / 2, v.y + h / 2, 8, K.b);
 		const t = this.nodeById(s, v.target);
 		if (t) {
-			const tx = v.targetPart === 'element' ? t.x + w / 2 : t.x,
-				ty = v.targetPart === 'element' ? t.y + VISUAL.node.elementYOffset : t.y + h / 2;
-			this.ar(o, id + ':ar', v.x + w / 2, v.y + h / 2, tx, ty)
+			const isElementTarget = v.targetPart === 'element',
+				tx = isElementTarget ? t.x + w / 2 : t.x,
+				ty = isElementTarget ? t.y + VISUAL.node.elementYOffset : t.y + h / 2;
+			this.ar(o, id + ':ar', v.x + w / 2, v.y + h / 2, tx, ty);
+			if (isElementTarget && (v.label === 'elem1' || v.label === 'elem2')) {
+				const ey = t.y + VISUAL.node.elementYOffset;
+				this.obj(o, {
+					id: id + ':targetElementBorder',
+					kind: 'rect',
+					x: t.x - 2,
+					y: ey - 2,
+					w: w + 4,
+					h: h + 4,
+					radius: 10,
+					transparentBorder: 0,
+					style: {
+						fill: false,
+						stroke: K.r
+					},
+					lineWidth: 5,
+					layer: LAYER.overlay - 1
+				})
+			}
 		}
 		if (v.flash) this.obj(o, {
 			id: id + ':fl',
@@ -1641,13 +1689,42 @@ const app = {
 			...n
 		}));
 		if (!extra.preserveLinks) relink(nodes);
+		const normalizedText = this.statusMessage(text);
+		const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(normalizedText);
 		return {
 			nodes,
 			firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
 			size: extra.size ?? nodes.length,
-			text,
-			...extra
+			...extra,
+			visualOnly,
+			text: visualOnly ? '' : normalizedText
 		}
+	},
+	statusMessage(text = '') {
+		let t = String(text || '');
+		if (/^\s*Visualization only:/i.test(t)) return t;
+		if (/^(Clear|Finder|Push|Pop|Top|Insert|Delete|Contains|Union|Intersection|Difference|The iterator operation|Clear starts|.*starts from the current)/.test(t) && /current .*state|starts from the current/.test(t)) return 'Visualization only: the current SortedLinkedSet state is displayed before the operation begins.';
+		if (t === 'The operation is complete.') return 'Visualization only: the completed SortedLinkedSet state is displayed.';
+		if (/redrawn|drawn with extra spacing|drawn in its final|close the visual gap|redrawn near|bypass reference is redrawn/.test(t)) return 'Visualization only: ' + t.charAt(0).toLowerCase() + t.slice(1);
+		t = t
+			.replace(/^A new node object is created\. The local variable newNode references it, and newNode\.next references current\.$/, 'A new node object is created; its next field references current.')
+			.replace(/^set\.first is updated/, 'The first field is updated')
+			.replace(/^previous\.next is updated/, 'The previous node.next field is updated')
+			.replace(/^set\.size is incremented/, 'The size field is incremented')
+			.replace(/^set\.size is decremented/, 'The size field is decremented')
+			.replace(/^set\.first is set to null.*$/, 'The first field is set to null.')
+			.replace(/^set\.size is set to 0.*$/, 'The size field is set to 0.')
+			.replace(/^The method exits: the local variables Finder and newNode go out of scope\.$/, 'The method returns, so local variables Finder and newNode are removed from the call stack.')
+			.replace(/^The method exits: the local variable Finder goes out of scope\.$/, 'The method returns, so local variable Finder is removed from the call stack.')
+			.replace(/^After the references bypass it, the unlinked node object is no longer reachable from the set\.$/, 'The unlinked node object is unreachable from the set; the Java garbage collector may reclaim it later.')
+			.replace(/^A node object with no incoming references becomes unreachable from the set\.$/, 'This node object is unreachable from the set; the Java garbage collector may reclaim it later.')
+			.replace(/^The unreachable node object may be reclaimed by the Java garbage collector\.$/, 'Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.')
+			.replace(/^Iterator returns the element reference in sorted order: (.*)\.$/, 'The iterator reads and returns the element reference in sorted order: $1.')
+			.replace(/^iterator\.current is updated/, 'The iterator.current reference is updated')
+			.replace(/^Iteration complete: current is null, so hasNext\(\) returns false\.$/, 'Iteration is complete because iterator.current is null.')
+			.replace(/^(.+): elem1 and elem2 start as references to the current elements of the two sorted sets\.$/, '$1: local references elem1 and elem2 are created and initialized at the current elements of the two sorted sets.')
+			.replace(/^(.+): the builder local variable goes out of scope after the result set has received its references\.$/, '$1: the method returns, so the builder local variable is removed from the call stack.');
+		return t;
 	},
 	showCurrent(text = 'Visualization only: Ready.') {
 		this.viz.sn = [];
@@ -1691,29 +1768,17 @@ const app = {
 		while (true) {
 			const cn = nodes.find(n => n.id === cur);
 			if (!cn || cn.e >= val) break;
-			snaps.push(this.snapshot('Finder is about to advance: previous will receive the current node reference.', nodes, {
-				firstId,
-				size,
-				finder,
-				flashFinderPrev: true,
-				pause: true
-			}));
 			prev = cur;
 			finder = {
 				...finder,
 				previous: prev
 			};
 			snaps.push(this.snapshot('Finder.previous is updated to reference the node just examined.', nodes, {
+				flashFinderPrev: true,
+				
 				firstId,
 				size,
 				finder,
-				pause: true
-			}));
-			snaps.push(this.snapshot('Finder is about to advance: current will receive current.next.', nodes, {
-				firstId,
-				size,
-				finder,
-				flashFinderCur: true,
 				pause: true
 			}));
 			cur = cn.next;
@@ -1722,6 +1787,8 @@ const app = {
 				current: cur
 			};
 			snaps.push(this.snapshot('Finder.current is updated to reference the next node object.', nodes, {
+				flashFinderCur: true,
+				
 				firstId,
 				size,
 				finder,
@@ -2093,17 +2160,13 @@ const app = {
 			}));
 			const nextNode = nodes.find(n => n.id === next),
 				nextIteratorX = (nextNode ? nextNode.x : b.x + size * VISUAL.node.step - VISUAL.list.nullPointerXOffset) - 100;
-			snaps.push(this.snapshot('The iterator is about to advance: current will receive current.next.', nodes, {
-				size,
-				iterator,
-				flashIteratorCurrent: true,
-				pause: true
-			}));
 			iterator = {
 				...iterator,
 				target: next
 			};
 			snaps.push(this.snapshot('iterator.current is updated to reference the next node object.', nodes, {
+				flashIteratorCurrent: true,
+				
 				size,
 				iterator,
 				pause: true
@@ -2246,7 +2309,7 @@ const app = {
 			i = 0,
 			j = 0,
 			snaps = [];
-		snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: elem1 and elem2 start as references to the current elements of the two sorted sets.`, {
+		snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: elem1 and elem2 start as references to the first elements of the two sorted sets. A builder is created for the result.`, {
 			pause: true
 		}));
 		const appendResult = (value, reason) => {
@@ -2267,7 +2330,7 @@ const app = {
 			const move1 = oldI !== i,
 				move2 = oldJ !== j;
 			if (!move1 && !move2) return;
-			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, oldI, oldJ, `${kind}: an element reference is about to advance to the next sorted candidate.`, {
+			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: the current element reference is updated to the next candidate, or to null at the end.`, {
 				pause: true,
 				boxI: oldI,
 				boxJ: oldJ,
@@ -2275,13 +2338,6 @@ const app = {
 				targetJ: oldJ,
 				flashCell1: move1,
 				flashCell2: move2
-			}));
-			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: the current element reference is updated to the next candidate, or to null at the end.`, {
-				pause: true,
-				boxI: oldI,
-				boxJ: oldJ,
-				targetI: i,
-				targetJ: j
 			}));
 			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `Visualization only: The element reference box is redrawn near its updated target.`, {
 				pause: true,
@@ -2492,6 +2548,7 @@ const app = {
 		this.viz.setStepMode(enabled);
 		const label = document.getElementById('stepState');
 		if (label) label.innerText = enabled ? 'On' : 'Off';
+		this.updateUI()
 	},
 	nextStep() {
 		this.viz.nextStep();
@@ -2505,7 +2562,8 @@ const app = {
 		const step = document.getElementById('stepMode');
 		if (step) step.disabled = false;
 		const label = document.getElementById('stepState');
-		if (label) label.innerText = step?.checked ? 'On' : 'Off'
+		if (label) label.innerText = step?.checked ? 'On' : 'Off';
+		if (this.viz?.updateStepControls) this.viz.updateStepControls()
 	},
 	clearInputs() {
 		document.getElementById('val').value = ''

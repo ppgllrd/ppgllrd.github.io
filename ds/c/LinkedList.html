@@ -127,7 +127,7 @@
             width: 80px
         }
 
-                .step-toggle {
+        .step-toggle {
             display: inline-flex;
             align-items: center;
             gap: 6px;
@@ -141,9 +141,14 @@
             user-select: none
         }
         .step-toggle input {
-            width: 18px;
-            height: 18px;
-            accent-color: #1668BD
+            width: auto;
+            margin: 0;
+            cursor: pointer
+        }
+        .step-toggle-on {
+            outline: 3px solid #FFB300;
+            outline-offset: 2px;
+            background: #E0F2F1
         }
         #btnNextStep {
             background: #00695C
@@ -166,7 +171,9 @@
             border-top: 1px solid #ddd;
             padding-top: 8px;
             font-size: .85rem;
-            color: #555
+            color: #555;
+            min-height: 32px;
+            line-height: 1.3;
         }
 
         #status-text {
@@ -299,9 +306,10 @@
 					
             </div>
             <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1"
-                    oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button><label class="step-toggle" title="When enabled, each conceptual algorithm step waits for the Next step button." aria-label="Step-by-step mode toggle"><input id="stepMode" type="checkbox" onchange="app.stepModeChanged()"><span>Step-by-step: <span id="stepState">Off</span></span></label><button id="btnNextStep" onclick="app.nextStep()" title="Advance to the next conceptual algorithm step." aria-label="Advance to the next conceptual algorithm step.">Next step</button></div>
+                    oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button>
+					<label class="step-toggle" id="stepModeLabel" title="When enabled, only real data-structure steps wait for the Next step button; visual-only steps run automatically." aria-label="Step-by-step mode toggle"><input id="stepMode" type="checkbox" onchange="app.stepModeChanged()"><span>Step-by-step: <span id="stepState">Off</span></span></label><button id="btnNextStep" onclick="app.nextStep()" title="Advance to the next non-visual algorithm step." aria-label="Advance to the next non-visual algorithm step.">Next step</button></div>
         </div>
-        <div id="status"><span id="status-text">Visualization only: ready. Use the mouse wheel or pinch gesture to zoom; drag to pan the view.</span></div>
+        <div id="status"><span id="status-text">Ready. Use the mouse wheel or pinch gesture to zoom; drag to pan the view.</span></div>
     </header>
     <div id="wrap"><canvas id="cv"></canvas>
         <div id="legend">
@@ -332,8 +340,9 @@
             <p><strong>Heap memory</strong> holds dynamically allocated nodes and list objects until they are explicitly freed. <strong>Local variables</strong>, such as temporary traversal pointers, exist only while an operation is running. When the operation returns, local variables go out of scope; this does not free heap nodes unless the algorithm explicitly frees them.</p>
             <p><strong>NULL</strong> means “points to no object.” A <strong>dangling pointer</strong> is different: it still stores an old address, but the object at that address has been freed and must not be used as a valid node reference.</p>
             <p><strong>Allocation</strong> creates a new heap object. <strong>Freeing</strong> releases a heap object. After freeing a node, any pointer that still refers to it is dangling until the algorithm changes that pointer to a valid object or to <span class="code">NULL</span>.</p>
-            <h3>4. "Visualization only" messages</h3>
-            <p>Status messages beginning with <strong>"Visualization only:"</strong> describe drawing, layout, animation, sample data, view movement, or interface behavior. They are not conceptual data-structure actions. Messages without that prefix describe real algorithmic actions such as allocation, traversal, comparison, pointer/reference updates, freeing/deleting, value replacement, or setting a pointer/reference to <span class="code">NULL</span>.</p>
+            <h3>4. Semantic algorithm steps versus visual-only steps</h3>
+            <p><strong>Step-by-step</strong> stops only at steps that represent real manipulation of the underlying linked-list structure: allocation, traversal, comparison, pointer/reference updates, freeing/deleting, value replacement, and size updates. Purely visual rearrangements still run, but they show no status message and do not wait for <strong>Next step</strong>.</p>
+            <p>The visible messages describe the conceptual action without exposing implementation code, so students can implement the operation afterwards.</p>
             <h3>5. Real data-structure operations</h3>
             <ul>
                 <li><strong>New</strong>: allocates a new empty list object. Purpose: start with first and last set to <span class="code">NULL</span> and size 0. Complexity: <span class="code">O(1)</span>.</li>
@@ -727,8 +736,8 @@ class VisualizationEngine {
         		}
         		if (snaps.length) {
         			this.pending = snaps;
-                    this.state = this.stepMode ? 'STEP_READY' : 'CAMERA';
-                    this.stepWaiting = this.stepMode;
+                    this.state = 'CAMERA';
+                    this.stepWaiting = false;
         		} else {
                     this.stepWaiting = false;
                 }
@@ -755,11 +764,13 @@ class VisualizationEngine {
         			this.t += VISUAL.animation.morphSpeed * this.speedFactor * dt;
         			if (this.t >= 1) {
         				this.t = 1;
-                    if (this.stepMode) {
+                    const arrivedScene = this.sn[this.idx + 1];
+                    const isVisualOnlyStep = !!arrivedScene?.visualOnly;
+                    if (this.stepMode && !isVisualOnlyStep) {
                         this.state = 'STEP_WAIT';
                         this.stepWaiting = true;
                         this.updateStepControls();
-                    } else if (this.sn[this.idx + 1]?.pause) {
+                    } else if (arrivedScene?.pause && !isVisualOnlyStep) {
         					this.state = 'WAIT';
         					this.wait = VISUAL.animation.waitSeconds / this.speedFactor
         				} else this.finish()
@@ -773,7 +784,8 @@ class VisualizationEngine {
     next() {
         		const s = this.pending.shift();
         		this.sn.push(s);
-        		document.getElementById('status-text').innerText = s.text || 'Visualization only: ready.';
+                const status = document.getElementById('status-text');
+                if (status) status.innerText = s.visualOnly ? '' : (s.text || 'Ready.');
         		this.t = 0;
                 this.stepWaiting = false;
         		this.state = 'MORPH';
@@ -788,7 +800,7 @@ class VisualizationEngine {
 					this.stepWaiting = false;
         			const finalScene = this.sn[this.idx];
 					if (finalScene) this.fit([finalScene]);
-        			document.getElementById('status-text').innerText = 'Visualization only: ready.';
+        			document.getElementById('status-text').innerText = 'Ready.';
                     this.updateStepControls();
     				if (window.app?.clearInputs) window.app.clearInputs();
         		}
@@ -991,22 +1003,16 @@ paintRect(x, y, w, h, fill) {
 
     setStepMode(enabled) {
                 this.stepMode = enabled;
-                if (!enabled && (this.state === 'STEP_WAIT' || this.state === 'STEP_READY')) {
+                if (!enabled && this.state === 'STEP_WAIT') {
                     this.stepWaiting = false;
-                    this.state = this.state === 'STEP_READY' ? 'CAMERA' : 'WAIT';
-                    this.wait = 0;
-                } else if (enabled && this.pending.length && (this.state === 'CAMERA' || this.state === 'WAIT')) {
-                    this.state = 'STEP_READY';
-                    this.stepWaiting = true;
+                    this.finish();
                 }
                 this.updateStepControls();
             }
 
     advanceStep() {
                 if (!this.stepMode) return;
-                if (this.state === 'STEP_READY') {
-                    this.next();
-                } else if (this.state === 'STEP_WAIT') {
+                if (this.state === 'STEP_WAIT') {
                     this.stepWaiting = false;
                     this.finish();
                 }
@@ -1014,15 +1020,33 @@ paintRect(x, y, w, h, fill) {
             }
 
     updateStepControls() {
+				const on = !!this.stepMode;
+        
                 const chk = document.getElementById('stepMode');
                 const state = document.getElementById('stepState');
                 const next = document.getElementById('btnNextStep');
+				const label = document.getElementById('stepModeLabel');
+        
                 if (chk) {
                     chk.disabled = false;
                     chk.checked = this.stepMode;
                 }
+				if (label) {
+					label.classList.toggle('step-toggle-on', on);
+					label.style.pointerEvents = 'auto';
+					label.style.opacity = '1';
+				}
                 if (state) state.innerText = this.stepMode ? 'On' : 'Off';
-                if (next) next.disabled = !this.stepMode || !(this.state === 'STEP_READY' || this.state === 'STEP_WAIT');
+                if (next) {
+                    const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
+                    next.disabled = !canAdvance;
+                    next.title = !this.stepMode
+                        ? 'Turn Step-by-step mode ON first.'
+                        : (canAdvance
+                            ? 'Advance to the next non-visual algorithm step.'
+                            : 'Visual-only steps advance automatically. The button becomes available at the next algorithm step.');
+                    next.setAttribute('aria-label', next.title);
+                }
             }
 
     setSpeed(v) {
@@ -1433,13 +1457,18 @@ class App {
         			...n
         		}));
         		if (!extra.preserveLinks) this.relink(nodes);
+                const normalizedText = this.statusMessage(text);
+                const visualOnly = extra.visualOnly !== undefined
+                    ? !!extra.visualOnly
+                    : /^\s*Visualization only:/i.test(normalizedText);
         		return {
         			nodes,
         			firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
         			lastId: extra.lastId !== undefined ? extra.lastId : (nodes[nodes.length - 1]?.id ?? null),
         			size: extra.size ?? nodes.length,
-        			text: this.statusMessage(text),
-        			...extra
+                    ...extra,
+                    visualOnly,
+        			text: visualOnly ? '' : normalizedText
         		}
         	}
 
@@ -1485,10 +1514,14 @@ class App {
                  .replace(/p_first/g, 'the first-node pointer')
                  .replace(/p_last/g, 'the last-node pointer');
             if (/^The lookup is complete/.test(t)) return 'Visualization only: ' + t.charAt(0).toLowerCase() + t.slice(1);
+            t = t.replace(/NULL/g, 'no object')
+                 .replace(/ is set to no object/g, ' is cleared')
+                 .replace(/ now contains no object/g, ' now represents no object')
+                 .replace(/ with first and last set to no object and size 0/g, ' with no first node, no last node, and size 0');
             return t;
         }
 
-    showCurrent(text = 'Visualization only: ready.') {
+    showCurrent(text = 'Ready.') {
         		this.viz.sn = [];
         		this.viz.pending = [];
         		this.viz.idx = -1;
@@ -2383,6 +2416,17 @@ class App {
         		const p = this.viz.togglePause();
         		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
         	}
+
+    stepModeChanged() {
+                if (!this.viz) return;
+                const chk = document.getElementById('stepMode');
+                this.viz.setStepMode(!!chk?.checked);
+            }
+
+    nextStep() {
+                if (!this.viz) return;
+                this.viz.advanceStep();
+            }
 
     toggleModal() {
         		const m = document.getElementById('helpModal');
