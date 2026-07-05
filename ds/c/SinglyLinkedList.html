@@ -2279,6 +2279,7 @@
           snaps.push(this.snapshot('Traversal starts at p_first', nodes, {
             ptrs: [makePtr(curId)],
             pause: true
+<<<<<<< HEAD
           }));
           for (let k = 0; k < i; k++) {
             const oldPtr = makePtr(curId);
@@ -2313,6 +2314,57 @@
             updated, {
               ptrs: [finalPtr],
               pause: true
+=======
+        }
+    ));
+    
+    snaps.push(this.snapshot(
+        'The operation is complete',
+        updated
+    ));
+            this.values = newVals; this.viz.enqueue(snaps); this.updateUI()
+        
+        }
+
+    sorted_insert() {
+            const e = this.v();
+            if (isNaN(e) || !this.isSortedAscending()) return;
+            this.save();
+            const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++;
+            const b = this.viz.base(), newNodeY = b.y + GEOMETRY.INSERT_NODE_VERTICAL_OFFSET;
+            const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+            const snaps = [this.snapshot('The list is sorted ascending, so sorted_insert can start', oldNodes)];
+    const currentNullX = b.x + oldSize * GEOMETRY.NODE_STEP - 50;
+    
+    const makePtr = (label, target, nodes = oldNodes, fixed = null) => {
+        const nullX = label === 'p_current'
+            ? currentNullX
+            : b.x - GEOMETRY.PREVIOUS_NULL_POINTER_X_OFFSET - 20;
+    
+        return this._ptr(
+            label,
+            target,
+            nodes,
+            fixed,
+            target === null ? nullX : b.x - GEOMETRY.DEFAULT_NULL_POINTER_X_OFFSET
+        );
+    };
+            const ptrsFor = (prev, cur, nodes = oldNodes, fp = null, fc = null) => [makePtr('p_previous', prev, nodes, fp), makePtr('p_current', cur, nodes, fc)];
+            let prevId = null, curId = oldIds[0] ?? null, pos = 0;
+            snaps.push(this.snapshot('p_previous starts as NULL and p_current starts at p_first', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
+            while (pos < oldSize && oldVals[pos] <= e) {
+                const oldCur = curId, nextCur = oldIds[pos + 1] ?? null, oldPtrs = ptrsFor(prevId, curId);
+                snaps.push(this.snapshot('The current value is smaller than or equal to ' + e + ', so the search advances', oldNodes, { ptrs: oldPtrs, flashElement: oldCur, pause: true }));
+                snaps.push(this.snapshot('p_previous is advanced to p_current', oldNodes, { ptrs: oldPtrs, flashPtrs: ['p_previous'], pause: true }));
+                prevId = oldCur;
+                const prevUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+                snaps.push(this.snapshot('p_previous now refers to the node just visited', oldNodes, { ptrs: prevUpdated, pause: true }));
+                snaps.push(this.snapshot('p_current is advanced to the next node', oldNodes, { ptrs: prevUpdated, flashPtrs: ['p_current'], pause: true }));
+                curId = nextCur; pos++;
+                const currentUpdated = ptrsFor(prevId, curId, oldNodes, oldPtrs[0], oldPtrs[1]);
+                snaps.push(this.snapshot(curId === null ? 'The traversal pointer has reached the end: the new value belongs there' : 'p_current now refers to the next node', oldNodes, { ptrs: currentUpdated, pause: true }));
+                snaps.push(this.snapshot('The traversal pointers are positioned for the next comparison', oldNodes, { ptrs: ptrsFor(prevId, curId), pause: true }));
+>>>>>>> 8e962bdca4b604eb5f1c6eadad25b6bf0a7d6c6a
             }
           ));
           snaps.push(this.snapshot(

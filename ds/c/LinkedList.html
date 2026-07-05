@@ -1230,11 +1230,47 @@
                 fill: K.r
               });
             } else {
+<<<<<<< HEAD
               const isDanglingStructPointer = r[0] === 'p_first' ?
                 (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined) :
                 (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.lastTargetX !== undefined && s.lastTargetY !== undefined);
               let color = ((r[0] === 'p_last') && s.markPLastArrow) ? K.r : K.b;
               this.paintDot(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, isDanglingStructPointer ? K.d : color);
+=======
+                const isDanglingStructPointer = r[0] === 'p_first'
+                    ? (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined)
+                    : (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.lastTargetX !== undefined && s.lastTargetY !== undefined);
+                let color = ((r[0] === 'p_last') && s.markPLastArrow) ? K.r : K.b;
+				this.paintDot(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, isDanglingStructPointer ? K.d : color);
+            }
+        });
+    }
+
+    nodeById(s, id) {
+        		return (s.nodes || []).find(n => n.id === id)
+        	}
+
+    drawStructArrows(s) {
+            const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.cell;
+            this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
+            const f = this.nodeById(s, s.firstId), l = this.nodeById(s, s.lastId);
+
+            const firstX = s.firstTipX ?? (f ? f.x : s.firstTargetX),
+                firstY = s.firstTipY ?? (f ? f.y + h / 2 : s.firstTargetY);
+            if (firstX !== undefined && firstY !== undefined) {
+                const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
+                const firstColor = f ? K.b : K.d;
+                if (firstAmount > VISUAL.stroke.detourThreshold) this.detourArrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth, firstAmount);
+                else this.arrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth)
+            }
+
+            const lastX = s.lastTipX ?? (l ? l.x : s.lastTargetX),
+                lastY = s.lastTipY ?? (l ? l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor : s.lastTargetY);
+            if (lastX !== undefined && lastY !== undefined) {
+                const lastCol = s.markPLastArrow ? K.r : (l ? K.b : K.d);
+                if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth);
+                else this.lastArrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth)
+>>>>>>> 8e962bdca4b604eb5f1c6eadad25b6bf0a7d6c6a
             }
           });
         }
