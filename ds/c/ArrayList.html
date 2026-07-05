@@ -1,1464 +1,1708 @@
 <!DOCTYPE html>
 <html lang="en">
-	<head>
-		<meta charset="UTF-8">
-			<meta name="viewport" content="width=device-width,initial-scale=1">
-				<title>ArrayList Visualizer</title>
-				<style>
-:root{--b:#1565c0;--c:#91f4f4;--g:#b6f8b6;--r:#e60000;--p:#c78cff;--v:#8d35c9;--panel:#f5f5f5;--y:#fff7b3}
-*{box-sizing:border-box}body{margin:0;height:100vh;height:100dvh;display:flex;flex-direction:column;overflow:hidden;font-family:'Segoe UI',Tahoma,sans-serif;background:white;user-select:none}header{background:var(--panel);border-bottom:1px solid #ddd;padding:10px 20px;display:flex;flex-direction:column;gap:10px;flex-shrink:0}.top,.gui{display:flex;justify-content:space-between;align-items:center;gap:12px}.gui{align-items:flex-start}h1{font-size:1.2rem;margin:0}.controls,.sub{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.sub{font-size:.9rem;color:#555}input[type=number]{width:70px;padding:6px;border:1px solid #999;border-radius:4px;text-align:center;font-weight:bold}.idx{width:56px}button{border:0;border-radius:4px;color:white;font-weight:600;padding:6px 12px;box-shadow:0 1px 3px #0003}button:disabled{opacity:.4}.green{background:#2E7D32}.blue{background:#1668BD}.red{background:#c62828}.purple{background:#6A1B9A}.gray{background:#546E7A}.orange{background:#EF6C00}.pause{background:#455A64;width:80px}
-        .step-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 4px;
-            background: #ECEFF1;
-            color: #263238;
-            font-weight: 600;
-            box-shadow: 0 1px 3px #0002;
-            cursor: pointer;
-            user-select: none
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>ArrayList Visualizer</title>
+    <style>
+      :root {
+        --b: #1565c0;
+        --c: #91f4f4;
+        --g: #b6f8b6;
+        --r: #e60000;
+        --p: #c78cff;
+        --v: #8d35c9;
+        --panel: #f5f5f5;
+        --y: #fff7b3
+      }
+
+      * {
+        box-sizing: border-box
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: white;
+        user-select: none
+      }
+
+      header {
+        background: var(--panel);
+        border-bottom: 1px solid #ddd;
+        padding: 10px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex-shrink: 0
+      }
+
+      .top,
+      .gui {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px
+      }
+
+      .gui {
+        align-items: flex-start
+      }
+
+      h1 {
+        font-size: 1.2rem;
+        margin: 0
+      }
+
+      .controls,
+      .sub {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap
+      }
+
+      .sub {
+        font-size: .9rem;
+        color: #555
+      }
+
+      input[type=number] {
+        width: 70px;
+        padding: 6px;
+        border: 1px solid #999;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: bold
+      }
+
+      .idx {
+        width: 56px
+      }
+
+      button {
+        border: 0;
+        border-radius: 4px;
+        color: white;
+        font-weight: 600;
+        padding: 6px 12px;
+        box-shadow: 0 1px 3px #0003
+      }
+
+      button:disabled {
+        opacity: .4
+      }
+
+      .green {
+        background: #2E7D32
+      }
+
+      .blue {
+        background: #1668BD
+      }
+
+      .red {
+        background: #c62828
+      }
+
+      .purple {
+        background: #6A1B9A
+      }
+
+      .gray {
+        background: #546E7A
+      }
+
+      .orange {
+        background: #EF6C00
+      }
+
+      .pause {
+        background: #455A64;
+        width: 80px
+      }
+
+      .step-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        background: #ECEFF1;
+        color: #263238;
+        font-weight: 600;
+        box-shadow: 0 1px 3px #0002;
+        cursor: pointer;
+        user-select: none
+      }
+
+      .step-toggle input {
+        width: auto;
+        margin: 0;
+        cursor: pointer
+      }
+
+      .step-toggle-on {
+        outline: 3px solid #FFB300;
+        outline-offset: 2px;
+        background: #E0F2F1
+      }
+
+      #btnNextStep {
+        background: #00695C
+      }
+
+      .help {
+        background: #607D8B;
+        border-radius: 50%;
+        font-size: 1.1rem;
+        padding: 4px 10px
+      }
+
+      .sep {
+        width: 1px;
+        height: 20px;
+        background: #ccc;
+        margin: 0 5px
+      }
+
+      #status {
+        border-top: 1px solid #ddd;
+        padding-top: 8px;
+        font-size: .85rem;
+        color: #555;
+        min-height: 32px;
+        line-height: 1.3
+      }
+
+      #status-text {
+        font-weight: bold;
+        color: #222
+      }
+
+      #wrap {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        background: white
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%
+      }
+
+      #legend {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        background: #fffffff2;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: .8rem;
+        box-shadow: 0 2px 5px #0002;
+        pointer-events: none
+      }
+
+      .li {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 5px
+      }
+
+      .sw {
+        width: 18px;
+        height: 18px;
+        display: inline-block
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        background: var(--b);
+        border-radius: 50%;
+        display: inline-block
+      }
+
+      #author {
+        background: #f4f7f6;
+        color: #777;
+        text-align: center;
+        line-height: 2.5;
+        font-size: .75em;
+        flex-shrink: 0
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #0008;
+        z-index: 10;
+        overflow: auto;
+        -webkit-overflow-scrolling: touch
+      }
+
+      .modal-content {
+        background: white;
+        margin: 20px auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: min(90vw, 820px);
+        max-height: calc(100dvh - 40px);
+        overflow-y: auto;
+        touch-action: pan-y
+      }
+
+      .close {
+        float: right;
+        font-size: 28px;
+        color: #aaa;
+        cursor: pointer
+      }
+
+      .code {
+        font-family: Consolas, monospace;
+        background: #eee;
+        border-radius: 4px;
+        padding: 2px 5px;
+        color: #c62828
+      }
+
+      @keyframes shake-error {
+
+        0%,
+        100% {
+          transform: translateX(0)
         }
-        .step-toggle input {
-            width: auto;
-            margin: 0;
-            cursor: pointer
+
+        20%,
+        60% {
+          transform: translateX(-4px)
         }
-        .step-toggle-on {
-            outline: 3px solid #FFB300;
-            outline-offset: 2px;
-            background: #E0F2F1
+
+        40%,
+        80% {
+          transform: translateX(4px)
         }
-#btnNextStep{background:#00695C}.help{background:#607D8B;border-radius:50%;font-size:1.1rem;padding:4px 10px}.sep{width:1px;height:20px;background:#ccc;margin:0 5px}#status{border-top:1px solid #ddd;padding-top:8px;font-size:.85rem;color:#555;min-height:32px;line-height:1.3}#status-text{font-weight:bold;color:#222}#wrap{position:relative;flex:1;min-height:0;overflow:hidden;background:white}canvas{display:block;width:100%;height:100%}#legend{position:absolute;top:18px;left:18px;background:#fffffff2;border:1px solid #ddd;border-radius:8px;padding:10px;font-size:.8rem;box-shadow:0 2px 5px #0002;pointer-events:none}.li{display:flex;gap:8px;align-items:center;margin-bottom:5px}.sw{width:18px;height:18px;display:inline-block}.dot{width:12px;height:12px;background:var(--b);border-radius:50%;display:inline-block}#author{background:#f4f7f6;color:#777;text-align:center;line-height:2.5;font-size:.75em;flex-shrink:0}
-.modal{display:none;position:fixed;inset:0;background:#0008;z-index:10;overflow:auto;-webkit-overflow-scrolling:touch}
-.modal-content{background:white;margin:20px auto;padding:20px;border-radius:8px;width:min(90vw,820px);max-height:calc(100dvh - 40px);overflow-y:auto;touch-action:pan-y}.close{float:right;font-size:28px;color:#aaa;cursor:pointer}.code{font-family:Consolas,monospace;background:#eee;border-radius:4px;padding:2px 5px;color:#c62828}
-</style>
-			</head>
-			<body>
-				<header>
-					<div class="top">
-						<h1>ArrayList Visualizer</h1>
-						<button class="help" onclick="app.toggleModal()" title="Open help and asymptotic complexity summary.">?</button>
-					</div>
-					<div class="gui">
-						<div class="controls">
-							<label>Value 
-								<input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.append()">
-								</label>
-								<label>Index 
-									<input id="idx" class="idx" type="number" placeholder="i">
-									</label>
-									<label>Initial capacity 
-										<input id="cap" class="idx" type="number" min="1" value="6">
-										</label>
-										<button class="green" onclick="app.append()" title="Append: add the value at the end of the list">Append</button>
-										<button class="green" onclick="app.prepend()" title="Prepend: insert the value at index 0 and shift existing elements one position to the right.">Prepend</button>
-										<button class="blue" onclick="app.insert()" title="Insert: place the value at the selected index, shifting following elements to the right.">Insert</button>
-										<button class="purple" onclick="app.get()" title="Get: read the element at the selected index by direct array access.">Get</button>
-										<button class="blue" onclick="app.set()" title="Set: replace the element at the selected index by direct array access.">Set</button>
-										<button class="red" onclick="app.del()" title="Delete: remove the element at the selected index and shift following elements to the left.">Delete</button>
-										<div class="sep"></div>
-										<button class="orange" onclick="app.reinit()" title="New: allocate a new empty ArrayList with the selected initial capacity.">New</button>
-										<button class="gray" onclick="app.clear()" title="Clear: set size to 0 while keeping capacity and the allocated array.">Clear</button>
-										<div class="sep"></div>
-										<button class="orange" onclick="app.random()" title="Build Random: create a new sample list with three random distinct values.">Build Random</button>
-										<div class="sep"></div>
-										<button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo: restore the previous ArrayList state.">Undo</button>
-									</div>
-									<div class="sub">
-										<label>Slowdown:</label>
-										<input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()">
-											<button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button>
-											<label class="step-toggle" id="stepModeLabel" title="When enabled, only real data-structure steps wait for the Next step button; visual-only steps run automatically." aria-label="Step-by-step mode toggle"><input id="stepMode" type="checkbox" onchange="app.stepModeChanged()"><span>Step-by-step: <span id="stepState">Off</span></span></label><button id="btnNextStep" onclick="app.nextStep()" title="Advance to the next non-visual algorithm step." aria-label="Advance to the next non-visual algorithm step.">Next step</button>
-										</div>
-									</div>
-									<div id="status">
-										<span id="status-text">Ready. Use the mouse wheel or pinch gesture to zoom; drag to pan the view.</span>
-									</div>
-								</header>
-								<div id="wrap">
-									<canvas id="cv"></canvas>
-									<div id="legend">
-										<div class="li">
-											<span class="sw" style="background:#b6f8b6"></span>logical element / capacity / size
-										</div>
-										<div class="li">
-											<span class="sw" style="background:#fff7b3"></span>allocated but outside size
-										</div>
-										<div class="li">
-											<span class="sw" style="background:#91f4f4"></span>pointer to array
-										</div>
-										<div class="li">
-											<span class="sw" style="background:#c78cff"></span>pointer to list
-										</div>
-									</div>
-								</div>
-								<div id="author">Pepe Gallardo. Department of Computer Languages and Computer Science. University of Málaga</div>
-								<div id="helpModal" class="modal">
-    <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
+      }
+
+      .input-error {
+        animation: shake-error .4s ease-in-out !important;
+        border-color: #e60000 !important;
+        background-color: #ffe6e6 !important;
+        color: #c62828 !important
+      }
+    </style>
+  </head>
+
+  <body>
+    <header>
+      <div class="top">
+        <h1>ArrayList Visualizer</h1>
+        <button class="help" onclick="app.toggleModal()" title="Open help and asymptotic complexity summary.">?</button>
+      </div>
+      <div class="gui">
+        <div class="controls">
+          <label>Value
+            <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.append()">
+          </label>
+          <label>Index
+            <input id="idx" class="idx" type="number" placeholder="i">
+          </label>
+          <label>Initial capacity
+            <input id="cap" class="idx" type="number" min="1" value="6">
+          </label>
+          <button class="green" onclick="app.append()" title="Append: add the value at the end of the list">Append</button>
+          <button class="green" onclick="app.prepend()" title="Prepend: insert the value at index 0 and shift existing elements one position to the right.">Prepend</button>
+          <button class="blue" onclick="app.insert()" title="Insert: place the value at the selected index, shifting following elements to the right.">Insert</button>
+          <button class="purple" onclick="app.get()" title="Get: read the element at the selected index by direct array access.">Get</button>
+          <button class="blue" onclick="app.set()" title="Set: replace the element at the selected index by direct array access.">Set</button>
+          <button class="red" onclick="app.del()" title="Delete: remove the element at the selected index and shift following elements to the left.">Delete</button>
+          <div class="sep"></div>
+          <button class="orange" onclick="app.reinit()" title="New: allocate a new empty ArrayList with the selected initial capacity.">New</button>
+          <button class="gray" onclick="app.clear()" title="Clear: set size to 0 while keeping capacity and the allocated array.">Clear</button>
+          <div class="sep"></div>
+          <button class="orange" onclick="app.random()" title="Build Random: create a new sample list with three random distinct values.">Build Random</button>
+          <div class="sep"></div>
+          <button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo: restore the previous ArrayList state.">Undo</button>
+        </div>
+        <div class="sub">
+          <label>Slowdown:</label>
+          <input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()">
+          <button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button>
+          <label class="step-toggle" id="stepModeLabel" title="When enabled, only real data-structure steps wait for the Next step button; visual-only steps run automatically." aria-label="Step-by-step mode toggle"><input id="stepMode" type="checkbox" onchange="app.stepModeChanged()"><span>Step-by-step: <span id="stepState">Off</span></span></label><button id="btnNextStep" onclick="app.nextStep()" title="Advance to the next non-visual algorithm step." aria-label="Advance to the next non-visual algorithm step.">Next step</button>
+        </div>
+      </div>
+      <div id="status">
+        <span id="status-text">Ready. Use the mouse wheel or pinch gesture to zoom; drag to pan the view.</span>
+      </div>
+    </header>
+    <div id="wrap">
+      <canvas id="cv"></canvas>
+      <div id="legend">
+        <div class="li">
+          <span class="sw" style="background:#b6f8b6"></span>logical element / capacity / size
+        </div>
+        <div class="li">
+          <span class="sw" style="background:#fff7b3"></span>allocated but outside size
+        </div>
+        <div class="li">
+          <span class="sw" style="background:#91f4f4"></span>pointer to array
+        </div>
+        <div class="li">
+          <span class="sw" style="background:#c78cff"></span>pointer to list
+        </div>
+      </div>
+    </div>
+    <div id="author">Pepe Gallardo. Department of Computer Languages and Computer Science. University of Málaga</div>
+    <div id="helpModal" class="modal">
+      <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
         <h2>ArrayList</h2>
-        <h3>1. Data structure</h3>
+        <h3>Data structure</h3>
         <p>An <strong>ArrayList</strong> stores a logical sequence inside a contiguous heap-allocated array. The list object keeps three fields: a pointer/reference to the physical array, the current <span class="code">capacity</span> of that array, and the logical <span class="code">size</span> of the list.</p>
         <p>Cells with indexes smaller than <span class="code">size</span> are logical elements of the list. Cells from <span class="code">size</span> up to <span class="code">capacity - 1</span> are allocated but outside the logical list. They may still contain old physical values, but those values are not part of the list.</p>
-        <h3>2. Visual memory and reference model</h3>
+        <h3>C-style memory concepts</h3>
+        <p>A <strong>pointer variable</strong> stores an address. The <strong>ArrayList object</strong> stores the array pointer plus metadata. The <strong>array object</strong> is a heap block containing the physical cells. Updating a pointer changes what it refers to; it does not copy the array by itself.</p>
+        <p>The list object and the backing array live on the <strong>heap</strong> after allocation. Temporary variables used by operations are <strong>local variables</strong>; they are deallocated from the stack when the operation returns. Local variables going out of scope does not free the heap memory they point to unless the algorithm explicitly frees the heap object.</p>
+        <p><strong>NULL</strong> means “points to no object.” A <strong>dangling pointer</strong> is a pointer that still stores the address of memory that has already been freed. It is an error to access memory pointed by such pointers.</p>
+        <h3>Operations</h3>
         <ul>
-            <li><strong>Green cells</strong> represent logical elements, the capacity field, or the size field.</li>
-            <li><strong>Yellow cells</strong> represent allocated array cells that are currently outside the logical size.</li>
-            <li><strong>Cyan cells</strong> represent pointer/reference fields or temporary references to array cells.</li>
-            <li><strong>Purple cells</strong> represent the pointer/reference to the ArrayList object itself.</li>
-            <li><strong>Arrows</strong> show references from the list object or temporary variables to the heap-allocated array or to a selected array cell.</li>
+          <li><strong>New</strong>: allocates a new empty ArrayList with the chosen initial capacity. Purpose: start with size 0 and an allocated backing array. Complexity: <span class="code">O(1)</span> for the metadata, plus allocation cost for the array block.</li>
+          <li><strong>Append</strong>: ensures there is capacity, writes the value at the current size index, then increments size. Purpose: add a value at the end. Complexity: amortized <span class="code">O(1)</span>; worst-case <span class="code">O(n)</span> when resizing copies existing elements.</li>
+          <li><strong>Prepend</strong>: inserts at index 0 by shifting all current elements one position right, storing the new value, and incrementing size. Purpose: add a value at the beginning. Complexity: <span class="code">O(n)</span>.</li>
+          <li><strong>Insert</strong>: shifts elements from the insertion index to the end one position right, stores the new value, and increments size. Purpose: add a value at any valid position. Complexity: <span class="code">O(n)</span> in general; <span class="code">O(1)</span> at the end when no resize is needed.</li>
+          <li><strong>Get</strong>: directly accesses the array cell at the selected index. Purpose: read a value. Complexity: <span class="code">O(1)</span>.</li>
+          <li><strong>Set</strong>: directly accesses the selected index and overwrites that value. Purpose: update a stored value without changing size or capacity. Complexity: <span class="code">O(1)</span>.</li>
+          <li><strong>Delete</strong>: removes the selected logical element, shifts following elements one position left, and decrements size. Purpose: remove one value while preserving order. Complexity: <span class="code">O(n)</span> in general; <span class="code">O(1)</span> when deleting the last element.</li>
+          <li><strong>Clear</strong>: sets size to 0 while keeping the allocated backing array and capacity. Purpose: make the list logically empty without releasing the array. Complexity: <span class="code">O(1)</span>.</li>
+          <li><strong>Ensure capacity / resize</strong>: allocates a larger backing array, copies existing logical elements, updates the array pointer/reference, and releases the old array. Purpose: make room for future insertions. Complexity: <span class="code">O(n)</span>.</li>
         </ul>
-        <h3>3. C-style memory concepts</h3>
-        <p>A <strong>pointer variable</strong> stores an address/reference. The <strong>ArrayList object</strong> stores the array pointer plus metadata. The <strong>array object</strong> is a heap block containing the physical cells. Updating a pointer changes what it refers to; it does not copy the array by itself.</p>
-        <p>The list object and the backing array live on the <strong>heap</strong> after allocation. Temporary variables used by operations are <strong>local variables</strong>; they disappear when the operation returns. Local variables going out of scope does not free heap memory unless the algorithm explicitly frees or replaces a heap object.</p>
-        <p><strong>NULL</strong> means “points to no object.” A <strong>dangling pointer</strong> is a pointer that still stores the address of memory that has already been freed. During resizing, the old array must not be used after the ArrayList starts referring to the new array and the old heap block is released.</p>
-        <p><strong>Allocation</strong> creates a new heap array or list object. <strong>Freeing</strong> releases a heap object. <strong>Reallocation/resizing</strong> allocates a larger array, copies existing logical elements into it, updates the list's array pointer, and releases the old array.</p>
-        <h3>4. Semantic algorithm steps versus visual-only steps</h3>
-        <p><strong>Step-by-step</strong> stops only at steps that represent real manipulation of the underlying ArrayList structure: allocation, resizing, copying, direct index access, element movement, value replacement, size updates, and capacity/array-pointer updates. Purely visual rearrangements still run, but they show no status message and do not wait for <strong>Next step</strong>.</p>
-        <p>The visible messages describe the conceptual action without exposing implementation code, so students can implement the operation afterwards.</p>
-        <h3>5. Real data-structure operations</h3>
-        <ul>
-            <li><strong>New</strong>: allocates a new empty ArrayList with the chosen initial capacity. Purpose: start with size 0 and an allocated backing array. Complexity: <span class="code">O(1)</span> for the metadata, plus allocation cost for the array block.</li>
-            <li><strong>Append</strong>: ensures there is capacity, writes the value at the current size index, then increments size. Purpose: add a value at the end. Complexity: amortized <span class="code">O(1)</span>; worst-case <span class="code">O(n)</span> when resizing copies existing elements.</li>
-            <li><strong>Prepend</strong>: inserts at index 0 by shifting all current elements one position right, storing the new value, and incrementing size. Purpose: add a value at the beginning. Complexity: <span class="code">O(n)</span>.</li>
-            <li><strong>Insert</strong>: shifts elements from the insertion index to the end one position right, stores the new value, and increments size. Purpose: add a value at any valid position. Complexity: <span class="code">O(n)</span> in general; <span class="code">O(1)</span> at the end when no resize is needed.</li>
-            <li><strong>Get</strong>: directly accesses the array cell at the selected index. Purpose: read a value. Complexity: <span class="code">O(1)</span>.</li>
-            <li><strong>Set</strong>: directly accesses the selected index and overwrites that value. Purpose: update a stored value without changing size or capacity. Complexity: <span class="code">O(1)</span>.</li>
-            <li><strong>Delete</strong>: removes the selected logical element, shifts following elements one position left, and decrements size. Purpose: remove one value while preserving order. Complexity: <span class="code">O(n)</span> in general; <span class="code">O(1)</span> when deleting the last element.</li>
-            <li><strong>Clear</strong>: sets size to 0 while keeping the allocated backing array and capacity. Purpose: make the list logically empty without releasing the array. Complexity: <span class="code">O(1)</span>.</li>
-            <li><strong>Ensure capacity / resize</strong>: allocates a larger backing array, copies existing logical elements, updates the array pointer/reference, and releases the old array. Purpose: make room for future insertions. Complexity: <span class="code">O(n)</span> for that resizing step.</li>
-        </ul>
-        <p>Build Random, Undo, visual demos, and sample generation are interface utilities, not ArrayList operations.</p>
+	  </div>
     </div>
-</div>
-<script>
-'use strict';
-const K = {
-	b: '#1565c0',
-	c: '#91f4f4',
-	g: '#b6f8b6',
-	r: '#e60000',
-	p: '#c78cff',
-	v: '#8d35c9',
-	k: '#111',
-	y: '#fff7b3'
-};
-const ENGINE = Object.freeze({
-    minScale: 0.2,
-    maxScale: 5,
-    wheelSensitivity: 0.001,
-    maxFrameDeltaSeconds: 0.1,
-    cameraSmoothing: 10,
-    cameraSnapDistance: 5,
-    cameraSnapScaleDelta: 0.01,
-    morphSpeed: 2.5,
-    waitSeconds: 0.75,
-    deleteFadeCutoff: 0.85,
-    flashMinAlpha: 0.3,
-    flashMaxAlphaDelta: 0.7,
-    flashPeriodMs: 110,
-    arrowHeadLength: 17,
-    defaultHistoryLimit: 30,
-    defaultCellSize: 58,
-    randomMinSize: 2,
-    randomSizeRange: 4,
-    randomMinValue: 1,
-    randomValueRange: 9,
-    randomSortedProbability: 0.33
-});
-let gid = 0;
-
-/* Engine: camera, input, animation lifecycle and drawing primitives. */
-class VisualizationEngine {
-    constructor(id) {
-    		this.cv = document.getElementById(id);
-    		this.ctx = this.cv.getContext('2d');
-    		this.cam = {
-    			scale: 1,
-    			targetScale: 1,
-    			x: 0,
-    			targetX: 0,
-    			y: 0,
-    			targetY: 0
-    		};
-    		this.sn = [];
-    		this.pending = [];
-    		this.idx = -1;
-    		this.state = 'IDLE';
-    		this.t = 0;
-    		this.speedFactor = 1;
-    		this.paused = false;
-            this.stepMode = false;
-            this.stepWaiting = false;
-    		this.last = 0;
-    		this.cell = ENGINE.defaultCellSize;
-    		this.lastCells = [];
-    		this.resize();
-    		window.addEventListener('resize', () => this.resize());
-    		this.cv.addEventListener('wheel', e => this.wheel(e), {
-    			passive: false
-    		});
-    		this.cv.addEventListener('mousedown', e => this.down(e));
-    		this.cv.addEventListener('mousemove', e => this.move(e));
-    		this.cv.addEventListener('mouseup', () => this.up());
-    		this.cv.addEventListener('mouseleave', () => this.up());
-            this.cv.addEventListener('touchstart', e => this.ts(e), { passive: false });
-            this.cv.addEventListener('touchmove', e => this.tm(e), { passive: false });
-            this.cv.addEventListener('touchend', () => this.up());
-    		requestAnimationFrame(t => this.loop(t))
-    	}
-
-    base() {
-    		const arrayLeftX = 325;
-    		const arrayTopY = 160;
-    		const structLeftX = 210;
-    		const structTopY = 160;
-    		const transientValueY = arrayTopY - 104;
-    		const cellPitch = 62;
-    		const reallocOldArrayY = 125;
-    		const reallocNewArrayY = 335;
-    		return {
-    			arrayLeftX,
-    			arrayTopY,
-    			structLeftX,
-    			structTopY,
-    			transientValueY,
-    			cellPitch,
-    			reallocOldArrayY,
-    			reallocNewArrayY,
-    			// Compatibility aliases used by older operation builders.
-    			x: arrayLeftX,
-    			y: arrayTopY,
-    			structX: structLeftX,
-    			structY: structTopY,
-    			up: transientValueY,
-    			gap: cellPitch
-    		}
-    	}
-
-    layoutMetrics() {
-    		const cell = this.cell;
-    		return {
-    			cell,
-    			cellCenter: cell / 2,
-    			rowHeight: cell,
-    			rowStrokeCompensation: cell * 0.04,
-    			structLabelGap: 16,
-    			listPointerBoxOffsetX: 125,
-    			listPointerBoxOffsetY: 108,
-    			listPointerLabelGap: 20,
-    			listPointerLabelBaselineFromBoxTop: cell * 0.71,
-    			listPointerArrowTargetInsetY: 8,
-    			dotRadius: 8,
-    			structFlashRadius: cell * 0.48,
-    			indexLabelGap: 8,
-    			cellCornerRadius: 8,
-    			cellFlashPadding: 7,
-    			pointerLabelGap: 10,
-    			boundLeftExtra: 210,
-    			boundRightExtra: 110,
-    			boundTopExtra: 125,
-    			boundBottomExtra: 175,
-    			fitPadding: 150,
-    			maxAutoScale: 1.22
-    		}
-    	}
-
-    resize() {
-    		const w = document.getElementById('wrap');
-    		this.cv.width = w.offsetWidth;
-    		this.cv.height = w.offsetHeight;
-    		if (this.sn.length) {
-    			this.fit([this.sn[Math.max(this.idx, 0)]]);
-    			this.cam.scale = this.cam.targetScale;
-    			this.cam.x = this.cam.targetX;
-    			this.cam.y = this.cam.targetY
-    		}
-    	}
-
-    screenToWorld(x, y) {
-    		return {
-    			x: (x - this.cam.x) / this.cam.scale,
-    			y: (y - this.cam.y) / this.cam.scale
-    		}
-    	}
-
-    wheel(e) {
-    		e.preventDefault();
-    		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
-    		let ns = this.cam.targetScale * (1 - e.deltaY * ENGINE.wheelSensitivity);
-    		ns = Math.min(ENGINE.maxScale, Math.max(ENGINE.minScale, ns));
-    		const wx = (x - this.cam.targetX) / this.cam.targetScale,
-    			wy = (y - this.cam.targetY) / this.cam.targetScale;
-    		this.cam.targetScale = ns;
-    		this.cam.targetX = x - wx * ns;
-    		this.cam.targetY = y - wy * ns
-    	}
-
-    down(e) {
-    		const r = this.cv.getBoundingClientRect(),
-    			sx = e.clientX - r.left,
-    			sy = e.clientY - r.top,
-    			w = this.screenToWorld(sx, sy);
-    		for (const c of this.lastCells) {
-    			if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) {
-    				document.getElementById('val').value = c.v === '?' ? '' : c.v;
-    				document.getElementById('idx').value = c.i;
-    				return
-    			}
-    		}
-    		this.drag = true;
-    		this.start = {
-    			x: sx,
-    			y: sy
-    		};
-    		this.c0 = {
-    			x: this.cam.targetX,
-    			y: this.cam.targetY
-    		};
-    		this.cv.style.cursor = 'grabbing'
-    	}
-
-    move(e) {
-    		const r = this.cv.getBoundingClientRect(),
-    			x = e.clientX - r.left,
-    			y = e.clientY - r.top;
-    		if (this.drag) {
-    			this.cam.targetX = this.c0.x + x - this.start.x;
-    			this.cam.targetY = this.c0.y + y - this.start.y;
-    			return
-    		}
-    		const w = this.screenToWorld(x, y);
-    		this.cv.style.cursor = this.lastCells.some(c => w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) ? 'pointer' : 'default'
-    	}
-
-    up() {
-    		this.drag = false;
-    		this.cv.style.cursor = 'default'
-    	}
-    td(t) {
-        return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
-    }
-    tc(t, r) {
-        return {
+    <script>
+      'use strict';
+      const K = {
+        b: '#1565c0',
+        c: '#91f4f4',
+        g: '#b6f8b6',
+        r: '#e60000',
+        p: '#c78cff',
+        v: '#8d35c9',
+        k: '#111',
+        y: '#fff7b3'
+      };
+      const ENGINE = Object.freeze({
+        minScale: 0.2,
+        maxScale: 5,
+        wheelSensitivity: 0.001,
+        maxFrameDeltaSeconds: 0.1,
+        cameraSmoothing: 10,
+        cameraSnapDistance: 5,
+        cameraSnapScaleDelta: 0.01,
+        morphSpeed: 2.5,
+        waitSeconds: 0.75,
+        deleteFadeCutoff: 0.85,
+        flashMinAlpha: 0.3,
+        flashMaxAlphaDelta: 0.7,
+        flashPeriodMs: 110,
+        arrowHeadLength: 17,
+        defaultHistoryLimit: 30,
+        defaultCellSize: 58,
+        randomMinSize: 2,
+        randomSizeRange: 4,
+        randomMinValue: 1,
+        randomValueRange: 9,
+        randomSortedProbability: 0.33
+      });
+      let gid = 0;
+      /* Engine: camera, input, animation lifecycle and drawing primitives. */
+      class VisualizationEngine {
+        constructor(id) {
+          this.cv = document.getElementById(id);
+          this.ctx = this.cv.getContext('2d');
+          this.cam = {
+            scale: 1,
+            targetScale: 1,
+            x: 0,
+            targetX: 0,
+            y: 0,
+            targetY: 0
+          };
+          this.sn = [];
+          this.pending = [];
+          this.idx = -1;
+          this.state = 'IDLE';
+          this.t = 0;
+          this.speedFactor = 1;
+          this.paused = false;
+          this.stepMode = false;
+          this.stepWaiting = false;
+          this.last = 0;
+          this.cell = ENGINE.defaultCellSize;
+          this.lastCells = [];
+          this.resize();
+          window.addEventListener('resize', () => this.resize());
+          this.cv.addEventListener('wheel', e => this.wheel(e), {
+            passive: false
+          });
+          this.cv.addEventListener('mousedown', e => this.down(e));
+          this.cv.addEventListener('mousemove', e => this.move(e));
+          this.cv.addEventListener('mouseup', () => this.up());
+          this.cv.addEventListener('mouseleave', () => this.up());
+          this.cv.addEventListener('touchstart', e => this.ts(e), {
+            passive: false
+          });
+          this.cv.addEventListener('touchmove', e => this.tm(e), {
+            passive: false
+          });
+          this.cv.addEventListener('touchend', () => this.up());
+          requestAnimationFrame(t => this.loop(t))
+        }
+        base() {
+          const arrayLeftX = 325;
+          const arrayTopY = 160;
+          const structLeftX = 210;
+          const structTopY = 160;
+          const transientValueY = arrayTopY - 104;
+          const cellPitch = 62;
+          const reallocOldArrayY = 125;
+          const reallocNewArrayY = 335;
+          return {
+            arrayLeftX,
+            arrayTopY,
+            structLeftX,
+            structTopY,
+            transientValueY,
+            cellPitch,
+            reallocOldArrayY,
+            reallocNewArrayY,
+            // Compatibility aliases used by older operation builders.
+            x: arrayLeftX,
+            y: arrayTopY,
+            structX: structLeftX,
+            structY: structTopY,
+            up: transientValueY,
+            gap: cellPitch
+          }
+        }
+        layoutMetrics() {
+          const cell = this.cell;
+          return {
+            cell,
+            cellCenter: cell / 2,
+            rowHeight: cell,
+            rowStrokeCompensation: cell * 0.04,
+            structLabelGap: 16,
+            listPointerBoxOffsetX: 125,
+            listPointerBoxOffsetY: 108,
+            listPointerLabelGap: 20,
+            listPointerLabelBaselineFromBoxTop: cell * 0.71,
+            listPointerArrowTargetInsetY: 8,
+            dotRadius: 8,
+            structFlashRadius: cell * 0.48,
+            indexLabelGap: 8,
+            cellCornerRadius: 8,
+            cellFlashPadding: 7,
+            pointerLabelGap: 10,
+            boundLeftExtra: 210,
+            boundRightExtra: 110,
+            boundTopExtra: 125,
+            boundBottomExtra: 175,
+            fitPadding: 150,
+            maxAutoScale: 1.22
+          }
+        }
+        resize() {
+          const w = document.getElementById('wrap');
+          this.cv.width = w.offsetWidth;
+          this.cv.height = w.offsetHeight;
+          if (this.sn.length) {
+            this.fit([this.sn[Math.max(this.idx, 0)]]);
+            this.cam.scale = this.cam.targetScale;
+            this.cam.x = this.cam.targetX;
+            this.cam.y = this.cam.targetY
+          }
+        }
+        screenToWorld(x, y) {
+          return {
+            x: (x - this.cam.x) / this.cam.scale,
+            y: (y - this.cam.y) / this.cam.scale
+          }
+        }
+        wheel(e) {
+          e.preventDefault();
+          const r = this.cv.getBoundingClientRect(),
+            x = e.clientX - r.left,
+            y = e.clientY - r.top;
+          let ns = this.cam.targetScale * (1 - e.deltaY * ENGINE.wheelSensitivity);
+          ns = Math.min(ENGINE.maxScale, Math.max(ENGINE.minScale, ns));
+          const wx = (x - this.cam.targetX) / this.cam.targetScale,
+            wy = (y - this.cam.targetY) / this.cam.targetScale;
+          this.cam.targetScale = ns;
+          this.cam.targetX = x - wx * ns;
+          this.cam.targetY = y - wy * ns
+        }
+        down(e) {
+          const r = this.cv.getBoundingClientRect(),
+            sx = e.clientX - r.left,
+            sy = e.clientY - r.top,
+            w = this.screenToWorld(sx, sy);
+          for (const c of this.lastCells) {
+            if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) {
+              document.getElementById('val').value = c.v === '?' ? '' : c.v;
+              document.getElementById('idx').value = c.i;
+              return
+            }
+          }
+          this.drag = true;
+          this.start = {
+            x: sx,
+            y: sy
+          };
+          this.c0 = {
+            x: this.cam.targetX,
+            y: this.cam.targetY
+          };
+          this.cv.style.cursor = 'grabbing'
+        }
+        move(e) {
+          const r = this.cv.getBoundingClientRect(),
+            x = e.clientX - r.left,
+            y = e.clientY - r.top;
+          if (this.drag) {
+            this.cam.targetX = this.c0.x + x - this.start.x;
+            this.cam.targetY = this.c0.y + y - this.start.y;
+            return
+          }
+          const w = this.screenToWorld(x, y);
+          this.cv.style.cursor = this.lastCells.some(c => w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) ? 'pointer' : 'default'
+        }
+        up() {
+          this.drag = false;
+          this.cv.style.cursor = 'default'
+        }
+        td(t) {
+          return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+        }
+        tc(t, r) {
+          return {
             x: (t[0].clientX + t[1].clientX) / 2 - r.left,
             y: (t[0].clientY + t[1].clientY) / 2 - r.top
+          }
         }
-    }
-    ts(e) {
-        e.preventDefault();
-        const r = this.cv.getBoundingClientRect();
-        if (e.touches.length === 1) {
+        ts(e) {
+          e.preventDefault();
+          const r = this.cv.getBoundingClientRect();
+          if (e.touches.length === 1) {
             const x = e.touches[0].clientX - r.left,
-                y = e.touches[0].clientY - r.top,
-                w = this.screenToWorld(x, y);
+              y = e.touches[0].clientY - r.top,
+              w = this.screenToWorld(x, y);
             for (const c of this.lastCells) {
-                if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) {
-                    document.getElementById('val').value = c.v === '?' ? '' : c.v;
-                    document.getElementById('idx').value = c.i;
-                    return
-                }
+              if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + this.cell) {
+                document.getElementById('val').value = c.v === '?' ? '' : c.v;
+                document.getElementById('idx').value = c.i;
+                return
+              }
             }
             this.drag = true;
-            this.start = { x, y };
-            this.c0 = { x: this.cam.targetX, y: this.cam.targetY }
-        } else if (e.touches.length === 2) {
+            this.start = {
+              x,
+              y
+            };
+            this.c0 = {
+              x: this.cam.targetX,
+              y: this.cam.targetY
+            }
+          } else if (e.touches.length === 2) {
             this.drag = false;
             this.p0 = this.td(e.touches);
             this.s0 = this.cam.targetScale;
             const c = this.tc(e.touches, r);
             this.pw = {
-                x: (c.x - this.cam.targetX) / this.cam.targetScale,
-                y: (c.y - this.cam.targetY) / this.cam.targetScale
+              x: (c.x - this.cam.targetX) / this.cam.targetScale,
+              y: (c.y - this.cam.targetY) / this.cam.targetScale
             }
+          }
         }
-    }
-    tm(e) {
-        e.preventDefault();
-        const r = this.cv.getBoundingClientRect();
-        if (e.touches.length === 1 && this.drag) {
+        tm(e) {
+          e.preventDefault();
+          const r = this.cv.getBoundingClientRect();
+          if (e.touches.length === 1 && this.drag) {
             const x = e.touches[0].clientX - r.left,
-                y = e.touches[0].clientY - r.top;
+              y = e.touches[0].clientY - r.top;
             this.cam.targetX = this.c0.x + x - this.start.x;
             this.cam.targetY = this.c0.y + y - this.start.y
-        } else if (e.touches.length === 2 && this.p0) {
+          } else if (e.touches.length === 2 && this.p0) {
             const ns = Math.min(ENGINE.maxScale, Math.max(ENGINE.minScale, this.s0 * this.td(e.touches) / this.p0)),
-                c = this.tc(e.touches, r);
+              c = this.tc(e.touches, r);
             this.cam.targetScale = ns;
             this.cam.targetX = c.x - this.pw.x * ns;
             this.cam.targetY = c.y - this.pw.y * ns
+          }
         }
-    }
-
-    layout(s) {
-    		const b = this.base();
-    		(s.cells || []).forEach((c, i) => {
-    			if (c.x === undefined) c.x = b.arrayLeftX + i * b.cellPitch;
-    			if (c.y === undefined) c.y = b.arrayTopY
-    		});
-    		(s.ghosts || []).forEach(g => {
-    			if (g.x === undefined) g.x = b.arrayLeftX + (g.i ?? 0) * b.cellPitch;
-    			if (g.y === undefined) g.y = b.transientValueY
-    		});
-    		(s.ptrs || []).forEach((p, i) => {
-    			if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
-    			if (p.y === undefined) p.y = b.arrayTopY - 95 - i * (this.cell + 6)
-    		})
-    	}
-
-    bounds(s) {
-    		const m = this.layoutMetrics();
-    		let b = {
-    			minX: 20,
-    			minY: 35,
-    			maxX: 760,
-    			maxY: 470
-    		};
-    		[...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
-    			b.minX = Math.min(b.minX, c.x - m.boundLeftExtra);
-    			b.maxX = Math.max(b.maxX, c.x + m.boundRightExtra);
-    			b.minY = Math.min(b.minY, c.y - m.boundTopExtra);
-    			b.maxY = Math.max(b.maxY, c.y + m.boundBottomExtra)
-    		});
-    		return b
-    	}
-
-    fit(snaps) {
-    		let B = {
-    			minX: 1e9,
-    			minY: 1e9,
-    			maxX: -1e9,
-    			maxY: -1e9
-    		};
-    		snaps.forEach(s => {
-    			const b = this.bounds(s);
-    			B.minX = Math.min(B.minX, b.minX);
-    			B.maxX = Math.max(B.maxX, b.maxX);
-    			B.minY = Math.min(B.minY, b.minY);
-    			B.maxY = Math.max(B.maxY, b.maxY)
-    		});
-    		const m = this.layoutMetrics();
-    		const sc = Math.min(m.maxAutoScale, this.cv.width / (B.maxX - B.minX + m.fitPadding), this.cv.height / (B.maxY - B.minY + m.fitPadding));
-    		this.cam.targetScale = sc;
-    		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-    		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-    	}
-
-    enqueue(snaps) {
-    		snaps.forEach(s => this.layout(s));
-    		this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-    		if (!this.sn.length) {
-    			this.sn.push(snaps.shift());
-    			this.idx = 0;
-    			const firstStatus = document.getElementById('status-text');
-    			const firstScene = this.sn[0];
-    			if (firstStatus) firstStatus.innerText = firstScene?.visualOnly ? '' : (firstScene?.text || 'Ready.')
-    		}
-    		if (snaps.length) {
-    			this.pending = snaps;
-                this.state = 'CAMERA';
-                this.stepWaiting = false;
-    		} else {
-                this.stepWaiting = false;
-            }
-            this.updateStepControls();
-    	}
-
-    loop(ts) {
-    		if (!this.last) this.last = ts;
-    		const dt = Math.min((ts - this.last) / 1000, ENGINE.maxFrameDeltaSeconds);
-    		this.last = ts;
-    		if (!this.paused) this.update(dt);
-    		this.draw();
-    		requestAnimationFrame(t => this.loop(t))
-    	}
-
-    update(dt) {
-    		const f = 1 - Math.exp(-ENGINE.cameraSmoothing * dt);
-    		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-    		this.cam.x += (this.cam.targetX - this.cam.x) * f;
-    		this.cam.y += (this.cam.targetY - this.cam.y) * f;
-    		if (this.state === 'CAMERA') {
-    			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < ENGINE.cameraSnapDistance && Math.abs(this.cam.scale - this.cam.targetScale) < ENGINE.cameraSnapScaleDelta) this.next()
-    		} else if (this.state === 'MORPH') {
-    			this.t += ENGINE.morphSpeed * this.speedFactor * dt;
-    			if (this.t >= 1) {
-    				this.t = 1;
-                const arrivedScene = this.sn[this.idx + 1];
-                const isVisualOnlyStep = !!arrivedScene?.visualOnly;
-                if (this.stepMode && !isVisualOnlyStep) {
-                    this.state = 'STEP_WAIT';
-                    this.stepWaiting = true;
-                    this.updateStepControls();
-                } else if (arrivedScene?.pause && !isVisualOnlyStep) {
-    					this.state = 'WAIT';
-    					this.wait = ENGINE.waitSeconds / this.speedFactor
-    				} else this.finish()
-    			}
-    		} else if (this.state === 'WAIT') {
-    			this.wait -= dt;
-    			if (this.wait <= 0) this.finish()
-    		}
-    	}
-
-    next() {
-    		const s = this.pending.shift();
-    		this.sn.push(s);
-    		if (s.fitCamera) this.fit([s]);
-            const status = document.getElementById('status-text');
-    		if (status) status.innerText = s.visualOnly ? '' : (s.text || 'Ready.');
-    		this.t = 0;
+        layout(s) {
+          const b = this.base();
+          (s.cells || []).forEach((c, i) => {
+            if (c.x === undefined) c.x = b.arrayLeftX + i * b.cellPitch;
+            if (c.y === undefined) c.y = b.arrayTopY
+          });
+          (s.ghosts || []).forEach(g => {
+            if (g.x === undefined) g.x = b.arrayLeftX + (g.i ?? 0) * b.cellPitch;
+            if (g.y === undefined) g.y = b.transientValueY
+          });
+          (s.ptrs || []).forEach((p, i) => {
+            if (p.x === undefined) p.x = b.arrayLeftX + (p.i ?? 0) * b.cellPitch;
+            if (p.y === undefined) p.y = b.arrayTopY - 95 - i * (this.cell + 6)
+          })
+        }
+        bounds(s) {
+          const m = this.layoutMetrics();
+          let b = {
+            minX: 20,
+            minY: 35,
+            maxX: 760,
+            maxY: 470
+          };
+          [...(s.cells || []), ...(s.ghosts || [])].forEach(c => {
+            b.minX = Math.min(b.minX, c.x - m.boundLeftExtra);
+            b.maxX = Math.max(b.maxX, c.x + m.boundRightExtra);
+            b.minY = Math.min(b.minY, c.y - m.boundTopExtra);
+            b.maxY = Math.max(b.maxY, c.y + m.boundBottomExtra)
+          });
+          return b
+        }
+        fit(snaps) {
+          let B = {
+            minX: 1e9,
+            minY: 1e9,
+            maxX: -1e9,
+            maxY: -1e9
+          };
+          snaps.forEach(s => {
+            const b = this.bounds(s);
+            B.minX = Math.min(B.minX, b.minX);
+            B.maxX = Math.max(B.maxX, b.maxX);
+            B.minY = Math.min(B.minY, b.minY);
+            B.maxY = Math.max(B.maxY, b.maxY)
+          });
+          const m = this.layoutMetrics();
+          const sc = Math.min(m.maxAutoScale, this.cv.width / (B.maxX - B.minX + m.fitPadding), this.cv.height / (B.maxY - B.minY + m.fitPadding));
+          this.cam.targetScale = sc;
+          this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+          this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+        }
+        enqueue(snaps) {
+          snaps.forEach(s => this.layout(s));
+          this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
+          if (!this.sn.length) {
+            this.sn.push(snaps.shift());
+            this.idx = 0;
+            const firstStatus = document.getElementById('status-text');
+            const firstScene = this.sn[0];
+           // if (firstStatus) firstStatus.innerText = firstScene?.visualOnly ? '' : (firstScene?.text || 'Ready.')
+          }
+          if (snaps.length) {
+            this.pending = snaps;
+            this.state = 'CAMERA';
             this.stepWaiting = false;
-    		this.state = 'MORPH';
-            this.updateStepControls()
-    	}
-
-    finish() {
-    		this.idx++;
-    		if (this.pending.length) this.next();
-    		else {
-    			this.state = 'IDLE';
-                this.stepWaiting = false;
-				const finalScene = this.sn[this.idx];
-				if (finalScene) this.fit([finalScene]);
-    			document.getElementById('status-text').innerText = 'Ready.';
+          } else {
+            this.stepWaiting = false;
+          }
+          this.updateStepControls();
+        }
+        loop(ts) {
+          if (!this.last) this.last = ts;
+          const dt = Math.min((ts - this.last) / 1000, ENGINE.maxFrameDeltaSeconds);
+          this.last = ts;
+          if (!this.paused) this.update(dt);
+          this.draw();
+          requestAnimationFrame(t => this.loop(t))
+        }
+        update(dt) {
+          const f = 1 - Math.exp(-ENGINE.cameraSmoothing * dt);
+          this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+          this.cam.x += (this.cam.targetX - this.cam.x) * f;
+          this.cam.y += (this.cam.targetY - this.cam.y) * f;
+          if (this.state === 'CAMERA') {
+            if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < ENGINE.cameraSnapDistance && Math.abs(this.cam.scale - this.cam.targetScale) < ENGINE.cameraSnapScaleDelta) this.next()
+          } else if (this.state === 'MORPH') {
+            this.t += ENGINE.morphSpeed * this.speedFactor * dt;
+            if (this.t >= 1) {
+              this.t = 1;
+              const arrivedScene = this.sn[this.idx + 1];
+              const isVisualOnlyStep = !!arrivedScene?.visualOnly;
+              if (this.stepMode && !isVisualOnlyStep) {
+                this.state = 'STEP_WAIT';
+                this.stepWaiting = true;
                 this.updateStepControls();
-    			window.app?.clearInputs()
-    		}
-    	}
-
-    ease(t) {
-    		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-    	}
-
-    mix(a, b, t) {
-    		const ma = new Map((a || []).map(o => [o.id, o])),
-    			mb = new Map((b || []).map(o => [o.id, o])),
-    			ids = new Set([...ma.keys(), ...mb.keys()]),
-    			sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
-    		let out = [];
-    		ids.forEach(id => {
-    			const A = ma.get(id),
-    				B = mb.get(id);
-    			if (A && B) out.push({
-    				...B,
-    				x: A.x + (B.x - A.x) * t,
-    				y: A.y + (B.y - A.y) * t
-    			});
-    			else if (B) {
-    				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-    				if (S) out.push({
-    					...B,
-    					x: S.x + (B.x - S.x) * t,
-    					y: S.y + (B.y - S.y) * t
-    				});
-    				else out.push({
-    					...B
-    				})
-    			}
-    			else if (A && !sourceIds.has(id) && t < ENGINE.deleteFadeCutoff) out.push({
-    				...A
-    			})
-    		});
-    		return out
-    	}
-
-    interp(A, B, t) {
-    		return {
-    			...B,
-    			cells: this.mix(A.cells, B.cells, t),
-    			ghosts: this.mix(A.ghosts, B.ghosts, t),
-    			ptrs: this.mix(A.ptrs, B.ptrs, t)
-    		}
-    	}
-
-    current() {
-    		return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)]
-    	}
-
-    flash() {
-    		return ENGINE.flashMinAlpha + ENGINE.flashMaxAlphaDelta * Math.abs(Math.sin(performance.now() / ENGINE.flashPeriodMs))
-    	}
-
-    setStepMode(enabled) {
-        this.stepMode = enabled;
-        if (!enabled && this.state === 'STEP_WAIT') {
+              } else if (arrivedScene?.pause && !isVisualOnlyStep) {
+                this.state = 'WAIT';
+                this.wait = ENGINE.waitSeconds / this.speedFactor
+              } else this.finish()
+            }
+          } else if (this.state === 'WAIT') {
+            this.wait -= dt;
+            if (this.wait <= 0) this.finish()
+          }
+        }
+        next() {
+          const s = this.pending.shift();
+          this.sn.push(s);
+          if (s.fitCamera) this.fit([s]);
+          const status = document.getElementById('status-text');
+          if (status) status.innerText = s.visualOnly ? '' : (s.text || 'Ready.');
+          this.t = 0;
+          this.stepWaiting = false;
+          this.state = 'MORPH';
+          this.updateStepControls()
+        }
+        finish() {
+          this.idx++;
+          if (this.pending.length) this.next();
+          else {
+            this.state = 'IDLE';
+            this.stepWaiting = false;
+            const finalScene = this.sn[this.idx];
+            if (finalScene) this.fit([finalScene]);
+            document.getElementById('status-text').innerText = 'Ready.';
+            this.updateStepControls();
+            window.app?.clearInputs()
+          }
+        }
+        ease(t) {
+          return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+        }
+        mix(a, b, t) {
+          const ma = new Map((a || []).map(o => [o.id, o])),
+            mb = new Map((b || []).map(o => [o.id, o])),
+            ids = new Set([...ma.keys(), ...mb.keys()]),
+            sourceIds = new Set((b || []).map(o => o.fromId).filter(id => id !== undefined));
+          let out = [];
+          ids.forEach(id => {
+            const A = ma.get(id),
+              B = mb.get(id);
+            if (A && B) out.push({
+              ...B,
+              x: A.x + (B.x - A.x) * t,
+              y: A.y + (B.y - A.y) * t
+            });
+            else if (B) {
+              const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+              if (S) out.push({
+                ...B,
+                x: S.x + (B.x - S.x) * t,
+                y: S.y + (B.y - S.y) * t
+              });
+              else out.push({
+                ...B
+              })
+            } else if (A && !sourceIds.has(id) && t < ENGINE.deleteFadeCutoff) out.push({
+              ...A
+            })
+          });
+          return out
+        }
+        interp(A, B, t) {
+          return {
+            ...B,
+            cells: this.mix(A.cells, B.cells, t),
+            ghosts: this.mix(A.ghosts, B.ghosts, t),
+            ptrs: this.mix(A.ptrs, B.ptrs, t)
+          }
+        }
+        current() {
+          return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.sn.length) ? this.interp(this.sn[this.idx], this.sn[this.idx + 1], this.ease(this.t)) : this.sn[Math.max(this.idx, 0)]
+        }
+        flash() {
+          return ENGINE.flashMinAlpha + ENGINE.flashMaxAlphaDelta * Math.abs(Math.sin(performance.now() / ENGINE.flashPeriodMs))
+        }
+        setStepMode(enabled) {
+          this.stepMode = enabled;
+          if (!enabled && this.state === 'STEP_WAIT') {
             this.stepWaiting = false;
             this.finish();
+          }
+          this.updateStepControls();
         }
-        this.updateStepControls();
-    }
-    advanceStep() {
-        if (!this.stepMode) return;
-        if (this.state === 'STEP_WAIT') {
+        advanceStep() {
+          if (!this.stepMode) return;
+          if (this.state === 'STEP_WAIT') {
             this.stepWaiting = false;
             this.finish();
+          }
+          this.updateStepControls();
         }
-        this.updateStepControls();
-    }
-    updateStepControls() {
-		const on = !!this.stepMode;
-
-        const chk = document.getElementById('stepMode');
-        const state = document.getElementById('stepState');
-        const next = document.getElementById('btnNextStep');
-		const label = document.getElementById('stepModeLabel');
-
-        if (chk) {
+        updateStepControls() {
+          const on = !!this.stepMode;
+          const chk = document.getElementById('stepMode');
+          const state = document.getElementById('stepState');
+          const next = document.getElementById('btnNextStep');
+          const label = document.getElementById('stepModeLabel');
+          if (chk) {
             chk.disabled = false;
             chk.checked = this.stepMode;
-        }
-		if (label) {
-				label.classList.toggle('step-toggle-on', on);
-				label.style.pointerEvents = 'auto';
-				label.style.opacity = '1';
-			}
-        if (state) state.innerText = this.stepMode ? 'On' : 'Off';
-        if (next) {
+          }
+          if (label) {
+            label.classList.toggle('step-toggle-on', on);
+            label.style.pointerEvents = 'auto';
+            label.style.opacity = '1';
+          }
+          if (state) state.innerText = this.stepMode ? 'On' : 'Off';
+          if (next) {
             const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
             next.disabled = !canAdvance;
-            next.title = !this.stepMode
-                ? 'Turn Step-by-step mode ON first.'
-                : (canAdvance
-                    ? 'Advance to the next non-visual algorithm step.'
-                    : 'Visual-only steps advance automatically. The button becomes available at the next algorithm step.');
+            next.title = !this.stepMode ?
+              'Turn Step-by-step mode ON first.' :
+              (canAdvance ?
+                'Advance to the next non-visual algorithm step.' :
+                'Visual-only steps advance automatically. The button becomes available at the next algorithm step.');
             next.setAttribute('aria-label', next.title);
+          }
         }
-    }
-    setSpeed(v) {
-    		this.speedFactor = 1 / v
-    	}
-
-    togglePause() {
-    		this.paused = !this.paused;
-    		return this.paused
-    	}
-
-    draw() {
-            const s = this.current();
-            const c = this.ctx;
-            c.clearRect(0, 0, this.cv.width, this.cv.height);
-            c.save();
-            c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-            if (s) this.renderScene(s);
-            c.restore();
+        setSpeed(v) {
+          this.speedFactor = 1 / v
         }
-    
+        togglePause() {
+          this.paused = !this.paused;
+          return this.paused
+        }
+        draw() {
+          const s = this.current();
+          const c = this.ctx;
+          c.clearRect(0, 0, this.cv.width, this.cv.height);
+          c.save();
+          c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+          if (s) this.renderScene(s);
+          c.restore();
+        }
         renderScene(_scene) {
-            // Subclasses render structure-specific content here using engine primitives.
+          // Subclasses render structure-specific content here using engine primitives.
         }
-    
-        paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1 } = {}) {
-            const c = this.ctx;
-            c.save();
-            c.globalAlpha *= alpha;
-            c.fillStyle = fill;
-            c.fillRect(x, y, w, h);
-            if (stroke) {
-                c.strokeStyle = stroke;
-                c.lineWidth = lineWidth;
-                c.strokeRect(x, y, w, h);
-            }
-            c.restore();
-        }
-    
-        paintText(text, x, y, { font = '24px Arial', fill = K.k, align = 'center', baseline = 'middle', alpha = 1 } = {}) {
-            const c = this.ctx;
-            c.save();
-            c.globalAlpha *= alpha;
-            c.fillStyle = fill;
-            c.font = font;
-            c.textAlign = align;
-            c.textBaseline = baseline;
-            c.fillText(String(text), x, y);
-            c.restore();
-        }
-    
-        paintDot(x, y, r, fill, { alpha = 1 } = {}) {
-            const c = this.ctx;
-            c.save();
-            c.globalAlpha *= alpha;
-            c.fillStyle = fill;
-            c.beginPath();
-            c.arc(x, y, r, 0, Math.PI * 2);
-            c.fill();
-            c.restore();
-        }
-    
-        strokeRoundedRect(x, y, w, h, radius, stroke = K.r, lineWidth = 5, alpha = 1) {
-            const c = this.ctx;
-            c.save();
-            c.globalAlpha *= alpha;
+        paintRect(x, y, w, h, fill, {
+          stroke = null,
+          lineWidth = 1,
+          alpha = 1
+        } = {}) {
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha *= alpha;
+          c.fillStyle = fill;
+          c.fillRect(x, y, w, h);
+          if (stroke) {
             c.strokeStyle = stroke;
             c.lineWidth = lineWidth;
-            c.beginPath();
-            if (c.roundRect) c.roundRect(x, y, w, h, radius);
-            else c.rect(x, y, w, h);
-            c.stroke();
-            c.restore();
+            c.strokeRect(x, y, w, h);
+          }
+          c.restore();
         }
-    
+        paintText(text, x, y, {
+          font = '24px Arial',
+          fill = K.k,
+          align = 'center',
+          baseline = 'middle',
+          alpha = 1
+        } = {}) {
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha *= alpha;
+          c.fillStyle = fill;
+          c.font = font;
+          c.textAlign = align;
+          c.textBaseline = baseline;
+          c.fillText(String(text), x, y);
+          c.restore();
+        }
+        paintDot(x, y, r, fill, {
+          alpha = 1
+        } = {}) {
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha *= alpha;
+          c.fillStyle = fill;
+          c.beginPath();
+          c.arc(x, y, r, 0, Math.PI * 2);
+          c.fill();
+          c.restore();
+        }
+        strokeRoundedRect(x, y, w, h, radius, stroke = K.r, lineWidth = 5, alpha = 1) {
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha *= alpha;
+          c.strokeStyle = stroke;
+          c.lineWidth = lineWidth;
+          c.beginPath();
+          if (c.roundRect) c.roundRect(x, y, w, h, radius);
+          else c.rect(x, y, w, h);
+          c.stroke();
+          c.restore();
+        }
         flashCircle(x, y, r) {
-            const c = this.ctx;
-            c.save();
-            c.globalAlpha = this.flash();
-            c.strokeStyle = K.r;
-            c.lineWidth = 5;
-            c.beginPath();
-            c.arc(x, y, r, 0, Math.PI * 2);
-            c.stroke();
-            c.restore();
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha = this.flash();
+          c.strokeStyle = K.r;
+          c.lineWidth = 5;
+          c.beginPath();
+          c.arc(x, y, r, 0, Math.PI * 2);
+          c.stroke();
+          c.restore();
         }
-    
         roundFlash(x, y, w, h) {
-            this.strokeRoundedRect(x, y, w, h, this.layoutMetrics().cellCornerRadius, K.r, 5, this.flash());
+          this.strokeRoundedRect(x, y, w, h, this.layoutMetrics().cellCornerRadius, K.r, 5, this.flash());
         }
-    
         cross(x, y, w, h) {
-            const c = this.ctx;
-            c.save();
-            c.globalAlpha = this.flash();
-            c.strokeStyle = K.r;
-            c.lineWidth = 6;
-            c.beginPath();
-            const pad = this.layoutMetrics().cellFlashPadding;
-            c.moveTo(x - pad, y - pad);
-            c.lineTo(x + w + pad, y + h + pad);
-            c.moveTo(x + w + pad, y - pad);
-            c.lineTo(x - pad, y + h + pad);
-            c.stroke();
-            c.restore();
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha = this.flash();
+          c.strokeStyle = K.r;
+          c.lineWidth = 6;
+          c.beginPath();
+          const pad = this.layoutMetrics().cellFlashPadding;
+          c.moveTo(x - pad, y - pad);
+          c.lineTo(x + w + pad, y + h + pad);
+          c.moveTo(x + w + pad, y - pad);
+          c.lineTo(x - pad, y + h + pad);
+          c.stroke();
+          c.restore();
         }
-    
-
-		arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-			const c = this.ctx;
-			c.save();
-			c.strokeStyle = col;
-			c.lineWidth = lw;
-			
-			const a = Math.atan2(y2 - y1, x2 - x1);
-			const ARROW_HEAD_LENGTH = ENGINE.arrowHeadLength;
-			
-			const shorten = ARROW_HEAD_LENGTH * 0.8;
-			const endX = x2 - shorten * Math.cos(a);
-			const endY = y2 - shorten * Math.sin(a);
-			
-			c.beginPath();
-			c.moveTo(x1, y1);
-			c.lineTo(endX, endY);
-			c.stroke();
-			
-			this.head(x1, y1, x2, y2, col);
-			c.restore();
-		}
-
-		head(x1, y1, x2, y2, col = K.b) {
-			const c = this.ctx;
-			const a = Math.atan2(y2 - y1, x2 - x1);
-			const size = ENGINE.arrowHeadLength; 
-			
-			c.save();
-			c.fillStyle = col;
-			c.translate(x2, y2);
-			c.rotate(a);
-			
-			c.beginPath();
-			c.moveTo(0, 0); 
-			c.lineTo(-size * 1.4, -size / 2); 
-			c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2); 
-			c.closePath();
-			
-			c.fill();
-			c.restore();
-    	}
-    
-}
-
-/* View: ArrayList-specific semantic rendering only. */
-class ArrayListView extends VisualizationEngine {
-    
-    renderScene(s) {
-            this.lastCells = s.cells || [];
-            this.drawStruct(s);
-            this.drawArrayPointer(s);
-            this.drawLabels(s);
-            (s.cells || []).forEach(cell => this.drawCell(cell, s));
-            (s.ghosts || []).forEach(g => this.drawGhost(g));
-            this.drawMoves(s);
-            this.drawPtrs(s);
-            this.drawOverlays(s);
+        arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+          const c = this.ctx;
+          c.save();
+          c.strokeStyle = col;
+          c.lineWidth = lw;
+          const a = Math.atan2(y2 - y1, x2 - x1);
+          const ARROW_HEAD_LENGTH = ENGINE.arrowHeadLength;
+          const shorten = ARROW_HEAD_LENGTH * 0.8;
+          const endX = x2 - shorten * Math.cos(a);
+          const endY = y2 - shorten * Math.sin(a);
+          c.beginPath();
+          c.moveTo(x1, y1);
+          c.lineTo(endX, endY);
+          c.stroke();
+          this.head(x1, y1, x2, y2, col);
+          c.restore();
         }
-    
-
-    
-    drawStruct(s) {
-            const b = this.base(),
-                m = this.layoutMetrics(),
-                structLeft = b.structLeftX,
-                structTop = b.structTopY,
-                cell = m.cell,
-                rowHeight = m.rowHeight,
-                labelRightX = structLeft - m.structLabelGap,
-                listBoxX = structLeft - m.listPointerBoxOffsetX,
-                listBoxY = structTop - m.listPointerBoxOffsetY,
-                listDotX = listBoxX + m.cellCenter,
-                listDotY = listBoxY + m.cellCenter;
-            this.paintText('p_list', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
-                font: '28px monospace',
-                fill: K.k,
-                align: 'right',
-                baseline: 'alphabetic'
+        head(x1, y1, x2, y2, col = K.b) {
+          const c = this.ctx;
+          const a = Math.atan2(y2 - y1, x2 - x1);
+          const size = ENGINE.arrowHeadLength;
+          c.save();
+          c.fillStyle = col;
+          c.translate(x2, y2);
+          c.rotate(a);
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(-size * 1.4, -size / 2);
+          c.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2);
+          c.closePath();
+          c.fill();
+          c.restore();
+        }
+      }
+      /* View: ArrayList-specific semantic rendering only. */
+      class ArrayListView extends VisualizationEngine {
+        renderScene(s) {
+          this.lastCells = s.cells || [];
+          this.drawStruct(s);
+          this.drawArrayPointer(s);
+          this.drawLabels(s);
+          (s.cells || []).forEach(cell => this.drawCell(cell, s));
+          (s.ghosts || []).forEach(g => this.drawGhost(g));
+          this.drawMoves(s);
+          this.drawPtrs(s);
+          this.drawOverlays(s);
+        }
+        drawStruct(s) {
+          const b = this.base(),
+            m = this.layoutMetrics(),
+            structLeft = b.structLeftX,
+            structTop = b.structTopY,
+            cell = m.cell,
+            rowHeight = m.rowHeight,
+            labelRightX = structLeft - m.structLabelGap,
+            listBoxX = structLeft - m.listPointerBoxOffsetX,
+            listBoxY = structTop - m.listPointerBoxOffsetY,
+            listDotX = listBoxX + m.cellCenter,
+            listDotY = listBoxY + m.cellCenter;
+          this.paintText('p_list', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
+            font: '28px monospace',
+            fill: K.k,
+            align: 'right',
+            baseline: 'alphabetic'
+          });
+          this.paintRect(listBoxX, listBoxY, cell, cell, K.p);
+          this.paintDot(listDotX, listDotY, m.dotRadius, K.v);
+          this.arrow(listDotX, listDotY, structLeft, structTop + m.listPointerArrowTargetInsetY, K.v, 3);
+          [
+            ['elements', K.c],
+            ['capacity', K.g],
+            ['size', K.g]
+          ].forEach((r, i) => {
+            const rowTop = structTop + i * rowHeight,
+              rowCenterY = rowTop + m.cellCenter;
+            this.paintText(r[0], labelRightX, rowCenterY, {
+              font: '28px monospace',
+              fill: K.k,
+              align: 'right',
+              baseline: 'middle'
             });
-            this.paintRect(listBoxX, listBoxY, cell, cell, K.p);
-            this.paintDot(listDotX, listDotY, m.dotRadius, K.v);
-            this.arrow(listDotX, listDotY, structLeft, structTop + m.listPointerArrowTargetInsetY, K.v, 3);
-            [
-                ['elements', K.c],
-                ['capacity', K.g],
-                ['size', K.g]
-            ].forEach((r, i) => {
-                const rowTop = structTop + i * rowHeight,
-                    rowCenterY = rowTop + m.cellCenter;
-                this.paintText(r[0], labelRightX, rowCenterY, {
-                    font: '28px monospace',
-                    fill: K.k,
-                    align: 'right',
-                    baseline: 'middle'
-                });
-                this.paintRect(structLeft, rowTop, cell, cell - m.rowStrokeCompensation, r[1]);
-                if (r[0] === 'elements') this.paintDot(structLeft + m.cellCenter, rowCenterY, m.dotRadius, K.b);
-                else this.paintText(String(r[0] === 'capacity' ? s.capacity : s.size), structLeft + m.cellCenter, rowCenterY + 2, { font: '32px Arial', fill: K.r });
+            this.paintRect(structLeft, rowTop, cell, cell - m.rowStrokeCompensation, r[1]);
+            if (r[0] === 'elements') this.paintDot(structLeft + m.cellCenter, rowCenterY, m.dotRadius, K.b);
+            else this.paintText(String(r[0] === 'capacity' ? s.capacity : s.size), structLeft + m.cellCenter, rowCenterY + 2, {
+              font: '32px Arial',
+              fill: K.r
             });
+          });
         }
-    
-
-    drawArrayPointer(s) {
-    		if (s.arrayPointer === false) return;
-    		const b = this.base(),
-    			m = this.layoutMetrics();
-    		let firstCell = null;
-    		if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
-    		if (!firstCell) firstCell = (s.cells || [])[0];
-    		if (firstCell) this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, K.b, 3)
-    	}
-
-    
-    drawLabels(s) {
-            (s.labels || []).forEach(l => this.paintText(l.text, l.x, l.y, {
-                font: l.font || 'bold 24px Arial',
-                fill: l.color || K.k,
-                align: l.align || 'center',
-                baseline: l.baseline || 'alphabetic'
+        drawArrayPointer(s) {
+          if (s.arrayPointer === false) return;
+          const b = this.base(),
+            m = this.layoutMetrics();
+          let firstCell = null;
+          if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
+          if (!firstCell) firstCell = (s.cells || [])[0];
+          if (firstCell) this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, K.b, 3)
+        }
+        drawLabels(s) {
+          (s.labels || []).forEach(l => this.paintText(l.text, l.x, l.y, {
+            font: l.font || 'bold 24px Arial',
+            fill: l.color || K.k,
+            align: l.align || 'center',
+            baseline: l.baseline || 'alphabetic'
+          }));
+        }
+        drawCell(cell, s) {
+          const m = this.layoutMetrics(),
+            w = m.cell,
+            isGrey = ((s.greyCells || []).includes(cell.i)),
+            active = cell.active !== undefined ? cell.active : (!isGrey && (cell.i < s.size || ((s.greenCells || []).includes(cell.i))));
+          this.paintRect(cell.x, cell.y, w, w, active ? K.g : K.y);
+          this.paintText(String(cell.v), cell.x + m.cellCenter, cell.y + m.cellCenter + 2, {
+            font: cell.v === '?' ? '27px Arial' : '30px Arial',
+            fill: active ? K.r : '#777'
+          });
+          this.paintText(cell.i, cell.x + m.cellCenter, cell.y - m.indexLabelGap, {
+            font: '22px monospace',
+            fill: K.k,
+            baseline: 'alphabetic'
+          });
+        }
+        drawGhost(g) {
+          const m = this.layoutMetrics(),
+            w = m.cell;
+          this.paintRect(g.x, g.y, w, w, K.g, {
+            alpha: 0.82
+          });
+          if (g.border !== false) this.paintRect(g.x, g.y, w, w, 'rgba(0,0,0,0)', {
+            stroke: K.r,
+            lineWidth: 3,
+            alpha: 0.82
+          });
+          this.paintText(String(g.v), g.x + m.cellCenter, g.y + m.cellCenter + 2, {
+            font: '30px Arial',
+            fill: K.r,
+            alpha: 0.82
+          });
+        }
+        drawMoves(s) {
+          (s.moves || []).forEach(m => {
+            const from = (s.cells || []).find(c => c.i === m.from),
+              to = (s.cells || []).find(c => c.i === m.to);
+            if (from && to) this.arrow(from.x + this.cell / 2, from.y + this.cell + 20, to.x + this.cell / 2, to.y + this.cell + 20, K.r, 3)
+          })
+        }
+        drawPtrs(s) {
+          const m = this.layoutMetrics();
+          (s.ptrs || []).forEach(p => {
+            const pointerCenterX = p.x + m.cellCenter,
+              pointerCenterY = p.y + m.cellCenter;
+            this.paintText(p.label, pointerCenterX, p.y - m.pointerLabelGap, {
+              font: '22px monospace',
+              fill: K.k,
+              baseline: 'alphabetic'
+            });
+            this.paintRect(p.x, p.y, m.cell, m.cell, K.c);
+            this.paintDot(pointerCenterX, pointerCenterY, m.dotRadius, K.b);
+            const target = (s.cells || []).find(c => c.i === p.i);
+            if (target) this.arrow(pointerCenterX, pointerCenterY, target.x + m.cellCenter, target.y, K.b, 3);
+          });
+        }
+        drawOverlays(s) {
+          if (s.flashElements) this.flashStruct(0);
+          if (s.flashCapacity) this.flashStruct(1);
+          if (s.flashSize) this.flashStruct(2);
+          (s.flashCells || []).forEach(i => {
+            const cell = (s.cells || []).find(c => c.i === i);
+            if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
+          });
+          (s.flashCellIds || []).forEach(id => {
+            const cell = (s.cells || []).find(c => c.id === id);
+            if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
+          });
+          (s.crossCells || []).forEach(i => {
+            const cell = (s.cells || []).find(c => c.i === i);
+            if (cell) this.cross(cell.x, cell.y, this.cell, this.cell)
+          })
+        }
+        flashStruct(row) {
+          const b = this.base(),
+            m = this.layoutMetrics();
+          this.flashCircle(b.structLeftX + m.cellCenter, b.structTopY + row * m.rowHeight + m.cellCenter, m.structFlashRadius)
+        }
+      }
+      /* App: model, UI and ArrayList algorithms only. */
+      class App {
+        constructor() {
+          this.values = [];
+          this.capacity = 6;
+          this.storage = [];
+          this.history = [];
+          this.viz = null;
+        }
+        init() {
+          this.viz = new ArrayListView('cv');
+          this.randomFill();
+          this.showCurrent('Visualization only: the initial sample ArrayList is displayed.');
+          this.updateUI();
+          this.clearInputs()
+        }
+        cells(vals = this.values, cap = this.capacity) {
+          return Array.from({
+            length: cap
+          }, (_, i) => {
+            const hasVal = i < vals.length && vals[i] !== undefined;
+            const hasStored = this.storage && i < this.storage.length && this.storage[i] !== undefined;
+            return {
+              id: 'c' + i,
+              v: hasVal ? vals[i] : (hasStored ? this.storage[i] : '?'),
+              i
+            }
+          })
+        }
+        commitStorage(vals, cap = this.capacity) {
+          const next = Array.from({
+            length: cap
+          }, (_, i) => this.storage?.[i]);
+          vals.forEach((v, i) => {
+            next[i] = v
+          });
+          this.storage = next
+        }
+        snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
+          const originalText = String(text ?? '');
+          const visualOnly = extra.visualOnly !== undefined ?
+            !!extra.visualOnly :
+            /^\s*Visualization only:/i.test(originalText);
+          return {
+            cells: this.cells(vals, cap),
+            size: extra.size ?? this.values.length,
+            capacity: cap,
+            ...extra,
+            visualOnly,
+            text: visualOnly ? '' : originalText
+          }
+        }
+        showCurrent(text = 'Ready.') {
+          this.viz.sn = [];
+          this.viz.pending = [];
+          this.viz.idx = -1;
+          this.viz.state = 'IDLE';
+          this.viz.stepWaiting = false;
+          this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
+            size: this.values.length
+          })])
+        }
+        showInputError(inputId) {
+          const el = document.getElementById(inputId);
+          if (!el) return;
+          el.classList.remove('input-error');
+          void el.offsetWidth;
+          el.classList.add('input-error');
+          setTimeout(() => el.classList.remove('input-error'), 400);
+        }
+        v() {
+          let value = parseInt(document.getElementById('val').value);
+          if (isNaN(value)) this.showInputError('val');
+          return value
+        }
+        i() {
+          let value = parseInt(document.getElementById('idx').value);
+          if (isNaN(value)) this.showInputError('idx');
+          return value
+        }
+        c() {
+          let value = parseInt(document.getElementById('cap').value);
+          if (isNaN(value) || value < 1) this.showInputError('cap');
+          return value
+        }
+        save() {
+          this.history.push({
+            values: [...this.values],
+            capacity: this.capacity,
+            storage: [...this.storage]
+          });
+          if (this.history.length > ENGINE.defaultHistoryLimit) this.history.shift()
+        }
+        reallocCells(vals, oldCap, newCap, copiedCount = 0) {
+          const b = this.viz.base(),
+            cellPitch = b.cellPitch;
+          const arrayLeftX = b.arrayLeftX;
+          const oldArrayTopY = b.reallocOldArrayY;
+          const newArrayTopY = b.reallocNewArrayY;
+          const stored = this.storage || [];
+          const oldCells = Array.from({
+            length: oldCap
+          }, (_, i) => ({
+            id: 'old' + i,
+            fromId: 'c' + i,
+            i,
+            v: i < vals.length ? vals[i] : (stored[i] !== undefined ? stored[i] : '?'),
+            x: arrayLeftX + i * cellPitch,
+            y: oldArrayTopY,
+            active: i < vals.length
+          }));
+          const newCells = Array.from({
+            length: newCap
+          }, (_, i) => ({
+            id: 'new' + i,
+            i,
+            v: i < copiedCount ? vals[i] : '?',
+            x: arrayLeftX + i * cellPitch,
+            y: newArrayTopY,
+            active: i < copiedCount
+          }));
+          return [...oldCells, ...newCells]
+        }
+        reallocLabels(oldCap, newCap) {
+          const b = this.viz.base(),
+            m = this.viz.layoutMetrics();
+          const centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + m.cellCenter;
+          return [{
+              text: 'old elements',
+              x: centeredLabelX(oldCap),
+              y: b.reallocOldArrayY - 38,
+              color: '#777'
+            },
+            {
+              text: 'new elements',
+              x: centeredLabelX(newCap),
+              y: b.reallocNewArrayY - 38,
+              color: '#2E7D32'
+            }
+          ]
+        }
+        reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
+          return this.snapshot(text, vals, oldCap, {
+            size: vals.length,
+            capacity: oldCap,
+            cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
+            labels: this.reallocLabels(oldCap, newCap),
+            arrayPointerId: 'old0',
+            ...extra
+          })
+        }
+        reallocFinalSnapshot(text, vals, newCap, extra = {}) {
+          const finalCells = this.cells(vals, newCap).map(c => ({
+            ...c,
+            fromId: 'new' + c.i
+          }));
+          return this.snapshot(text, vals, newCap, {
+            size: vals.length,
+            capacity: newCap,
+            cells: finalCells,
+            ...extra
+          })
+        }
+        ensureSnaps(vals, cap, need, lead) {
+          let snaps = [];
+          if (vals.length + need <= cap) return {
+            cap,
+            snaps
+          };
+          snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
+            size: vals.length,
+            pause: true
+          }));
+          let newCap = Math.max(1, cap * 2);
+          while (vals.length + need > newCap) newCap *= 2;
+          snaps.push(this.reallocSnapshot('A new array with double capacity is allocated', vals, cap, newCap, 0, {
+            fitCamera: true,
+            pause: true
+          }));
+          for (let i = 0; i < vals.length; i++) {
+            const b = this.viz.base();
+            const copyX = b.arrayLeftX + i * b.cellPitch;
+            snaps.push(this.reallocSnapshot('Copying element ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
+              ghosts: [{
+                id: 'copy' + i,
+                i,
+                v: vals[i],
+                x: copyX,
+                y: b.reallocOldArrayY,
+                border: false
+              }]
             }));
+            snaps.push(this.reallocSnapshot('Element ' + i + ' has been copied into the new array', vals, cap, newCap, i, {
+              ghosts: [{
+                id: 'copy' + i,
+                i,
+                v: vals[i],
+                x: copyX,
+                y: b.reallocNewArrayY,
+                border: false
+              }],
+              pause: true
+            }));
+            snaps.push(this.reallocSnapshot('The new array now contains the first ' + (i + 1) + ' copied element' + (i === 0 ? '' : 's'), vals, cap, newCap, i + 1, {
+              flashCellIds: ['new' + i],
+              pause: true
+            }));
+          }
+          snaps.push(this.reallocSnapshot('All existing elements have been copied; elements will now point to the new array', vals, cap, newCap, vals.length, {
+            pause: true
+          }));
+          snaps.push(this.reallocFinalSnapshot('The elements pointer is updated to refer to the new array', vals, newCap, {
+            capacity: cap,
+            fitCamera: true,
+            flashElements: true,
+            pause: true
+          }));
+          snaps.push(this.reallocFinalSnapshot('The capacity field is updated to ' + newCap, vals, newCap, {
+            flashCapacity: true,
+            pause: true
+          }));
+          return {
+            cap: newCap,
+            snaps
+          }
         }
-    
-
-    
-    drawCell(cell, s) {
-            const m = this.layoutMetrics(),
-                w = m.cell,
-                isGrey = ((s.greyCells || []).includes(cell.i)),
-                active = cell.active !== undefined ? cell.active : (!isGrey && (cell.i < s.size || ((s.greenCells || []).includes(cell.i))));
-            this.paintRect(cell.x, cell.y, w, w, active ? K.g : K.y);
-            this.paintText(String(cell.v), cell.x + m.cellCenter, cell.y + m.cellCenter + 2, {
-                font: cell.v === '?' ? '27px Arial' : '30px Arial',
-                fill: active ? K.r : '#777'
-            });
-            this.paintText(cell.i, cell.x + m.cellCenter, cell.y - m.indexLabelGap, {
-                font: '22px monospace',
-                fill: K.k,
-                baseline: 'alphabetic'
-            });
+        append() {
+          const e = this.v();
+          if (isNaN(e)) return;
+          this.save();
+          const old = [...this.values],
+            oldCap = this.capacity;
+          let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, oldCap, {
+            size: old.length
+          })];
+          let ec = this.ensureSnaps(old, oldCap, 1, 'Before appending,');
+          snaps.push(...ec.snaps);
+          let vals = [...old],
+            cap = ec.cap;
+          let beforeSizeIncrement = [...vals];
+          beforeSizeIncrement[old.length] = e;
+          snaps.push(this.snapshot('The new element is written at array index size', beforeSizeIncrement, cap, {
+            size: old.length,
+            greenCells: [old.length],
+            flashCells: [old.length],
+            pause: true
+          }));
+          vals.push(e);
+          snaps.push(this.snapshot('size is incremented after storing the new element', vals, cap, {
+            size: old.length,
+            greenCells: [old.length],
+            flashSize: true,
+            pause: true
+          }));
+          snaps.push(this.snapshot('Visualization only: the completed ArrayList state is displayed.', vals, cap, {
+            size: vals.length
+          }));
+          this.commitStorage(vals, cap);
+          this.values = vals;
+          this.capacity = cap;
+          this.viz.enqueue(snaps);
+          this.updateUI()
         }
-    
-
-    
-    drawGhost(g) {
-            const m = this.layoutMetrics(), w = m.cell;
-            this.paintRect(g.x, g.y, w, w, K.g, { alpha: 0.82 });
-            if (g.border !== false) this.paintRect(g.x, g.y, w, w, 'rgba(0,0,0,0)', { stroke: K.r, lineWidth: 3, alpha: 0.82 });
-            this.paintText(String(g.v), g.x + m.cellCenter, g.y + m.cellCenter + 2, { font: '30px Arial', fill: K.r, alpha: 0.82 });
+        prepend() {
+          document.getElementById('idx').value = 0;
+          this.insert()
         }
-    
-
-    drawMoves(s) {
-    		(s.moves || []).forEach(m => {
-    			const from = (s.cells || []).find(c => c.i === m.from),
-    				to = (s.cells || []).find(c => c.i === m.to);
-    			if (from && to) this.arrow(from.x + this.cell / 2, from.y + this.cell + 20, to.x + this.cell / 2, to.y + this.cell + 20, K.r, 3)
-    		})
-    	}
-
-    
-    drawPtrs(s) {
-            const m = this.layoutMetrics();
-            (s.ptrs || []).forEach(p => {
-                const pointerCenterX = p.x + m.cellCenter,
-                    pointerCenterY = p.y + m.cellCenter;
-                this.paintText(p.label, pointerCenterX, p.y - m.pointerLabelGap, {
-                    font: '22px monospace',
-                    fill: K.k,
-                    baseline: 'alphabetic'
-                });
-                this.paintRect(p.x, p.y, m.cell, m.cell, K.c);
-                this.paintDot(pointerCenterX, pointerCenterY, m.dotRadius, K.b);
-                const target = (s.cells || []).find(c => c.i === p.i);
-                if (target) this.arrow(pointerCenterX, pointerCenterY, target.x + m.cellCenter, target.y, K.b, 3);
-            });
+        insert() {
+          let idx = this.i(),
+            e = this.v();
+          if (isNaN(idx) || isNaN(e) || idx < 0 || idx > this.values.length) return;
+          this.save();
+          const old = [...this.values],
+            oldCap = this.capacity;
+          let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, oldCap, {
+            size: old.length
+          })];
+          let ec = this.ensureSnaps(old, oldCap, 1, 'Before inserting,');
+          snaps.push(...ec.snaps);
+          let cap = ec.cap,
+            work = [...old],
+            grownCells = [],
+            greyCells = [];
+          for (let j = old.length - 1; j >= idx; j--) {
+            let tmp = [...work];
+            tmp[j + 1] = tmp[j];
+            greyCells = greyCells.filter(i => i !== j + 1);
+            if (!greyCells.includes(j)) greyCells.push(j);
+            if (j + 1 >= old.length && !grownCells.includes(j + 1)) grownCells.push(j + 1);
+            snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position right', tmp, cap, {
+              size: old.length,
+              moves: [{
+                from: j,
+                to: j + 1
+              }],
+              flashCells: [j + 1],
+              greenCells: [...grownCells],
+              greyCells: [...greyCells],
+              pause: true
+            }));
+            work = tmp
+          }
+          snaps.push(this.snapshot(idx === 0 ? 'Visualization only: the gap at index 0 is highlighted before the algorithm stores the new element.' : 'Visualization only: the gap at index ' + idx + ' is ready for the new element.', work, cap, {
+            size: old.length,
+            flashCells: [idx],
+            greenCells: [...grownCells],
+            greyCells: [...greyCells],
+            pause: true
+          }));
+          work[idx] = e;
+          greyCells = greyCells.filter(i => i !== idx);
+          let final = work.slice(0, old.length + 1),
+            storedGreenCells = [...grownCells];
+          if (!storedGreenCells.includes(idx)) storedGreenCells.push(idx);
+          snaps.push(this.snapshot('The new element is stored at index ' + idx, final, cap, {
+            size: old.length,
+            flashCells: [idx],
+            greenCells: storedGreenCells,
+            greyCells: [...greyCells],
+            pause: true
+          }));
+          snaps.push(this.snapshot('size is incremented after the insertion', final, cap, {
+            size: old.length,
+            flashSize: true,
+            greenCells: storedGreenCells,
+            greyCells: [...greyCells],
+            pause: true
+          }));
+          snaps.push(this.snapshot('Visualization only: the completed ArrayList state is displayed.', final, cap, {
+            size: final.length
+          }));
+          this.commitStorage(final, cap);
+          this.values = final;
+          this.capacity = cap;
+          this.viz.enqueue(snaps);
+          this.updateUI()
         }
-    
-
-    drawOverlays(s) {
-    		if (s.flashElements) this.flashStruct(0);
-    		if (s.flashCapacity) this.flashStruct(1);
-    		if (s.flashSize) this.flashStruct(2);
-    		(s.flashCells || []).forEach(i => {
-    			const cell = (s.cells || []).find(c => c.i === i);
-    			if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
-    		});
-    		(s.flashCellIds || []).forEach(id => {
-    			const cell = (s.cells || []).find(c => c.id === id);
-    			if (cell) this.roundFlash(cell.x, cell.y, this.cell, this.cell)
-    		});
-    		(s.crossCells || []).forEach(i => {
-    			const cell = (s.cells || []).find(c => c.i === i);
-    			if (cell) this.cross(cell.x, cell.y, this.cell, this.cell)
-    		})
-    	}
-
-    flashStruct(row) {
-    		const b = this.base(),
-    			m = this.layoutMetrics();
-    		this.flashCircle(b.structLeftX + m.cellCenter, b.structTopY + row * m.rowHeight + m.cellCenter, m.structFlashRadius)
-    	}
-}
-
-/* App: model, UI and ArrayList algorithms only. */
-class App {
-    constructor() {
-            this.values = [];
-            this.capacity = 6;
-            this.storage = [];
-            this.history = [];
-            this.viz = null;
+        get() {
+          let idx = this.i();
+          if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
+          let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', this.values, this.capacity, {
+            size: this.values.length
+          }), this.snapshot('ArrayList_get accesses elements[' + idx + '] directly', this.values, this.capacity, {
+            size: this.values.length,
+            ptrs: [{
+              id: 'pget',
+              label: 'elements[' + idx + ']',
+              i: idx
+            }],
+            flashCells: [idx],
+            pause: true
+          }), this.snapshot('Visualization only: the lookup result is displayed: get(' + idx + ') = ' + this.values[idx], this.values, this.capacity, {
+            size: this.values.length,
+            flashCells: [idx],
+            pause: true
+          }), this.snapshot('Visualization only: the completed ArrayList state is displayed.', this.values, this.capacity, {
+            size: this.values.length
+          })];
+          this.viz.enqueue(snaps);
+          this.updateUI()
         }
+        set() {
+          let idx = this.i(),
+            e = this.v();
+          if (isNaN(idx) || isNaN(e) || idx < 0 || idx >= this.values.length) return;
+          this.save();
+          let old = [...this.values],
+            upd = [...old];
+          upd[idx] = e;
+          let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, this.capacity, {
+            size: old.length
+          }), this.snapshot('ArrayList_set locates elements[' + idx + '] directly', old, this.capacity, {
+            size: old.length,
+            ptrs: [{
+              id: 'pset',
+              label: 'elements[' + idx + ']',
+              i: idx
+            }],
+            flashCells: [idx],
+            pause: true
+          }), this.snapshot('The value at index ' + idx + ' is replaced by ' + e, upd, this.capacity, {
+            size: upd.length,
+            flashCells: [idx],
+            pause: true
+          }), this.snapshot('Visualization only: the completed ArrayList state is displayed.', upd, this.capacity, {
+            size: upd.length
+          })];
+          this.commitStorage(upd, this.capacity);
+          this.values = upd;
+          this.viz.enqueue(snaps);
+          this.updateUI()
+        }
+        del() {
+          let idx = this.i();
+          if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
+          this.save();
+          let old = [...this.values],
+            work = [...old],
+            greyCells = [];
+          let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, this.capacity, {
+            size: old.length
+          }), this.snapshot('The element at index ' + idx + ' is selected for deletion', old, this.capacity, {
+            size: old.length,
+            crossCells: [idx],
+            pause: true
+          })];
+          for (let j = idx + 1; j < old.length; j++) {
+            work[j - 1] = work[j];
+            greyCells = greyCells.filter(i => i !== j - 1);
+            if (!greyCells.includes(j)) greyCells.push(j);
+            snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position left', work, this.capacity, {
+              size: old.length,
+              moves: [{
+                from: j,
+                to: j - 1
+              }],
+              flashCells: [j - 1],
+              greyCells: [...greyCells],
+              pause: true
+            }))
+          }
+          let final = old.filter((_, i) => i !== idx);
+          snaps.push(this.snapshot('The trailing duplicate is now outside the logical list', work, this.capacity, {
+            size: old.length,
+            greyCells: [...greyCells],
+            pause: true
+          }));
+          snaps.push(this.snapshot('size is decremented; the last physical value remains allocated but becomes unused', work, this.capacity, {
+            size: old.length - 1,
+            flashSize: true,
+            pause: true
+          }));
+          snaps.push(this.snapshot('Visualization only: the completed ArrayList state is displayed.', work, this.capacity, {
+            size: final.length
+          }));
+          this.commitStorage(work, this.capacity);
+          this.values = final;
+          this.viz.enqueue(snaps);
+          this.updateUI()
+        }
+        clear() {
+          this.save();
+          let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', this.values, this.capacity, {
+            size: this.values.length
+          }), this.snapshot('ArrayList_clear sets size to 0; capacity and the allocated array are kept', this.values, this.capacity, {
+            size: this.values.length,
+            flashSize: true,
+            pause: true
+          }), this.snapshot('The ArrayList is now logically empty; old cells are outside size', this.values, this.capacity, {
+            size: 0,
+            pause: true
+          }), this.snapshot('Visualization only: the completed ArrayList state is displayed.', this.values, this.capacity, {
+            size: 0
+          })];
+          this.commitStorage(this.values, this.capacity);
+          this.values = [];
+          this.viz.enqueue(snaps);
+          this.updateUI()
+        }
+        random() {
+          this.save();
+          this.randomFill();
+          this.showCurrent('Visualization only: a random sample ArrayList is displayed.');
+          this.updateUI()
+        }
+		randomFill() {
+          let capacity = this.c();
+          if (isNaN(capacity) || capacity < 1) return;
+		  this.capacity = capacity;
+          let sz = Math.floor(Math.random() * 2*capacity/3) + capacity/3;
+          this.values = [];
+          while (this.values.length < sz) {
+            let v = Math.floor(Math.random() * ENGINE.randomValueRange) + ENGINE.randomMinValue;
+            if (!this.values.includes(v) || (capacity > 9)) this.values.push(v)
+          }
+          if (Math.random() < ENGINE.randomSortedProbability) {
+            this.values.sort()
+          }
+          this.storage = [...this.values];
+		}
+        reinit() {
+          let c = this.c();
+          if (isNaN(c) || c < 1) return;
+          this.save();
+          this.capacity = c;
+          this.values = [];
+          this.storage = [];
+          this.showCurrent('Visualization only: A new empty ArrayList has been allocated with capacity ' + c);
+          this.updateUI()
+        }
+        undo() {
+          if (!this.history.length) return;
+          const h = this.history.pop();
+          this.values = h.values;
+          this.capacity = h.capacity;
+          this.storage = h.storage ?? [...h.values];
+          this.showCurrent('Visualization only: the Undo utility has restored the previous displayed ArrayList state.');
+          this.updateUI()
+        }
+        stepModeChanged() {
+          const chk = document.getElementById('stepMode');
+          if (this.viz) this.viz.setStepMode(!!chk.checked);
+        }
+        nextStep() {
+          if (this.viz) this.viz.advanceStep();
+        }
+        speed() {
+          this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+        }
+        pause() {
+          const p = this.viz.togglePause();
+          document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
+        }
+        toggleModal() {
+          const m = document.getElementById('helpModal');
+          m.style.display = m.style.display === 'block' ? 'none' : 'block'
+        }
+        updateUI() {
+          document.getElementById('btnUndo').disabled = this.history.length === 0;
+          if (this.viz) this.viz.updateStepControls()
+        }
+        clearInputs() {
+          document.getElementById('val').value = '';
+          document.getElementById('idx').value = ''
+        }
+      }
+      const app = new App();
+      window.app = app;
+      window.onload = () => {
+		app.init();
+		const chk = document.getElementById('chkStepMode');
+        const label = document.getElementById('stepModeLabel');
+        if (chk) chk.disabled = false;
+        if (label) {
+          label.style.pointerEvents = 'auto';
+          label.style.opacity = '1';
+        };
+	  }
+      window.onclick = e => {
+        if (e.target === document.getElementById('helpModal')) app.toggleModal();
+      };
+    </script>
+  </body>
 
-    init() {
-    		this.viz = new ArrayListView('cv');
-    		this.values = [2, 1, 4];
-    		this.capacity = 6;
-    		this.storage = [...this.values];
-    		this.showCurrent('Visualization only: the initial sample ArrayList is displayed.');
-    		this.updateUI()
-    	}
-
-    cells(vals = this.values, cap = this.capacity) {
-    		return Array.from({
-    			length: cap
-    		}, (_, i) => {
-    			const hasVal = i < vals.length && vals[i] !== undefined;
-    			const hasStored = this.storage && i < this.storage.length && this.storage[i] !== undefined;
-    			return {
-    				id: 'c' + i,
-    				v: hasVal ? vals[i] : (hasStored ? this.storage[i] : '?'),
-    				i
-    			}
-    		})
-    	}
-
-    commitStorage(vals, cap = this.capacity) {
-    		const next = Array.from({ length: cap }, (_, i) => this.storage?.[i]);
-    		vals.forEach((v, i) => {
-    			next[i] = v
-    		});
-    		this.storage = next
-    	}
-
-    snapshot(text, vals = this.values, cap = this.capacity, extra = {}) {
-    		const normalizedText = this.statusMessage(text);
-            const visualOnly = extra.visualOnly !== undefined
-                ? !!extra.visualOnly
-                : /^\s*Visualization only:/i.test(normalizedText);
-    		return {
-    			cells: this.cells(vals, cap),
-    			size: extra.size ?? this.values.length,
-    			capacity: cap,
-                ...extra,
-                visualOnly,
-    			text: visualOnly ? '' : normalizedText
-    		}
-    	}
-
-    statusMessage(text = '') {
-        let t = String(text || '');
-        if (t.startsWith('Visualization only:')) return t;
-        const replacements = new Map([
-            ['Visualization only: the current ArrayList state is displayed before the algorithm begins.', 'Visualization only: the current ArrayList state is displayed before the algorithm begins.'],
-            ['Visualization only: the initial sample ArrayList is displayed.', 'Visualization only: the initial sample ArrayList is displayed.'],
-            ['Visualization only: a random sample ArrayList is displayed.', 'Visualization only: a random sample ArrayList is displayed.'],
-            ['Visualization only: the Undo utility has restored the previous displayed ArrayList state.', 'Visualization only: the Undo utility has restored the previous displayed ArrayList state.'],
-            ['Visualization only: the completed ArrayList state is displayed.', 'Visualization only: the completed ArrayList state is displayed.'],
-            ['The gap at index 0 is ready for the new element', 'Visualization only: the gap at index 0 is highlighted before the algorithm stores the new element.']
-        ]);
-        if (replacements.has(t)) return replacements.get(t);
-        if (/^The gap at index \d+ is ready for the new element$/.test(t)) return 'Visualization only: ' + t.charAt(0).toLowerCase() + t.slice(1) + '.';
-        if (/^The lookup result is get\(/.test(t)) return 'Visualization only: the lookup result is displayed: ' + t.replace('The lookup result is ', '');
-        return t;
-    }
-    showCurrent(text = 'Ready.') {
-    		this.viz.sn = [];
-    		this.viz.pending = [];
-    		this.viz.idx = -1;
-    		this.viz.state = 'IDLE';
-            this.viz.stepWaiting = false;
-    		this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
-    			size: this.values.length
-    		})])
-    	}
-
-    v() {
-    		return parseInt(document.getElementById('val').value)
-    	}
-
-    i() {
-    		return parseInt(document.getElementById('idx').value)
-    	}
-
-    save() {
-    		this.history.push({
-    			values: [...this.values],
-    			capacity: this.capacity,
-    			storage: [...this.storage]
-    		});
-    		if (this.history.length > ENGINE.defaultHistoryLimit) this.history.shift()
-    	}
-
-    reallocCells(vals, oldCap, newCap, copiedCount = 0) {
-    		const b = this.viz.base(), cellPitch = b.cellPitch;
-    		const arrayLeftX = b.arrayLeftX;
-    		const oldArrayTopY = b.reallocOldArrayY;
-    		const newArrayTopY = b.reallocNewArrayY;
-    		const stored = this.storage || [];
-    		const oldCells = Array.from({ length: oldCap }, (_, i) => ({
-    			id: 'old' + i,
-    			fromId: 'c' + i,
-    			i,
-    			v: i < vals.length ? vals[i] : (stored[i] !== undefined ? stored[i] : '?'),
-    			x: arrayLeftX + i * cellPitch,
-    			y: oldArrayTopY,
-    			active: i < vals.length
-    		}));
-    		const newCells = Array.from({ length: newCap }, (_, i) => ({
-    			id: 'new' + i,
-    			i,
-    			v: i < copiedCount ? vals[i] : '?',
-    			x: arrayLeftX + i * cellPitch,
-    			y: newArrayTopY,
-    			active: i < copiedCount
-    		}));
-    		return [...oldCells, ...newCells]
-    	}
-
-    reallocLabels(oldCap, newCap) {
-    		const b = this.viz.base(), m = this.viz.layoutMetrics();
-    		const centeredLabelX = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + m.cellCenter;
-    		return [
-    			{ text: 'old elements', x: centeredLabelX(oldCap), y: b.reallocOldArrayY - 38, color: '#777' },
-    			{ text: 'new elements', x: centeredLabelX(newCap), y: b.reallocNewArrayY - 38, color: '#2E7D32' }
-    		]
-    	}
-
-    reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
-    		return this.snapshot(text, vals, oldCap, {
-    			size: vals.length,
-    			capacity: oldCap,
-    			cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
-    			labels: this.reallocLabels(oldCap, newCap),
-    			arrayPointerId: 'old0',
-    			...extra
-    		})
-    	}
-
-    reallocFinalSnapshot(text, vals, newCap, extra = {}) {
-    		const finalCells = this.cells(vals, newCap).map(c => ({ ...c, fromId: 'new' + c.i }));
-    		return this.snapshot(text, vals, newCap, {
-    			size: vals.length,
-    			capacity: newCap,
-    			cells: finalCells,
-    			...extra
-    		})
-    	}
-
-    ensureSnaps(vals, cap, need, lead) {
-    		let snaps = [];
-    		if (vals.length + need <= cap) return {
-    			cap,
-    			snaps
-    		};
-    		snaps.push(this.snapshot(lead + ' the array is full, so capacity must be ensured', vals, cap, {
-    			size: vals.length,
-    			pause: true
-    		}));
-    		let newCap = Math.max(1, cap * 2);
-    		while (vals.length + need > newCap) newCap *= 2;
-    		snaps.push(this.reallocSnapshot('A new array with double capacity is allocated', vals, cap, newCap, 0, {
-    			fitCamera: true,
-    			pause: true
-    		}));
-    		for (let i = 0; i < vals.length; i++) {
-    			const b = this.viz.base();
-    			const copyX = b.arrayLeftX + i * b.cellPitch;
-    			snaps.push(this.reallocSnapshot('Copying element ' + i + ' from the old array to the new array', vals, cap, newCap, i, {
-    				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocOldArrayY, border: false }]
-    			}));
-    			snaps.push(this.reallocSnapshot('Element ' + i + ' has been copied into the new array', vals, cap, newCap, i, {
-    				ghosts: [{ id: 'copy' + i, i, v: vals[i], x: copyX, y: b.reallocNewArrayY, border: false }],
-    				pause: true
-    			}));
-    			snaps.push(this.reallocSnapshot('The new array now contains the first ' + (i + 1) + ' copied element' + (i === 0 ? '' : 's'), vals, cap, newCap, i + 1, {
-    				flashCellIds: ['new' + i],
-    				pause: true
-    			}));
-    		}
-    		snaps.push(this.reallocSnapshot('All existing elements have been copied; elements will now point to the new array', vals, cap, newCap, vals.length, {
-    			pause: true
-    		}));
-    		snaps.push(this.reallocFinalSnapshot('The elements pointer is updated to refer to the new array', vals, newCap, {
-    			capacity: cap,
-    			fitCamera: true,
-    			flashElements: true,
-    			pause: true
-    		}));
-    		snaps.push(this.reallocFinalSnapshot('The capacity field is updated to ' + newCap, vals, newCap, {
-    			flashCapacity: true,
-    			pause: true
-    		}));
-    		return {
-    			cap: newCap,
-    			snaps
-    		}
-    	}
-
-    append() {
-    		const e = this.v();
-    		if (isNaN(e)) return;
-    		this.save();
-    		const old = [...this.values],
-    			oldCap = this.capacity;
-    		let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, oldCap, {
-    			size: old.length
-    		})];
-    		let ec = this.ensureSnaps(old, oldCap, 1, 'Before appending,');
-    		snaps.push(...ec.snaps);
-    		let vals = [...old],
-    			cap = ec.cap;
-    		let beforeSizeIncrement = [...vals];
-    		beforeSizeIncrement[old.length] = e;
-    		snaps.push(this.snapshot('The new element is written at array index size', beforeSizeIncrement, cap, {
-    			size: old.length,
-    			greenCells: [old.length],
-    			flashCells: [old.length],
-    			pause: true
-    		}));
-    		vals.push(e);
-    		snaps.push(this.snapshot('size is incremented after storing the new element', vals, cap, {
-    			size: old.length,
-    			greenCells: [old.length],
-    			flashSize: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('Visualization only: the completed ArrayList state is displayed.', vals, cap, {
-    			size: vals.length
-    		}));
-    		this.commitStorage(vals, cap);
-    		this.values = vals;
-    		this.capacity = cap;
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	}
-
-    prepend() {
-    		document.getElementById('idx').value = 0;
-    		this.insert()
-    	}
-
-    insert() {
-    		let idx = this.i(),
-    			e = this.v();
-    		if (isNaN(idx) || isNaN(e) || idx < 0 || idx > this.values.length) return;
-    		this.save();
-    		const old = [...this.values],
-    			oldCap = this.capacity;
-    		let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, oldCap, {
-    			size: old.length
-    		})];
-    		let ec = this.ensureSnaps(old, oldCap, 1, 'Before inserting,');
-    		snaps.push(...ec.snaps);
-    		let cap = ec.cap,
-    			work = [...old],
-    			grownCells = [],
-    			greyCells = [];
-    		for (let j = old.length - 1; j >= idx; j--) {
-    			let tmp = [...work];
-    			tmp[j + 1] = tmp[j];
-    			greyCells = greyCells.filter(i => i !== j + 1);
-    			if (!greyCells.includes(j)) greyCells.push(j);
-    			if (j + 1 >= old.length && !grownCells.includes(j + 1)) grownCells.push(j + 1);
-    			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position right', tmp, cap, {
-    				size: old.length,
-    				moves: [{
-    					from: j,
-    					to: j + 1
-    				}],
-    				flashCells: [j + 1],
-    				greenCells: [...grownCells],
-    				greyCells: [...greyCells],
-    				pause: true
-    			}));
-    			work = tmp
-    		}
-    		snaps.push(this.snapshot('The gap at index ' + idx + ' is ready for the new element', work, cap, {
-    			size: old.length,
-    			flashCells: [idx],
-    			greenCells: [...grownCells],
-    			greyCells: [...greyCells],
-    			pause: true
-    		}));
-    		work[idx] = e;
-    		greyCells = greyCells.filter(i => i !== idx);
-    		let final = work.slice(0, old.length + 1),
-    			storedGreenCells = [...grownCells];
-    		if (!storedGreenCells.includes(idx)) storedGreenCells.push(idx);
-    		snaps.push(this.snapshot('The new element is stored at index ' + idx, final, cap, {
-    			size: old.length,
-    			flashCells: [idx],
-    			greenCells: storedGreenCells,
-    			greyCells: [...greyCells],
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('size is incremented after the insertion', final, cap, {
-    			size: old.length,
-    			flashSize: true,
-    			greenCells: storedGreenCells,
-    			greyCells: [...greyCells],
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('Visualization only: the completed ArrayList state is displayed.', final, cap, {
-    			size: final.length
-    		}));
-    		this.commitStorage(final, cap);
-    		this.values = final;
-    		this.capacity = cap;
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	}
-
-    get() {
-    		let idx = this.i();
-    		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
-    		let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', this.values, this.capacity, {
-    			size: this.values.length
-    		}), this.snapshot('ArrayList_get accesses elements[' + idx + '] directly', this.values, this.capacity, {
-    			size: this.values.length,
-    			ptrs: [{
-    				id: 'pget',
-    				label: 'elements[' + idx + ']',
-    				i: idx
-    			}],
-    			flashCells: [idx],
-    			pause: true
-    		}), this.snapshot('Visualization only: the lookup result is displayed: get(' + idx + ') = ' + this.values[idx], this.values, this.capacity, {
-    			size: this.values.length,
-    			flashCells: [idx],
-    			pause: true
-    		}), this.snapshot('Visualization only: the completed ArrayList state is displayed.', this.values, this.capacity, {
-    			size: this.values.length
-    		})];
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	}
-
-    set() {
-    		let idx = this.i(),
-    			e = this.v();
-    		if (isNaN(idx) || isNaN(e) || idx < 0 || idx >= this.values.length) return;
-    		this.save();
-    		let old = [...this.values],
-    			upd = [...old];
-    		upd[idx] = e;
-    		let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, this.capacity, {
-    			size: old.length
-    		}), this.snapshot('ArrayList_set locates elements[' + idx + '] directly', old, this.capacity, {
-    			size: old.length,
-    			ptrs: [{
-    				id: 'pset',
-    				label: 'elements[' + idx + ']',
-    				i: idx
-    			}],
-    			flashCells: [idx],
-    			pause: true
-    		}), this.snapshot('The value at index ' + idx + ' is replaced by ' + e, upd, this.capacity, {
-    			size: upd.length,
-    			flashCells: [idx],
-    			pause: true
-    		}), this.snapshot('Visualization only: the completed ArrayList state is displayed.', upd, this.capacity, {
-    			size: upd.length
-    		})];
-    		this.commitStorage(upd, this.capacity);
-    		this.values = upd;
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	}
-
-    del() {
-    		let idx = this.i();
-    		if (isNaN(idx) || idx < 0 || idx >= this.values.length) return;
-    		this.save();
-    		let old = [...this.values],
-    			work = [...old],
-    			greyCells = [];
-    		let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', old, this.capacity, {
-    			size: old.length
-    		}), this.snapshot('The element at index ' + idx + ' is selected for deletion', old, this.capacity, {
-    			size: old.length,
-    			crossCells: [idx],
-    			pause: true
-    		})];
-    		for (let j = idx + 1; j < old.length; j++) {
-    			work[j - 1] = work[j];
-    			greyCells = greyCells.filter(i => i !== j - 1);
-    			if (!greyCells.includes(j)) greyCells.push(j);
-    			snaps.push(this.snapshot('Element at index ' + j + ' is shifted one position left', work, this.capacity, {
-    				size: old.length,
-    				moves: [{
-    					from: j,
-    					to: j - 1
-    				}],
-    				flashCells: [j - 1],
-    				greyCells: [...greyCells],
-    				pause: true
-    			}))
-    		}
-    		let final = old.filter((_, i) => i !== idx);
-    		snaps.push(this.snapshot('The trailing duplicate is now outside the logical list', work, this.capacity, {
-    			size: old.length,
-    			greyCells: [...greyCells],
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('size is decremented; the last physical value remains allocated but becomes unused', work, this.capacity, {
-    			size: old.length - 1,
-    			flashSize: true,
-    			pause: true
-    		}));
-    		snaps.push(this.snapshot('Visualization only: the completed ArrayList state is displayed.', work, this.capacity, {
-    			size: final.length
-    		}));
-    		this.commitStorage(work, this.capacity);
-    		this.values = final;
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	}
-
-    clear() {
-    		this.save();
-    		let snaps = [this.snapshot('Visualization only: the current ArrayList state is displayed before the algorithm begins.', this.values, this.capacity, {
-    			size: this.values.length
-    		}), this.snapshot('ArrayList_clear sets size to 0; capacity and the allocated array are kept', this.values, this.capacity, {
-    			size: this.values.length,
-    			flashSize: true,
-    			pause: true
-    		}), this.snapshot('The ArrayList is now logically empty; old cells are outside size', this.values, this.capacity, {
-    			size: 0,
-    			pause: true
-    		}), this.snapshot('Visualization only: the completed ArrayList state is displayed.', this.values, this.capacity, {
-    			size: 0
-    		})];
-    		this.commitStorage(this.values, this.capacity);
-    		this.values = [];
-    		this.viz.enqueue(snaps);
-    		this.updateUI()
-    	}
-
-    random() {
-    		this.save();
-    		this.capacity = 6;
-    		let sz = Math.floor(Math.random() * ENGINE.randomSizeRange) + ENGINE.randomMinSize;
-    		this.values = [];
-    		while (this.values.length < sz) {
-    			let v = Math.floor(Math.random() * ENGINE.randomValueRange) + ENGINE.randomMinValue;
-    			if (!this.values.includes(v)) this.values.push(v)
-    		}
-    		if (Math.random() < ENGINE.randomSortedProbability) {
-    			this.values.sort()
-    		}
-    		this.storage = [...this.values];
-    		this.showCurrent('Visualization only: a random sample ArrayList is displayed.');
-    		this.updateUI()
-    	}
-
-    reinit() {
-    		let c = parseInt(document.getElementById('cap').value);
-    		if (isNaN(c) || c < 1) c = 6;
-    		this.save();
-    		this.capacity = c;
-    		this.values = [];
-    		this.storage = [];
-    		this.showCurrent('A new empty ArrayList has been allocated with capacity ' + c);
-    		this.updateUI()
-    	}
-
-    undo() {
-    		if (!this.history.length) return;
-    		const h = this.history.pop();
-    		this.values = h.values;
-    		this.capacity = h.capacity;
-    		this.storage = h.storage ?? [...h.values];
-    		this.showCurrent('Visualization only: the Undo utility has restored the previous displayed ArrayList state.');
-    		this.updateUI()
-    	}
-
-    stepModeChanged() {
-        const chk = document.getElementById('stepMode');
-        if (this.viz) this.viz.setStepMode(!!chk.checked);
-    }
-    nextStep() {
-        if (this.viz) this.viz.advanceStep();
-    }
-    speed() {
-    		this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
-    	}
-
-    pause() {
-    		const p = this.viz.togglePause();
-    		document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
-    	}
-
-    toggleModal() {
-    		const m = document.getElementById('helpModal');
-    		m.style.display = m.style.display === 'block' ? 'none' : 'block'
-    	}
-
-    updateUI() {
-    		document.getElementById('btnUndo').disabled = this.history.length === 0;
-            if (this.viz) this.viz.updateStepControls()
-    	}
-
-    clearInputs() {
-    		document.getElementById('val').value = '';
-    		document.getElementById('idx').value = ''
-    	}
-}
-const app = new App();
-window.app = app;
-window.onload = () => app.init();
-window.onclick = e => {
-    if (e.target === document.getElementById('helpModal')) app.toggleModal();
-};
-
-</script>
-</body>
 </html>
