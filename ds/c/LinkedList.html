@@ -222,6 +222,7 @@
       .sw {
         width: 18px;
         height: 18px;
+        border-radius: 25%;            
         display: inline-block
       }
 
@@ -817,11 +818,29 @@
         renderScene(_scene) {
           // Subclasses render structure-specific content here using engine primitives.
         }
-        paintRect(x, y, w, h, fill) {
+        paintRect(x, y, w, h, fill, {
+          stroke = null,
+          lineWidth = 1,
+          alpha = 1,
+          radius = 8
+        } = {}) {
           const c = this.ctx;
+
           c.save();
+          c.globalAlpha *= alpha;
+
+          c.beginPath();
+          c.roundRect(x, y, w, h, radius);
+
           c.fillStyle = fill;
-          c.fillRect(x, y, w, h);
+          c.fill();
+
+          if (stroke) {
+            c.strokeStyle = stroke;
+            c.lineWidth = lineWidth;
+            c.stroke();
+          }
+
           c.restore();
         }
         paintText(text, x, y, {

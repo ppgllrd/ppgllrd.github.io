@@ -37,7 +37,7 @@
         canvas { display: block; width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; }
         #legend { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.75); padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
-        .square { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #999; }
+        .square { width: 14px; height: 14px; border-radius: 25%; }
         .dot { width: 10px; height: 10px; border-radius: 50%; background: #1668BD; display:inline-block; }
         .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
         #status-bar { padding: 8px 2px 0px 0px; background-color: var(--panel-bg); font-size: 0.85rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; color: #555; flex-shrink: 0; }
@@ -1027,6 +1027,31 @@ class Visualizer {
             }
         }
     }
+    paintRect(x, y, w, h, fill, {
+          stroke = null,
+          lineWidth = 1,
+          alpha = 1,
+          radius = 8
+        } = {}) {
+          const c = this.ctx;
+
+          c.save();
+          c.globalAlpha *= alpha;
+
+          c.beginPath();
+          c.roundRect(x, y, w, h, radius);
+
+          c.fillStyle = fill;
+          c.fill();
+
+          if (stroke) {
+            c.strokeStyle = stroke;
+            c.lineWidth = lineWidth;
+            c.stroke();
+          }
+
+          c.restore();
+        }
 
     drawStruct(x, y, w, data, arrowDestX) {
         const ctx = this.ctx;
@@ -1034,9 +1059,9 @@ class Visualizer {
 
         ctx.textAlign = 'right'; ctx.font = '16px Arial'; ctx.fillStyle = '#000';
         ctx.fillText('table', x - 5, y + 23);
-        ctx.fillStyle = COLORS.STRUCT_KEYS_BG;
-        ctx.fillRect(x, y, w, h);
-        ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, w, h);
+        //ctx.fillStyle = COLORS.STRUCT_KEYS_BG;
+        this.paintRect(x, y, w, h, COLORS.STRUCT_KEYS_BG, {stroke: '#fff', lineWidth: 2});
+        // ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, w, h);
         
         const dotX = x + w/2; const dotY = y + h/2;
         ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
@@ -1045,17 +1070,14 @@ class Visualizer {
 
         ctx.textAlign = 'right'; ctx.fillStyle = '#000';
         ctx.fillText('size', x - 5, y + h + 23);
-        ctx.fillStyle = COLORS.STRUCT_STATS_BG;
-        ctx.fillRect(x, y + h, w, h);
-        ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y + h, w, h);
+        this.paintRect(x, y + h, w, h, COLORS.STRUCT_STATS_BG, {stroke: '#fff', lineWidth: 2});
         ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '22px Arial';
         ctx.fillText(data.size, x + w/2, y + h + 24);
 
         ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000';
         ctx.fillText('maxLoadFactor', x - 5, y + h*2 + 23);
         ctx.fillStyle = COLORS.STRUCT_STATS_BG;
-        ctx.fillRect(x, y + h*2, w, h);
-        ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y + h*2, w, h);
+        this.paintRect(x, y + h*2, w, h, COLORS.STRUCT_STATS_BG, {stroke: '#fff', lineWidth: 2});
         ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '22px Arial';
         ctx.fillText(data.maxLoadFactor, x + w/2, y + h*2 + 24);
     }
@@ -1080,10 +1102,9 @@ class Visualizer {
             ctx.fillStyle = COLORS.CELL_BG;
             if (meta.missIndex === i && !meta.isCleanup) ctx.fillStyle = COLORS.MISS_BG;
 
-            ctx.fillRect(cx, cy, size, size);
             ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1;
-            ctx.strokeRect(cx, cy, size, size);
-
+            this.paintRect(cx, cy, size, size, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
+      
             const dotX = cx + size/2;
             const dotY = cy + size/2;
             ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
@@ -1216,17 +1237,17 @@ class Visualizer {
         const L = this.layout;
 
         ctx.fillStyle = bgData;
-        ctx.fillRect(centerX - L.nodeWidth/2, y, L.nodeWidth, L.nodeBoxH);
         ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-        ctx.strokeRect(centerX - L.nodeWidth/2, y, L.nodeWidth, L.nodeBoxH);
+        this.paintRect(centerX - L.nodeWidth/2, y, L.nodeWidth, L.nodeBoxH, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
+      
+        
         ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.textAlign = 'center';
         ctx.fillText(val, centerX, y + 22);
 
         const ptrY = y + L.nodeBoxH;
         ctx.fillStyle = bgPtr;
-        ctx.fillRect(centerX - L.nodeWidth/2, ptrY, L.nodeWidth, L.nodePtrH);
         ctx.strokeStyle = ptrBorder; ctx.lineWidth = ptrWidth;
-        ctx.strokeRect(centerX - L.nodeWidth/2, ptrY, L.nodeWidth, L.nodePtrH);
+        this.paintRect(centerX - L.nodeWidth/2, ptrY, L.nodeWidth, L.nodePtrH, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth, radius: 4});
         
         const dotY = ptrY + L.nodePtrH/2;
         ctx.beginPath(); ctx.arc(centerX, dotY, 4, 0, Math.PI*2);
@@ -1273,9 +1294,9 @@ class Visualizer {
         this.drawArrow(boxX - 35, boxY + 18, boxX - 1, boxY + 18, COLORS.ARROW_PROBE, 8);
 
         ctx.fillStyle = COLORS.HASH_BOX_BG;
-        ctx.fillRect(boxX, boxY, w, h);
+        this.paintRect(boxX, boxY, w, h, ctx.fillStyle, {radius: 4});
         ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center';
-        ctx.fillText('hash', boxX + w/2, boxY + 26);
+        ctx.fillText('hash', boxX + w/2, boxY + 26);      
 
         this.drawArrow(boxX + w + 1, boxY + 18, boxX + w + 40, boxY + 18, COLORS.ARROW_PROBE, 8);
         ctx.fillStyle = '#000'; ctx.font = '24px Arial'; ctx.textAlign = 'left';

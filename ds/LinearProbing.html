@@ -82,7 +82,7 @@
             pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
         .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
-        .square { width: 14px; height: 14px; border-radius: 2px; border: 1px solid #999; }
+        .square { width: 14px; height: 14px; border-radius: 25%; }
         .dot { width: 10px; height: 10px; border-radius: 50%; background: #1668BD; display:inline-block; }
         .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
 
@@ -877,6 +877,34 @@ class Visualizer {
         }
     }
 
+        paintRect(x, y, w, h, fill, {
+          stroke = null,
+          lineWidth = 1,
+          alpha = 1,
+          radius = 8
+        } = {}) {
+          const c = this.ctx;
+
+          c.save();
+          c.globalAlpha *= alpha;
+
+          c.beginPath();
+          c.roundRect(x, y, w, h, radius);
+
+          c.fillStyle = fill;
+          c.fill();
+
+          if (stroke) {
+            c.strokeStyle = stroke;
+            c.lineWidth = lineWidth;
+            c.stroke();
+          }
+
+          c.restore();
+        }
+
+
+
     drawRehashScene(data, meta, startX, baseY) {
         const ctx = this.ctx;
         const cellSize = this.boxSize;
@@ -936,10 +964,9 @@ class Visualizer {
 
             const boxW = 30; const boxH = 30;
             ctx.fillStyle = '#FFD700'; 
-            ctx.fillRect(currX - boxW/2, currY, boxW, boxH);
             ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-            ctx.strokeRect(currX - boxW/2, currY, boxW, boxH);
-            
+            this.paintRect(currX - boxW/2, currY, boxW, boxH, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
+                  
             ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center';
             ctx.fillText(fNode.key, currX, currY + 22);
         }
@@ -952,19 +979,28 @@ class Visualizer {
         // Row 1: Keys
         ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000';
         ctx.fillText('keys', x - 5, y + 23);
-        ctx.fillStyle = COLORS.STRUCT_KEYS_BG; ctx.fillRect(x, y, w, h); ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, w, h);
+        ctx.fillStyle = COLORS.STRUCT_KEYS_BG; 
+        ctx.strokeStyle = '#fff'; 
+        this.paintRect(x, y, w, h, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
+
         const dotX = x + w/2; const dotY = y + h/2;
         ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2); ctx.fillStyle = COLORS.DOT; ctx.fill();
         this.drawArrow(dotX, dotY, arrowDestX, dotY, COLORS.ARROW_REF, 10);
 
         // Row 2: Size
         ctx.textAlign = 'right'; ctx.fillStyle = '#000'; ctx.fillText('size', x - 5, y + h + 23);
-        ctx.fillStyle = COLORS.STRUCT_STATS_BG; ctx.fillRect(x, y + h, w, h); ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y + h, w, h);
+        ctx.fillStyle = COLORS.STRUCT_STATS_BG; 
+        ctx.strokeStyle = '#fff'; 
+        this.paintRect(x, y + h, w, h, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
+
         ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.fillText(data.size, x + w/2, y + h + 24);
 
         // Row 3: MaxLoadFactor
         ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000'; ctx.fillText('maxLoadFactor', x - 5, y + h*2 + 23);
-        ctx.fillStyle = COLORS.STRUCT_STATS_BG; ctx.fillRect(x, y + h*2, w, h); ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y + h*2, w, h);
+        ctx.fillStyle = COLORS.STRUCT_STATS_BG; 
+        ctx.strokeStyle = '#fff'; 
+        this.paintRect(x, y + h*2, w, h, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
+
         ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '18px Arial'; ctx.fillText(data.maxLoadFactor, x + w/2, y + h*2 + 24);
     }
 
@@ -986,9 +1022,10 @@ class Visualizer {
                 else if (meta.probeCheck) cellColor = COLORS.PROBE_CHECK_BG;
             }
 
-            ctx.fillStyle = cellColor; ctx.fillRect(cx, cy, size, size);
-            ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1; ctx.strokeRect(cx, cy, size, size);
-
+            ctx.fillStyle = cellColor; 
+            ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1; 
+            this.paintRect(cx, cy, size, size, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
+ 
             const dotX = cx + size/2; const dotY = cy + size/2;
             const occupied = table[i] !== null;
 
@@ -1000,7 +1037,9 @@ class Visualizer {
                 let dataColor = COLORS.DATA_BG;
                 if (meta.highlightIdx === i && (meta.hit || meta.probeCheck)) dataColor = cellColor;
 
-                ctx.fillStyle = dataColor; ctx.fillRect(dotX - boxW/2, boxY, boxW, boxH);
+                ctx.fillStyle = dataColor; 
+                this.paintRect(dotX - boxW/2, boxY, boxW, boxH, ctx.fillStyle);
+ 
                 ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.fillText(table[i], dotX, boxY + 22);
             } else {
                 ctx.strokeStyle = COLORS.DOT; ctx.lineWidth = 2; ctx.stroke(); 
@@ -1080,7 +1119,9 @@ class Visualizer {
         ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '24px Arial'; ctx.textAlign = 'right';
         ctx.fillText(info.key, boxX - 40, boxY + 26);
         this.drawArrow(boxX - 35, boxY + 18, boxX - 1, boxY + 18, COLORS.ARROW_PROBE, 10);
-        ctx.fillStyle = COLORS.HASH_BOX_BG; ctx.fillRect(boxX, boxY, w, h);
+        ctx.fillStyle = COLORS.HASH_BOX_BG; 
+        this.paintRect(boxX, boxY, w, h, ctx.fillStyle, {radius: 2});
+
         ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.fillText('hash', boxX + w/2, boxY + 26);
         this.drawArrow(boxX + w + 1, boxY + 18, boxX + w + 40, boxY + 18, COLORS.ARROW_PROBE, 10);
         ctx.fillStyle = '#000'; ctx.font = '24px Arial'; ctx.textAlign = 'left';

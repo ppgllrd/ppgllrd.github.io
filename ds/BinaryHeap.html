@@ -1016,6 +1016,32 @@ class Visualizer {
         return result;
     }
 
+    paintRect(x, y, w, h, fill, {
+          stroke = null,
+          lineWidth = 1,
+          alpha = 1,
+          radius = 8
+        } = {}) {
+          const c = this.ctx;
+
+          c.save();
+          c.globalAlpha *= alpha;
+
+          c.beginPath();
+          c.roundRect(x, y, w, h, radius);
+
+          c.fillStyle = fill;
+          c.fill();
+
+          if (stroke) {
+            c.strokeStyle = stroke;
+            c.lineWidth = lineWidth;
+            c.stroke();
+          }
+
+          c.restore();
+        }
+
     drawArrayView(heapA, heapB, t, meta) {
         const maxLen = Math.max(heapA.length, heapB.length);
         if(maxLen === 0) return;
@@ -1084,15 +1110,8 @@ class Visualizer {
                 }
             }
 
-            this.ctx.fillStyle = color;
-            this.ctx.fillRect(bx, by, boxSize, boxSize);
-            
-            // Array Border
-            this.ctx.strokeStyle = '#fff';
-            
-            this.ctx.lineWidth = 2;
-            this.ctx.strokeRect(bx, by, boxSize, boxSize);
-
+            this.paintRect(bx, by, boxSize, boxSize, color, { stroke: '#fff', lineWidth: 2 });
+           
             this.ctx.fillStyle = textColor;
             this.ctx.font = '21px Arial';
             this.ctx.textAlign = 'center';
