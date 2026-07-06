@@ -928,11 +928,12 @@
           c.stroke();
           c.restore()
         }
-        arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth) {
+        arrow(x1, y1, x2, y2, col = K.b, lw = VISUAL.stroke.normalWidth, dashed = false) {
           const c = this.ctx;
           c.save();
           c.strokeStyle = col;
           c.lineWidth = lw;
+          if (dashed) c.setLineDash([8, 6]);
           const a = Math.atan2(y2 - y1, x2 - x1);
           const ARROW_HEAD_LENGTH = VISUAL.stroke.arrowHeadLength;
           const shorten = ARROW_HEAD_LENGTH * 0.8;
@@ -1258,32 +1259,7 @@
         });
     }
 
-    nodeById(s, id) {
-        		return (s.nodes || []).find(n => n.id === id)
-        	}
-
-    drawStructArrows(s) {
-            const x = VISUAL.struct.x, y = VISUAL.struct.y, w = VISUAL.struct.fieldWidth, h = this.cell;
-            this.arrow(x - VISUAL.struct.listPointerDotOffsetX, y - VISUAL.struct.listPointerDotOffsetY, x, y + VISUAL.struct.listPointerArrowTargetYOffset, K.v, VISUAL.stroke.normalWidth);
-            const f = this.nodeById(s, s.firstId), l = this.nodeById(s, s.lastId);
-
-            const firstX = s.firstTipX ?? (f ? f.x : s.firstTargetX),
-                firstY = s.firstTipY ?? (f ? f.y + h / 2 : s.firstTargetY);
-            if (firstX !== undefined && firstY !== undefined) {
-                const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-                const firstColor = f ? K.b : K.d;
-                if (firstAmount > VISUAL.stroke.detourThreshold) this.detourArrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth, firstAmount);
-                else this.arrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth)
-            }
-
-            const lastX = s.lastTipX ?? (l ? l.x : s.lastTargetX),
-                lastY = s.lastTipY ?? (l ? l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor : s.lastTargetY);
-            if (lastX !== undefined && lastY !== undefined) {
-                const lastCol = s.markPLastArrow ? K.r : (l ? K.b : K.d);
-                if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth);
-                else this.lastArrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth)
-            }
-          };
+    
         nodeById(s, id) {
           return (s.nodes || []).find(n => n.id === id)
         }
@@ -1301,13 +1277,13 @@
             const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
             const firstColor = f ? K.b : K.d;
             if (firstAmount > VISUAL.stroke.detourThreshold) this.detourArrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth, firstAmount);
-            else this.arrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth)
+            else this.arrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth, !f)
           }
           const lastX = s.lastTipX ?? (l ? l.x : s.lastTargetX),
             lastY = s.lastTipY ?? (l ? l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor : s.lastTargetY);
           if (lastX !== undefined && lastY !== undefined) {
             const lastCol = s.markPLastArrow ? K.r : (l ? K.b : K.d);
-            if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth);
+            if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth, !l);
             else this.lastArrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth)
           }
         }
@@ -1358,7 +1334,8 @@
             this.paintDot(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, pointerColor);
             const tx = p.tipX ?? (t ? t.x : p.targetX),
               ty = p.tipY ?? (t ? t.y : p.targetY);
-            if (tx !== undefined && ty !== undefined) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, tx, ty, pointerColor, VISUAL.stroke.normalWidth);
+            if (tx !== undefined && ty !== undefined) 
+              this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, tx, ty, pointerColor, VISUAL.stroke.normalWidth, isDanglingAuxPointer);
           });
         }
         drawPNodeArrow(s) {

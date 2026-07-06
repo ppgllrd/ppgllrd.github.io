@@ -1003,11 +1003,13 @@
           c.stroke();
           c.restore()
         }
-        arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+        arrow(x1, y1, x2, y2, col = K.b, lw = 3, dashed = false) {
           const c = this.ctx;
           c.save();
           c.strokeStyle = col;
           c.lineWidth = lw;
+          if (dashed) c.setLineDash([8, 6]);
+
           const a = Math.atan2(y2 - y1, x2 - x1);
           const shorten = DRAW.ARROW_HEAD_LENGTH * 0.8;
           const endX = x2 - shorten * Math.cos(a);
@@ -1122,7 +1124,7 @@
           if (tx !== undefined && ty !== undefined) {
             const amount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
             if (amount > 0.001) this.detourArrow(x + w / 2 - 5, y + h / 2, tx, ty, firstColor, 3, amount);
-            else this.arrow(x + w / 2 - 5, y + h / 2, tx, ty, firstColor, 3)
+            this.arrow(x + w / 2 - 5, y + h / 2, tx, ty, firstColor, 3, s.firstDangling);
           }
         }
         drawOverlays(s) {
@@ -1215,7 +1217,12 @@
             const t = this.nodeById(s, p.target);
             const tx = p.tipX ?? (t ? t.x : p.targetX),
               ty = p.tipY ?? (t ? t.y : p.targetY);
-            if (tx !== undefined && ty !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, tx, ty, pointerColor, 3);
+            if (tx !== undefined && ty !== undefined) {
+              const fromX = p.x + GEOMETRY.POINTER_ANCHOR_X;
+              const fromY = p.y + GEOMETRY.POINTER_ANCHOR_Y;
+
+              this.arrow(fromX, fromY, tx, ty, pointerColor, 3, p.dangling);
+            }
           });
         }
         drawPNodeArrow(s) {
