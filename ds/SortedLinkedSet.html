@@ -260,6 +260,24 @@
             padding: 2px 5px;
             color: #c62828
         }
+
+        @keyframes shake-error {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+        .input-error {
+            animation: shake-error 0.4s ease-in-out !important;
+            border-color: #e60000 !important;
+            background-color: #ffe6e6 !important;
+            color: #c62828 !important;
+        }
+		.input-warning {
+			animation: shake-error 0.4s ease-in-out !important;
+			border-color: #f0c907 !important;
+			background-color: #f7f6ce !important;
+			color: #9c8307 !important;
+      	}
     </style>
 </head>
 
@@ -311,10 +329,6 @@
     <div id="helpModal" class="modal">
         <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
             <h2>SortedLinkedSet</h2>
-            <h3>Step-by-step semantics</h3>
-            <p><strong>Step-by-step</strong> stops only at real Java SortedLinkedSet actions: creating node objects, updating <span class="code">first</span>, <span class="code">size</span>, assigning <span class="code">next</span> references, advancing Finder/local/iterator references, reading element references, variables going out of scope when a method returns, and explicitly noting when an object has become unreachable and may later be reclaimed by the garbage collector.</p>
-            <p>Highlight-only preparation steps are merged into the actual semantic update step. Purely visual rearrangements run automatically, show no status message, and do not wait for <strong>Next step</strong>. Transient flash/highlight overlays are switched off immediately when the next step moves the highlighted object, so the flash does not remain behind while the object slides.</p>
-
             <p>A <strong>SortedLinkedSet</strong> stores unique elements in ascending order. It is represented as a chain of node objects. Each node has an <span class="code">element</span> field and a <span class="code">next</span> field.</p>
             <p>This is a Java-style reference/object visualization. A variable or field does not contain another object directly; it contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The set object keeps <span class="code">first</span>, a reference to the first node object, and <span class="code">size</span>, the number of stored elements.</p>
             <p>Because the structure is generic, <span class="code">node.element</span> is shown as a reference to a value object. The value object might wrap an integer in this demonstration, but conceptually it is not necessarily a primitive stored inside the node.</p>
@@ -322,20 +336,18 @@
             <h3>Finder, builder, and iterator</h3>
             <p>The private <strong>Finder</strong> utility searches for a target element and reports three values: <span class="code">previous</span>, a reference to the node before the search position or <span class="code">null</span>; <span class="code">current</span>, a reference to the node at the search position or <span class="code">null</span>; and <span class="code">found</span>, a boolean telling whether <span class="code">current.element</span> equals the target.</p>
             <p>The <strong>builder</strong> used by set operations maintains <span class="code">first</span>, <span class="code">last</span>, and <span class="code">size</span> while constructing a result chain in sorted order and provides an <span class="code">O(1)</span> <span class="code">append</span> operation.</p>
-            <p>The <strong>iterator</strong> stores a <span class="code">current</span> reference. Each call that returns an element advances <span class="code">current</span> to the next node.</p>
+            <p>The <strong>iterator</strong> stores a <span class="code">current</span> reference. Each call that returns an element advances <span class="code">current</span> to the next node. The iteration is complete when <span class="code">current</span> is the <span class="code">null</span> reference.</p>
             <h3>Data-structure operations and asymptotic complexity</h3>
             <ul>
                 <li><strong>Insert</strong>: uses Finder to locate the sorted position. If the element is absent, creates a node object, links it between <span class="code">previous</span> and <span class="code">current</span>, and increments <span class="code">size</span>. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Delete</strong>: uses Finder to locate the element. If found, updates either <span class="code">first</span> or <span class="code">previous.next</span> so the removed node becomes unreachable, then decrements <span class="code">size</span>. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Contains</strong>: uses Finder and returns the <span class="code">found</span> boolean. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Iterate</strong>: visits node objects from <span class="code">first</span> to <span class="code">null</span>, returning element references in ascending order. Complexity: <span class="code">O(n)</span> to visit all elements.</li>
-                <li><strong>Clear</strong>: sets <span class="code">first</span> to <span class="code">null</span> and <span class="code">size</span> to <span class="code">0</span>. The former nodes become unreachable from the set. Complexity: <span class="code">O(1)</span> for the logical operation; garbage collection is handled by the runtime.</li>
+                <li><strong>Clear</strong>: sets <span class="code">first</span> to <span class="code">null</span> and <span class="code">size</span> to <span class="code">0</span>. The former nodes become unreachable from the set. Complexity: <span class="code">O(1)</span>.</li>
                 <li><strong>Union</strong>: traverses both sorted sets in parallel and appends each distinct element that appears in either set to a builder. Complexity: <span class="code">O(n + m)</span>.</li>
                 <li><strong>Intersection</strong>: traverses both sorted sets in parallel and appends only elements found in both sets. Complexity: <span class="code">O(n + m)</span>.</li>
                 <li><strong>Difference</strong>: traverses both sorted sets in parallel and appends elements from the first set that are absent from the second set. Complexity: <span class="code">O(n + m)</span>.</li>
             </ul>
-            <h3>Step-by-step execution and navigation</h3>
-            <p>Turn <strong>Step-by-step</strong> on to make only non-visual Java SortedLinkedSet steps wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
         </div>
     </div>
     <script>
@@ -644,7 +656,7 @@ class VisualizationEngine {
 			this.scenes.push(copy.shift());
 			this.idx = 0;
 			const firstScene = this.scenes[0];
-			this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
+			// this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
 		}
 		if (copy.length) {
 			this.pending = copy;
@@ -1689,42 +1701,16 @@ const app = {
 			...n
 		}));
 		if (!extra.preserveLinks) relink(nodes);
-		const normalizedText = this.statusMessage(text);
-		const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(normalizedText);
+		const originalText = String(text ?? '');
+		const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(originalText);
 		return {
 			nodes,
 			firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
 			size: extra.size ?? nodes.length,
 			...extra,
 			visualOnly,
-			text: visualOnly ? '' : normalizedText
+			text: visualOnly ? '' : originalText
 		}
-	},
-	statusMessage(text = '') {
-		let t = String(text || '');
-		if (/^\s*Visualization only:/i.test(t)) return t;
-		if (/^(Clear|Finder|Push|Pop|Top|Insert|Delete|Contains|Union|Intersection|Difference|The iterator operation|Clear starts|.*starts from the current)/.test(t) && /current .*state|starts from the current/.test(t)) return 'Visualization only: the current SortedLinkedSet state is displayed before the operation begins.';
-		if (t === 'The operation is complete.') return 'Visualization only: the completed SortedLinkedSet state is displayed.';
-		if (/redrawn|drawn with extra spacing|drawn in its final|close the visual gap|redrawn near|bypass reference is redrawn/.test(t)) return 'Visualization only: ' + t.charAt(0).toLowerCase() + t.slice(1);
-		t = t
-			.replace(/^A new node object is created\. The local variable newNode references it, and newNode\.next references current\.$/, 'A new node object is created; its next field references current.')
-			.replace(/^set\.first is updated/, 'The first field is updated')
-			.replace(/^previous\.next is updated/, 'The previous node.next field is updated')
-			.replace(/^set\.size is incremented/, 'The size field is incremented')
-			.replace(/^set\.size is decremented/, 'The size field is decremented')
-			.replace(/^set\.first is set to null.*$/, 'The first field is set to null.')
-			.replace(/^set\.size is set to 0.*$/, 'The size field is set to 0.')
-			.replace(/^The method exits: the local variables Finder and newNode go out of scope\.$/, 'The method returns, so local variables Finder and newNode are removed from the call stack.')
-			.replace(/^The method exits: the local variable Finder goes out of scope\.$/, 'The method returns, so local variable Finder is removed from the call stack.')
-			.replace(/^After the references bypass it, the unlinked node object is no longer reachable from the set\.$/, 'The unlinked node object is unreachable from the set; the Java garbage collector may reclaim it later.')
-			.replace(/^A node object with no incoming references becomes unreachable from the set\.$/, 'This node object is unreachable from the set; the Java garbage collector may reclaim it later.')
-			.replace(/^The unreachable node object may be reclaimed by the Java garbage collector\.$/, 'Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.')
-			.replace(/^Iterator returns the element reference in sorted order: (.*)\.$/, 'The iterator reads and returns the element reference in sorted order: $1.')
-			.replace(/^iterator\.current is updated/, 'The iterator.current reference is updated')
-			.replace(/^Iteration complete: current is null, so hasNext\(\) returns false\.$/, 'Iteration is complete because iterator.current is null.')
-			.replace(/^(.+): elem1 and elem2 start as references to the current elements of the two sorted sets\.$/, '$1: local references elem1 and elem2 are created and initialized at the current elements of the two sorted sets.')
-			.replace(/^(.+): the builder local variable goes out of scope after the result set has received its references\.$/, '$1: the method returns, so the builder local variable is removed from the call stack.');
-		return t;
 	},
 	showCurrent(text = 'Visualization only: Ready.') {
 		this.viz.sn = [];
@@ -1733,8 +1719,18 @@ const app = {
 		this.viz.state = 'IDLE';
 		this.viz.enqueue([this.snapshot(text, this.baseNodes())])
 	},
+	showInputError(inputId, style = 'input-error') {
+            const el = document.getElementById(inputId);
+            if (!el) return;
+            el.classList.remove(style);
+            void el.offsetWidth;
+            el.classList.add(style);
+            setTimeout(() => el.classList.remove(style), 400)
+	},
 	v() {
-		return parseInt(document.getElementById('val').value)
+		let value = parseInt(document.getElementById('val').value);
+		if (isNaN(value)) this.showInputError('val');
+		return value
 	},
 	save() {
 		this.history.push({
@@ -1798,7 +1794,7 @@ const app = {
 				...finder,
 				x: this.finderX(prev, cur, nodes)
 			};
-			snaps.push(this.snapshot('Visualization only: The Finder object is redrawn near the current search position.', nodes, {
+			snaps.push(this.snapshot('Visualization only: the Finder object is redrawn near the current search position.', nodes, {
 				firstId,
 				size,
 				finder,
@@ -1846,7 +1842,7 @@ const app = {
 				crossFinder: true,
 				pause: true
 			}));
-			snaps.push(this.snapshot('The operation is complete.', oldNodes, {
+			snaps.push(this.snapshot('Visualization only: the completed SortedLinkedSet state is displayed.', oldNodes, {
 				firstId: oldFirst,
 				size: oldSize
 			}));
@@ -1864,7 +1860,7 @@ const app = {
 		} : ({
 			...n
 		}));
-		snaps.push(this.snapshot('Visualization only: Existing nodes are drawn with extra spacing so the insertion point is visible.', [...shifted], {
+		snaps.push(this.snapshot('Visualization only: existing nodes are drawn with extra spacing so the insertion point is visible.', [...shifted], {
 			firstId: oldFirst,
 			size: oldSize,
 			finder,
@@ -1886,7 +1882,7 @@ const app = {
 			y: newNode.y,
 			targetPart: 'node'
 		};
-		snaps.push(this.snapshot('A new node object is created. The local variable newNode references it, and newNode.next references current.', [...shifted, newNode], {
+		snaps.push(this.snapshot('A new node object is created; its next field references current.', [...shifted, newNode], {
 			firstId: oldFirst,
 			size: oldSize,
 			finder,
@@ -1899,7 +1895,7 @@ const app = {
 			flashNew: false
 		};
 		if (res.prev === null) {
-			snaps.push(this.snapshot('set.first is updated to reference the new first node object.', [...shifted, newNode], {
+			snaps.push(this.snapshot('The first field is updated to reference the new first node object.', [...shifted, newNode], {
 				firstId: newId,
 				size: oldSize,
 				finder,
@@ -1913,7 +1909,7 @@ const app = {
 				...n,
 				next: newId
 			} : n);
-			snaps.push(this.snapshot('previous.next is updated to reference the new node object.', [...shifted, newNode], {
+			snaps.push(this.snapshot('The previous node.next field is updated to reference the new node object.', [...shifted, newNode], {
 				firstId: oldFirst,
 				size: oldSize,
 				finder,
@@ -1931,7 +1927,7 @@ const app = {
 			...newVar,
 			y: this.viz.base().up
 		};
-		snaps.push(this.snapshot('Visualization only: The new node is drawn in its final sorted position.', [...shifted, newNode], {
+		snaps.push(this.snapshot('Visualization only: the new node is drawn in its final sorted position.', [...shifted, newNode], {
 			firstId: res.prev === null ? newId : oldFirst,
 			size: oldSize,
 			finder,
@@ -1939,7 +1935,7 @@ const app = {
 			preserveLinks: true,
 			pause: true
 		}));
-		snaps.push(this.snapshot('set.size is incremented because one new element reference was added.', [...shifted, newNode], {
+		snaps.push(this.snapshot('The size field is incremented because one new element reference was added.', [...shifted, newNode], {
 			firstId: res.prev === null ? newId : oldFirst,
 			size: oldSize + 1,
 			finder,
@@ -1948,7 +1944,7 @@ const app = {
 			preserveLinks: true,
 			pause: true
 		}));
-		snaps.push(this.snapshot('The method exits: the local variables Finder and newNode go out of scope.', [...shifted, newNode], {
+		snaps.push(this.snapshot('The method returns, so local variables Finder and newNode are removed from the call stack.', [...shifted, newNode], {
 			firstId: res.prev === null ? newId : oldFirst,
 			size: oldSize + 1,
 			finder,
@@ -1962,7 +1958,7 @@ const app = {
 		}));
 		this.values.splice(insertIdx, 0, e);
 		this.ids.splice(insertIdx, 0, newId);
-		snaps.push(this.snapshot('The operation is complete.', this.baseNodes(this.values, this.ids), {
+		snaps.push(this.snapshot('Visualization only: the completed SortedLinkedSet state is displayed.', this.baseNodes(this.values, this.ids), {
 			firstId: this.ids[0] ?? null,
 			size: this.values.length
 		}));
@@ -1989,7 +1985,7 @@ const app = {
 				crossFinder: true,
 				pause: true
 			}));
-			snaps.push(this.snapshot('The operation is complete.', oldNodes, {
+			snaps.push(this.snapshot('Visualization only: the completed SortedLinkedSet state is displayed.', oldNodes, {
 				firstId: oldFirst,
 				size: oldSize
 			}));
@@ -2008,7 +2004,7 @@ const app = {
 		if (res.prev === null) {
 			firstAfter = nextOfCur;
 			firstNeedsDetour = nextOfCur !== null;
-			snaps.push(this.snapshot('set.first is updated to reference the node after the deleted node.', linked, {
+			snaps.push(this.snapshot('The first field is updated to reference the node after the deleted node.', linked, {
 				firstId: firstAfter,
 				size: oldSize,
 				finder,
@@ -2026,7 +2022,7 @@ const app = {
 				detourNext: needsDetour,
 				detourAmount: needsDetour ? 1 : 0
 			} : n);
-			snaps.push(this.snapshot('previous.next is updated to reference the node after the deleted node.', linked, {
+			snaps.push(this.snapshot('The previous node.next field is updated to reference the node after the deleted node.', linked, {
 				firstId: oldFirst,
 				size: oldSize,
 				finder,
@@ -2035,7 +2031,7 @@ const app = {
 				pause: true
 			}))
 		}
-		snaps.push(this.snapshot('set.size is decremented because one element reference was removed from the set.', linked, {
+		snaps.push(this.snapshot('The size field is decremented because one element reference was removed from the set.', linked, {
 			firstId: firstAfter,
 			size: oldSize - 1,
 			finder,
@@ -2045,7 +2041,7 @@ const app = {
 			preserveLinks: true,
 			pause: true
 		}));
-		snaps.push(this.snapshot('The method exits: the local variable Finder goes out of scope.', linked, {
+		snaps.push(this.snapshot('The method returns, so local variable Finder is removed from the call stack.', linked, {
 			firstId: firstAfter,
 			size: oldSize - 1,
 			finder,
@@ -2055,7 +2051,7 @@ const app = {
 			preserveLinks: true,
 			pause: true
 		}));
-		snaps.push(this.snapshot('After the references bypass it, the unlinked node object is no longer reachable from the set.', linked.map(n => n.id === cur ? {
+		snaps.push(this.snapshot('The unlinked node object is unreachable from the set; the Java garbage collector may reclaim it later.', linked.map(n => n.id === cur ? {
 			...n,
 			flashNodeCross: true
 		} : n), {
@@ -2069,7 +2065,7 @@ const app = {
 		let gone = linked.filter(n => n.id !== cur).map(n => ({
 			...n
 		}));
-		snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', gone, {
+		snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', gone, {
 			firstId: firstAfter,
 			size: oldSize - 1,
 			detourFirst: firstNeedsDetour,
@@ -2081,7 +2077,7 @@ const app = {
 			...n,
 			detourAmount: 0
 		} : n);
-		snaps.push(this.snapshot('Visualization only: The bypass reference is redrawn in its final shape.', gone, {
+		snaps.push(this.snapshot('Visualization only: the bypass reference is redrawn in its final shape.', gone, {
 			firstId: firstAfter,
 			size: oldSize - 1,
 			detourFirst: firstNeedsDetour,
@@ -2092,12 +2088,12 @@ const app = {
 		const idx = oldVals.indexOf(e);
 		this.values.splice(idx, 1);
 		this.ids.splice(idx, 1);
-		snaps.push(this.snapshot('Visualization only: The remaining nodes are redrawn to close the visual gap.', this.baseNodes(this.values, this.ids), {
+		snaps.push(this.snapshot('Visualization only: the remaining nodes are redrawn to close the visual gap.', this.baseNodes(this.values, this.ids), {
 			firstId: this.ids[0] ?? null,
 			size: this.values.length,
 			pause: true
 		}));
-		snaps.push(this.snapshot('The operation is complete.', this.baseNodes(this.values, this.ids), {
+		snaps.push(this.snapshot('Visualization only: the completed SortedLinkedSet state is displayed.', this.baseNodes(this.values, this.ids), {
 			firstId: this.ids[0] ?? null,
 			size: this.values.length
 		}));
@@ -2112,7 +2108,7 @@ const app = {
 			nodes = this.baseNodes(vals, ids);
 		const res = this.runFinder(e, nodes, vals.length, ids[0] ?? null);
 		let snaps = [...res.snaps];
-		snaps.push(this.snapshot('The method exits: the local variable Finder goes out of scope.', nodes, {
+		snaps.push(this.snapshot('The method returns, so local variable Finder is removed from the call stack.', nodes, {
 			firstId: ids[0] ?? null,
 			size: vals.length,
 			finder: res.finder,
@@ -2133,7 +2129,7 @@ const app = {
 			size = vals.length,
 			b = this.viz.base(),
 			nodes = this.baseNodes(vals, ids);
-		let snaps = [this.snapshot('The iterator operation starts from the current sorted set state.', nodes, {
+		let snaps = [this.snapshot('Visualization only: the current SortedLinkedSet state is displayed before the operation begins.', nodes, {
 			size
 		})];
 		let iterator = {
@@ -2153,7 +2149,7 @@ const app = {
 					...n,
 					flashElement: true
 				} : n);
-			snaps.push(this.snapshot(`Iterator returns the element reference in sorted order: ${vals[k]}.`, highlight, {
+			snaps.push(this.snapshot(`The iterator reads and returns the element reference in sorted order: ${vals[k]}.`, highlight, {
 				size,
 				iterator,
 				pause: true
@@ -2164,7 +2160,7 @@ const app = {
 				...iterator,
 				target: next
 			};
-			snaps.push(this.snapshot('iterator.current is updated to reference the next node object.', nodes, {
+			snaps.push(this.snapshot('The iterator.current reference is updated to reference the next node object.', nodes, {
 				flashIteratorCurrent: true,
 				
 				size,
@@ -2176,27 +2172,46 @@ const app = {
 				x: nextIteratorX,
 				y: b.y - 150
 			};
-			snaps.push(this.snapshot('Visualization only: The iterator object is redrawn near its current reference target.', nodes, {
+			snaps.push(this.snapshot('Visualization only: the iterator object is redrawn near its current reference target.', nodes, {
 				size,
 				iterator,
 				pause: true
 			}))
 		}
-		snaps.push(this.snapshot('Iteration complete: current is null, so hasNext() returns false.', nodes, {
+		snaps.push(this.snapshot('Iteration is complete because iterator.current is null.', nodes, {
 			size,
 			iterator,
 			pause: true
 		}));
-		snaps.push(this.snapshot('The operation is complete.', nodes, {
+		snaps.push(this.snapshot('Visualization only: the completed SortedLinkedSet state is displayed.', nodes, {
 			size
 		}));
 		this.viz.enqueue(snaps);
 		this.updateUI()
 	},
-	parseOtherSet() {
-		const txt = document.getElementById('other')?.value ?? '';
-		return Array.from(new Set(txt.split(/[ ,;]+/).map(s => parseInt(s.trim())).filter(v => !isNaN(v)))).sort((a, b) => a - b)
-	},
+	 parseOtherSet() {
+        const value = document.getElementById('other').value.trim();
+
+        if (!value) {
+          this.showInputError('other', 'input-warning');
+          //return undefined;
+			}
+
+			const tokens = (value)
+				.split(/[ ,;]+/)
+				.filter(s => s !== '');
+
+			const elems = tokens
+				.map(x => parseInt(x))
+				.filter(Number.isFinite);
+
+			if (tokens.length != elems.length) {
+				this.showInputError('other');
+				return undefined;
+			}
+
+			return [...new Set(elems)].sort((a, b) => a - b);
+		},
 	opNodes(vals, ids, y) {
 		return vals.map((e, i) => ({
 			id: ids[i],
@@ -2301,15 +2316,16 @@ const app = {
 	setOperation(kind) {
 		const leftVals = [...this.values],
 			leftIds = [...this.ids],
-			rightVals = this.parseOtherSet(),
-			rightIds = rightVals.map(_ => 'r' + nextId++);
+			rightVals = this.parseOtherSet();
+		if (rightVals === undefined) return;  
+		const rightIds = rightVals.map(_ => 'r' + nextId++);
 		this.save();
 		let resultVals = [],
 			resultIds = [],
 			i = 0,
 			j = 0,
 			snaps = [];
-		snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: elem1 and elem2 start as references to the first elements of the two sorted sets. A builder is created for the result.`, {
+		snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `${kind}: local references elem1 and elem2 are created and initialized at the current elements of the two sorted sets. A builder is created for the result.`, {
 			pause: true
 		}));
 		const appendResult = (value, reason) => {
@@ -2339,7 +2355,7 @@ const app = {
 				flashCell1: move1,
 				flashCell2: move2
 			}));
-			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `Visualization only: The element reference box is redrawn near its updated target.`, {
+			snaps.push(this.setOperationSnapshot(kind, leftVals, leftIds, rightVals, rightIds, resultVals, resultIds, i, j, `Visualization only: the element reference box is redrawn near its updated target.`, {
 				pause: true,
 				boxI: i,
 				boxJ: j,
@@ -2425,12 +2441,12 @@ const app = {
 		snaps.push(makeTransition(`${kind}: a new result set object is prepared with first = null and size = 0.`, yb));
 		snaps.push(makeTransition(`${kind}: builder.first is assigned to the result set's first field.`, yb, { newFirstId: resultIds[0] ?? null, flashNewFirst: true }));
 		snaps.push(makeTransition(`${kind}: builder.size is assigned to the result set's size field.`, yb, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, flashNewSize: true }));
-		snaps.push(makeTransition(`Visualization only: The linked result nodes are redrawn at the result set position.`, y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length }));
-		snaps.push(makeTransition(`${kind}: the builder local variable goes out of scope after the result set has received its references.`, y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, crossBuilder: true }));
+		snaps.push(makeTransition(`Visualization only: the linked result nodes are redrawn at the result set position.`, y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length }));
+		snaps.push(makeTransition(`${kind}: the method returns, so the builder local variable is removed from the call stack.`, y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, crossBuilder: true }));
 		this.values = [...resultVals];
 		this.ids = [...resultIds];
 		const final = this.baseNodes(this.values, this.ids);
-		snaps.push(this.snapshot('The operation is complete.', final, {
+		snaps.push(this.snapshot('Visualization only: the completed SortedLinkedSet state is displayed.', final, {
 			firstId: this.ids[0] ?? null,
 			size: this.values.length
 		}));
@@ -2472,7 +2488,7 @@ const app = {
 			oldIds = [...this.ids],
 			oldSize = oldVals.length;
 		let nodes = this.baseNodes(oldVals, oldIds),
-			snaps = [this.snapshot('Clear starts from the current set state.', nodes, {
+			snaps = [this.snapshot('Visualization only: the current SortedLinkedSet state is displayed before the operation begins.', nodes, {
 				firstId: oldIds[0] ?? null,
 				size: oldSize
 			})];
@@ -2486,13 +2502,13 @@ const app = {
 			this.updateUI();
 			return
 		}
-		snaps.push(this.snapshot('set.first is set to null, so the set no longer references the node chain.', nodes, {
+		snaps.push(this.snapshot('The first field is set to null.', nodes, {
 			firstId: null,
 			size: oldSize,
 			flashFirst: true,
 			pause: true
 		}));
-		snaps.push(this.snapshot('set.size is set to 0 because the set now contains no elements.', nodes, {
+		snaps.push(this.snapshot('The size field is set to 0.', nodes, {
 			firstId: null,
 			size: 0,
 			flashSize: true,
@@ -2502,7 +2518,7 @@ const app = {
 			...n
 		}));
 		for (const id of oldIds) {
-			snaps.push(this.snapshot('A node object with no incoming references becomes unreachable from the set.', cur.map(n => n.id === id ? {
+			snaps.push(this.snapshot('This node object is unreachable from the set; the Java garbage collector may reclaim it later.', cur.map(n => n.id === id ? {
 				...n,
 				flashNodeCross: true
 			} : n), {
@@ -2512,7 +2528,7 @@ const app = {
 				pause: true
 			}));
 			cur = cur.filter(n => n.id !== id);
-			snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', cur, {
+			snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', cur, {
 				firstId: null,
 				size: 0,
 				preserveLinks: true,
@@ -2521,7 +2537,7 @@ const app = {
 		}
 		this.values = [];
 		this.ids = [];
-		snaps.push(this.snapshot('The operation is complete.', [], {
+		snaps.push(this.snapshot('Visualization only: the completed SortedLinkedSet state is displayed.', [], {
 			firstId: null,
 			size: 0
 		}));
@@ -2566,11 +2582,21 @@ const app = {
 		if (this.viz?.updateStepControls) this.viz.updateStepControls()
 	},
 	clearInputs() {
-		document.getElementById('val').value = ''
+		document.getElementById('val').value = '';
+		document.getElementById('other').value = ''
 	}
 };
 window.app = app;
-window.onload = () => app.init();
+window.onload = () => {
+		app.init();
+		const chk = document.getElementById('chkStepMode');
+        const label = document.getElementById('stepModeLabel');
+        if (chk) chk.disabled = false;
+        if (label) {
+          label.style.pointerEvents = 'auto';
+          label.style.opacity = '1';
+        };
+	  }
 window.onclick = e => {
 	if (e.target === document.getElementById('helpModal')) app.toggleModal()
 };

@@ -1,322 +1,379 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
+
+  <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
     <title>LinkedQueue Visualizer</title>
     <style>
-        :root {
-            --b: #1565c0;
-            --c: #91f4f4;
-            --g: #b6f8b6;
-            --r: #e60000;
-            --p: #c78cff;
-            --v: #8d35c9;
-            --panel: #f5f5f5
+      :root {
+        --b: #1565c0;
+        --c: #91f4f4;
+        --g: #b6f8b6;
+        --r: #e60000;
+        --p: #c78cff;
+        --v: #8d35c9;
+        --panel: #f5f5f5
+      }
+
+      * {
+        box-sizing: border-box
+      }
+
+      body {
+        margin: 0;
+        height: 100vh;
+        height: 100dvh;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+        font-family: 'Segoe UI', Tahoma, sans-serif;
+        background: white;
+        user-select: none
+      }
+
+      header {
+        background: var(--panel);
+        border-bottom: 1px solid #ddd;
+        padding: 10px 20px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        flex-shrink: 0
+      }
+
+      .top,
+      .gui {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 12px
+      }
+
+      .gui {
+        align-items: flex-start
+      }
+
+      h1 {
+        font-size: 1.2rem;
+        margin: 0
+      }
+
+      .controls,
+      .sub {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        flex-wrap: wrap
+      }
+
+      .sub {
+        font-size: .9rem;
+        color: #555
+      }
+
+      input[type=number] {
+        width: 64px;
+        padding: 6px;
+        border: 1px solid #999;
+        border-radius: 4px;
+        text-align: center;
+        font-weight: bold
+      }
+
+      button {
+        border: 0;
+        border-radius: 4px;
+        color: white;
+        font-weight: 600;
+        padding: 6px 12px;
+        box-shadow: 0 1px 3px #0003;
+        cursor: pointer;
+      }
+
+      button:disabled {
+        opacity: .4;
+        cursor: default;
+      }
+
+      .green {
+        background: #2E7D32
+      }
+
+      .blue {
+        background: #1668BD
+      }
+
+      .red {
+        background: #c62828
+      }
+
+      .purple {
+        background: #6A1B9A
+      }
+
+      .gray {
+        background: #546E7A
+      }
+
+      .orange {
+        background: #EF6C00
+      }
+
+      .pause {
+        background: #455A64;
+        width: 80px
+      }
+
+      .step-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 10px;
+        border-radius: 4px;
+        background: #ECEFF1;
+        color: #263238;
+        font-weight: 600;
+        box-shadow: 0 1px 3px #0002;
+        cursor: pointer;
+        user-select: none
+      }
+
+      .step-toggle input {
+        width: auto;
+        margin: 0;
+        cursor: pointer
+      }
+
+      .step-toggle-on {
+        outline: 3px solid #FFB300;
+        outline-offset: 2px;
+        background: #E0F2F1
+      }
+
+      .help {
+        background: #607D8B;
+        border-radius: 50%;
+        font-size: 1.1rem;
+        padding: 4px 10px
+      }
+
+      .sep {
+        width: 1px;
+        height: 20px;
+        background: #ccc;
+        margin: 0 5px
+      }
+
+      #status {
+        border-top: 1px solid #ddd;
+        padding-top: 8px;
+        font-size: .85rem;
+        color: #555;
+        min-height: 32px;
+        line-height: 1.3
+      }
+
+      #status-text {
+        font-weight: bold;
+        color: #222
+      }
+
+      #wrap {
+        position: relative;
+        flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        background: white
+      }
+
+      canvas {
+        display: block;
+        width: 100%;
+        height: 100%
+      }
+
+      #legend {
+        position: absolute;
+        top: 18px;
+        left: 18px;
+        background: #fffffff2;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 10px;
+        font-size: .8rem;
+        box-shadow: 0 2px 5px #0002;
+        pointer-events: none
+      }
+
+      .li {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-bottom: 5px
+      }
+
+      .sw {
+        width: 18px;
+        height: 18px;
+        display: inline-block
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        background: var(--b);
+        border-radius: 50%;
+        display: inline-block
+      }
+
+      #author {
+        background: #f4f7f6;
+        color: #777;
+        text-align: center;
+        line-height: 2.5;
+        font-size: .75em;
+        flex-shrink: 0
+      }
+
+      .modal {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #0008;
+        z-index: 10
+      }
+
+      .modal-content {
+        background: white;
+        margin: 20px auto;
+        padding: 20px;
+        border-radius: 8px;
+        width: min(90vw, 820px);
+        max-height: calc(100dvh - 40px);
+        overflow-y: auto;
+        touch-action: pan-y
+      }
+
+      .close {
+        float: right;
+        font-size: 28px;
+        color: #aaa;
+        cursor: pointer
+      }
+
+      .code {
+        font-family: Consolas, monospace;
+        background: #eee;
+        border-radius: 4px;
+        padding: 2px 5px;
+        color: #c62828
+      }
+
+      @keyframes shake-error {
+
+        0%,
+        100% {
+          transform: translateX(0);
         }
 
-        * {
-            box-sizing: border-box
+        20%,
+        60% {
+          transform: translateX(-4px);
         }
 
-        body {
-            margin: 0;
-            height: 100vh;
-            height: 100dvh;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            font-family: 'Segoe UI', Tahoma, sans-serif;
-            background: white;
-            user-select: none
+        40%,
+        80% {
+          transform: translateX(4px);
         }
+      }
 
-        header {
-            background: var(--panel);
-            border-bottom: 1px solid #ddd;
-            padding: 10px 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 10px;
-            flex-shrink: 0
-        }
-
-        .top,
-        .gui {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            gap: 12px
-        }
-
-        .gui {
-            align-items: flex-start
-        }
-
-        h1 {
-            font-size: 1.2rem;
-            margin: 0
-        }
-
-        .controls,
-        .sub {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            flex-wrap: wrap
-        }
-
-        .sub {
-            font-size: .9rem;
-            color: #555
-        }
-
-        input[type=number] {
-            width: 64px;
-            padding: 6px;
-            border: 1px solid #999;
-            border-radius: 4px;
-            text-align: center;
-            font-weight: bold
-        }
-
-        button {
-            border: 0;
-            border-radius: 4px;
-            color: white;
-            font-weight: 600;
-            padding: 6px 12px;
-            box-shadow: 0 1px 3px #0003;
-            cursor: pointer;
-        }
-
-        button:disabled {
-            opacity: .4;
-            cursor: default;
-        }
-
-        .green {
-            background: #2E7D32
-        }
-
-        .blue {
-            background: #1668BD
-        }
-
-        .red {
-            background: #c62828
-        }
-
-        .purple {
-            background: #6A1B9A
-        }
-
-        .gray {
-            background: #546E7A
-        }
-
-        .orange {
-            background: #EF6C00
-        }
-
-        .pause {
-            background: #455A64;
-            width: 80px
-        }
-                .step-toggle {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 6px 10px;
-            border-radius: 4px;
-            background: #ECEFF1;
-            color: #263238;
-            font-weight: 600;
-            box-shadow: 0 1px 3px #0002;
-            cursor: pointer;
-            user-select: none
-        }
-        .step-toggle input {
-            width: auto;
-            margin: 0;
-            cursor: pointer
-        }
-        .step-toggle-on {
-            outline: 3px solid #FFB300;
-            outline-offset: 2px;
-            background: #E0F2F1
-        }
-
-
-        .help {
-            background: #607D8B;
-            border-radius: 50%;
-            font-size: 1.1rem;
-            padding: 4px 10px
-        }
-
-        .sep {
-            width: 1px;
-            height: 20px;
-            background: #ccc;
-            margin: 0 5px
-        }
-
-        #status { border-top: 1px solid #ddd; padding-top: 8px; font-size: .85rem; color: #555; min-height: 32px; line-height: 1.3 }
-
-        #status-text {
-            font-weight: bold;
-            color: #222
-        }
-
-        #wrap {
-            position: relative;
-            flex: 1;
-            min-height: 0;
-            overflow: hidden;
-            background: white
-        }
-
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%
-        }
-
-        #legend {
-            position: absolute;
-            top: 18px;
-            left: 18px;
-            background: #fffffff2;
-            border: 1px solid #ddd;
-            border-radius: 8px;
-            padding: 10px;
-            font-size: .8rem;
-            box-shadow: 0 2px 5px #0002;
-            pointer-events: none
-        }
-
-        .li {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-            margin-bottom: 5px
-        }
-
-        .sw {
-            width: 18px;
-            height: 18px;
-            display: inline-block
-        }
-
-        .dot {
-            width: 12px;
-            height: 12px;
-            background: var(--b);
-            border-radius: 50%;
-            display: inline-block
-        }
-
-        #author {
-            background: #f4f7f6;
-            color: #777;
-            text-align: center;
-            line-height: 2.5;
-            font-size: .75em;
-            flex-shrink: 0
-        }
-
-        .modal {
-            display: none;
-            position: fixed;
-            inset: 0;
-            background: #0008;
-            z-index: 10
-        }
-
-        .modal-content {
-            background: white;
-            margin: 20px auto;
-            padding: 20px;
-            border-radius: 8px;
-            width: min(90vw, 820px);
-            max-height: calc(100dvh - 40px);
-            overflow-y: auto;
-            touch-action: pan-y
-        }
-
-        .close {
-            float: right;
-            font-size: 28px;
-            color: #aaa;
-            cursor: pointer
-        }
-
-        .code {
-            font-family: Consolas, monospace;
-            background: #eee;
-            border-radius: 4px;
-            padding: 2px 5px;
-            color: #c62828
-        }
+      .input-error {
+        animation: shake-error 0.4s ease-in-out !important;
+        border-color: #e60000 !important;
+        background-color: #ffe6e6 !important;
+        color: #c62828 !important;
+      }
     </style>
-</head>
-<body>
+  </head>
+
+  <body>
     <header>
-        <div class="top">
-            <h1>LinkedQueue Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
+      <div class="top">
+        <h1>LinkedQueue Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
+      </div>
+      <div class="gui">
+        <div class="controls"><label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.enqueue()"></label><button class="green" onclick="app.enqueue()" title="Enqueue the element at the end of the queue." aria-label="Enqueue the element at the end of the queue.">Enqueue</button><button class="red" onclick="app.dequeue()" title="Dequeue (remove) the first element of the queue." aria-label="Dequeue (remove) the first element of the queue.">Dequeue</button><button class="purple" onclick="app.first()" title="Get the first element of the queue without removing it." aria-label="Get the first element of the queue without removing it.">First</button>
+          <div class="sep"></div><button class="orange" onclick="app.newList()" title="Create a new empty queue." aria-label="Create a new empty queue.">Empty</button><button class="gray" onclick="app.clear()" title="Clear the queue." aria-label="Clear the queue.">Clear</button>
+          <div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sample queue." aria-label="Build a random sample queue.">Build Random</button>
+          <div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the queue." aria-label="Undo the last operation that modified the queue.">Undo</button>
         </div>
-        <div class="gui">
-            <div class="controls"><label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.enqueue()"></label><button class="green" onclick="app.enqueue()" title="Enqueue the element at the end of the queue." aria-label="Enqueue the element at the end of the queue.">Enqueue</button><button class="red" onclick="app.dequeue()" title="Dequeue (remove) the first element of the queue." aria-label="Dequeue (remove) the first element of the queue.">Dequeue</button><button class="purple" onclick="app.first()" title="Get the first element of the queue without removing it." aria-label="Get the first element of the queue without removing it.">First</button><div class="sep"></div><button class="orange" onclick="app.newList()" title="Create a new empty queue." aria-label="Create a new empty queue.">Empty</button><button class="gray" onclick="app.clear()" title="Clear the queue." aria-label="Clear the queue.">Clear</button><div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sample queue." aria-label="Build a random sample queue.">Build Random</button><div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the queue." aria-label="Undo the last operation that modified the queue.">Undo</button></div>
-            <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button><label  id="stepModeLabel" class="step-toggle" title="When on, only real Java LinkedQueue steps wait for Next step; visual-only steps run automatically." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label><button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java LinkedQueue step." aria-label="Advance to the next non-visual Java LinkedQueue step">Next step</button></div>
-        </div>
-	<div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
+        <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button><label id="stepModeLabel" class="step-toggle" title="When on, only real Java LinkedQueue steps wait for Next step; visual-only steps run automatically." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label><button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java LinkedQueue step." aria-label="Advance to the next non-visual Java LinkedQueue step">Next step</button></div>
+      </div>
+      <div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
     </header>
     <div id="wrap"><canvas id="cv"></canvas>
-        <div id="legend"><div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div><div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div><div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div><div class="li"><span class="dot"></span>null reference</div></div>
+      <div id="legend">
+        <div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div>
+        <div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div>
+        <div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div>
+        <div class="li"><span class="dot"></span>null reference</div>
+      </div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
-    <div id="helpModal" class="modal"><div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span><h2>LinkedQueue</h2><h3>Step-by-step semantics</h3><p><strong>Step-by-step</strong> stops only at real Java LinkedQueue actions: creating node objects, updating <span class="code">first</span>, <span class="code">last</span>, <span class="code">size</span>, assigning <span class="code">next</span> references, reading the front element reference, variables going out of scope when a method returns, and explicitly noting when an object has become unreachable and may later be reclaimed by the garbage collector.</p><p>Highlight-only preparation steps are merged into the actual semantic update step. Purely visual rearrangements run automatically, show no status message, and do not wait for <strong>Next step</strong>. When a node is crossed out, that same non-visual semantic step states that the node is unreachable and that the Java garbage collector may reclaim it later, including in <strong>Clear</strong>.</p><p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy. Elements are enqueued at the rear and dequeued from the front.</p><p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The queue object stores <span class="code">first</span>, a reference to the front node object; <span class="code">last</span>, a reference to the rear node object; and <span class="code">size</span>, the number of stored elements.</p><p>Each node object has an <span class="code">element</span> field and a <span class="code">next</span> field. Because the structure is generic, <span class="code">node.element</span> is a reference to a value object, not necessarily a primitive stored inside the node.</p><p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
-		<h3>Data-structure operations and asymptotic complexity</h3><ul><li><strong>Enqueue</strong>: creates a node object with <span class="code">next = null</span>. If the queue is empty, both <span class="code">first</span> and <span class="code">last</span> reference it; otherwise, <span class="code">last.next</span> and then <span class="code">last</span> are updated. Complexity: <span class="code">O(1)</span>.</li><li><strong>Dequeue</strong>: removes the front node by updating <span class="code">first</span> to the next node. If the queue becomes empty, <span class="code">last</span> is set to <span class="code">null</span>. The removed node becomes unreachable from the queue. Complexity: <span class="code">O(1)</span>.</li><li><strong>First</strong>: reads and returns the element reference stored in the front node without removing it. Complexity: <span class="code">O(1)</span>.</li><li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the queue. Complexity: <span class="code">O(1)</span> for the logical operation; garbage collection is handled by the runtime.</li></ul><h3>Step-by-step execution and navigation</h3><p>Turn <strong>Step-by-step</strong> on to make only non-visual Java LinkedQueue steps wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p></div></div>
+    <div id="helpModal" class="modal">
+      <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
+        <h2>LinkedQueue</h2>
+        <p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy. Elements are enqueued at the rear and dequeued from the front.</p>
+        <p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The queue object stores <span class="code">first</span>, a reference to the front node object; <span class="code">last</span>, a reference to the rear node object; and <span class="code">size</span>, the number of stored elements.</p>
+        <p>Each node object has an <span class="code">element</span> field and a <span class="code">next</span> field. Because the structure is generic, <span class="code">node.element</span> is a reference to a value object, not necessarily a primitive stored inside the node.</p>
+        <p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
+        <h3>Data-structure operations and asymptotic complexity</h3>
+        <ul>
+          <li><strong>Enqueue</strong>: creates a node object with <span class="code">next = null</span>. If the queue is empty, both <span class="code">first</span> and <span class="code">last</span> reference it; otherwise, <span class="code">last.next</span> and then <span class="code">last</span> are updated. Complexity: <span class="code">O(1)</span>.</li>
+          <li><strong>Dequeue</strong>: removes the front node by updating <span class="code">first</span> to the next node. If the queue becomes empty, <span class="code">last</span> is set to <span class="code">null</span>. The removed node becomes unreachable from the queue and later be reclaimed by Java's garbage collector. Complexity: <span class="code">O(1)</span>.</li>
+          <li><strong>First</strong>: reads and returns the element reference stored in the front node without removing it. Complexity: <span class="code">O(1)</span>.</li>
+          <li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the queue and later be reclaimed by Java's garbage collector. Complexity: <span class="code">O(1)</span>.</li>
+        </ul>
+      </div>
+    </div>
     <script>
-'use strict';
-
-const K = {
-    b: '#1565c0',
-    c: '#91f4f4',
-    g: '#b6f8b6',
-    r: '#e60000',
-    p: '#c78cff',
-    v: '#8d35c9',
-    d: '#EF6C00',
-    k: '#111'
-};
-const LAYER = Object['fr' + 'eeze']({
-    background: 0,
-    box: 10,
-    arrow: 20,
-    dot: 30,
-    text: 40,
-    overlay: 100
-});
-
-const VISUAL = (() => {
-    const CELL = 60;
-    const NODE_WIDTH = CELL * 2;
-    const NODE_GAP = CELL;
-    const STRUCT_X = 205;
-    const STRUCT_Y = 250;
-    const POINTER_BOX_WIDTH = CELL;
-    const POINTER_BOX_HEIGHT = CELL;
-    const BOX_TRANSPARENT_BORDER = 1;
-    return Object['fr' + 'eeze']({
-        node: Object['fr' + 'eeze']({
+      'use strict';
+      const K = {
+        b: '#1565c0',
+        c: '#91f4f4',
+        g: '#b6f8b6',
+        r: '#e60000',
+        p: '#c78cff',
+        v: '#8d35c9',
+        d: '#EF6C00',
+        k: '#111'
+      };
+      const LAYER = Object['fr' + 'eeze']({
+        background: 0,
+        box: 10,
+        arrow: 20,
+        dot: 30,
+        text: 40,
+        overlay: 100
+      });
+      const VISUAL = (() => {
+        const CELL = 60;
+        const NODE_WIDTH = CELL * 2;
+        const NODE_GAP = CELL;
+        const STRUCT_X = 205;
+        const STRUCT_Y = 250;
+        const POINTER_BOX_WIDTH = CELL;
+        const POINTER_BOX_HEIGHT = CELL;
+        const BOX_TRANSPARENT_BORDER = 1;
+        return Object['fr' + 'eeze']({
+          node: Object['fr' + 'eeze']({
             cell: CELL,
             width: NODE_WIDTH,
             step: NODE_WIDTH + NODE_GAP,
             elementYOffset: -85
-        }),
-        list: Object['fr' + 'eeze']({
+          }),
+          list: Object['fr' + 'eeze']({
             originX: 360,
             originY: 250,
             tempNodeYOffset: 160,
@@ -326,39 +383,39 @@ const VISUAL = (() => {
             pointerTraversalLevelGap: 0,
             pointerFallbackXOffset: 200,
             nullPointerXOffset: 50
-        }),
-        struct: Object['fr' + 'eeze']({
+          }),
+          struct: Object['fr' + 'eeze']({
             x: STRUCT_X,
             y: STRUCT_Y
-        }),
-        pointerBox: Object['fr' + 'eeze']({
+          }),
+          pointerBox: Object['fr' + 'eeze']({
             width: POINTER_BOX_WIDTH,
             height: POINTER_BOX_HEIGHT,
             auxTargetXOffset: CELL,
             transparentBorder: BOX_TRANSPARENT_BORDER
-        }),
-        stroke: Object['fr' + 'eeze']({
+          }),
+          stroke: Object['fr' + 'eeze']({
             detourOffset: 46
-        }),
-        fonts: Object['fr' + 'eeze']({
+          }),
+          fonts: Object['fr' + 'eeze']({
             value: '30px Arial',
             structValue: '32px Arial',
             structLabel: '28px monospace',
             index: '25px monospace',
             pointerLabel: '24px monospace',
             auxPointerLabel: '22px monospace'
-        }),
-        random: Object['fr' + 'eeze']({
+          }),
+          random: Object['fr' + 'eeze']({
             minSize: 2,
             sizeRange: 4,
             minValue: 1,
             valueRange: 9,
             sortedProbability: 0.33
-        }),
-        undo: Object['fr' + 'eeze']({
+          }),
+          undo: Object['fr' + 'eeze']({
             maxHistoryEntries: 30
-        }),
-        drawing: Object['fr' + 'eeze']({
+          }),
+          drawing: Object['fr' + 'eeze']({
             arrowHeadLength: 17,
             arrowShaftShorteningFactor: 0.8,
             arrowHeadWidthFactor: 1.4,
@@ -369,1069 +426,1610 @@ const VISUAL = (() => {
             nodeDotRadius: 7.5,
             fieldDotRadius: 8,
             highlightRadius: 28
-        }),
-        layers: Object['fr' + 'eeze']({
+          }),
+          layers: Object['fr' + 'eeze']({
             underBox: Object['fr' + 'eeze']({
-                box: LAYER.box - 4,
-                dot: LAYER.box - 3,
-                text: LAYER.box - 2,
-                arrow: LAYER.box - 1
+              box: LAYER.box - 4,
+              dot: LAYER.box - 3,
+              text: LAYER.box - 2,
+              arrow: LAYER.box - 1
             }),
             overArrow: Object['fr' + 'eeze']({
-                box: LAYER.arrow + 1,
-                dot: LAYER.arrow + 2,
-                text: LAYER.arrow + 3,
-                arrow: LAYER.arrow + 4
+              box: LAYER.arrow + 1,
+              dot: LAYER.arrow + 2,
+              text: LAYER.arrow + 3,
+              arrow: LAYER.arrow + 4
             }),
-
-        })
-    });
-})();
-let nextId = 0;
-class VisualizationEngine {
-	constructor({
-		canvasId,
-		wrapId,
-		statusId,
-		onHit = null,
-		options = {}
-	}) {
-		this.cv = document.getElementById(canvasId);
-		this.ctx = this.cv.getContext('2d');
-		this.wrap = document.getElementById(wrapId);
-		this.statusEl = document.getElementById(statusId);
-		this.onHit = onHit;
-		this.options = Object.assign({
-			minScale: .2,
-			maxScale: 5,
-			maxFitScale: 1.22,
-			wheelSensitivity: .001,
-			cameraSmoothing: 10,
-			cameraSnapPx: 5,
-			cameraSnapScale: .01,
-			maxFrameDelta: .1,
-			morphSpeed: 2.5,
-			waitSeconds: .75,
-			fadeCutoff: .95,
-			fitPadding: 150,
-			worldFallback: {
-				minX: 20,
-				minY: 35,
-				maxX: 760,
-				maxY: 650
-			}
-		}, options);
-		this.cam = {
-			scale: 1,
-			targetScale: 1,
-			x: 0,
-			targetX: 0,
-			y: 0,
-			targetY: 0
-		};
-		this.scenes = [];
-		this.pending = [];
-		this.idx = -1;
-		this.state = 'IDLE';
-		this.t = 0;
-		this.wait = 0;
-		this.speedFactor = 1;
-		this.paused = false;
-		this.stepMode = false;
-		this.waitingForStep = false;
-		this.last = 0;
-		this.drag = false;
-		this.hitObjects = [];
-		this.resize();
-		window.addEventListener('resize', () => this.resize());
-		this.cv.addEventListener('wheel', e => this.wheel(e), {
-			passive: false
-		});
-		this.cv.addEventListener('mousedown', e => this.pointerStart(e));
-		this.cv.addEventListener('mousemove', e => this.pointerMove(e));
-		this.cv.addEventListener('mouseup', () => this.pointerEnd());
-		this.cv.addEventListener('mouseleave', () => this.pointerEnd());
-		this.cv.addEventListener('touchstart', e => this.touchStart(e), {
-			passive: false
-		});
-		this.cv.addEventListener('touchmove', e => this.touchMove(e), {
-			passive: false
-		});
-		this.cv.addEventListener('touchend', () => this.pointerEnd());
-		requestAnimationFrame(ts => this.loop(ts))
-	}
-	resize() {
-		this.cv.width = this.wrap.offsetWidth;
-		this.cv.height = this.wrap.offsetHeight;
-		const cur = this.current();
-		if (cur) {
-			this.fit([cur]);
-			this.cam.scale = this.cam.targetScale;
-			this.cam.x = this.cam.targetX;
-			this.cam.y = this.cam.targetY
-		}
-	}
-	screenToWorld(x, y) {
-		return {
-			x: (x - this.cam.x) / this.cam.scale,
-			y: (y - this.cam.y) / this.cam.scale
-		}
-	}
-	wheel(e) {
-		e.preventDefault();
-		const r = this.cv.getBoundingClientRect(),
-			sx = e.clientX - r.left,
-			sy = e.clientY - r.top;
-		let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
-		ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
-		const wx = (sx - this.cam.targetX) / this.cam.targetScale,
-			wy = (sy - this.cam.targetY) / this.cam.targetScale;
-		this.cam.targetScale = ns;
-		this.cam.targetX = sx - wx * ns;
-		this.cam.targetY = sy - wy * ns
-	}
-	pointerStart(e) {
-		const r = this.cv.getBoundingClientRect(),
-			sx = e.clientX - r.left,
-			sy = e.clientY - r.top,
-			w = this.screenToWorld(sx, sy),
-			hit = this.findHit(w.x, w.y);
-		if (hit && this.onHit) {
-			this.onHit(hit);
-			return
-		}
-		this.drag = true;
-		this.start = {
-			x: sx,
-			y: sy
-		};
-		this.c0 = {
-			x: this.cam.targetX,
-			y: this.cam.targetY
-		};
-		this.cv.style.cursor = 'grabbing'
-	}
-	pointerMove(e) {
-		const r = this.cv.getBoundingClientRect(),
-			sx = e.clientX - r.left,
-			sy = e.clientY - r.top;
-		if (this.drag) {
-			this.cam.targetX = this.c0.x + sx - this.start.x;
-			this.cam.targetY = this.c0.y + sy - this.start.y;
-			return
-		}
-		const w = this.screenToWorld(sx, sy);
-		this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default'
-	}
-	pointerEnd() {
-		this.drag = false;
-		this.cv.style.cursor = 'default';
-		this.pinch = null
-	}
-	td(t) {
-		return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
-	}
-	tc(t, r) {
-		return {
-			x: (t[0].clientX + t[1].clientX) / 2 - r.left,
-			y: (t[0].clientY + t[1].clientY) / 2 - r.top
-		}
-	}
-	touchStart(e) {
-		e.preventDefault();
-		const r = this.cv.getBoundingClientRect();
-		if (e.touches.length === 1) {
-			const x = e.touches[0].clientX - r.left,
-				y = e.touches[0].clientY - r.top,
-				w = this.screenToWorld(x, y),
-				hit = this.findHit(w.x, w.y);
-			if (hit && this.onHit) {
-				this.onHit(hit);
-				return
-			}
-			this.drag = true;
-			this.start = {
-				x,
-				y
-			};
-			this.c0 = {
-				x: this.cam.targetX,
-				y: this.cam.targetY
-			}
-		} else if (e.touches.length === 2) {
-			this.drag = false;
-			const c = this.tc(e.touches, r);
-			this.pinch = {
-				d: this.td(e.touches),
-				s: this.cam.targetScale,
-				wx: (c.x - this.cam.targetX) / this.cam.targetScale,
-				wy: (c.y - this.cam.targetY) / this.cam.targetScale
-			}
-		}
-	}
-	touchMove(e) {
-		e.preventDefault();
-		const r = this.cv.getBoundingClientRect();
-		if (e.touches.length === 1 && this.drag) {
-			const x = e.touches[0].clientX - r.left,
-				y = e.touches[0].clientY - r.top;
-			this.cam.targetX = this.c0.x + x - this.start.x;
-			this.cam.targetY = this.c0.y + y - this.start.y
-		} else if (e.touches.length === 2 && this.pinch) {
-			const c = this.tc(e.touches, r);
-			let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
-			ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
-			this.cam.targetScale = ns;
-			this.cam.targetX = c.x - this.pinch.wx * ns;
-			this.cam.targetY = c.y - this.pinch.wy * ns
-		}
-	}
-	findHit(x, y) {
-		for (let i = this.hitObjects.length - 1; i >= 0; i--) {
-			const o = this.hitObjects[i];
-			if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o.hit
-		}
-		return null
-	}
-	reset() {
-		this.scenes = [];
-		this.pending = [];
-		this.idx = -1;
-		this.state = 'IDLE';
-		this.t = 0;
-		this.wait = 0;
-	}
-	enqueue(scenes) {
-		const copy = scenes.map(s => this.normalizeScene(s));
-		this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
-		if (!this.scenes.length && copy.length) {
-			this.scenes.push(copy.shift());
-			this.idx = 0;
-			const firstScene = this.scenes[0];
-			this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
-		}
-		if (copy.length) {
-			this.pending = copy;
-			this.state = 'CAMERA';
-			this.waitingForStep = false;
-			this.updateStepControls();
-		}
-	}
-	normalizeScene(s) {
-		const scene = Object.assign({
-			objects: [],
-			pause: false
-		}, s);
-		scene.objects = this.normalizeObjects(scene.objects);
-		return scene
-	}
-	normalizeObjects(objects = []) {
-		return objects.map((o, order) => this.normalizeObject(o, order))
-	}
-	normalizeObject(o, order = 0) {
-		const copy = Object.assign({}, o);
-		copy.layer = this.resolveLayer(copy);
-		copy.order = copy.order ?? order;
-		return copy
-	}
-	resolveLayer(o) {
-		if (Number.isFinite(o.layer)) return o.layer;
-		if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
-		if (o.kind === 'text') return LAYER.text;
-		if (o.kind === 'circle') return LAYER.dot;
-		if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
-		if (o.kind === 'rect') return LAYER.box;
-		return Number.isFinite(o.z) ? o.z : LAYER.background
-	}
-	sortObjects(objects = []) {
-		return [...objects].sort((a, b) => ((a.layer ?? 0) - (b.layer ?? 0)) || ((a.order ?? 0) - (b.order ?? 0)))
-	}
-	setStatus(txt) {
-		if (this.statusEl) this.statusEl.innerText = txt
-	}
-	loop(ts) {
-		if (!this.last) this.last = ts;
-		const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
-		this.last = ts;
-		if (!this.paused) this.update(dt);
-		this.draw();
-		requestAnimationFrame(t => this.loop(t))
-	}
-	update(dt) {
-		const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
-		this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-		this.cam.x += (this.cam.targetX - this.cam.x) * f;
-		this.cam.y += (this.cam.targetY - this.cam.y) * f;
-		if (this.state === 'CAMERA') {
-			if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next()
-		} else if (this.state === 'MORPH') {
-			this.t += this.options.morphSpeed * this.speedFactor * dt;
-			if (this.t >= 1) {
-				this.t = 1;
-				const arrivedScene = this.scenes[this.idx + 1];
-				const isVisualOnlyStep = !!arrivedScene?.visualOnly;
-				if (this.stepMode && !isVisualOnlyStep) {
-					this.state = 'STEP_WAIT';
-					this.waitingForStep = true;
-					this.updateStepControls();
-				} else if (arrivedScene?.pause && !isVisualOnlyStep) {
-					this.state = 'WAIT';
-					this.wait = this.options.waitSeconds / this.speedFactor
-				} else this.finish()
-			}
-		} else if (this.state === 'WAIT') {
-			this.wait -= dt;
-			if (this.wait <= 0) this.finish()
-		}
-	}
-	next() {
-		const s = this.pending.shift();
-		this.scenes.push(s);
-		if (s.fitCamera) this.fit([s]);
-		this.setStatus(s.visualOnly ? '' : (s.text || 'Ready.'));
-		this.t = 0;
-		this.waitingForStep = false;
-		this.state = 'MORPH';
-		this.updateStepControls();
-	}
-	finish() {
-		this.idx++;
-		this.waitingForStep = false;
-		if (this.pending.length) this.next();
-		else {
-			const finalScene = this.scenes[this.idx];
-			if (finalScene) this.fit([finalScene]);
-			this.state = 'IDLE';
-			this.setStatus('Ready.');
-			this.updateStepControls();
-			if (app?.clearInputs) app.clearInputs()
-		}
-	}
-	ease(t) {
-		return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-	}
-	current() {
-		return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
-	}
-	interpolateScene(A, B, t) {
-		return Object.assign({}, B, {
-			objects: this.mixObjects(A.objects, B.objects, t)
-		})
-	}
-	mixObjects(a = [], b = [], t) {
-		const ma = new Map(a.map(o => [o.id, o])),
-			mb = new Map(b.map(o => [o.id, o])),
-			ids = new Set([...ma.keys(), ...mb.keys()]),
-			sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined)),
-			out = [];
-		ids.forEach(id => {
-			const A = ma.get(id),
-				B = mb.get(id);
-			if (A && B) out.push(this.mixObject(A, B, t));
-			else if (B) {
-				const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-				if (S) out.push(this.mixObject(S, B, t));
-				else {
-					const fadeT = Math.min(1, t / this.options.fadeCutoff);
-					out.push(Object.assign({}, B, {
-						alpha: (B.alpha ?? 1) * fadeT
-					}))
-				}
-			} else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
-				alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
-			}))
-		});
-		return this.sortObjects(out)
-	}
-	mixObject(A, B, t) {
-		const o = Object.assign({}, B);
-		['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
-			if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t
-		});
-		if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
-			x: A.points[i].x + (p.x - A.points[i].x) * t,
-			y: A.points[i].y + (p.y - A.points[i].y) * t
-		}));
-		return o
-	}
-	bounds(scene) {
-		const fb = this.options.worldFallback;
-		let b = {
-			minX: fb.minX,
-			minY: fb.minY,
-			maxX: fb.maxX,
-			maxY: fb.maxY
-		};
-		for (const o of scene.objects || []) {
-			let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
-				maxX = o.x !== undefined ? o.x + (o.w ?? 0) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity);
-			let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
-				maxY = o.y !== undefined ? o.y + (o.h ?? 0) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity);
-			if (o.points) {
-				for (const p of o.points) {
-					minX = Math.min(minX, p.x);
-					maxX = Math.max(maxX, p.x);
-					minY = Math.min(minY, p.y);
-					maxY = Math.max(maxY, p.y)
-				}
-			}
-			if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
-			b.minX = Math.min(b.minX, minX - 180);
-			b.maxX = Math.max(b.maxX, maxX + 230);
-			b.minY = Math.min(b.minY, minY - 200);
-			b.maxY = Math.max(b.maxY, maxY + 220)
-		}
-		return scene.bounds || b
-	}
-	fit(scenes) {
-		let B = {
-			minX: 1e9,
-			minY: 1e9,
-			maxX: -1e9,
-			maxY: -1e9
-		};
-		scenes.forEach(s => {
-			const b = this.bounds(s);
-			B.minX = Math.min(B.minX, b.minX);
-			B.maxX = Math.max(B.maxX, b.maxX);
-			B.minY = Math.min(B.minY, b.minY);
-			B.maxY = Math.max(B.maxY, b.maxY)
-		});
-		const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
-		this.cam.targetScale = sc;
-		this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-		this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-	}
-	flashAlpha() {
-		return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
-	}
-	draw() {
-		const s = this.current(),
-			c = this.ctx;
-		c.clearRect(0, 0, this.cv.width, this.cv.height);
-		this.hitObjects = [];
-		c.save();
-		c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-		if (s)
-			for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
-		c.restore()
-	}
-	drawObject(o) {
-		const c = this.ctx;
-		c.save();
-		if (o.alpha !== undefined) c.globalAlpha *= o.alpha;
-		const st = o.style || {};
-		c.fillStyle = st.fill || '#fff';
-		c.strokeStyle = st.stroke || '#333';
-		c.lineWidth = o.lineWidth ?? st.lineWidth ?? 1;
-		c.font = st.font || '24px Arial';
-		c.textAlign = st.align || 'center';
-		c.textBaseline = st.baseline || 'middle';
-		if (o.kind === 'rect') {
-			this.roundOrRect(o, st);
-			if (st.stroke) c.stroke();
-			if (o.hit) this.hitObjects.push({
-				x: o.x,
-				y: o.y,
-				w: o.w,
-				h: o.h,
-				hit: o.hit
-			})
-		} else if (o.kind === 'text') {
-			c.fillStyle = st.fill || '#111';
-			c.fillText(String(o.text), o.x, o.y)
-		} else if (o.kind === 'circle') {
-			c.beginPath();
-			c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
-			if (st.fill) c.fill();
-			if (st.stroke) c.stroke()
-		} else if (o.kind === 'line') {
-			c.beginPath();
-			c.moveTo(o.x1, o.y1);
-			c.lineTo(o.x2, o.y2);
-			c.stroke()
-		} else if (o.kind === 'arrow') {
-			this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || K.b, o.lineWidth ?? 3)
-		} else if (o.kind === 'polylineArrow') {
-			this.polylineArrow(o.points, st.stroke || K.b, o.lineWidth ?? 3)
-		} else if (o.kind === 'cross') {
-			this.cross(o.x, o.y, o.w, o.h)
-		} else if (o.kind === 'flashRect') {
-			this.flashRect(o.x, o.y, o.w, o.h, o.radius ?? 8)
-		} else if (o.kind === 'flashCircle') {
-			this.flashCircle(o.x, o.y, o.r)
-		} else if (o.kind === 'lFlash') {
-			this.lFlash(o)
-		}
-		c.restore()
-	}
-	roundOrRect(o, st) {
-		const c = this.ctx,
-			b = o.transparentBorder ?? 1,
-			ix = o.x + b,
-			iy = o.y + b,
-			iw = Math.max(0, o.w - 2 * b),
-			ih = Math.max(0, o.h - 2 * b),
-			ir = Math.max(0, (o.radius ?? 0) - b);
-		c.beginPath();
-		if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
-		else c.rect(ix, iy, iw, ih);
-		if (st.fill !== false) c.fill();
-		if (st.stroke) {
-			c.beginPath();
-			if (o.radius && c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, o.radius);
-			else c.rect(o.x, o.y, o.w, o.h)
-		}
-	}
-	arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-			const c = this.ctx;
-			c.save();
-			c.strokeStyle = col;
-			c.lineWidth = lw;
-			
-			const a = Math.atan2(y2 - y1, x2 - x1);
-			const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
-            const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
-			const endX = x2 - shorten * Math.cos(a);
-			const endY = y2 - shorten * Math.sin(a);
-			
-			c.beginPath();
-			c.moveTo(x1, y1);
-			c.lineTo(endX, endY);
-			c.stroke();
-			
-			this.head(x1, y1, x2, y2, col);
-			c.restore();
-    }
-    polylineArrow(points, col = K.b, lw = 3) {
-            if (!points || points.length < 2) return;
-            
-            const c = this.ctx;
-            c.save();
-            c.strokeStyle = col;
-            c.lineWidth = lw;
-            
-            c.beginPath();
-            c.moveTo(points[0].x, points[0].y);
-            
-            const r = VISUAL.drawing.polylineCornerRadius;
-            for (let i = 1; i < points.length - 1; i++) {
-                const pCurrent = points[i];
-                const pNext = points[i + 1];
-                c.arcTo(pCurrent.x, pCurrent.y, pNext.x, pNext.y, r);
+          })
+        });
+      })();
+      let nextId = 0;
+      class VisualizationEngine {
+        constructor({
+          canvasId,
+          wrapId,
+          statusId,
+          onHit = null,
+          options = {}
+        }) {
+          this.cv = document.getElementById(canvasId);
+          this.ctx = this.cv.getContext('2d');
+          this.wrap = document.getElementById(wrapId);
+          this.statusEl = document.getElementById(statusId);
+          this.onHit = onHit;
+          this.options = Object.assign({
+            minScale: .2,
+            maxScale: 5,
+            maxFitScale: 1.22,
+            wheelSensitivity: .001,
+            cameraSmoothing: 10,
+            cameraSnapPx: 5,
+            cameraSnapScale: .01,
+            maxFrameDelta: .1,
+            morphSpeed: 2.5,
+            waitSeconds: .75,
+            fadeCutoff: .95,
+            fitPadding: 150,
+            worldFallback: {
+              minX: 20,
+              minY: 35,
+              maxX: 760,
+              maxY: 650
             }
-            const prev = points[points.length - 2];
-            const last = points[points.length - 1];
-            
-            const a = Math.atan2(last.y - prev.y, last.x - prev.x);
-            const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
-            const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
-            const endX = last.x - shorten * Math.cos(a);
-            const endY = last.y - shorten * Math.sin(a);
-            c.lineTo(endX, endY);
-            c.stroke();
-            this.head(prev.x, prev.y, last.x, last.y, col);
-            
-            c.restore();
-    }
-    head(x1, y1, x2, y2, col = K.b) {
-			const c = this.ctx;
-			const a = Math.atan2(y2 - y1, x2 - x1);
-			const size = VISUAL.drawing.arrowHeadLength; 
-			
-			c.save();
-			c.fillStyle = col;
-			c.translate(x2, y2);
-			c.rotate(a);
-			
-			c.beginPath();
-			c.moveTo(0, 0); 
-			c.lineTo(-size * VISUAL.drawing.arrowHeadWidthFactor, -size / 2); 
-			c.quadraticCurveTo(-size * VISUAL.drawing.arrowHeadControlFactor, 0, -size * VISUAL.drawing.arrowHeadWidthFactor, size / 2); 
-			c.closePath();
-			
-			c.fill();
-			c.restore();
-    }
-	flashRect(x, y, w, h, r = 8) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flashAlpha();
-		c.strokeStyle = K.r;
-		c.lineWidth = VISUAL.drawing.flashLineWidth;
-		c.beginPath();
-		if (c.roundRect) c.roundRect(x, y, w, h, r);
-		else c.rect(x, y, w, h);
-		c.stroke();
-		c.restore()
-	}
-	flashCircle(x, y, r) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flashAlpha();
-		c.strokeStyle = K.r;
-		c.lineWidth = VISUAL.drawing.flashLineWidth;
-		c.beginPath();
-		c.arc(x, y, r, 0, Math.PI * 2);
-		c.stroke();
-		c.restore()
-	}
-	cross(x, y, w, h) {
-		const c = this.ctx;
-		c.save();
-		c.globalAlpha = this.flashAlpha();
-		c.strokeStyle = K.r;
-		c.lineWidth = 6;
-		const p = VISUAL.drawing.crossPadding;
-		c.beginPath();
-		c.moveTo(x - p, y - p);
-		c.lineTo(x + w + p, y + h + p);
-		c.moveTo(x + w + p, y - p);
-		c.lineTo(x - p, y + h + p);
-		c.stroke();
-		c.restore()
-	}
-	lFlash(o) {
-		const c = this.ctx,
-			p = o.padding ?? 8,
-			r = o.radius ?? 8,
-			w = o.cell ?? 60,
-			nodeW = o.nodeW ?? 120,
-			x = o.x,
-			y = o.y,
-			elemY = o.elemY;
-		c.save();
-		c.globalAlpha = this.flashAlpha();
-		c.strokeStyle = K.r;
-		c.lineWidth = VISUAL.drawing.flashLineWidth;
-		c.beginPath();
-		c.moveTo(x - p + r, elemY - p);
-		c.lineTo(x + w + p - r, elemY - p);
-		c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
-		c.lineTo(x + w + p, y - p - r);
-		c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
-		c.lineTo(x + nodeW + p - r, y - p);
-		c.arcTo(x + nodeW + p, y - p, x + nodeW + p, y - p + r, r);
-		c.lineTo(x + nodeW + p, y + w + p - r);
-		c.arcTo(x + nodeW + p, y + w + p, x + nodeW + p - r, y + w + p, r);
-		c.lineTo(x - p + r, y + w + p);
-		c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
-		c.lineTo(x - p, elemY - p + r);
-		c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
-		c.closePath();
-		c.stroke();
-		c.restore()
-	}
-	setSpeed(v) {
-		this.speedFactor = 1 / v
-	}
-	togglePause() {
-		this.paused = !this.paused;
-		return this.paused
-	}
-	setStepMode(enabled) {
-		this.stepMode = !!enabled;
-		if (!this.stepMode && this.state === 'STEP_WAIT') {
-			this.waitingForStep = false;
-			this.finish();
-		}
-		this.updateStepControls();
-	}
-	nextStep() {
-		if (!this.stepMode || this.paused) return;
-		if (this.state === 'STEP_WAIT') {
-			this.waitingForStep = false;
-			this.finish();
-		}
-		this.updateStepControls();
-	}
-	updateStepControls() {
-		const step = document.getElementById('stepMode');
-		const label = document.getElementById('stepState');
-		const next = document.getElementById('btnNext');
-		if (step) step.checked = this.stepMode;
-		if (label) label.innerText = this.stepMode ? 'On' : 'Off';
-		const lbl = document.getElementById('stepModeLabel');
-		if (lbl) {
+          }, options);
+          this.cam = {
+            scale: 1,
+            targetScale: 1,
+            x: 0,
+            targetX: 0,
+            y: 0,
+            targetY: 0
+          };
+          this.scenes = [];
+          this.pending = [];
+          this.idx = -1;
+          this.state = 'IDLE';
+          this.t = 0;
+          this.wait = 0;
+          this.speedFactor = 1;
+          this.paused = false;
+          this.stepMode = false;
+          this.waitingForStep = false;
+          this.last = 0;
+          this.drag = false;
+          this.hitObjects = [];
+          this.resize();
+          window.addEventListener('resize', () => this.resize());
+          this.cv.addEventListener('wheel', e => this.wheel(e), {
+            passive: false
+          });
+          this.cv.addEventListener('mousedown', e => this.pointerStart(e));
+          this.cv.addEventListener('mousemove', e => this.pointerMove(e));
+          this.cv.addEventListener('mouseup', () => this.pointerEnd());
+          this.cv.addEventListener('mouseleave', () => this.pointerEnd());
+          this.cv.addEventListener('touchstart', e => this.touchStart(e), {
+            passive: false
+          });
+          this.cv.addEventListener('touchmove', e => this.touchMove(e), {
+            passive: false
+          });
+          this.cv.addEventListener('touchend', () => this.pointerEnd());
+          requestAnimationFrame(ts => this.loop(ts))
+        }
+        resize() {
+          this.cv.width = this.wrap.offsetWidth;
+          this.cv.height = this.wrap.offsetHeight;
+          const cur = this.current();
+          if (cur) {
+            this.fit([cur]);
+            this.cam.scale = this.cam.targetScale;
+            this.cam.x = this.cam.targetX;
+            this.cam.y = this.cam.targetY
+          }
+        }
+        screenToWorld(x, y) {
+          return {
+            x: (x - this.cam.x) / this.cam.scale,
+            y: (y - this.cam.y) / this.cam.scale
+          }
+        }
+        wheel(e) {
+          e.preventDefault();
+          const r = this.cv.getBoundingClientRect(),
+            sx = e.clientX - r.left,
+            sy = e.clientY - r.top;
+          let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
+          ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+          const wx = (sx - this.cam.targetX) / this.cam.targetScale,
+            wy = (sy - this.cam.targetY) / this.cam.targetScale;
+          this.cam.targetScale = ns;
+          this.cam.targetX = sx - wx * ns;
+          this.cam.targetY = sy - wy * ns
+        }
+        pointerStart(e) {
+          const r = this.cv.getBoundingClientRect(),
+            sx = e.clientX - r.left,
+            sy = e.clientY - r.top,
+            w = this.screenToWorld(sx, sy),
+            hit = this.findHit(w.x, w.y);
+          if (hit && this.onHit) {
+            this.onHit(hit);
+            return
+          }
+          this.drag = true;
+          this.start = {
+            x: sx,
+            y: sy
+          };
+          this.c0 = {
+            x: this.cam.targetX,
+            y: this.cam.targetY
+          };
+          this.cv.style.cursor = 'grabbing'
+        }
+        pointerMove(e) {
+          const r = this.cv.getBoundingClientRect(),
+            sx = e.clientX - r.left,
+            sy = e.clientY - r.top;
+          if (this.drag) {
+            this.cam.targetX = this.c0.x + sx - this.start.x;
+            this.cam.targetY = this.c0.y + sy - this.start.y;
+            return
+          }
+          const w = this.screenToWorld(sx, sy);
+          this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default'
+        }
+        pointerEnd() {
+          this.drag = false;
+          this.cv.style.cursor = 'default';
+          this.pinch = null
+        }
+        td(t) {
+          return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
+        }
+        tc(t, r) {
+          return {
+            x: (t[0].clientX + t[1].clientX) / 2 - r.left,
+            y: (t[0].clientY + t[1].clientY) / 2 - r.top
+          }
+        }
+        touchStart(e) {
+          e.preventDefault();
+          const r = this.cv.getBoundingClientRect();
+          if (e.touches.length === 1) {
+            const x = e.touches[0].clientX - r.left,
+              y = e.touches[0].clientY - r.top,
+              w = this.screenToWorld(x, y),
+              hit = this.findHit(w.x, w.y);
+            if (hit && this.onHit) {
+              this.onHit(hit);
+              return
+            }
+            this.drag = true;
+            this.start = {
+              x,
+              y
+            };
+            this.c0 = {
+              x: this.cam.targetX,
+              y: this.cam.targetY
+            }
+          } else if (e.touches.length === 2) {
+            this.drag = false;
+            const c = this.tc(e.touches, r);
+            this.pinch = {
+              d: this.td(e.touches),
+              s: this.cam.targetScale,
+              wx: (c.x - this.cam.targetX) / this.cam.targetScale,
+              wy: (c.y - this.cam.targetY) / this.cam.targetScale
+            }
+          }
+        }
+        touchMove(e) {
+          e.preventDefault();
+          const r = this.cv.getBoundingClientRect();
+          if (e.touches.length === 1 && this.drag) {
+            const x = e.touches[0].clientX - r.left,
+              y = e.touches[0].clientY - r.top;
+            this.cam.targetX = this.c0.x + x - this.start.x;
+            this.cam.targetY = this.c0.y + y - this.start.y
+          } else if (e.touches.length === 2 && this.pinch) {
+            const c = this.tc(e.touches, r);
+            let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
+            ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
+            this.cam.targetScale = ns;
+            this.cam.targetX = c.x - this.pinch.wx * ns;
+            this.cam.targetY = c.y - this.pinch.wy * ns
+          }
+        }
+        findHit(x, y) {
+          for (let i = this.hitObjects.length - 1; i >= 0; i--) {
+            const o = this.hitObjects[i];
+            if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o.hit
+          }
+          return null
+        }
+        reset() {
+          this.scenes = [];
+          this.pending = [];
+          this.idx = -1;
+          this.state = 'IDLE';
+          this.t = 0;
+          this.wait = 0;
+        }
+        enqueue(scenes) {
+          const copy = scenes.map(s => this.normalizeScene(s));
+          this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
+          if (!this.scenes.length && copy.length) {
+            this.scenes.push(copy.shift());
+            this.idx = 0;
+            const firstScene = this.scenes[0];
+            // this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
+          }
+          if (copy.length) {
+            this.pending = copy;
+            this.state = 'CAMERA';
+            this.waitingForStep = false;
+            this.updateStepControls();
+          }
+        }
+        normalizeScene(s) {
+          const scene = Object.assign({
+            objects: [],
+            pause: false
+          }, s);
+          scene.objects = this.normalizeObjects(scene.objects);
+          return scene
+        }
+        normalizeObjects(objects = []) {
+          return objects.map((o, order) => this.normalizeObject(o, order))
+        }
+        normalizeObject(o, order = 0) {
+          const copy = Object.assign({}, o);
+          copy.layer = this.resolveLayer(copy);
+          copy.order = copy.order ?? order;
+          return copy
+        }
+        resolveLayer(o) {
+          if (Number.isFinite(o.layer)) return o.layer;
+          if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
+          if (o.kind === 'text') return LAYER.text;
+          if (o.kind === 'circle') return LAYER.dot;
+          if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
+          if (o.kind === 'rect') return LAYER.box;
+          return Number.isFinite(o.z) ? o.z : LAYER.background
+        }
+        sortObjects(objects = []) {
+          return [...objects].sort((a, b) => ((a.layer ?? 0) - (b.layer ?? 0)) || ((a.order ?? 0) - (b.order ?? 0)))
+        }
+        setStatus(txt) {
+          if (this.statusEl) this.statusEl.innerText = txt
+        }
+        loop(ts) {
+          if (!this.last) this.last = ts;
+          const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
+          this.last = ts;
+          if (!this.paused) this.update(dt);
+          this.draw();
+          requestAnimationFrame(t => this.loop(t))
+        }
+        update(dt) {
+          const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
+          this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
+          this.cam.x += (this.cam.targetX - this.cam.x) * f;
+          this.cam.y += (this.cam.targetY - this.cam.y) * f;
+          if (this.state === 'CAMERA') {
+            if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next()
+          } else if (this.state === 'MORPH') {
+            this.t += this.options.morphSpeed * this.speedFactor * dt;
+            if (this.t >= 1) {
+              this.t = 1;
+              const arrivedScene = this.scenes[this.idx + 1];
+              const isVisualOnlyStep = !!arrivedScene?.visualOnly;
+              if (this.stepMode && !isVisualOnlyStep) {
+                this.state = 'STEP_WAIT';
+                this.waitingForStep = true;
+                this.updateStepControls();
+              } else if (arrivedScene?.pause && !isVisualOnlyStep) {
+                this.state = 'WAIT';
+                this.wait = this.options.waitSeconds / this.speedFactor
+              } else this.finish()
+            }
+          } else if (this.state === 'WAIT') {
+            this.wait -= dt;
+            if (this.wait <= 0) this.finish()
+          }
+        }
+        next() {
+          const s = this.pending.shift();
+          this.scenes.push(s);
+          if (s.fitCamera) this.fit([s]);
+          this.setStatus(s.visualOnly ? '' : (s.text || 'Ready.'));
+          this.t = 0;
+          this.waitingForStep = false;
+          this.state = 'MORPH';
+          this.updateStepControls();
+        }
+        finish() {
+          this.idx++;
+          this.waitingForStep = false;
+          if (this.pending.length) this.next();
+          else {
+            const finalScene = this.scenes[this.idx];
+            if (finalScene) this.fit([finalScene]);
+            this.state = 'IDLE';
+            this.setStatus('Ready.');
+            this.updateStepControls();
+            if (app?.clearInputs) app.clearInputs()
+          }
+        }
+        ease(t) {
+          return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
+        }
+        current() {
+          return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
+        }
+        interpolateScene(A, B, t) {
+          return Object.assign({}, B, {
+            objects: this.mixObjects(A.objects, B.objects, t)
+          })
+        }
+        mixObjects(a = [], b = [], t) {
+          const ma = new Map(a.map(o => [o.id, o])),
+            mb = new Map(b.map(o => [o.id, o])),
+            ids = new Set([...ma.keys(), ...mb.keys()]),
+            sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined)),
+            out = [];
+          ids.forEach(id => {
+            const A = ma.get(id),
+              B = mb.get(id);
+            if (A && B) out.push(this.mixObject(A, B, t));
+            else if (B) {
+              const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
+              if (S) out.push(this.mixObject(S, B, t));
+              else {
+                const fadeT = Math.min(1, t / this.options.fadeCutoff);
+                out.push(Object.assign({}, B, {
+                  alpha: (B.alpha ?? 1) * fadeT
+                }))
+              }
+            } else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
+              alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
+            }))
+          });
+          return this.sortObjects(out)
+        }
+        mixObject(A, B, t) {
+          const o = Object.assign({}, B);
+          ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
+            if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t
+          });
+          if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
+            x: A.points[i].x + (p.x - A.points[i].x) * t,
+            y: A.points[i].y + (p.y - A.points[i].y) * t
+          }));
+          return o
+        }
+        bounds(scene) {
+          const fb = this.options.worldFallback;
+          let b = {
+            minX: fb.minX,
+            minY: fb.minY,
+            maxX: fb.maxX,
+            maxY: fb.maxY
+          };
+          for (const o of scene.objects || []) {
+            let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
+              maxX = o.x !== undefined ? o.x + (o.w ?? 0) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity);
+            let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
+              maxY = o.y !== undefined ? o.y + (o.h ?? 0) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity);
+            if (o.points) {
+              for (const p of o.points) {
+                minX = Math.min(minX, p.x);
+                maxX = Math.max(maxX, p.x);
+                minY = Math.min(minY, p.y);
+                maxY = Math.max(maxY, p.y)
+              }
+            }
+            if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
+            b.minX = Math.min(b.minX, minX - 180);
+            b.maxX = Math.max(b.maxX, maxX + 230);
+            b.minY = Math.min(b.minY, minY - 200);
+            b.maxY = Math.max(b.maxY, maxY + 220)
+          }
+          return scene.bounds || b
+        }
+        fit(scenes) {
+          let B = {
+            minX: 1e9,
+            minY: 1e9,
+            maxX: -1e9,
+            maxY: -1e9
+          };
+          scenes.forEach(s => {
+            const b = this.bounds(s);
+            B.minX = Math.min(B.minX, b.minX);
+            B.maxX = Math.max(B.maxX, b.maxX);
+            B.minY = Math.min(B.minY, b.minY);
+            B.maxY = Math.max(B.maxY, b.maxY)
+          });
+          const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
+          this.cam.targetScale = sc;
+          this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
+          this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
+        }
+        flashAlpha() {
+          return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
+        }
+        draw() {
+          const s = this.current(),
+            c = this.ctx;
+          c.clearRect(0, 0, this.cv.width, this.cv.height);
+          this.hitObjects = [];
+          c.save();
+          c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
+          if (s)
+            for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
+          c.restore()
+        }
+        drawObject(o) {
+          const c = this.ctx;
+          c.save();
+          if (o.alpha !== undefined) c.globalAlpha *= o.alpha;
+          const st = o.style || {};
+          c.fillStyle = st.fill || '#fff';
+          c.strokeStyle = st.stroke || '#333';
+          c.lineWidth = o.lineWidth ?? st.lineWidth ?? 1;
+          c.font = st.font || '24px Arial';
+          c.textAlign = st.align || 'center';
+          c.textBaseline = st.baseline || 'middle';
+          if (o.kind === 'rect') {
+            this.roundOrRect(o, st);
+            if (st.stroke) c.stroke();
+            if (o.hit) this.hitObjects.push({
+              x: o.x,
+              y: o.y,
+              w: o.w,
+              h: o.h,
+              hit: o.hit
+            })
+          } else if (o.kind === 'text') {
+            c.fillStyle = st.fill || '#111';
+            c.fillText(String(o.text), o.x, o.y)
+          } else if (o.kind === 'circle') {
+            c.beginPath();
+            c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
+            if (st.fill) c.fill();
+            if (st.stroke) c.stroke()
+          } else if (o.kind === 'line') {
+            c.beginPath();
+            c.moveTo(o.x1, o.y1);
+            c.lineTo(o.x2, o.y2);
+            c.stroke()
+          } else if (o.kind === 'arrow') {
+            this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || K.b, o.lineWidth ?? 3)
+          } else if (o.kind === 'polylineArrow') {
+            this.polylineArrow(o.points, st.stroke || K.b, o.lineWidth ?? 3)
+          } else if (o.kind === 'cross') {
+            this.cross(o.x, o.y, o.w, o.h)
+          } else if (o.kind === 'flashRect') {
+            this.flashRect(o.x, o.y, o.w, o.h, o.radius ?? 8)
+          } else if (o.kind === 'flashCircle') {
+            this.flashCircle(o.x, o.y, o.r)
+          } else if (o.kind === 'lFlash') {
+            this.lFlash(o)
+          }
+          c.restore()
+        }
+        roundOrRect(o, st) {
+          const c = this.ctx,
+            b = o.transparentBorder ?? 1,
+            ix = o.x + b,
+            iy = o.y + b,
+            iw = Math.max(0, o.w - 2 * b),
+            ih = Math.max(0, o.h - 2 * b),
+            ir = Math.max(0, (o.radius ?? 0) - b);
+          c.beginPath();
+          if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
+          else c.rect(ix, iy, iw, ih);
+          if (st.fill !== false) c.fill();
+          if (st.stroke) {
+            c.beginPath();
+            if (o.radius && c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, o.radius);
+            else c.rect(o.x, o.y, o.w, o.h)
+          }
+        }
+        arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
+          const c = this.ctx;
+          c.save();
+          c.strokeStyle = col;
+          c.lineWidth = lw;
+          const a = Math.atan2(y2 - y1, x2 - x1);
+          const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
+          const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
+          const endX = x2 - shorten * Math.cos(a);
+          const endY = y2 - shorten * Math.sin(a);
+          c.beginPath();
+          c.moveTo(x1, y1);
+          c.lineTo(endX, endY);
+          c.stroke();
+          this.head(x1, y1, x2, y2, col);
+          c.restore();
+        }
+        polylineArrow(points, col = K.b, lw = 3) {
+          if (!points || points.length < 2) return;
+          const c = this.ctx;
+          c.save();
+          c.strokeStyle = col;
+          c.lineWidth = lw;
+          c.beginPath();
+          c.moveTo(points[0].x, points[0].y);
+          const r = VISUAL.drawing.polylineCornerRadius;
+          for (let i = 1; i < points.length - 1; i++) {
+            const pCurrent = points[i];
+            const pNext = points[i + 1];
+            c.arcTo(pCurrent.x, pCurrent.y, pNext.x, pNext.y, r);
+          }
+          const prev = points[points.length - 2];
+          const last = points[points.length - 1];
+          const a = Math.atan2(last.y - prev.y, last.x - prev.x);
+          const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
+          const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
+          const endX = last.x - shorten * Math.cos(a);
+          const endY = last.y - shorten * Math.sin(a);
+          c.lineTo(endX, endY);
+          c.stroke();
+          this.head(prev.x, prev.y, last.x, last.y, col);
+          c.restore();
+        }
+        head(x1, y1, x2, y2, col = K.b) {
+          const c = this.ctx;
+          const a = Math.atan2(y2 - y1, x2 - x1);
+          const size = VISUAL.drawing.arrowHeadLength;
+          c.save();
+          c.fillStyle = col;
+          c.translate(x2, y2);
+          c.rotate(a);
+          c.beginPath();
+          c.moveTo(0, 0);
+          c.lineTo(-size * VISUAL.drawing.arrowHeadWidthFactor, -size / 2);
+          c.quadraticCurveTo(-size * VISUAL.drawing.arrowHeadControlFactor, 0, -size * VISUAL.drawing.arrowHeadWidthFactor, size / 2);
+          c.closePath();
+          c.fill();
+          c.restore();
+        }
+        flashRect(x, y, w, h, r = 8) {
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha = this.flashAlpha();
+          c.strokeStyle = K.r;
+          c.lineWidth = VISUAL.drawing.flashLineWidth;
+          c.beginPath();
+          if (c.roundRect) c.roundRect(x, y, w, h, r);
+          else c.rect(x, y, w, h);
+          c.stroke();
+          c.restore()
+        }
+        flashCircle(x, y, r) {
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha = this.flashAlpha();
+          c.strokeStyle = K.r;
+          c.lineWidth = VISUAL.drawing.flashLineWidth;
+          c.beginPath();
+          c.arc(x, y, r, 0, Math.PI * 2);
+          c.stroke();
+          c.restore()
+        }
+        cross(x, y, w, h) {
+          const c = this.ctx;
+          c.save();
+          c.globalAlpha = this.flashAlpha();
+          c.strokeStyle = K.r;
+          c.lineWidth = 6;
+          const p = VISUAL.drawing.crossPadding;
+          c.beginPath();
+          c.moveTo(x - p, y - p);
+          c.lineTo(x + w + p, y + h + p);
+          c.moveTo(x + w + p, y - p);
+          c.lineTo(x - p, y + h + p);
+          c.stroke();
+          c.restore()
+        }
+        lFlash(o) {
+          const c = this.ctx,
+            p = o.padding ?? 8,
+            r = o.radius ?? 8,
+            w = o.cell ?? 60,
+            nodeW = o.nodeW ?? 120,
+            x = o.x,
+            y = o.y,
+            elemY = o.elemY;
+          c.save();
+          c.globalAlpha = this.flashAlpha();
+          c.strokeStyle = K.r;
+          c.lineWidth = VISUAL.drawing.flashLineWidth;
+          c.beginPath();
+          c.moveTo(x - p + r, elemY - p);
+          c.lineTo(x + w + p - r, elemY - p);
+          c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
+          c.lineTo(x + w + p, y - p - r);
+          c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
+          c.lineTo(x + nodeW + p - r, y - p);
+          c.arcTo(x + nodeW + p, y - p, x + nodeW + p, y - p + r, r);
+          c.lineTo(x + nodeW + p, y + w + p - r);
+          c.arcTo(x + nodeW + p, y + w + p, x + nodeW + p - r, y + w + p, r);
+          c.lineTo(x - p + r, y + w + p);
+          c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
+          c.lineTo(x - p, elemY - p + r);
+          c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
+          c.closePath();
+          c.stroke();
+          c.restore()
+        }
+        setSpeed(v) {
+          this.speedFactor = 1 / v
+        }
+        togglePause() {
+          this.paused = !this.paused;
+          return this.paused
+        }
+        setStepMode(enabled) {
+          this.stepMode = !!enabled;
+          if (!this.stepMode && this.state === 'STEP_WAIT') {
+            this.waitingForStep = false;
+            this.finish();
+          }
+          this.updateStepControls();
+        }
+        nextStep() {
+          if (!this.stepMode || this.paused) return;
+          if (this.state === 'STEP_WAIT') {
+            this.waitingForStep = false;
+            this.finish();
+          }
+          this.updateStepControls();
+        }
+        updateStepControls() {
+          const step = document.getElementById('stepMode');
+          const label = document.getElementById('stepState');
+          const next = document.getElementById('btnNext');
+          if (step) step.checked = this.stepMode;
+          if (label) label.innerText = this.stepMode ? 'On' : 'Off';
+          const lbl = document.getElementById('stepModeLabel');
+          if (lbl) {
             lbl.classList.toggle('step-toggle-on', !!this.stepMode);
             lbl.style.pointerEvents = 'auto';
             lbl.style.opacity = '1';
+          }
+          if (next) {
+            const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
+            next.disabled = !canAdvance;
+            next.title = !this.stepMode ? 'Turn Step-by-step mode ON first.' : (canAdvance ? 'Advance to the next non-visual Java LinkedQueue step.' : 'Visual-only steps advance automatically. The button becomes available at the next Java LinkedQueue step.');
+            next.setAttribute('aria-label', next.title);
+          }
         }
-		if (next) {
-			const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
-			next.disabled = !canAdvance;
-			next.title = !this.stepMode ? 'Turn Step-by-step mode ON first.' : (canAdvance ? 'Advance to the next non-visual Java LinkedQueue step.' : 'Visual-only steps advance automatically. The button becomes available at the next Java LinkedQueue step.');
-			next.setAttribute('aria-label', next.title);
-		}
-	}
-
-}
-// Queue-specific view: converts logical snapshots into the generic scene objects consumed by VisualizationEngine.
-class LinkedQueueView {
-    constructor() {
-        this.c = VISUAL.node.cell;
-        this.nw = VISUAL.node.width;
-    }
-    n(s, id) { return (s.nodes || []).find(n => n.id === id); }
-    obj(o, x) { o.push(x); }
-    txt(o, id, text, x, y, font = VISUAL.fonts.value, fill = K.k, align = 'center', base = 'middle', layer = LAYER.text) {
-        this.obj(o, { id, kind: 'text', text, x, y, style: { font, fill, align, baseline: base }, layer });
-    }
-    rect(o, id, x, y, w, h, fill, hit = null, layer = LAYER.box) {
-        this.obj(o, { id, kind: 'rect', x, y, w, h, style: { fill }, hit, layer });
-    }
-    cir(o, id, x, y, r, fill, layer = LAYER.dot) {
-        this.obj(o, { id, kind: 'circle', x, y, r, style: { fill }, layer });
-    }
-    ar(o, id, x1, y1, x2, y2, col = K.b, layer = LAYER.arrow, lw = 3) {
-        this.obj(o, { id, kind: 'arrow', x1, y1, x2, y2, style: { stroke: col, fill: col }, lineWidth: lw, layer });
-    }
-    poly(o, id, points, col = K.b, layer = LAYER.arrow, lw = 3) {
-        this.obj(o, { id, kind: 'polylineArrow', points, style: { stroke: col }, lineWidth: lw, layer });
-    }
-	det(o, id, x1, y1, x2, y2, col = K.b, amount = 1, layer = LAYER.arrow) {
-		if (Math.abs(amount) < .001) {
-			this.poly(o, id, [
-				{ x: x1, y: y1 },
-				{
-					x: x1 + (x2 - x1) / 3,
-					y: y1 + (y2 - y1) / 3
-				},
-				{
-					x: x1 + 2 * (x2 - x1) / 3,
-					y: y1 + 2 * (y2 - y1) / 3
-				},
-				{ x: x2, y: y2 }
-			], col, layer);
-			return;
-		}
-
-		const d = VISUAL.stroke.detourOffset * amount;
-		const my = y1 + d;
-
-		this.poly(o, id, [
-			{ x: x1, y: y1 },
-			{ x: x1 + d, y: my },
-			{ x: x2 - d, y: my },
-			{ x: x2, y: y2 }
-		], col, layer);
-	}
-    ptr(n) { return { x: n.x + this.c + this.c / 2, y: n.y + this.c / 2 }; }
-    scene(s) {
-        const o = [];
-        this.struct(o, s);
-        (s.nodes || []).forEach(n => this.node(o, s, n));
-        if (s.pnode) this.pnode(o, s);
-        this.structArrows(o, s);
-        this.links(o, s);
-        if (s.pnode) this.pnodeArrow(o, s);
-        this.over(o, s);
-        return { text: s.text, visualOnly: !!s.visualOnly, pause: !!s.pause, objects: o, bounds: this.bounds(o) };
-    }
-    node(o, s, n) {
-        const w = this.c, x = n.x, y = n.y, ey = y + VISUAL.node.elementYOffset, id = 'node:' + n.id;
-        this.rect(o, id + ':elem', x, ey, w, w, K.g, { value: n.e });
-        this.txt(o, id + ':val', n.e, x + w / 2, ey + w / 2 + 2, VISUAL.fonts.value, K.r);
-        if (n.id === s.firstId) {
-			this.txt(o, id + ':first-label', (s.nodes || []).length > 1 ? 'first' : 'first/last', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
-		}
-        if ((s.nodes || []).length > 1 && s.firstId !== s.lastId && n.id === s.lastId) this.txt(o, id + ':last-label', 'last', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
-        this.rect(o, id + ':left', x, y, w, w, K.c, { value: n.e });
-        this.rect(o, id + ':right', x + w, y, w, w, K.c, { value: n.e });
-        this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
-        this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
-        this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
-    }
-    struct(o, s) {
-        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
-        this.txt(o, 'queue:label', 'queue', x - 135, y - 70, VISUAL.fonts.structLabel, K.k, 'right');
-        this.rect(o, 'queue:box', x - 125, y - 108, w, h, K.p);
-        this.cir(o, 'queue:dot', x - 125 + w / 2, y - 108 + h / 2, 8, K.v);
-        [['first', K.c, s.firstId], ['last', K.c, s.lastId], ['size', K.g, s.size]].forEach((r, i) => {
-            const yy = y + i * h, id = 'st:' + r[0];
+      }
+      // Queue-specific view: converts logical snapshots into the generic scene objects consumed by VisualizationEngine.
+      class LinkedQueueView {
+        constructor() {
+          this.c = VISUAL.node.cell;
+          this.nw = VISUAL.node.width;
+        }
+        n(s, id) {
+          return (s.nodes || []).find(n => n.id === id);
+        }
+        obj(o, x) {
+          o.push(x);
+        }
+        txt(o, id, text, x, y, font = VISUAL.fonts.value, fill = K.k, align = 'center', base = 'middle', layer = LAYER.text) {
+          this.obj(o, {
+            id,
+            kind: 'text',
+            text,
+            x,
+            y,
+            style: {
+              font,
+              fill,
+              align,
+              baseline: base
+            },
+            layer
+          });
+        }
+        rect(o, id, x, y, w, h, fill, hit = null, layer = LAYER.box) {
+          this.obj(o, {
+            id,
+            kind: 'rect',
+            x,
+            y,
+            w,
+            h,
+            style: {
+              fill
+            },
+            hit,
+            layer
+          });
+        }
+        cir(o, id, x, y, r, fill, layer = LAYER.dot) {
+          this.obj(o, {
+            id,
+            kind: 'circle',
+            x,
+            y,
+            r,
+            style: {
+              fill
+            },
+            layer
+          });
+        }
+        ar(o, id, x1, y1, x2, y2, col = K.b, layer = LAYER.arrow, lw = 3) {
+          this.obj(o, {
+            id,
+            kind: 'arrow',
+            x1,
+            y1,
+            x2,
+            y2,
+            style: {
+              stroke: col,
+              fill: col
+            },
+            lineWidth: lw,
+            layer
+          });
+        }
+        poly(o, id, points, col = K.b, layer = LAYER.arrow, lw = 3) {
+          this.obj(o, {
+            id,
+            kind: 'polylineArrow',
+            points,
+            style: {
+              stroke: col
+            },
+            lineWidth: lw,
+            layer
+          });
+        }
+        det(o, id, x1, y1, x2, y2, col = K.b, amount = 1, layer = LAYER.arrow) {
+          if (Math.abs(amount) < .001) {
+            this.poly(o, id, [{
+                x: x1,
+                y: y1
+              },
+              {
+                x: x1 + (x2 - x1) / 3,
+                y: y1 + (y2 - y1) / 3
+              },
+              {
+                x: x1 + 2 * (x2 - x1) / 3,
+                y: y1 + 2 * (y2 - y1) / 3
+              },
+              {
+                x: x2,
+                y: y2
+              }
+            ], col, layer);
+            return;
+          }
+          const d = VISUAL.stroke.detourOffset * amount;
+          const my = y1 + d;
+          this.poly(o, id, [{
+              x: x1,
+              y: y1
+            },
+            {
+              x: x1 + d,
+              y: my
+            },
+            {
+              x: x2 - d,
+              y: my
+            },
+            {
+              x: x2,
+              y: y2
+            }
+          ], col, layer);
+        }
+        ptr(n) {
+          return {
+            x: n.x + this.c + this.c / 2,
+            y: n.y + this.c / 2
+          };
+        }
+        scene(s) {
+          const o = [];
+          this.struct(o, s);
+          (s.nodes || []).forEach(n => this.node(o, s, n));
+          if (s.pnode) this.pnode(o, s);
+          this.structArrows(o, s);
+          this.links(o, s);
+          if (s.pnode) this.pnodeArrow(o, s);
+          this.over(o, s);
+          return {
+            text: s.text,
+            visualOnly: !!s.visualOnly,
+            pause: !!s.pause,
+            objects: o,
+            bounds: this.bounds(o)
+          };
+        }
+        node(o, s, n) {
+          const w = this.c,
+            x = n.x,
+            y = n.y,
+            ey = y + VISUAL.node.elementYOffset,
+            id = 'node:' + n.id;
+          this.rect(o, id + ':elem', x, ey, w, w, K.g, {
+            value: n.e
+          });
+          this.txt(o, id + ':val', n.e, x + w / 2, ey + w / 2 + 2, VISUAL.fonts.value, K.r);
+          if (n.id === s.firstId) {
+            this.txt(o, id + ':first-label', (s.nodes || []).length > 1 ? 'first' : 'first/last', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
+          }
+          if ((s.nodes || []).length > 1 && s.firstId !== s.lastId && n.id === s.lastId) this.txt(o, id + ':last-label', 'last', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
+          this.rect(o, id + ':left', x, y, w, w, K.c, {
+            value: n.e
+          });
+          this.rect(o, id + ':right', x + w, y, w, w, K.c, {
+            value: n.e
+          });
+          this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
+          this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
+          this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
+        }
+        struct(o, s) {
+          const x = VISUAL.struct.x,
+            y = VISUAL.struct.y,
+            w = this.c,
+            h = this.c;
+          this.txt(o, 'queue:label', 'queue', x - 135, y - 70, VISUAL.fonts.structLabel, K.k, 'right');
+          this.rect(o, 'queue:box', x - 125, y - 108, w, h, K.p);
+          this.cir(o, 'queue:dot', x - 125 + w / 2, y - 108 + h / 2, 8, K.v);
+          [
+            ['first', K.c, s.firstId],
+            ['last', K.c, s.lastId],
+            ['size', K.g, s.size]
+          ].forEach((r, i) => {
+            const yy = y + i * h,
+              id = 'st:' + r[0];
             this.txt(o, id + ':label', r[0], x - 16, yy + h / 2, VISUAL.fonts.structLabel, K.k, 'right');
             this.rect(o, id + ':box', x, yy, w, h, r[1]);
             if (r[0] === 'size') this.txt(o, id + ':value', String(r[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
             else {
-				const col = (s.markFirstArrow && r[0] == 'first') || (s.markLastArrow && r[0] == 'last')? K.r : K.b;
-				this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, col);
-			}
-        });
-    }
-    structArrows(o, s) {
-        const x = VISUAL.struct.x, y = VISUAL.struct.y, w = this.c, h = this.c;
-        this.ar(o, 'a:queue', x - 125 + w / 2, y - 108 + h / 2, x, y + 8, K.v);
-        const first = this.n(s, s.firstId), last = this.n(s, s.lastId);
-		if (first) {
-			const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
-			const col = s.markFirstArrow ? K.r : K.b;
-
-			this.det(
-				o,
-				'a:first',
-				x + w / 2,
-				y + h / 2,
-				first.x,
-				first.y + h / 2,
-				col,
-				a
-			);
-		}
-        if (last) {
+              const col = (s.markFirstArrow && r[0] == 'first') || (s.markLastArrow && r[0] == 'last') ? K.r : K.b;
+              this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, col);
+            }
+          });
+        }
+        structArrows(o, s) {
+          const x = VISUAL.struct.x,
+            y = VISUAL.struct.y,
+            w = this.c,
+            h = this.c;
+          this.ar(o, 'a:queue', x - 125 + w / 2, y - 108 + h / 2, x, y + 8, K.v);
+          const first = this.n(s, s.firstId),
+            last = this.n(s, s.lastId);
+          if (first) {
+            const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
+            const col = s.markFirstArrow ? K.r : K.b;
+            this.det(
+              o,
+              'a:first',
+              x + w / 2,
+              y + h / 2,
+              first.x,
+              first.y + h / 2,
+              col,
+              a
+            );
+          }
+          if (last) {
             const col = s.markLastArrow ? K.r : K.b;
-            const startY = y + h + h / 2, targetY = last.y + h * .75;
+            const startY = y + h + h / 2,
+              targetY = last.y + h * .75;
             if (((s.nodes && s.nodes.length === 1) || s.straightLastArrow) && !s.keepCurvedLastArrow) {
-                this.ar(o, 'a:last', x + w / 2, startY, last.x, targetY, col);
+              this.ar(o, 'a:last', x + w / 2, startY, last.x, targetY, col);
             } else {
-                this.poly(o, 'a:last', [{ x: x + w / 2, y: startY }, { x: last.x - 24, y: startY }, { x: last.x, y: targetY }], col);
+              this.poly(o, 'a:last', [{
+                x: x + w / 2,
+                y: startY
+              }, {
+                x: last.x - 24,
+                y: startY
+              }, {
+                x: last.x,
+                y: targetY
+              }], col);
             }
+          }
         }
-    }
-    links(o, s) {
-        (s.nodes || []).forEach(n => {
+        links(o, s) {
+          (s.nodes || []).forEach(n => {
             if (n.next != null) {
-                const t = this.n(s, n.next);
-                if (t) {
-                    const p = this.ptr(n), a = n.detourAmount ?? (n.detourNext ? 1 : 0);
-                    this.det(
-						o,
-						'link:' + n.id,
-						p.x,
-						p.y,
-						t.x,
-						t.y + this.c / 2,
-						K.b,
-						a
-					);
-                }
+              const t = this.n(s, n.next);
+              if (t) {
+                const p = this.ptr(n),
+                  a = n.detourAmount ?? (n.detourNext ? 1 : 0);
+                this.det(
+                  o,
+                  'link:' + n.id,
+                  p.x,
+                  p.y,
+                  t.x,
+                  t.y + this.c / 2,
+                  K.b,
+                  a
+                );
+              }
             }
-        });
-    }
-    pnode(o, s) {
-        const p = s.pnode, under = VISUAL.layers.underBox;
-        this.txt(o, 'pn:label', p.label || 'newNode', p.x - 12, p.y + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic', under.text);
-        this.rect(o, 'pn:box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c, null, under.box);
-        this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, 8, K.b, under.dot);
-    }
-    pnodeArrow(o, s) {
-        const p = s.pnode, t = this.n(s, p.target), under = VISUAL.layers.underBox;
-        if (t) this.ar(o, 'pn:arrow', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, t.x, t.y + this.c / 2, K.b, under.arrow);
-    }
-    over(o, s) {
-        const x = VISUAL.struct.x, y = VISUAL.struct.y, h = this.c;
-        if (s.flashFirst) this.obj(o, { id: 'fl:first', kind: 'flashCircle', x: x + h / 2, y: y + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
-        if (s.flashLast) this.obj(o, { id: 'fl:last', kind: 'flashCircle', x: x + h / 2, y: y + h + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
-        if (s.flashSize) this.obj(o, { id: 'fl:size', kind: 'flashCircle', x: x + h / 2, y: y + 2 * h + h / 2, r: VISUAL.drawing.highlightRadius, layer: LAYER.overlay });
-        (s.nodes || []).forEach(n => {
-            const ey = n.y + VISUAL.node.elementYOffset;
-            if (n.flashNew) this.obj(o, { id: 'fl:new:' + n.id, kind: 'lFlash', x: n.x, y: n.y, elemY: ey, cell: this.c, nodeW: this.nw, layer: LAYER.overlay });
-            if (n.flashNext || s.flashNext === n.id) this.obj(o, { id: 'fl:next:' + n.id, kind: 'flashCircle', x: n.x + this.c + this.c / 2, y: n.y + this.c / 2, r: 29, layer: LAYER.overlay });
-            if (n.flashElement) this.obj(o, { id: 'fl:elem:' + n.id, kind: 'flashRect', x: n.x - 1, y: ey - 1, w: this.c, h: this.c, radius: 8, layer: LAYER.overlay });
-            if (n.flashNodeCross) this.obj(o, { id: 'cr:node:' + n.id, kind: 'cross', x: n.x, y: n.y, w: this.nw, h: this.c, layer: LAYER.overlay });
-        });
-        if (s.flashPNodeCross && s.pnode) this.obj(o, { id: 'cr:pnode', kind: 'cross', x: s.pnode.x, y: s.pnode.y, w: VISUAL.pointerBox.width, h: VISUAL.pointerBox.height, layer: LAYER.overlay });
-    }
-    bounds(o) {
-        let b = { minX: 20, minY: 35, maxX: 760, maxY: 560 };
-        for (const q of o) {
-            let xs = [], ys = [];
-            if (q.x !== undefined) { xs.push(q.x, q.x + (q.w || 0)); ys.push(q.y, q.y + (q.h || 0)); }
-            if (q.x1 !== undefined) { xs.push(q.x1, q.x2); ys.push(q.y1, q.y2); }
-            if (q.points) q.points.forEach(p => { xs.push(p.x); ys.push(p.y); });
-            if (xs.length) { b.minX = Math.min(b.minX, Math.min(...xs) - 180); b.maxX = Math.max(b.maxX, Math.max(...xs) + 230); b.minY = Math.min(b.minY, Math.min(...ys) - 200); b.maxY = Math.max(b.maxY, Math.max(...ys) + 210); }
+          });
         }
-        return b;
-    }
-}
-class Viz extends VisualizationEngine {
-    constructor(id) {
-        super({
+        pnode(o, s) {
+          const p = s.pnode,
+            under = VISUAL.layers.underBox;
+          this.txt(o, 'pn:label', p.label || 'newNode', p.x - 12, p.y + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic', under.text);
+          this.rect(o, 'pn:box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c, null, under.box);
+          this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, 8, K.b, under.dot);
+        }
+        pnodeArrow(o, s) {
+          const p = s.pnode,
+            t = this.n(s, p.target),
+            under = VISUAL.layers.underBox;
+          if (t) this.ar(o, 'pn:arrow', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, t.x, t.y + this.c / 2, K.b, under.arrow);
+        }
+        over(o, s) {
+          const x = VISUAL.struct.x,
+            y = VISUAL.struct.y,
+            h = this.c;
+          if (s.flashFirst) this.obj(o, {
+            id: 'fl:first',
+            kind: 'flashCircle',
+            x: x + h / 2,
+            y: y + h / 2,
+            r: VISUAL.drawing.highlightRadius,
+            layer: LAYER.overlay
+          });
+          if (s.flashLast) this.obj(o, {
+            id: 'fl:last',
+            kind: 'flashCircle',
+            x: x + h / 2,
+            y: y + h + h / 2,
+            r: VISUAL.drawing.highlightRadius,
+            layer: LAYER.overlay
+          });
+          if (s.flashSize) this.obj(o, {
+            id: 'fl:size',
+            kind: 'flashCircle',
+            x: x + h / 2,
+            y: y + 2 * h + h / 2,
+            r: VISUAL.drawing.highlightRadius,
+            layer: LAYER.overlay
+          });
+          (s.nodes || []).forEach(n => {
+            const ey = n.y + VISUAL.node.elementYOffset;
+            if (n.flashNew) this.obj(o, {
+              id: 'fl:new:' + n.id,
+              kind: 'lFlash',
+              x: n.x,
+              y: n.y,
+              elemY: ey,
+              cell: this.c,
+              nodeW: this.nw,
+              layer: LAYER.overlay
+            });
+            if (n.flashNext || s.flashNext === n.id) this.obj(o, {
+              id: 'fl:next:' + n.id,
+              kind: 'flashCircle',
+              x: n.x + this.c + this.c / 2,
+              y: n.y + this.c / 2,
+              r: 29,
+              layer: LAYER.overlay
+            });
+            if (n.flashElement) this.obj(o, {
+              id: 'fl:elem:' + n.id,
+              kind: 'flashRect',
+              x: n.x - 1,
+              y: ey - 1,
+              w: this.c,
+              h: this.c,
+              radius: 8,
+              layer: LAYER.overlay
+            });
+            if (n.flashNodeCross) this.obj(o, {
+              id: 'cr:node:' + n.id,
+              kind: 'cross',
+              x: n.x,
+              y: n.y,
+              w: this.nw,
+              h: this.c,
+              layer: LAYER.overlay
+            });
+          });
+          if (s.flashPNodeCross && s.pnode) this.obj(o, {
+            id: 'cr:pnode',
+            kind: 'cross',
+            x: s.pnode.x,
+            y: s.pnode.y,
+            w: VISUAL.pointerBox.width,
+            h: VISUAL.pointerBox.height,
+            layer: LAYER.overlay
+          });
+        }
+        bounds(o) {
+          let b = {
+            minX: 20,
+            minY: 35,
+            maxX: 760,
+            maxY: 560
+          };
+          for (const q of o) {
+            let xs = [],
+              ys = [];
+            if (q.x !== undefined) {
+              xs.push(q.x, q.x + (q.w || 0));
+              ys.push(q.y, q.y + (q.h || 0));
+            }
+            if (q.x1 !== undefined) {
+              xs.push(q.x1, q.x2);
+              ys.push(q.y1, q.y2);
+            }
+            if (q.points) q.points.forEach(p => {
+              xs.push(p.x);
+              ys.push(p.y);
+            });
+            if (xs.length) {
+              b.minX = Math.min(b.minX, Math.min(...xs) - 180);
+              b.maxX = Math.max(b.maxX, Math.max(...xs) + 230);
+              b.minY = Math.min(b.minY, Math.min(...ys) - 200);
+              b.maxY = Math.max(b.maxY, Math.max(...ys) + 210);
+            }
+          }
+          return b;
+        }
+      }
+      class Viz extends VisualizationEngine {
+        constructor(id) {
+          super({
             canvasId: id,
             wrapId: 'wrap',
             statusId: 'status-text',
-            onHit: h => { document.getElementById('val').value = h.value; },
-            options: { worldFallback: { minX: 20, minY: 35, maxX: 760, maxY: 560 }, maxFitScale: 1.25 }
+            onHit: h => {
+              document.getElementById('val').value = h.value;
+            },
+            options: {
+              worldFallback: {
+                minX: 20,
+                minY: 35,
+                maxX: 760,
+                maxY: 560
+              },
+              maxFitScale: 1.25
+            }
+          });
+          this.view = new LinkedQueueView();
+          this.cell = VISUAL.node.cell;
+          this.nodeW = VISUAL.node.width;
+          this.gap = VISUAL.node.cell;
+        }
+        get sn() {
+          return this.scenes;
+        }
+        set sn(v) {
+          this.scenes = v;
+        }
+        base() {
+          return {
+            x: VISUAL.list.originX,
+            y: VISUAL.list.originY,
+            up: VISUAL.list.originY - VISUAL.list.tempNodeYOffset
+          };
+        }
+        enqueue(snaps) {
+          super.enqueue(snaps.map(s => this.view.scene(s)));
+        }
+      }
+
+      function relink(nodes) {
+        nodes.forEach((n, i) => {
+          n.index = undefined;
+          n.next = i < nodes.length - 1 ? nodes[i + 1].id : null;
         });
-        this.view = new LinkedQueueView();
-        this.cell = VISUAL.node.cell;
-        this.nodeW = VISUAL.node.width;
-        this.gap = VISUAL.node.cell;
-    }
-    get sn() { return this.scenes; }
-    set sn(v) { this.scenes = v; }
-    base() { return { x: VISUAL.list.originX, y: VISUAL.list.originY, up: VISUAL.list.originY - VISUAL.list.tempNodeYOffset }; }
-    enqueue(snaps) { super.enqueue(snaps.map(s => this.view.scene(s))); }
-}
-function relink(nodes) {
-    nodes.forEach((n, i) => { n.index = undefined; n.next = i < nodes.length - 1 ? nodes[i + 1].id : null; });
-}
-const app = {
-    values: [], ids: [], history: [], viz: null,
-    init() {
-        this.viz = new Viz('cv');
-        this.randomFill();
-        this.ids = this.values.map(_ => nextId++);
-        this.showCurrent('Visualization only: The queue is initialized with sample values.');
-        this.updateUI();
-    },
-    baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
-        const yy = y ?? this.viz.base().y;
-        return vals.map((e, i) => ({ id: ids[i], e, x: VISUAL.list.originX + shift + i * VISUAL.node.step, y: yy, next: i < ids.length - 1 ? ids[i + 1] : null }));
-    },
-    snapshot(text, nodes, extra = {}) {
-        nodes = nodes.map(n => ({ ...n }));
-        if (!extra.preserveLinks) relink(nodes);
-        const normalizedText = this.statusMessage(text);
-        const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(normalizedText);
-        return {
+      }
+      const app = {
+        values: [],
+        ids: [],
+        history: [],
+        viz: null,
+        init() {
+          this.viz = new Viz('cv');
+          this.randomFill();
+          this.ids = this.values.map(_ => nextId++);
+          this.showCurrent('Visualization only: The queue is initialized with sample values.');
+          this.updateUI();
+        },
+        baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
+          const yy = y ?? this.viz.base().y;
+          return vals.map((e, i) => ({
+            id: ids[i],
+            e,
+            x: VISUAL.list.originX + shift + i * VISUAL.node.step,
+            y: yy,
+            next: i < ids.length - 1 ? ids[i + 1] : null
+          }));
+        },
+        snapshot(text, nodes, extra = {}) {
+          nodes = nodes.map(n => ({
+            ...n
+          }));
+          if (!extra.preserveLinks) relink(nodes);
+          const originalText = String(text ?? '');
+          const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(originalText);
+          return {
             nodes,
             firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
             lastId: extra.lastId !== undefined ? extra.lastId : (nodes[nodes.length - 1]?.id ?? null),
             size: extra.size ?? nodes.length,
             ...extra,
             visualOnly,
-            text: visualOnly ? '' : normalizedText
-        };
-    },
-    statusMessage(text = '') {
-        let t = String(text || '');
-        if (/^\s*Visualization only:/i.test(t)) return t;
-        if (t === 'The operation starts from the current queue state.') return 'Visualization only: the current LinkedQueue state is displayed before the operation begins.';
-        if (t === 'The operation is complete.') return 'Visualization only: the completed LinkedQueue state is displayed.';
-        if (/drawn in|redrawn|Get returns|first\(\) returns/.test(t)) return 'Visualization only: ' + t.charAt(0).toLowerCase() + t.slice(1);
-        t = t
-            .replace(/^The local variable newNode goes out of scope after the method exits\.$/, 'The method returns, so the local variable newNode is removed from the call stack.')
-            .replace(/^After queue\.first changes, the unlinked node object is unreachable from the queue\.$/, 'The unlinked node object is unreachable from the queue; the Java garbage collector may reclaim it later.')
-            .replace(/^After first and last are null, the first node object becomes unreachable from the queue\.$/, 'After first and last are null, this node object is unreachable from the queue; the Java garbage collector may reclaim it later.')
-            .replace(/^After the previous node becomes unreachable, the next node object also becomes unreachable from the queue\.$/, 'After the previous node is unreachable, this next node object is also unreachable from the queue; the Java garbage collector may reclaim it later.')
-            .replace(/^The unreachable node object may be reclaimed by the Java garbage collector\.$/, 'Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.')
-            .replace(/^queue\.first and queue\.last are updated/, 'The first and last fields are updated')
-            .replace(/^queue\.first is updated/, 'The first field is updated')
-            .replace(/^queue\.last is updated/, 'The last field is updated')
-            .replace(/^queue\.first is set to null.*$/, 'The first field is set to null.')
-            .replace(/^queue\.last is set to null.*$/, 'The last field is set to null.')
-            .replace(/^The removed node was the only node, so queue\.last is set to null.*$/, 'The last field is set to null because the removed node was the only node.')
-            .replace(/^queue\.size is incremented/, 'The size field is incremented')
-            .replace(/^queue\.size is decremented/, 'The size field is decremented')
-            .replace(/^queue\.size is set to 0.*$/, 'The size field is set to 0.')
-            .replace(/^The former rear node\.next is updated/, 'The former rear node.next field is updated')
-            .replace(/^The algorithm uses queue\.last to reach the current rear node directly\.$/, 'The algorithm reads queue.last to reach the current rear node directly.')
-            .replace(/^The algorithm uses queue\.first to access the front node object directly\.$/, 'The algorithm reads queue.first to access the front node object directly.')
-            .replace(/^first\(\) returns the element reference stored in the front node: (.*)$/, 'The front node element reference is read: $1.');
-        return t;
-    },
-    showCurrent(text = 'Visualization only: Ready.') { this.viz.reset(); this.viz.enqueue([this.snapshot(text, this.baseNodes())]); },
-    v() { return parseInt(document.getElementById('val').value); },
-    save() { this.history.push({ values: [...this.values], ids: [...this.ids] }); if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift(); },
-    enqueue() {
-        const e = this.v(); if (isNaN(e)) return;
-        this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, newId = nextId++, b = this.viz.base();
-        let snaps = [], oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        snaps.push(this.snapshot('The operation starts from the current queue state.', oldNodes, { size: oldSize }));
-        const x = b.x + oldSize * VISUAL.node.step;
-        let pnode = { x: x - VISUAL.list.tempPointerXOffset, y: b.up, target: newId, label: 'newNode' };
-        let newNode = { id: newId, e, x, y: b.up, next: null, flashNew: true };
-        snaps.push(this.snapshot('A new node object is created with next = null.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-        newNode = { ...newNode, flashNew: false };
-        if (oldSize === 0) {
-const nd = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('queue.first and queue.last are updated to reference the new node object.', [nd], { flashFirst: true, flashLast: true,  size: 0, pnode, firstId: newId, lastId: newId, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('queue.size is incremented because one element reference was added.', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [nd], { size: 1, pnode, firstId: newId, lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The operation is complete.', [nd], { size: 1, firstId: newId, lastId: newId, preserveLinks: true }));
-        } else {
+            text: visualOnly ? '' : originalText
+          };
+        },
+        showCurrent(text = 'Visualization only: Ready.') {
+          this.viz.reset();
+          this.viz.enqueue([this.snapshot(text, this.baseNodes())]);
+        },
+        showInputError(inputId) {
+          const el = document.getElementById(inputId);
+          if (!el) return;
+          el.classList.remove('input-error');
+          void el.offsetWidth;
+          el.classList.add('input-error');
+          setTimeout(() => el.classList.remove('input-error'), 400);
+        },
+        v() {
+          let value = parseInt(document.getElementById('val').value);
+          if (isNaN(value)) this.showInputError('val');
+          return value;
+        },
+        save() {
+          this.history.push({
+            values: [...this.values],
+            ids: [...this.ids]
+          });
+          if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift();
+        },
+        enqueue() {
+          const e = this.v();
+          if (isNaN(e)) return;
+          this.save();
+          const oldVals = [...this.values],
+            oldIds = [...this.ids],
+            oldSize = oldVals.length,
+            newId = nextId++,
+            b = this.viz.base();
+          let snaps = [],
+            oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+          snaps.push(this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
+            size: oldSize
+          }));
+          const x = b.x + oldSize * VISUAL.node.step;
+          let pnode = {
+            x: x - VISUAL.list.tempPointerXOffset,
+            y: b.up,
+            target: newId,
+            label: 'newNode'
+          };
+          let newNode = {
+            id: newId,
+            e,
+            x,
+            y: b.up,
+            next: null,
+            flashNew: true
+          };
+          snaps.push(this.snapshot('A new node object is created with next = null.', [...oldNodes, newNode], {
+            size: oldSize,
+            pnode,
+            firstId: oldIds[0] ?? null,
+            lastId: oldIds.at(-1) ?? null,
+            straightLastArrow: oldSize === 1,
+            preserveLinks: true,
+            pause: true
+          }));
+          newNode = {
+            ...newNode,
+            flashNew: false
+          };
+          if (oldSize === 0) {
+            const nd = {
+              ...newNode,
+              y: b.y
+            };
+            snaps.push(this.snapshot('The first and last fields are updated to reference the new node object.', [nd], {
+              flashFirst: true,
+              flashLast: true,
+              size: 0,
+              pnode,
+              firstId: newId,
+              lastId: newId,
+              preserveLinks: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [nd], {
+              size: 1,
+              pnode,
+              firstId: newId,
+              lastId: newId,
+              flashSize: true,
+              preserveLinks: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('The method returns, so the local variable newNode is removed from the call stack.', [nd], {
+              size: 1,
+              pnode,
+              firstId: newId,
+              lastId: newId,
+              flashPNodeCross: true,
+              preserveLinks: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', [nd], {
+              size: 1,
+              firstId: newId,
+              lastId: newId,
+              preserveLinks: true
+            }));
+          } else {
             const last = oldNodes.at(-1);
-            snaps.push(this.snapshot('The algorithm uses queue.last to reach the current rear node directly.', [...oldNodes, newNode], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-let linkedOld = oldNodes.map(n => ({ ...n }));
+            snaps.push(this.snapshot('The algorithm reads queue.last to reach the current rear node directly.', [...oldNodes, newNode], {
+              size: oldSize,
+              pnode,
+              firstId: oldIds[0],
+              lastId: oldIds.at(-1),
+              markLastArrow: true,
+              straightLastArrow: oldSize === 1,
+              preserveLinks: true,
+              pause: true
+            }));
+            let linkedOld = oldNodes.map(n => ({
+              ...n
+            }));
             linkedOld[linkedOld.length - 1].next = newId;
-            snaps.push(this.snapshot('The former rear node.next is updated to reference the new node object.', [...linkedOld, newNode], { flashNext: last.id,  size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), markLastArrow: true, straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-            let nd = { ...newNode, y: b.y };
-            snaps.push(this.snapshot('Visualization only: The new node is drawn in its final queue position.', [...linkedOld, nd], { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-snaps.push(this.snapshot('queue.last is updated to reference the new node object.', [...linkedOld, nd], { flashLast: true,  size: oldSize, pnode, firstId: oldIds[0], lastId: newId, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('queue.size is incremented because one element reference was added.', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashSize: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [...linkedOld, nd], { size: oldSize + 1, pnode, firstId: oldIds[0], lastId: newId, flashPNodeCross: true, preserveLinks: true, pause: true }));
-            snaps.push(this.snapshot('The operation is complete.', [...linkedOld, nd], { size: oldSize + 1, firstId: oldIds[0], lastId: newId, preserveLinks: true }));
-        }
-        this.values = [...oldVals, e]; this.ids = [...oldIds, newId];
-        this.viz.enqueue(snaps); this.updateUI();
-    },
-    dequeue() {
-        if (this.values.length === 0) return;
-        this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, b = this.viz.base();
-        const removedId = oldIds[0], newFirst = oldIds[1] ?? null;
-        let newLast = oldSize === 1 ? null : oldIds.at(-1);
-        const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        let snaps = [this.snapshot('The operation starts from the current queue state.', oldNodes, { size: oldSize })];
-        snaps.push(this.snapshot('queue.first is updated to reference the node after the removed node, or null if there is no next node.', oldNodes, { size: oldSize, firstId: newFirst, lastId: oldIds.at(-1), flashFirst: true, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, preserveLinks: true, pause: true }));
-        if (oldSize === 1) snaps.push(this.snapshot('The removed node was the only node, so queue.last is set to null, so the queue no longer references the rear node object..', oldNodes, { size: oldSize, firstId: null, lastId: null, flashLast: true, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('queue.size is decremented because one element reference was removed.', oldNodes, { size: oldSize - 1, firstId: newFirst, lastId: newLast, flashSize: true, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, keepCurvedLastArrow: oldSize === 1, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('After queue.first changes, the unlinked node object is unreachable from the queue.', oldNodes.map(n => n.id === removedId ? { ...n, flashNodeCross: true } : n), { size: oldSize - 1, firstId: newFirst, lastId: newLast, detourFirst: newFirst !== null, firstDetourAmount: newFirst !== null ? 1 : 0, preserveLinks: true, pause: true }));
-        let remaining = oldNodes.filter(n => n.id !== removedId).map(n => ({ ...n }));
-        snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', remaining, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true, pause: true }));
-        const newVals = oldVals.slice(1), newIds = oldIds.slice(1), compact = this.baseNodes(newVals, newIds, 0, b.y);
-        snaps.push(this.snapshot('Visualization only: The remaining nodes are redrawn at the front of the queue.', compact, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true, pause: true }));
-        snaps.push(this.snapshot('The operation is complete.', compact, { size: oldSize - 1, firstId: newFirst, lastId: newLast, preserveLinks: true }));
-        this.values = newVals; this.ids = newIds;
-        this.viz.enqueue(snaps); this.updateUI();
-    },
-    first() {
-        if (this.values.length === 0) return;
-        const nodes = this.baseNodes(), firstId = this.ids[0];
-        const snaps = [
-            this.snapshot('The operation starts from the current queue state.', nodes, { size: this.values.length }),
-            this.snapshot('The algorithm uses queue.first to access the front node object directly.', nodes, { size: this.values.length, markFirstArrow: true, pause: true }),
-            this.snapshot('first() returns the element reference stored in the front node: ' + this.values[0], nodes.map(n => n.id === firstId ? { ...n, flashElement: true } : n), { size: this.values.length, markFirstArrow: true, pause: true }),
-            this.snapshot('The operation is complete.', nodes, { size: this.values.length })
-        ];
-        this.viz.enqueue(snaps); this.updateUI();
-    },
-    randomFill() {
-        this.values = [];
-        const sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
-        while (this.values.length < sz) {
+            snaps.push(this.snapshot('The former rear node.next field is updated to reference the new node object.', [...linkedOld, newNode], {
+              flashNext: last.id,
+              size: oldSize,
+              pnode,
+              firstId: oldIds[0],
+              lastId: oldIds.at(-1),
+              markLastArrow: true,
+              straightLastArrow: oldSize === 1,
+              preserveLinks: true,
+              pause: true
+            }));
+            let nd = {
+              ...newNode,
+              y: b.y
+            };
+            snaps.push(this.snapshot('Visualization only: the new node is drawn in its final queue position.', [...linkedOld, nd], {
+              size: oldSize,
+              pnode,
+              firstId: oldIds[0],
+              lastId: oldIds.at(-1),
+              straightLastArrow: oldSize === 1,
+              preserveLinks: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('The last field is updated to reference the new node object.', [...linkedOld, nd], {
+              flashLast: true,
+              size: oldSize,
+              pnode,
+              firstId: oldIds[0],
+              lastId: newId,
+              preserveLinks: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [...linkedOld, nd], {
+              size: oldSize + 1,
+              pnode,
+              firstId: oldIds[0],
+              lastId: newId,
+              flashSize: true,
+              preserveLinks: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('The method returns, so the local variable newNode is removed from the call stack.', [...linkedOld, nd], {
+              size: oldSize + 1,
+              pnode,
+              firstId: oldIds[0],
+              lastId: newId,
+              flashPNodeCross: true,
+              preserveLinks: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', [...linkedOld, nd], {
+              size: oldSize + 1,
+              firstId: oldIds[0],
+              lastId: newId,
+              preserveLinks: true
+            }));
+          }
+          this.values = [...oldVals, e];
+          this.ids = [...oldIds, newId];
+          this.viz.enqueue(snaps);
+          this.updateUI();
+        },
+        dequeue() {
+          if (this.values.length === 0) return;
+          this.save();
+          const oldVals = [...this.values],
+            oldIds = [...this.ids],
+            oldSize = oldVals.length,
+            b = this.viz.base();
+          const removedId = oldIds[0],
+            newFirst = oldIds[1] ?? null;
+          let newLast = oldSize === 1 ? null : oldIds.at(-1);
+          const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
+          let snaps = [this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
+            size: oldSize
+          })];
+          snaps.push(this.snapshot('The first field is updated to reference the node after the removed node, or null if there is no next node.', oldNodes, {
+            size: oldSize,
+            firstId: newFirst,
+            lastId: oldIds.at(-1),
+            flashFirst: true,
+            detourFirst: newFirst !== null,
+            firstDetourAmount: newFirst !== null ? 1 : 0,
+            preserveLinks: true,
+            pause: true
+          }));
+          if (oldSize === 1) snaps.push(this.snapshot('The removed node was the only node, so The last field is set to null..', oldNodes, {
+            size: oldSize,
+            firstId: null,
+            lastId: null,
+            flashLast: true,
+            preserveLinks: true,
+            pause: true
+          }));
+          snaps.push(this.snapshot('The size field is decremented because one element reference was removed.', oldNodes, {
+            size: oldSize - 1,
+            firstId: newFirst,
+            lastId: newLast,
+            flashSize: true,
+            detourFirst: newFirst !== null,
+            firstDetourAmount: newFirst !== null ? 1 : 0,
+            keepCurvedLastArrow: oldSize === 1,
+            preserveLinks: true,
+            pause: true
+          }));
+          snaps.push(this.snapshot('The unlinked node object is unreachable from the queue; the Java garbage collector may reclaim it later.', oldNodes.map(n => n.id === removedId ? {
+            ...n,
+            flashNodeCross: true
+          } : n), {
+            size: oldSize - 1,
+            firstId: newFirst,
+            lastId: newLast,
+            detourFirst: newFirst !== null,
+            firstDetourAmount: newFirst !== null ? 1 : 0,
+            preserveLinks: true,
+            pause: true
+          }));
+          let remaining = oldNodes.filter(n => n.id !== removedId).map(n => ({
+            ...n
+          }));
+          snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', remaining, {
+            size: oldSize - 1,
+            firstId: newFirst,
+            lastId: newLast,
+            preserveLinks: true,
+            pause: true
+          }));
+          const newVals = oldVals.slice(1),
+            newIds = oldIds.slice(1),
+            compact = this.baseNodes(newVals, newIds, 0, b.y);
+          snaps.push(this.snapshot('Visualization only: the remaining nodes are redrawn at the front of the queue.', compact, {
+            size: oldSize - 1,
+            firstId: newFirst,
+            lastId: newLast,
+            preserveLinks: true,
+            pause: true
+          }));
+          snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', compact, {
+            size: oldSize - 1,
+            firstId: newFirst,
+            lastId: newLast,
+            preserveLinks: true
+          }));
+          this.values = newVals;
+          this.ids = newIds;
+          this.viz.enqueue(snaps);
+          this.updateUI();
+        },
+        first() {
+          if (this.values.length === 0) return;
+          const nodes = this.baseNodes(),
+            firstId = this.ids[0];
+          const snaps = [
+            this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', nodes, {
+              size: this.values.length
+            }),
+            this.snapshot('The algorithm reads queue.first to access the front node object directly.', nodes, {
+              size: this.values.length,
+              markFirstArrow: true,
+              pause: true
+            }),
+            this.snapshot('The front node element reference is read: ' + this.values[0] + '.', nodes.map(n => n.id === firstId ? {
+              ...n,
+              flashElement: true
+            } : n), {
+              size: this.values.length,
+              markFirstArrow: true,
+              pause: true
+            }),
+            this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', nodes, {
+              size: this.values.length
+            })
+          ];
+          this.viz.enqueue(snaps);
+          this.updateUI();
+        },
+        randomFill() {
+          this.values = [];
+          const sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
+          while (this.values.length < sz) {
             const v = Math.floor(Math.random() * VISUAL.random.valueRange) + VISUAL.random.minValue;
             if (!this.values.includes(v)) this.values.push(v);
-        }
-    },
-    newList() { this.save(); this.values = []; this.ids = []; this.showCurrent('A new empty queue object is represented with first = null, last = null, and size = 0.'); this.updateUI(); },
-    random() { this.save(); this.randomFill(); this.ids = this.values.map(_ => nextId++); this.showCurrent('Visualization only: A random sample queue has been generated for demonstration.'); this.updateUI(); },
-    clear() {
-        this.save();
-        const oldVals = [...this.values], oldIds = [...this.ids], oldSize = oldVals.length, originalNodes = this.baseNodes(oldVals, oldIds);
-        let snaps = [this.snapshot('The operation starts from the current queue state.', originalNodes, { firstId: oldIds[0] ?? null, lastId: oldIds.at(-1) ?? null, size: oldSize })];
-        if (oldSize === 0) {
-            snaps.push(this.snapshot('Clear returns immediately because first and last are null and size is 0.', originalNodes, { firstId: null, lastId: null, size: 0, pause: true }));
-        } else {
-            snaps.push(this.snapshot('queue.first is set to null, so the queue no longer references the front node object.', originalNodes, { firstId: null, lastId: oldIds.at(-1), size: oldSize, flashFirst: true, pause: true }));
-            snaps.push(this.snapshot('queue.last is set to null, so the queue no longer references the rear node object.', originalNodes, { firstId: null, lastId: null, size: oldSize, flashLast: true, pause: true }));
-            snaps.push(this.snapshot('queue.size is set to 0 because the queue now contains no elements.', originalNodes, { firstId: null, lastId: null, size: 0, flashSize: true, pause: true }));
-            let currentNodes = originalNodes.map(n => ({ ...n }));
+          }
+        },
+        newList() {
+          this.save();
+          this.values = [];
+          this.ids = [];
+          this.showCurrent('A new empty queue object is represented with first = null, last = null, and size = 0.');
+          this.updateUI();
+        },
+        random() {
+          this.save();
+          this.randomFill();
+          this.ids = this.values.map(_ => nextId++);
+          this.showCurrent('Visualization only: A random sample queue has been generated for demonstration.');
+          this.updateUI();
+        },
+        clear() {
+          this.save();
+          const oldVals = [...this.values],
+            oldIds = [...this.ids],
+            oldSize = oldVals.length,
+            originalNodes = this.baseNodes(oldVals, oldIds);
+          let snaps = [this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', originalNodes, {
+            firstId: oldIds[0] ?? null,
+            lastId: oldIds.at(-1) ?? null,
+            size: oldSize
+          })];
+          if (oldSize === 0) {
+            snaps.push(this.snapshot('Clear returns immediately because first and last are null and size is 0.', originalNodes, {
+              firstId: null,
+              lastId: null,
+              size: 0,
+              pause: true
+            }));
+          } else {
+            snaps.push(this.snapshot('The first field is set to null.', originalNodes, {
+              firstId: null,
+              lastId: oldIds.at(-1),
+              size: oldSize,
+              flashFirst: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('The last field is set to null.', originalNodes, {
+              firstId: null,
+              lastId: null,
+              size: oldSize,
+              flashLast: true,
+              pause: true
+            }));
+            snaps.push(this.snapshot('The size field is set to 0.', originalNodes, {
+              firstId: null,
+              lastId: null,
+              size: 0,
+              flashSize: true,
+              pause: true
+            }));
+            let currentNodes = originalNodes.map(n => ({
+              ...n
+            }));
             for (let k = 0; k < oldSize; k++) {
-                const curId = oldIds[k];
-                snaps.push(this.snapshot(k === 0 ? 'After first and last are null, the first node object becomes unreachable from the queue.' : 'After the previous node becomes unreachable, the next node object also becomes unreachable from the queue.', currentNodes.map(n => n.id === curId ? { ...n, flashNodeCross: true } : n), { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
-                currentNodes = currentNodes.filter(n => n.id !== curId);
-                snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', currentNodes, { firstId: null, lastId: null, size: 0, preserveLinks: true, pause: true }));
+              const curId = oldIds[k];
+              snaps.push(this.snapshot(k === 0 ? 'After first and last are null, this node object is unreachable from the queue; the Java garbage collector may reclaim it later.' : 'After the previous node is unreachable, this next node object is also unreachable from the queue; the Java garbage collector may reclaim it later.', currentNodes.map(n => n.id === curId ? {
+                ...n,
+                flashNodeCross: true
+              } : n), {
+                firstId: null,
+                lastId: null,
+                size: 0,
+                preserveLinks: true,
+                pause: true
+              }));
+              currentNodes = currentNodes.filter(n => n.id !== curId);
+              snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', currentNodes, {
+                firstId: null,
+                lastId: null,
+                size: 0,
+                preserveLinks: true,
+                pause: true
+              }));
             }
-            snaps.push(this.snapshot('The operation is complete.', [], { firstId: null, lastId: null, size: 0 }));
-            this.values = []; this.ids = [];
+            snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', [], {
+              firstId: null,
+              lastId: null,
+              size: 0
+            }));
+            this.values = [];
+            this.ids = [];
+          }
+          this.viz.enqueue(snaps);
+          this.updateUI();
+        },
+        undo() {
+          if (!this.history.length) return;
+          const h = this.history.pop();
+          this.values = h.values;
+          this.ids = h.ids;
+          this.showCurrent("Visualization only: The previous queue state has been restored by the app's undo utility.");
+          this.updateUI();
+        },
+        speed() {
+          this.viz.setSpeed(parseFloat(document.getElementById('speed').value));
+        },
+        pause() {
+          const p = this.viz.togglePause();
+          document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause';
+        },
+        toggleStep() {
+          const enabled = !!document.getElementById('stepMode')?.checked;
+          this.viz.setStepMode(enabled);
+          const label = document.getElementById('stepState');
+          if (label) label.innerText = enabled ? 'On' : 'Off';
+          this.updateUI();
+        },
+        nextStep() {
+          this.viz.nextStep();
+        },
+        toggleModal() {
+          const m = document.getElementById('helpModal');
+          m.style.display = m.style.display === 'block' ? 'none' : 'block';
+        },
+        updateUI() {
+          document.getElementById('btnUndo').disabled = this.history.length === 0;
+          const step = document.getElementById('stepMode');
+          if (step) step.disabled = false;
+          const label = document.getElementById('stepState');
+          if (label) label.innerText = step?.checked ? 'On' : 'Off';
+          if (this.viz?.updateStepControls) this.viz.updateStepControls();
+        },
+        clearInputs() {
+          document.getElementById('val').value = '';
         }
-        this.viz.enqueue(snaps); this.updateUI();
-    },
-    undo() { if (!this.history.length) return; const h = this.history.pop(); this.values = h.values; this.ids = h.ids; this.showCurrent("Visualization only: The previous queue state has been restored by the app's undo utility."); this.updateUI(); },
-    speed() { this.viz.setSpeed(parseFloat(document.getElementById('speed').value)); },
-    pause() { const p = this.viz.togglePause(); document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'; },
-    toggleStep() { const enabled = !!document.getElementById('stepMode')?.checked; this.viz.setStepMode(enabled); const label = document.getElementById('stepState'); if (label) label.innerText = enabled ? 'On' : 'Off'; this.updateUI(); },
-    nextStep() { this.viz.nextStep(); },
-    toggleModal() { const m = document.getElementById('helpModal'); m.style.display = m.style.display === 'block' ? 'none' : 'block'; },
-    updateUI() { document.getElementById('btnUndo').disabled = this.history.length === 0; const step = document.getElementById('stepMode'); if (step) step.disabled = false; const label = document.getElementById('stepState'); if (label) label.innerText = step?.checked ? 'On' : 'Off'; if (this.viz?.updateStepControls) this.viz.updateStepControls(); },
-    clearInputs() { document.getElementById('val').value = ''; }
-};
-window.app = app;
-window.onload = () => app.init();
-window.onclick = e => { if (e.target === document.getElementById('helpModal')) app.toggleModal(); };
-
+      };
+      window.app = app;
+      window.onload = () => {
+        app.init();
+        const chk = document.getElementById('chkStepMode');
+        const label = document.getElementById('stepModeLabel');
+        if (chk) chk.disabled = false;
+        if (label) {
+          label.style.pointerEvents = 'auto';
+          label.style.opacity = '1';
+        };
+      }
+      window.onclick = e => {
+        if (e.target === document.getElementById('helpModal')) app.toggleModal();
+      };
     </script>
-</body>
+  </body>
+
 </html>

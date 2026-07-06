@@ -263,6 +263,18 @@
             padding: 2px 5px;
             color: #c62828
         }
+
+        @keyframes shake-error {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-4px); }
+            40%, 80% { transform: translateX(4px); }
+        }
+        .input-error {
+            animation: shake-error 0.4s ease-in-out !important;
+            border-color: #e60000 !important;
+            background-color: #ffe6e6 !important;
+            color: #c62828 !important;
+        }
     </style>
 </head>
 
@@ -316,10 +328,6 @@
     <div id="helpModal" class="modal">
         <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
             <h2>LinkedList</h2>
-            <h3>Step-by-step semantics</h3>
-            <p><strong>Step-by-step</strong> stops only at real Java LinkedList actions: creating node objects, updating <span class="code">first</span>, <span class="code">last</span>, <span class="code">size</span>, assigning <span class="code">next</span> references, advancing local variables, reading or replacing an element reference, initializing/advancing an iterator, variables going out of scope when a method returns, and explicitly noting when an object has become unreachable and may later be reclaimed by the garbage collector.</p>
-            <p>Highlight-only preparation steps have been merged into the actual semantic update step: the affected field is highlighted in the same step in which its value changes. Purely visual rearrangements run automatically, show no status message, and do not wait for <strong>Next step</strong>.</p>
-
             <p>A <strong>LinkedList</strong> stores an ordered sequence of elements as node objects connected by references. Each node has an <span class="code">element</span> field and a <span class="code">next</span> field.</p>
             <p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>; it does not contain another object directly. The list object stores <span class="code">first</span>, a reference to the first node object; <span class="code">last</span>, a reference to the last node object; and <span class="code">size</span>, the number of elements.</p>
             <p>Because the structure is generic, <span class="code">node.element</span> is shown as a reference to a value object. In this demo the value object may display an integer, but conceptually the node stores an element reference, not necessarily a primitive value inside the node.</p>
@@ -335,10 +343,8 @@
                 <li><strong>Set</strong>: locates the node at a selected index and replaces its <span class="code">element</span> reference with a new value object reference. Complexity: <span class="code">O(n)</span> in general, <span class="code">O(1)</span> for the last index in this implementation.</li>
                 <li><strong>Delete</strong>: removes the node at a selected index by updating <span class="code">first</span> or <span class="code">previous.next</span>. If the removed node was last, <span class="code">last</span> is updated. The removed node becomes unreachable from the list. Complexity: <span class="code">O(n)</span>.</li>
                 <li><strong>Iterate</strong>: visits the nodes from <span class="code">first</span> to <span class="code">null</span>, returning element references in list order. Complexity: <span class="code">O(n)</span> to visit all elements.</li>
-                <li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the list. Complexity: <span class="code">O(1)</span> for the logical operation; garbage collection is handled by the runtime.</li>
+                <li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the list. Complexity: <span class="code">O(1)</span>.</li>
             </ul>
-            <h3>Step-by-step execution and navigation</h3>
-            <p>Turn <strong>Step-by-step</strong> on to make only non-visual Java LinkedList steps wait for <strong>Next step</strong>. Turn it off to let animations advance automatically. The canvas supports mouse wheel zoom, mouse dragging, and touch panning/pinch zoom.</p>
         </div>
     </div>
     <script>
@@ -669,7 +675,7 @@ class VisualizationEngine {
 			this.scenes.push(copy.shift());
 			this.idx = 0;
 			const firstScene = this.scenes[0];
-			this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
+			// this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
 		}
 		if (copy.length) {
 			this.pending = copy;
@@ -1648,8 +1654,8 @@ const app = {
     snapshot(text, nodes, extra = {}) {
         nodes = nodes.map(n => ({ ...n }));
         if (!extra.preserveLinks) relink(nodes);
-        const normalizedText = this.statusMessage(text);
-        const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(normalizedText);
+        const originalText = String(text ?? '');
+        const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(originalText);
         return {
             nodes,
             firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
@@ -1657,38 +1663,8 @@ const app = {
             size: extra.size ?? nodes.length,
             ...extra,
             visualOnly,
-            text: visualOnly ? '' : normalizedText
+            text: visualOnly ? '' : originalText
         }
-    },
-    statusMessage(text = '') {
-        let t = String(text || '');
-        if (/^\s*Visualization only:/i.test(t)) return t;
-        if (t === 'The operation starts from the current list state.') return 'Visualization only: the current LinkedList state is displayed before the operation begins.';
-        if (t === 'The operation is complete.') return 'Visualization only: the completed LinkedList state is displayed.';
-        if (/redrawn|drawn with|drawn in|removed from the drawing|close the visual gap|Get returns/.test(t)) return 'Visualization only: ' + t.charAt(0).toLowerCase() + t.slice(1);
-        t = t
-            .replace(/^The local variable newNode goes out of scope after the method exits\.$/, 'The method returns, so the local variable newNode is removed from the call stack.')
-            .replace(/^The local variables previous, current, and newNode go out of scope after the method exits\.$/, 'The method returns, so local variables previous, current, and newNode are removed from the call stack.')
-            .replace(/^The method exits: local variables previous and current go out of scope\.$/, 'The method returns, so local variables previous and current are removed from the call stack.')
-            .replace(/^The local traversal variable current goes out of scope after the method exits\.$/, 'The method returns, so local variable current is removed from the call stack.')
-            .replace(/^After the references bypass it, the unlinked node object is unreachable from the list\.$/, 'The unlinked node object is unreachable from the list; the Java garbage collector may reclaim it later.')
-            .replace(/^After first and last are null, the first node object becomes unreachable from the list\.$/, 'After first and last are null, this node object is unreachable from the list; the Java garbage collector may reclaim it later.')
-            .replace(/^After the previous node becomes unreachable, the next node object also becomes unreachable from the list\.$/, 'After the previous node is unreachable, this next node object is also unreachable from the list; the Java garbage collector may reclaim it later.')
-            .replace(/^The unreachable node object may be reclaimed by the Java garbage collector\.$/, 'Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.')
-            .replace(/^list\.first is updated/, 'The first field is updated')
-            .replace(/^list\.last is updated/, 'The last field is updated')
-            .replace(/^list\.first is set to null.*$/, 'The first field is set to null.')
-            .replace(/^list\.last is set to null.*$/, 'The last field is set to null.')
-            .replace(/^list\.size is set to 0.*$/, 'The size field is set to 0.')
-            .replace(/^list\.size is incremented/, 'The size field is incremented')
-            .replace(/^list\.size is decremented/, 'The size field is decremented')
-            .replace(/^The former last node\.next is updated/, 'The former last node.next field is updated')
-            .replace(/^previous\.next is updated/, 'The previous node.next field is updated')
-            .replace(/^Get locates the target node and returns.*$/, 'The target node is located and its element reference is read.')
-            .replace(/^The target node\.element reference is updated to value object (.*)$/, 'The target node.element reference is updated to reference value object $1.')
-            .replace(/^Iterator returns the (.*) element reference\.$/, 'The iterator reads and returns the $1 element reference.')
-            .replace(/^Iteration complete: current is null, so hasNext\(\) returns false\.$/, 'Iteration is complete because current is null.');
-        return t;
     },
     showCurrent(text = 'Visualization only: Ready.') {
         this.viz.sn = [];
@@ -1697,8 +1673,23 @@ const app = {
         this.viz.state = 'IDLE';
         this.viz.enqueue([this.snapshot(text, this.baseNodes())])
     },
+    showInputError(inputId) {
+        const el = document.getElementById(inputId);
+        if (!el) return;
+        el.classList.remove('input-error');
+        void el.offsetWidth;
+        el.classList.add('input-error');
+        setTimeout(() => el.classList.remove('input-error'), 400);
+    },
     v() {
-        return parseInt(document.getElementById('val').value)
+        let value = parseInt(document.getElementById('val').value);
+        if (isNaN(value)) this.showInputError('val');
+        return value
+    },
+    i() {
+        let value = parseInt(document.getElementById('idx').value);
+        if (isNaN(value)) this.showInputError('idx');
+        return value
     },
     save() {
         this.history.push({
@@ -1720,11 +1711,11 @@ const app = {
             oldFirst = oldIds[0] ?? null;
         let snaps = [];
         let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        snaps.push(this.snapshot('The operation starts from the current list state.', oldNodes, {
+        snaps.push(this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', oldNodes, {
             size: oldSize
         }));
         let shiftedOld = this.baseNodes(oldVals, oldIds, gap, b.y);
-        snaps.push(this.snapshot('Visualization only: Existing nodes are drawn with extra spacing so the new first node is visible.', shiftedOld, {
+        snaps.push(this.snapshot('Visualization only: existing nodes are drawn with extra spacing so the new first node is visible.', shiftedOld, {
             size: oldSize,
             firstId: oldFirst,
             lastId: oldIds.at(-1) ?? null,
@@ -1756,7 +1747,7 @@ const app = {
             ...newUp,
             flashNew: false
         };
-        snaps.push(this.snapshot('list.first is updated to reference the new node object.', [newUp, ...shiftedOld], {
+        snaps.push(this.snapshot('The first field is updated to reference the new node object.', [newUp, ...shiftedOld], {
             flashFirst: true,
 
             size: oldSize,
@@ -1769,14 +1760,14 @@ const app = {
             ...newUp,
             y: b.y
         };
-        snaps.push(this.snapshot('Visualization only: The new node is drawn in its final list position.', [newDown, ...shiftedOld], {
+        snaps.push(this.snapshot('Visualization only: the new node is drawn in its final list position.', [newDown, ...shiftedOld], {
             size: oldSize,
             pnode,
             firstId: newId,
             lastId: oldIds.at(-1) ?? newId,
             pause: true
         }));
-        snaps.push(this.snapshot('list.size is incremented because one element reference was added.', [newDown, ...shiftedOld], {
+        snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [newDown, ...shiftedOld], {
             flashSize: true,
 
             size: oldSize + 1,
@@ -1785,7 +1776,7 @@ const app = {
             lastId: oldIds.at(-1) ?? newId,
             pause: true
         }));
-        snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [newDown, ...shiftedOld], {
+        snaps.push(this.snapshot('The method returns, so the local variable newNode is removed from the call stack.', [newDown, ...shiftedOld], {
             size: oldSize + 1,
             pnode,
             firstId: newId,
@@ -1793,7 +1784,7 @@ const app = {
             flashPNodeCross: true,
             pause: true
         }));
-        snaps.push(this.snapshot('The operation is complete.', [newDown, ...shiftedOld], {
+        snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', [newDown, ...shiftedOld], {
             size: oldSize + 1,
             firstId: newId,
             lastId: oldIds.at(-1) ?? newId
@@ -1814,7 +1805,7 @@ const app = {
         const b = this.viz.base();
         let snaps = [];
         let oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        snaps.push(this.snapshot('The operation starts from the current list state.', oldNodes, {
+        snaps.push(this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', oldNodes, {
             size: oldSize
         }));
         let x = b.x + oldSize * (VISUAL.node.step),
@@ -1862,7 +1853,7 @@ const app = {
                 ...newNode,
                 y: b.y
             };
-            snaps.push(this.snapshot('list.first and list.last are updated to reference the new node object.', [nd], {
+            snaps.push(this.snapshot('The first and last fields are updated to reference the new node object.', [nd], {
                 size: 0,
                 pnode,
                 firstId: newId,
@@ -1870,7 +1861,7 @@ const app = {
                 preserveLinks: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('list.size is incremented because one element reference was added.', [nd], {
+            snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [nd], {
                 flashSize: true,
 
                 size: 1,
@@ -1880,7 +1871,7 @@ const app = {
                 preserveLinks: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [nd], {
+            snaps.push(this.snapshot('The method returns, so the local variable newNode is removed from the call stack.', [nd], {
                 size: 1,
                 pnode,
                 firstId: newId,
@@ -1889,7 +1880,7 @@ const app = {
                 preserveLinks: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('The operation is complete.', [nd], {
+            snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', [nd], {
                 size: 1,
                 firstId: newId,
                 lastId: newId,
@@ -1911,7 +1902,7 @@ const app = {
                 ...n
             }));
             linkedOld[linkedOld.length - 1].next = newId;
-            snaps.push(this.snapshot('The former last node.next is updated to reference the new node object.', [...linkedOld, newNode], {
+            snaps.push(this.snapshot('The former last node.next field is updated to reference the new node object.', [...linkedOld, newNode], {
                 flashNext: last.id,
 
                 size: oldSize,
@@ -1936,7 +1927,7 @@ const app = {
                 ...newNode,
                 y: b.y
             };
-            snaps.push(this.snapshot('Visualization only: The new node is drawn in its final list position.', [...linkedOld, nd], {
+            snaps.push(this.snapshot('Visualization only: the new node is drawn in its final list position.', [...linkedOld, nd], {
                 size: oldSize,
                 pnode,
                 firstId: oldIds[0],
@@ -1945,7 +1936,7 @@ const app = {
                 preserveLinks: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('list.last is updated to reference the new node object.', [...linkedOld, nd], {
+            snaps.push(this.snapshot('The last field is updated to reference the new node object.', [...linkedOld, nd], {
                 flashLast: true,
 
                 size: oldSize,
@@ -1955,7 +1946,7 @@ const app = {
                 preserveLinks: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('list.size is incremented because one element reference was added.', [...linkedOld, nd], {
+            snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [...linkedOld, nd], {
                 flashSize: true,
 
                 size: oldSize + 1,
@@ -1965,7 +1956,7 @@ const app = {
                 preserveLinks: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('The local variable newNode goes out of scope after the method exits.', [...linkedOld, nd], {
+            snaps.push(this.snapshot('The method returns, so the local variable newNode is removed from the call stack.', [...linkedOld, nd], {
                 size: oldSize + 1,
                 pnode,
                 firstId: oldIds[0],
@@ -1974,7 +1965,7 @@ const app = {
                 preserveLinks: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('The operation is complete.', [...linkedOld, nd], {
+            snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', [...linkedOld, nd], {
                 size: oldSize + 1,
                 firstId: oldIds[0],
                 lastId: newId,
@@ -1987,7 +1978,7 @@ const app = {
         this.updateUI()
     },
     insert() {
-        const i = parseInt(document.getElementById('idx').value),
+        const i = this.i(),
             e = this.v();
         if (isNaN(i) || isNaN(e) || i < 0 || i > this.values.length) return;
         if (i === 0) {
@@ -2018,7 +2009,7 @@ const app = {
             }
         };
         const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
-        snaps.push(this.snapshot('The operation starts from the current list state.', oldNodes, {
+        snaps.push(this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', oldNodes, {
             size: oldSize
         }));
         let prevId = null,
@@ -2058,7 +2049,7 @@ const app = {
                 ptrs: bothArrowsUpdated,
                 pause: true
             }));
-            snaps.push(this.snapshot('Visualization only: The traversal variable boxes are redrawn near their current reference targets.', oldNodes, {
+            snaps.push(this.snapshot('Visualization only: the traversal variable boxes are redrawn near their current reference targets.', oldNodes, {
                 size: oldSize,
                 ptrs: ptrsFor(prevId, curId),
                 pause: true
@@ -2073,7 +2064,7 @@ const app = {
             next: j < oldIds.length - 1 ? oldIds[j + 1] : null
         }));
         const withShiftedPtrs = () => ptrsFor(oldIds[i - 1], oldIds[i], shiftedNodes);
-        snaps.push(this.snapshot('Visualization only: Nodes from the insertion point are drawn with extra spacing.', shiftedNodes, {
+        snaps.push(this.snapshot('Visualization only: nodes from the insertion point are drawn with extra spacing.', shiftedNodes, {
             size: oldSize,
             firstId: oldIds[0],
             lastId: oldIds.at(-1),
@@ -2115,7 +2106,7 @@ const app = {
             ...n
         }));
         linkedNodes[i - 1].next = newId;
-        snaps.push(this.snapshot('previous.next is updated to reference the new node object.', [...linkedNodes, newNode], {
+        snaps.push(this.snapshot('The previous node.next field is updated to reference the new node object.', [...linkedNodes, newNode], {
             flashNext: oldIds[i - 1],
 
             size: oldSize,
@@ -2132,7 +2123,7 @@ const app = {
             ...newNode,
             y: b.y
         };
-        snaps.push(this.snapshot('Visualization only: The new node is drawn inside the main list sequence.', [...linkedNodes, newUp], {
+        snaps.push(this.snapshot('Visualization only: the new node is drawn inside the main list sequence.', [...linkedNodes, newUp], {
             size: oldSize,
             pnode,
             overArrowNodeIds: [newId],
@@ -2143,7 +2134,7 @@ const app = {
             preserveLinks: true,
             pause: true
         }));
-        snaps.push(this.snapshot('list.size is incremented because one element reference was added.', [...linkedNodes, newUp], {
+        snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [...linkedNodes, newUp], {
             flashSize: true,
 
             size: oldSize + 1,
@@ -2156,7 +2147,7 @@ const app = {
             preserveLinks: true,
             pause: true
         }));
-        snaps.push(this.snapshot('The local variables previous, current, and newNode go out of scope after the method exits.', [...linkedNodes, newUp], {
+        snaps.push(this.snapshot('The method returns, so local variables previous, current, and newNode are removed from the call stack.', [...linkedNodes, newUp], {
             size: oldSize + 1,
             pnode,
             overArrowNodeIds: [newId],
@@ -2169,7 +2160,7 @@ const app = {
             preserveLinks: true,
             pause: true
         }));
-        snaps.push(this.snapshot('The operation is complete.', [...linkedNodes, newUp], {
+        snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', [...linkedNodes, newUp], {
             size: oldSize + 1,
             firstId: oldIds[0],
             lastId: oldIds.at(-1),
@@ -2183,12 +2174,12 @@ const app = {
         this.updateUI()
     },
     get() {
-        const i = parseInt(document.getElementById('idx').value);
+        const i = this.i();
         if (isNaN(i) || i < 0 || i >= this.values.length) return;
         const b = this.viz.base();
         let snaps = [];
         const nodes = this.baseNodes();
-        snaps.push(this.snapshot('The operation starts from the current list state.', nodes, {
+        snaps.push(this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', nodes, {
             size: this.values.length
         }));
         if (i === this.values.length - 1) {
@@ -2202,12 +2193,12 @@ const app = {
                 ...n,
                 flashElement: true
             } : n);
-            snaps.push(this.snapshot('Get locates the target node and returns the element reference at index ' + i + ': ' + this.values[i], found, {
+            snaps.push(this.snapshot('The target node is located and its element reference is read.', found, {
                 size: this.values.length,
                 markLastArrow: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('Get returns the element reference at index ' + i + ': ' + this.values[i], nodes, {
+            snaps.push(this.snapshot('Visualization only: get returns the element reference at index ' + i + ': ' + this.values[i], nodes, {
                 size: this.values.length
             }));
             this.viz.enqueue(snaps);
@@ -2244,7 +2235,7 @@ const app = {
                 ptrs: [makePtr(curId, oldPtr)],
                 pause: true
             }));
-            snaps.push(this.snapshot('Visualization only: The current variable box is redrawn near the next node.', nodes, {
+            snaps.push(this.snapshot('Visualization only: the current variable box is redrawn near the next node.', nodes, {
                 size: this.values.length,
                 ptrs: [makePtr(curId)],
                 pause: true
@@ -2254,25 +2245,25 @@ const app = {
             ...n,
             flashElement: true
         } : n);
-        snaps.push(this.snapshot('Get locates the target node and returns the element reference at index ' + i + ': ' + this.values[i], found, {
+        snaps.push(this.snapshot('The target node is located and its element reference is read.', found, {
             size: this.values.length,
             ptrs: [makePtr(curId)],
             pause: true
         }));
-        snaps.push(this.snapshot('The local traversal variable current goes out of scope after the method exits.', nodes, {
+        snaps.push(this.snapshot('The method returns, so local variable current is removed from the call stack.', nodes, {
             size: this.values.length,
             ptrs: [makePtr(curId)],
             flashAuxCross: true,
             pause: true
         }));
-        snaps.push(this.snapshot('Get returns the element reference at index ' + i + ': ' + this.values[i], nodes, {
+        snaps.push(this.snapshot('Visualization only: get returns the element reference at index ' + i + ': ' + this.values[i], nodes, {
             size: this.values.length
         }));
         this.viz.enqueue(snaps);
         this.updateUI()
     },
     set() {
-        const i = parseInt(document.getElementById('idx').value),
+        const i = this.i(),
             e = this.v();
         if (isNaN(i) || isNaN(e) || i < 0 || i >= this.values.length) return;
         this.save();
@@ -2281,7 +2272,7 @@ const app = {
         const oldVals = [...this.values],
             oldIds = [...this.ids];
         const nodes = this.baseNodes(oldVals, oldIds);
-        snaps.push(this.snapshot('The operation starts from the current list state.', nodes, {
+        snaps.push(this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', nodes, {
             size: oldVals.length
         }));
         if (i === oldVals.length - 1) {
@@ -2303,12 +2294,12 @@ const app = {
             let newVals = [...oldVals];
             newVals[i] = e;
             let updated = this.baseNodes(newVals, oldIds);
-            snaps.push(this.snapshot('The target node.element reference is updated to value object ' + e, updated, {
+            snaps.push(this.snapshot('The target node.element reference is updated to reference value object ' + e + '.', updated, {
                 size: oldVals.length,
                 markLastArrow: true,
                 pause: true
             }));
-            snaps.push(this.snapshot('The operation is complete.', updated, {
+            snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', updated, {
                 size: oldVals.length
             }));
             this.values = newVals;
@@ -2346,7 +2337,7 @@ const app = {
                 ptrs: [makePtr(curId, oldPtr)],
                 pause: true
             }));
-            snaps.push(this.snapshot('Visualization only: The current variable box is redrawn near the next node.', nodes, {
+            snaps.push(this.snapshot('Visualization only: the current variable box is redrawn near the next node.', nodes, {
                 size: oldVals.length,
                 ptrs: [makePtr(curId)],
                 pause: true
@@ -2364,18 +2355,18 @@ const app = {
         let newVals = [...oldVals];
         newVals[i] = e;
         let updated = this.baseNodes(newVals, oldIds);
-        snaps.push(this.snapshot('The target node.element reference is updated to value object ' + e, updated, {
+        snaps.push(this.snapshot('The target node.element reference is updated to reference value object ' + e + '.', updated, {
             size: oldVals.length,
             ptrs: [makePtr(curId, null, updated)],
             pause: true
         }));
-        snaps.push(this.snapshot('The local traversal variable current goes out of scope after the method exits.', updated, {
+        snaps.push(this.snapshot('The method returns, so local variable current is removed from the call stack.', updated, {
             size: oldVals.length,
             ptrs: [makePtr(curId, null, updated)],
             flashAuxCross: true,
             pause: true
         }));
-        snaps.push(this.snapshot('The operation is complete.', updated, {
+        snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', updated, {
             size: oldVals.length
         }));
         this.values = newVals;
@@ -2383,7 +2374,7 @@ const app = {
         this.updateUI()
     },
     del() {
-        const i = parseInt(document.getElementById('idx').value);
+        const i = this.i();
         if (isNaN(i) || i < 0 || i >= this.values.length) return;
         this.save();
         const oldVals = [...this.values],
@@ -2406,7 +2397,7 @@ const app = {
             }
         };
         const ptrsFor = (prev, cur, nodes = oldNodes, fixedPrev = null, fixedCur = null) => [makePtr('previous', prev, nodes, 0, fixedPrev?.x, fixedPrev?.y), makePtr('current', cur, nodes, 1, fixedCur?.x, fixedCur?.y)];
-        snaps.push(this.snapshot('The operation starts from the current list state.', oldNodes, {
+        snaps.push(this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', oldNodes, {
             size: oldSize
         }));
         let prevId = null,
@@ -2446,7 +2437,7 @@ const app = {
                 ptrs: bothArrowsUpdated,
                 pause: true
             }));
-            snaps.push(this.snapshot('Visualization only: The traversal variable boxes are redrawn near their current reference targets.', oldNodes, {
+            snaps.push(this.snapshot('Visualization only: the traversal variable boxes are redrawn near their current reference targets.', oldNodes, {
                 size: oldSize,
                 ptrs: ptrsFor(prevId, curId),
                 pause: true
@@ -2462,7 +2453,7 @@ const app = {
             firstNeedsDetour = prevId === null && currentNext !== null;
         if (prevId === null) {
             firstAfterLink = currentNext;
-            snaps.push(this.snapshot(firstNeedsDetour ? 'list.first is updated to reference the node after the removed node.' : 'list.first is updated to reference the node after the removed node, or null if there is no next node.', linkedNodes, {
+            snaps.push(this.snapshot(firstNeedsDetour ? 'The first field is updated to reference the node after the removed node.' : 'The first field is updated to reference the node after the removed node, or null if there is no next node.', linkedNodes, {
                 flashFirst: true,
 
                 size: oldSize,
@@ -2481,7 +2472,7 @@ const app = {
                 prevNode.detourNext = needsDetour;
                 prevNode.detourAmount = needsDetour ? 1 : 0
             }
-            snaps.push(this.snapshot(needsDetour ? 'previous.next is updated to reference the node after the removed node.' : 'previous.next is updated to reference the node after the removed node, or null if there is no next node.', linkedNodes, {
+            snaps.push(this.snapshot(needsDetour ? 'The previous node.next field is updated to reference the node after the removed node.' : 'The previous node.next field is updated to reference the node after the removed node, or null if there is no next node.', linkedNodes, {
                 flashNext: prevId,
 
                 size: oldSize,
@@ -2503,7 +2494,7 @@ const app = {
                 pause: true
             }));
             lastAfterLink = prevId;
-            snaps.push(this.snapshot('list.last is updated to reference previous.', linkedNodes, {
+            snaps.push(this.snapshot('The last field is updated to reference previous.', linkedNodes, {
                 size: oldSize,
                 firstId: firstAfterLink,
                 lastId: lastAfterLink,
@@ -2518,7 +2509,7 @@ const app = {
         let listSized = linkedNodes.map(n => ({
             ...n
         }));
-        snaps.push(this.snapshot('list.size is decremented because one element reference was removed.', listSized, {
+        snaps.push(this.snapshot('The size field is decremented because one element reference was removed.', listSized, {
             flashSize: true,
 
             size: oldSize - 1,
@@ -2531,7 +2522,7 @@ const app = {
             preserveLinks: true,
             pause: true
         }));
-        snaps.push(this.snapshot('The method exits: local variables previous and current go out of scope.', listSized, {
+        snaps.push(this.snapshot('The method returns, so local variables previous and current are removed from the call stack.', listSized, {
             size: oldSize - 1,
             firstId: firstAfterLink,
             lastId: lastAfterLink,
@@ -2543,7 +2534,7 @@ const app = {
             preserveLinks: true,
             pause: true
         }));
-        snaps.push(this.snapshot('Visualization only: The local variable boxes are removed from the drawing.', listSized, {
+        snaps.push(this.snapshot('Visualization only: the local variable boxes are removed from the drawing.', listSized, {
             size: oldSize - 1,
             firstId: firstAfterLink,
             lastId: lastAfterLink,
@@ -2558,7 +2549,7 @@ const app = {
             ...n,
             flashNodeCross: true
         } : n);
-        snaps.push(this.snapshot('After the references bypass it, the unlinked node object is unreachable from the list.', crossNodes, {
+        snaps.push(this.snapshot('The unlinked node object is unreachable from the list; the Java garbage collector may reclaim it later.', crossNodes, {
             size: oldSize - 1,
             firstId: firstAfterLink,
             lastId: lastAfterLink,
@@ -2572,7 +2563,7 @@ const app = {
         let collectedGoneNodes = listSized.filter(n => n.id !== curId).map(n => ({
             ...n
         }));
-        snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', collectedGoneNodes, {
+        snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', collectedGoneNodes, {
             size: oldSize - 1,
             firstId: firstAfterLink,
             lastId: lastAfterLink,
@@ -2591,7 +2582,7 @@ const app = {
         }) : ({
             ...n
         }));
-        snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'Visualization only: The bypass reference is redrawn in its final shape.' : 'The remaining reference structure is established.', straightNodes, {
+        snaps.push(this.snapshot((needsDetour || firstNeedsDetour) ? 'Visualization only: the bypass reference is redrawn in its final shape.' : 'The remaining reference structure is established.', straightNodes, {
             size: oldSize - 1,
             firstId: firstAfterLink,
             lastId: lastAfterLink,
@@ -2604,7 +2595,7 @@ const app = {
         }));
 
         if (twoNodeDeleteFirst) {
-            snaps.push(this.snapshot('Visualization only: The last reference is redrawn in its final shape.', straightNodes, {
+            snaps.push(this.snapshot('Visualization only: the last reference is redrawn in its final shape.', straightNodes, {
                 size: oldSize - 1,
                 firstId: firstAfterLink,
                 lastId: lastAfterLink,
@@ -2621,7 +2612,7 @@ const app = {
             newFirst = newIds[0] ?? null,
             newLast = newIds.at(-1) ?? null;
         const compactNodes = this.baseNodes(newVals, newIds, 0, b.y);
-        snaps.push(this.snapshot('Visualization only: The remaining nodes are redrawn to close the visual gap.', compactNodes, {
+        snaps.push(this.snapshot('Visualization only: the remaining nodes are redrawn to close the visual gap.', compactNodes, {
             size: oldSize - 1,
             firstId: newFirst,
             lastId: newLast,
@@ -2629,7 +2620,7 @@ const app = {
             preserveLinks: true,
             pause: true
         }));
-        snaps.push(this.snapshot('The operation is complete.', compactNodes, {
+        snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', compactNodes, {
             size: oldSize - 1,
             firstId: newFirst,
             lastId: newLast,
@@ -2649,7 +2640,7 @@ const app = {
         const nodes = this.baseNodes(oldVals, oldIds);
         let snaps = [];
 
-        snaps.push(this.snapshot('The operation starts from the current list state.', nodes, {
+        snaps.push(this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', nodes, {
             size: oldSize
         }));
 
@@ -2668,12 +2659,12 @@ const app = {
                 iterator: it,
                 pause: true
             }));
-            snaps.push(this.snapshot('Iteration complete: current is null, so hasNext() returns false.', nodes, {
+            snaps.push(this.snapshot('Iteration is complete because current is null.', nodes, {
                 size: oldSize,
                 iterator: it,
                 pause: true
             }));
-            snaps.push(this.snapshot('The operation is complete.', nodes, {
+            snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', nodes, {
                 size: oldSize
             }));
             this.viz.enqueue(snaps);
@@ -2722,7 +2713,7 @@ const app = {
                 ...n,
                 flashElement: true
             } : n);
-            snaps.push(this.snapshot(`Iterator returns the ${ord} element reference.`, highlightNodes, {
+            snaps.push(this.snapshot(`The iterator reads and returns the ${ord} element reference.`, highlightNodes, {
                 size: oldSize,
                 iterator: it,
                 pause: true
@@ -2746,12 +2737,12 @@ const app = {
             curId = nextCurId;
         }
 
-        snaps.push(this.snapshot('Iteration complete: current is null, so hasNext() returns false.', nodes, {
+        snaps.push(this.snapshot('Iteration is complete because current is null.', nodes, {
             size: oldSize,
             iterator: it,
             pause: true
         }));
-        snaps.push(this.snapshot('The operation is complete.', nodes, {
+        snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', nodes, {
             size: oldSize
         }));
 
@@ -2811,7 +2802,7 @@ const app = {
             oldSize = oldVals.length;
         const b = this.viz.base();
         const originalNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-        let snaps = [this.snapshot('The operation starts from the current list state.', originalNodes, {
+        let snaps = [this.snapshot('Visualization only: the current LinkedList state is displayed before the operation begins.', originalNodes, {
             firstId: oldIds[0] ?? null,
             lastId: oldIds.at(-1) ?? null,
             size: oldSize
@@ -2829,21 +2820,21 @@ const app = {
             return
         }
 
-        snaps.push(this.snapshot('list.first is set to null, so the list no longer references the first node object.', originalNodes, {
+        snaps.push(this.snapshot('The first field is set to null.', originalNodes, {
             firstId: null,
             lastId: oldIds.at(-1),
             size: oldSize,
             flashFirst: true,
             pause: true
         }));
-        snaps.push(this.snapshot('list.last is set to null, so the list no longer references the last node object.', originalNodes, {
+        snaps.push(this.snapshot('The last field is set to null.', originalNodes, {
             firstId: null,
             lastId: null,
             size: oldSize,
             flashLast: true,
             pause: true
         }));
-        snaps.push(this.snapshot('list.size is set to 0 because the list now contains no elements.', originalNodes, {
+        snaps.push(this.snapshot('The size field is set to 0.', originalNodes, {
             firstId: null,
             lastId: null,
             size: 0,
@@ -2861,8 +2852,8 @@ const app = {
                 flashNodeCross: true
             } : n);
             const msgUnreachable = k === 0 ?
-                'After first and last are null, the first node object becomes unreachable from the list.' :
-                'After the previous node becomes unreachable, the next node object also becomes unreachable from the list.';
+                'After first and last are null, this node object is unreachable from the list; the Java garbage collector may reclaim it later.' :
+                'After the previous node is unreachable, this next node object is also unreachable from the list; the Java garbage collector may reclaim it later.';
 
             snaps.push(this.snapshot(msgUnreachable, crossNodes, {
                 firstId: null,
@@ -2873,7 +2864,7 @@ const app = {
             }));
 
             currentNodes = currentNodes.filter(n => n.id !== curId);
-            snaps.push(this.snapshot('The unreachable node object may be reclaimed by the Java garbage collector.', currentNodes, {
+            snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', currentNodes, {
                 firstId: null,
                 lastId: null,
                 size: 0,
@@ -2882,7 +2873,7 @@ const app = {
             }));
         }
 
-        snaps.push(this.snapshot('The operation is complete.', [], {
+        snaps.push(this.snapshot('Visualization only: the completed LinkedList state is displayed.', [], {
             firstId: null,
             lastId: null,
             size: 0
@@ -2937,7 +2928,16 @@ const app = {
 };
 
 window.app = app;
-window.onload = () => app.init();
+window.onload = () => {
+		app.init();
+		const chk = document.getElementById('chkStepMode');
+        const label = document.getElementById('stepModeLabel');
+        if (chk) chk.disabled = false;
+        if (label) {
+          label.style.pointerEvents = 'auto';
+          label.style.opacity = '1';
+        };
+	  }
 window.onclick = e => {
     if (e.target === document.getElementById('helpModal')) app.toggleModal()
 };
