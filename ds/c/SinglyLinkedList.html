@@ -733,7 +733,44 @@
           this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
           this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
         }
+        cloneScene(s) { return JSON.parse(JSON.stringify(s)); }
+        ptrTarget(s,label) { return (s.ptrs||[]).find(p=>p.label===label)?.target ?? null; }
+        rhsPlan(s,before=null) {
+          const t=s.text||'', ptr=label=>({kind:'ptr',label}), first=()=>({kind:'first'}), next=id=>({kind:'next',id}), pnode=()=>({kind:'pnode'}), newNext=id=>({kind:'newNext',id});
+          const cur=this.ptrTarget(s,'p_current'), oldCur=before?this.ptrTarget(before,'p_current'):cur, prev=this.ptrTarget(s,'p_previous'), last=this.ptrTarget(s,'p_last');
+          if(t==='The traversal starts at the first node, with no previous node yet'||t==='Traversal starts at p_first'||t==='p_current starts at p_first; size = 0'||t==='p_current is initialized with p_first'||t==='p_previous starts as NULL and p_current starts at p_first') return {source:first(),target:ptr('p_current'),message:'p_first is used to initialize p_current at the first node of the list.'};
+          if(t==='The previous pointer is advanced to the current node'||t==='p_previous is advanced to p_current') return {source:ptr('p_current'),target:ptr('p_previous'),message:'p_current is copied into p_previous so the algorithm remembers the node before the current one.'};
+          if(t==='The current pointer is advanced to the next node'||t==='p_current is advanced to the next node'||t==='p_current is advanced before freeing the node') return {source:next(oldCur!==cur?oldCur:cur),target:ptr('p_current'),prePointer:'p_current',message:'p_current->p_next is used to advance p_current to the next node.'};
+          if(t==='p_delete points to p_current') return {source:ptr('p_current'),target:ptr('p_delete'),message:'p_current is copied into p_delete so the current node can be freed safely.'};
+          if(t==='p_last advances through p_next looking for the last node') return {source:next(last),target:ptr('p_last'),prePointer:'p_last',message:'p_last->p_next is used to advance p_last while searching for the end of the list.'};
+          if(t==='A new node is allocated and linked to the former first node') return {source:first(),target:newNext(s.pnode?.target),constructorNext:true,message:'p_first is used to initialize the p_next field of the new node.'};
+          if(t==='A new node is allocated and linked to the node that will follow it'||t==='A new node is allocated and its p_next points to p_current') return {source:ptr('p_current'),target:newNext(s.pnode?.target),constructorNext:true,message:'p_current is used to initialize the p_next field of the new node.'};
+          if(t==='p_first now points to the new node'||t==='p_first now points to the new first node'||t==='The new node becomes the first node of the list'||t==='The list first pointer is updated to the new node'||t==='The first-node pointer is updated to the new node') return {source:pnode(),target:first(),message:'p_node is copied into p_first so the new node becomes the first node of the list.'};
+          if(t==='The previous node now points to the new node'||t==='The link stored in the previous node now points to the new node') return {source:pnode(),target:next(prev),message:'p_node is stored in p_previous->p_next to link the new node into the list.'};
+          if(t==='The former last node now points to the new node') return {source:pnode(),target:next(last),message:'p_node is stored in p_last->p_next to append the new node.'};
+          if(t==='The first-node pointer is updated to bypass the removed node'||t==='The first-node pointer is updated to the node after the removed node') return {source:next(cur),target:first(),message:'p_current->p_next is copied into p_first so the removed first node is bypassed.'};
+          if(t==='The previous node is linked around the node being removed'||t==='The previous node is linked to the node after the removed node') return {source:next(cur),target:next(prev),message:'p_current->p_next is copied into p_previous->p_next so the current node is bypassed.'};
+          return null;
+        }
+        markRhs(s,src) { const q=this.cloneScene(s); if(!src)return q; if(src.kind==='ptr')q.redPtrs=[...(q.redPtrs||[]),src.label]; else if(src.kind==='first')q.redPFirst=true; else if(src.kind==='next'&&src.id!=null)q.redPNext=[...(q.redPNext||[]),src.id]; else if(src.kind==='pnode')q.redPNode=true; return q; }
+        setTargetFlash(s,d) { const q=this.cloneScene(s); if(!d)return q; if(d.kind==='ptr')q.flashPtrs=[...(q.flashPtrs||[]),d.label]; else if(d.kind==='first')q.flashPFirst=true; else if((d.kind==='next'||d.kind==='newNext')&&d.id!=null)q.flashPNext=d.id; return q; }
+        clearTargetFlash(s) { const q=this.cloneScene(s); delete q.flashPFirst; delete q.flashPNext; q.flashPtrs=[]; return q; }
+        addRhsHighlights(snaps) {
+          const out=[];
+          for(let i=0;i<snaps.length;i++) {
+            const scene=snaps[i],before=i?snaps[i-1]:null,plan=this.rhsPlan(scene,before);
+            if(!plan){out.push(scene);continue;}
+            let base=this.cloneScene(scene);
+            if(plan.prePointer&&before){const old=(before.ptrs||[]).find(p=>p.label===plan.prePointer);if(old)base.ptrs=(base.ptrs||[]).map(p=>p.label===plan.prePointer?this.cloneScene(old):p);}
+            if(plan.constructorNext&&scene.pnode?.target!=null)base.nodes=(base.nodes||[]).map(n=>n.id===scene.pnode.target?{...n,next:null}:n);
+            let red=this.markRhs(this.clearTargetFlash(base),plan.source);red.text=plan.message;out.push(red);
+            let selected=this.markRhs(base,plan.source);selected=this.setTargetFlash(selected,plan.target);selected.text=plan.constructorNext?'The p_next field of the new node is selected to receive the highlighted pointer.':scene.text;out.push(selected);
+            let updated=this.markRhs(scene,plan.source);updated.text=plan.constructorNext?'The highlighted pointer has been stored in the p_next field of the new node.':scene.text;out.push(updated);
+          }
+          return out;
+        }
         enqueue(snaps) {
+          snaps = this.addRhsHighlights(snaps);
           snaps.forEach(s => this.layout(s));
           this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
           if (!this.sn.length) {
@@ -1110,14 +1147,14 @@
             baseline: 'middle'
           });
           this.paintRect(x, y, w, h - h * DRAW.ROW_FILL_SHRINK_RATIO, K.c);
-          this.paintDot(x + w / 2, y + h / 2, DRAW.POINTER_DOT_RADIUS, s.firstDangling ? K.d : K.b);
+          this.paintDot(x + w / 2, y + h / 2, DRAW.POINTER_DOT_RADIUS, s.redPFirst ? K.r : (s.firstDangling ? K.d : K.b));
         }
         drawStructArrows(s) {
           const x = GEOMETRY.STRUCT_X,
             y = GEOMETRY.STRUCT_Y,
             w = 70,
             h = this.cell;
-          const firstColor = s.firstDangling ? K.d : K.b;
+          const firstColor = s.redPFirst ? K.r : (s.firstDangling ? K.d : K.b);
           const f = this.nodeById(s, s.firstId);
           const tx = s.tipX ?? (f ? f.x : s.firstTargetX),
             ty = s.tipY ?? (f ? f.y + h / 2 : s.firstTargetY);
@@ -1165,7 +1202,7 @@
         renderScene(s) {
           this.lastNodes = s.nodes || [];
           this.drawStructBoxes(s);
-          (s.nodes || []).forEach(n => this.drawNode(n));
+          (s.nodes || []).forEach(n => this.drawNode({...n,redPNext:(s.redPNext||[]).includes(n.id)}));
           if (s.pnode) this.drawPNodeBox(s);
           this.drawStructArrows(s);
           this.drawLinks(s);
@@ -1183,7 +1220,7 @@
             font: DRAW.NODE_VALUE_FONT,
             fill: K.r
           });
-          this.paintDot(x + w + w / 2, y + w / 2, DRAW.NODE_NEXT_DOT_RADIUS, K.b);
+          this.paintDot(x + w + w / 2, y + w / 2, DRAW.NODE_NEXT_DOT_RADIUS, n.redPNext ? K.r : K.b);
           if (n.index !== undefined) {
             this.paintText(n.index, x + w - DRAW.NODE_INDEX_RIGHT_OFFSET, y - DRAW.NODE_INDEX_TOP_OFFSET, {
               font: DRAW.NODE_INDEX_FONT,
@@ -1201,11 +1238,11 @@
             baseline: 'alphabetic'
           });
           this.paintRect(p.x, p.y, GEOMETRY.POINTER_BOX_WIDTH, GEOMETRY.POINTER_BOX_HEIGHT, K.c);
-          this.paintDot(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, K.b);
+          this.paintDot(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, DRAW.POINTER_DOT_RADIUS, s.redPNode ? K.r : K.b);
         }
         drawAuxPointers(s) {
           (s.ptrs || []).forEach(p => {
-            const pointerColor = p.dangling ? K.d : K.b;
+            const pointerColor = (s.redPtrs||[]).includes(p.label) ? K.r : (p.dangling ? K.d : K.b);
             this.paintText(p.label, p.x + GEOMETRY.POINTER_ANCHOR_X, p.y - GEOMETRY.POINTER_LABEL_GAP, {
               font: DRAW.POINTER_LABEL_FONT,
               fill: K.k,
@@ -1230,7 +1267,7 @@
             t = this.nodeById(s, p.target);
           const tx = p.tipX ?? (t ? t.x : undefined),
             ty = p.tipY ?? (t ? t.y + this.cell / 2 : undefined);
-          if (tx !== undefined && ty !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, tx, ty, K.b, 3)
+          if (tx !== undefined && ty !== undefined) this.arrow(p.x + GEOMETRY.POINTER_ANCHOR_X, p.y + GEOMETRY.POINTER_ANCHOR_Y, tx, ty, s.redPNode ? K.r : K.b, 3)
         }
         flashStruct(row) {
           const x = GEOMETRY.STRUCT_X,
@@ -1250,9 +1287,10 @@
                 ty = n.tipY ?? (to ? to.y + this.cell / 2 : undefined);
               if (tx !== undefined && ty !== undefined) {
                 const p = this.ptr(n),
-                  amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
-                if (amount > 0.001) this.detourArrow(p.x, p.y, tx, ty, K.b, 3, amount);
-                else this.arrow(p.x, p.y, tx, ty, K.b, 3)
+                  amount = n.detourAmount ?? (n.detourNext ? 1 : 0),
+                  linkColor = (s.redPNext||[]).includes(n.id) ? K.r : K.b;
+                if (amount > 0.001) this.detourArrow(p.x, p.y, tx, ty, linkColor, 3, amount);
+                else this.arrow(p.x, p.y, tx, ty, linkColor, 3)
               }
             }
           })

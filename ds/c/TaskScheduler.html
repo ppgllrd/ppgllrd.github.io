@@ -166,8 +166,60 @@ class Engine {
 		this.cam.targetX = this.cv.width / 2 - (B.minX + B.maxX) / 2 * sc;
 		this.cam.targetY = this.cv.height / 2 - (B.minY + B.maxY) / 2 * sc
 	}
+	cloneScene(s) { return JSON.parse(JSON.stringify(s)); }
+	ptrTarget(s,label) { return (s.ptrs||[]).find(p=>p.label===label)?.target ?? null; }
+	cleanVisuals(s) {
+		const q=this.cloneScene(s); q.flashPtrs=[];
+		delete q.flashLast; delete q.flashNext; delete q.markLast; delete q.markLastNext;
+		delete q.redLast; delete q.redNext; delete q.redPtrs;
+		q.ptrs=(q.ptrs||[]).map(p=>({...p,flash:false,red:false}));
+		q.nodes=(q.nodes||[]).map(n=>({...n,flashPNext:false,redPNext:false}));
+		return q;
+	}
+	rhsPlan(s,before=null) {
+		const t=s.text||'',ptr=label=>({kind:'ptr',label}),last=()=>({kind:'last'}),next=uid=>({kind:'next',uid}),lastNext=uid=>({kind:'lastNext',uid});
+		const current=this.ptrTarget(s,'p_current'),oldCurrent=before?this.ptrTarget(before,'p_current'):current;
+		if(t.includes('p_first receives p_last->p_next')||t.includes('p_first receives (*p_p_last)->p_next')) return {source:lastNext(s.lastUid),target:ptr('p_first'),message:'p_last and p_last->p_next are read to initialize p_first.'};
+		if(t==='p_current is initialized with p_first') return {source:ptr('p_first'),target:ptr('p_current'),message:'p_first is copied into p_current to begin traversal.'};
+		if(t==='p_current advances to the next node'||t==='p_current advances to p_current->p_next'||t==='p_current advances to p_current->p_next before the node is freed') return {source:next(oldCurrent!==current?oldCurrent:current),target:ptr('p_current'),oldTarget:oldCurrent,message:'p_current->p_next is copied into p_current to advance traversal.'};
+		if(t==='p_toDelete receives p_current') return {source:ptr('p_current'),target:ptr('p_toDelete'),message:'p_current is copied into p_toDelete.'};
+		if(t==='p_node->p_next is assigned p_node, forming a one-node circular list') return {source:ptr('p_node'),target:next(this.ptrTarget(s,'p_node')),message:'p_node is copied into p_node->p_next to form a one-node circle.'};
+		if(t==='p_node->p_next is assigned the old first node; all old links remain unchanged') return {source:lastNext(s.lastUid),target:next(this.ptrTarget(s,'p_node')),message:'p_last and p_last->p_next are read, and the old first pointer is copied into p_node->p_next.'};
+		if(t==='p_last->p_next is updated to point to the new node') return {source:ptr('p_node'),target:next(s.lastUid),message:'p_node is copied into p_last->p_next.'};
+		if(t.includes('*p_p_last is updated to p_node')) return {source:ptr('p_node'),target:last(),message:'p_node is copied into p_last.'};
+		if(t==='(*p_p_last)->p_next is changed from p_first to p_first->p_next') return {source:next(this.ptrTarget(s,'p_first')),target:next(s.lastUid),message:'p_first->p_next is copied into p_last->p_next.'};
+		return null;
+	}
+	markRhs(s,d){const q=this.cloneScene(s);if(!d)return q;if(d.kind==='ptr')q.redPtrs=[...(q.redPtrs||[]),d.label];else if(d.kind==='last')q.redLast=true;else if(d.kind==='lastNext'){q.redLast=true;if(d.uid!=null)q.redNext=[...(q.redNext||[]),d.uid]}else if(d.kind==='next'&&d.uid!=null)q.redNext=[...(q.redNext||[]),d.uid];return q}
+	flashTarget(s,d){const q=this.cloneScene(s);if(!d)return q;if(d.kind==='ptr')q.flashPtrs=[...(q.flashPtrs||[]),d.label];else if(d.kind==='last')q.flashLast=true;else if(d.kind==='next'&&d.uid!=null)q.flashNext=d.uid;return q}
+	addRhsTeaching(ss){
+		const out=[];
+		const redundant=new Set(['The old p_last->p_next field is selected for update; it still points to p_first','The destination p_next field is selected to receive the highlighted pointer.','The highlighted pointer has been stored in the selected p_next field.']);
+		for(let i=0;i<ss.length;i++){
+			const scene=ss[i],before=i?ss[i-1]:null;
+			if(redundant.has(scene.text||''))continue;
+			const plan=this.rhsPlan(scene,before);
+			if(!plan){out.push(this.cleanVisuals(scene));continue}
+			let beforeState=this.cleanVisuals(scene);
+			if(plan.target.kind==='ptr'){const old=(before?.ptrs||[]).find(p=>p.label===plan.target.label);const oldTarget=plan.oldTarget??(old?old.target:null);beforeState.ptrs=(beforeState.ptrs||[]).map(p=>p.label===plan.target.label?(old?{...this.cloneScene(old),target:oldTarget,flash:false,red:false}:{...p,target:oldTarget}):p)}
+			if(plan.target.kind==='last')beforeState.lastUid=before?.lastUid??null;
+			if(plan.target.kind==='next'&&plan.target.uid!=null){const old=(before?.nodes||[]).find(n=>n.uid===plan.target.uid);beforeState.nodes=(beforeState.nodes||[]).map(n=>n.uid===plan.target.uid?{...n,next:old?old.next:null}:n)}
+			let assigning=this.flashTarget(this.markRhs(beforeState,plan.source),plan.target);assigning.text=plan.message;out.push(assigning);
+			if(plan.target.kind==='ptr'&&plan.target.label==='p_current'){
+				const finalPtr=(scene.ptrs||[]).find(p=>p.label==='p_current');
+				const oldPtr=(beforeState.ptrs||[]).find(p=>p.label==='p_current');
+				let retargeted=this.cleanVisuals(beforeState);
+				retargeted.ptrs=(retargeted.ptrs||[]).map(p=>p.label==='p_current'&&finalPtr?{...p,target:finalPtr.target,x:oldPtr?.x??p.x,y:oldPtr?.y??p.y,currentLaneY:oldPtr?.currentLaneY??p.currentLaneY}:p);
+				retargeted.text='p_current changes its contained pointer to the node reached through p_current->p_next.';
+				out.push(retargeted);
+			}
+			let updated=this.cleanVisuals(scene);updated.text=plan.target.kind==='next'?'The destination p_next field now stores the new pointer value.':plan.target.kind==='last'?'p_last now stores p_node.':plan.target.label==='p_current'?'p_current now moves to the node previously indicated by p_current->p_next.':(plan.target.label||'The destination pointer')+' now stores the new pointer value.';out.push(updated);
+		}
+		return out;
+	}
 	enqueue(ss) {
 		if (!ss.length) return;
+		ss = this.addRhsTeaching(ss);
 		ss.forEach(s => this.layout(s));
 		const operationScenes = [...(this.scenes.length ? [this.scenes[Math.max(this.index, 0)]] : []), ...ss];
 		this.fit(operationScenes);
@@ -433,14 +485,14 @@ class Engine {
 			this.text(n[k], x + w - 70, y + i * row + row / 2, valueFont, C.red, 'right')
 		});
 		this.rect(x + w - 52, y, 52, h, C.cyan);
-		this.dot(x + w - 26, y + h / 2, (n.danglingNext || n.dangling) ? C.orange : ((n.flashPNext || n.redPNext || this._markLastNextUid === n.uid) ? C.red : C.blue));
+		this.dot(x+w-26,y+h/2,(n.danglingNext||n.dangling)?C.orange:((n.redPNext||this._markLastNextUid===n.uid)?C.red:C.blue));
 		this.text('p_next', x + w - 26, y - 15, '16px monospace');
 		if (n.flashPNext) this.flashCircle(x + w - 26, y + h / 2);
 		if (n.flash) this.flashRect(x - 8, y - 8, w + 16, h + 16);
 		if (n.cross) this.cross(x, y, w, h);
 		c.restore()
 	}
-	auxPointer(p, ns) {
+	auxPointer(p, ns, s) {
 		const c = this.ctx;
 		c.save();
 		c.globalAlpha *= p.alpha ?? 1;
@@ -448,12 +500,12 @@ class Engine {
 		this.rect(p.x, p.y, 60, 58, C.cyan);
 		const target = ns.find(n => n.uid === p.target);
 		const dangling = !!p.forceDangling || (p.target != null && !target && p.targetX != null);
-		const pointerColor = dangling ? C.orange : (p.flash || p.red ? C.red : C.blue);
+		const pointerColor = dangling ? C.orange : ((p.red||(s.redPtrs||[]).includes(p.label))?C.red:C.blue);
 		this.dot(p.x + 30, p.y + 29, pointerColor);
 		if (target) this.arrow(p.x + 30, p.y + 29, target.x, target.y, pointerColor);
 		else if (dangling) this.arrow(p.x + 30, p.y + 29, p.targetX, p.targetY, pointerColor, 0, true);
 		else this.text('NULL', p.x + 30, p.y + 76, '16px monospace', C.blue);
-		if (p.flash) this.flashCircle(p.x + 30, p.y + 29);
+		if (p.flash||(s.flashPtrs||[]).includes(p.label)) this.flashCircle(p.x + 30,p.y + 29);
 		if (p.cross) this.cross(p.x, p.y, 60, 58);
 		c.restore()
 	}
@@ -475,13 +527,13 @@ class Engine {
 		const pLastY = s.pLastBoxY ?? (anchor ? anchor.y - 118 : V.pointerY - 80);
 		this.text('p_last', pLastX - 51, pLastY + 30, '21px monospace', C.black);
 		this.rect(pLastX, pLastY, 62, 58, C.cyan);
-		const pLastColor = s.lastDangling ? C.orange : (s.markLast ? C.red : C.blue);
+		const pLastColor=s.lastDangling?C.orange:(s.redLast?C.red:C.blue);
 		this.dot(pLastX + 31, pLastY + 29, pLastColor);
 		if (last) this.arrow(pLastX + 31, pLastY + 29, last.x, last.y, pLastColor, 0, s.lastDangling);
 		else if (s.lastTarget) this.arrow(pLastX + 31, pLastY + 29, s.lastTarget.x, s.lastTarget.y, pLastColor, 0, s.lastDangling);
 		else this.text('NULL', pLastX + 31, pLastY + 82, '18px monospace', pLastColor);
 		this._markLastNextUid = s.markLastNext ? s.lastUid : null;
-		ns.forEach(n => this.node(n));
+		ns.forEach(n=>this.node({...n,redPNext:(s.redNext||[]).includes(n.uid),flashPNext:s.flashNext===n.uid}));
 		this._markLastNextUid = null;
 		for (const n of ns) {
 			if (n.hideNext) continue;
@@ -496,12 +548,12 @@ class Engine {
 				c.globalAlpha *= n.alpha ?? 1;
 				const dangling = !to;
 				const wrap = tx <= n.x;
-				const pointerColor = dangling ? C.orange : (n.flashPNext || n.redPNext ? C.red : C.blue);
+				const pointerColor=dangling?C.orange:((n.redPNext||(s.redNext||[]).includes(n.uid))?C.red:C.blue);
 				if (!wrap) this.arrow(nx, ny, tx, ty, pointerColor, 0, dangling);
 				else {
           const col = dangling
             ? C.orange
-            : ((n.flashPNext || n.redPNext || (s.markLastNext && n.uid === s.lastUid))
+            : ((n.redPNext || (s.redNext||[]).includes(n.uid))
                 ? C.red
                 : C.blue);
 
@@ -548,7 +600,7 @@ class Engine {
 			}
 		}
 		const ordinaryPtrs = (s.ptrs || []).filter(p => p.label !== 'p_current');
-		ordinaryPtrs.forEach(p => this.auxPointer(p, ns));
+		ordinaryPtrs.forEach(p => this.auxPointer(p, ns, s));
 		(s.scalars || []).forEach(v => {
 			if (v.label === 'size') {
 				const bottomY = ns.length ? Math.max(...ns.map(n => n.y + V.nodeH)) : V.originY + V.nodeH;
@@ -561,7 +613,7 @@ class Engine {
 			} else this.scalar(v)
 		});
 		const currentPtrs = (s.ptrs || []).filter(p => p.label === 'p_current');
-		currentPtrs.forEach(p => this.auxPointer(p, ns));
+		currentPtrs.forEach(p => this.auxPointer(p, ns, s));
 		if (s.copy) {
 			const p = s.copy;
 			const c = this.ctx;
@@ -851,7 +903,6 @@ class App {
 				pLastBoxX: fixedLastX,
 				pLastBoxY: fixedLastY,
 				preserveLinks: true,
-				flashLast: true,
 				pause: true
 			}));
 			ss.push(this.snap('Visualization only: p_last moves smoothly to its final position.', [selfLinked], {
@@ -886,27 +937,21 @@ class App {
 			ss.push(this.snap('p_node->p_next is assigned the old first node; all old links remain unchanged', [...oldLinked, newToFirst], {
 				ptrs: [this.ptr('p_node', n.uid, 0)],
 				lastUid: oldLast,
-				markLast: true,
-				markLastNext: true,
 				preserveLinks: true,
 				pause: true
 			}));
 			const oldLastHighlighted = oldLinked.map(t => t.uid === oldLast ? {
 				...t,
-				flashPNext: true
 			} : t);
 			ss.push(this.snap('The old p_last->p_next field is selected for update; it still points to p_first', [...oldLastHighlighted, newToFirst], {
 				ptrs: [this.ptr('p_node', n.uid, 0)],
 				lastUid: oldLast,
-				markLast: true,
-				markLastNext: true,
 				preserveLinks: true,
 				pause: true
 			}));
 			const linkedOld = oldLinked.map(t => t.uid === oldLast ? {
 				...t,
 				next: n.uid,
-				flashPNext: true
 			} : t);
 			ss.push(this.snap('p_last->p_next is updated to point to the new node', [...linkedOld, newToFirst], {
 				ptrs: [this.ptr('p_node', n.uid, 0)],
@@ -922,7 +967,6 @@ class App {
 				ptrs: [this.ptr('p_node', n.uid, 0)],
 				lastUid: n.uid,
 				preserveLinks: true,
-				flashLast: true,
 				pause: true
 			}))
 		}

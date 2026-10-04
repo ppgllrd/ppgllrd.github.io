@@ -725,7 +725,97 @@
           this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
           this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
         }
+        cloneScene(s) { return JSON.parse(JSON.stringify(s)); }
+        ptrTarget(s, label) { return (s.ptrs || []).find(p => p.label === label)?.target ?? null; }
+        rhsPlan(s, before = null) {
+          const t = s.text || '', ptr = label => ({kind:'ptr', label}), field = name => ({kind:'struct', name}), next = id => ({kind:'next', id}), pnode = () => ({kind:'pnode'});
+          const current = this.ptrTarget(s, 'p_current'), previous = this.ptrTarget(s, 'p_previous'), deleting = this.ptrTarget(s, 'p_delete'), oldCurrent = before ? this.ptrTarget(before, 'p_current') : current, oldPrevious = before ? this.ptrTarget(before, 'p_previous') : previous;
+          if (t === 'The traversal starts at the first node, with no previous node yet' || t === 'The traversal starts at the first node') return {source:field('first'), target:ptr('p_current'), message:'p_first is used to initialize p_current at the first node of the list.'};
+          if (t === 'Function-local pointers are created: the current pointer receives the first-node pointer and the delete pointer starts as no object') return {source:field('first'), target:ptr('p_current'), message:'p_first is used to initialize p_current at the first node of the list.'};
+          if (t === 'The previous pointer is advanced to the current node') return {source:ptr('p_current'), target:ptr('p_previous'), message:'p_current is copied into p_previous so the algorithm remembers the node before the current one.'};
+          if (t === 'The current pointer is advanced to the next node' || t === 'The current pointer advances before the node is freed') return {source:next(oldCurrent !== current ? oldCurrent : current), target:ptr('p_current'), prePointer:'p_current', message:'p_current->p_next is used to advance p_current to the next node.'};
+          if (t === 'The delete pointer moves to the current pointer; the node to free is selected') return {source:ptr('p_current'), target:ptr('p_delete'), message:'p_current is copied into p_delete so the current node can be freed safely.'};
+          if (t === 'A new node is allocated and linked to the former first node') return {source:field('first'), target:{kind:'newNext', id:s.pnode?.target}, constructorNext:true, message:'p_first is used to initialize the p_next field of the new node.'};
+          if (t === 'A new node is allocated and linked to the node that will follow it') return {source:ptr('p_current'), target:{kind:'newNext', id:s.pnode?.target}, constructorNext:true, message:'p_current is used to initialize the p_next field of the new node.'};
+          if (t === 'The new node becomes the first node of the list') return {source:pnode(), target:field('first'), message:'p_node is copied into p_first so the new node becomes the first node of the list.'};
+          if (t === 'The new node becomes both the first and last node' || t === 'The empty list will make the new node both first and last') return {source:pnode(), targets:[field('first'),field('last')], message:'p_node is copied into p_first and p_last because the new node is the only node in the list.'};
+          if (t === 'The former last node now points to the new node' || t === 'The previous node now points to the new node') return {source:pnode(), target:next(t.includes('former') ? s.lastId : previous)};
+          if (t === 'The new node becomes the last node of the list') return {source:pnode(), target:field('last'), message:'p_node is copied into p_last so the new node becomes the last node of the list.'};
+          if (t === 'The first-node pointer is updated to bypass the removed node' || t === 'The first-node pointer is updated to the node after the removed node') return {source:next(current), target:field('first')};
+          if (t === 'The previous node is linked around the node being removed' || t === 'The previous node is linked to the node after the removed node') return {source:next(current), target:next(previous)};
+          if (t === 'The previous node becomes the last node') return {source:ptr('p_previous'), target:field('last'), message:'p_previous is copied into p_last because the previous node is now the last node.'};
+          return null;
+        }
+        markRhs(s, src) {
+          const q=this.cloneScene(s); if(!src) return q;
+          if(src.kind==='ptr') q.redPtrs=[...(q.redPtrs||[]),src.label];
+          else if(src.kind==='struct') q[src.name==='first'?'redPFirst':'redPLast']=true;
+          else if(src.kind==='next' && src.id!=null) q.redPNext=[...(q.redPNext||[]),src.id];
+          else if(src.kind==='pnode') q.redPNode=true;
+          return q;
+        }
+        setDestinationFlash(s,d) {
+          const q=this.cloneScene(s); if(!d) return q;
+          if(d.kind==='ptr') q.flashPtrs=[...(q.flashPtrs||[]),d.label];
+          else if(d.kind==='struct') q[d.name==='first'?'flashPFirst':'flashPLast']=true;
+          else if((d.kind==='next'||d.kind==='newNext')&&d.id!=null) q.flashPNext=d.id;
+          return q;
+        }
+        clearDestinationFlash(s) { const q=this.cloneScene(s); delete q.flashPFirst; delete q.flashPLast; delete q.flashPNext; q.flashPtrs=[]; return q; }
+        rhsName(src) {
+          if (!src) return 'The pointer value';
+          if (src.kind === 'ptr') return src.label;
+          if (src.kind === 'struct') return src.name === 'first' ? 'p_first' : 'p_last';
+          if (src.kind === 'next') {
+            if (src.id == null) return 'p_next';
+            return 'the p_next field used by the algorithm';
+          }
+          if (src.kind === 'pnode') return 'p_node';
+          return 'The pointer value';
+        }
+        targetName(dst) {
+          if (!dst) return 'the destination pointer';
+          if (dst.kind === 'ptr') return dst.label;
+          if (dst.kind === 'struct') return dst.name === 'first' ? 'p_first' : 'p_last';
+          if (dst.kind === 'next') return dst.id == null ? 'p_next' : 'the selected node p_next field';
+          if (dst.kind === 'newNext') return 'the p_next field of the new node';
+          return 'the destination pointer';
+        }
+        rhsMessage(plan) {
+          if (plan.message) return plan.message;
+          const source=this.rhsName(plan.source), targets=(plan.targets||[plan.target]).filter(Boolean).map(d=>this.targetName(d));
+          if (!targets.length) return `${source} is highlighted because its value is about to be used.`;
+          if (targets.length === 1) return `${source} is going to be used to update ${targets[0]}.`;
+          return `${source} is going to be used to update ${targets.slice(0,-1).join(', ')} and ${targets.at(-1)}.`;
+        }
+        addRhsHighlights(snaps) {
+          const out=[];
+          for(let i=0;i<snaps.length;i++) {
+            const scene=snaps[i], before=i ? snaps[i-1] : null, plan=this.rhsPlan(scene,before);
+            if(!plan) { out.push(scene); continue; }
+            let base=this.cloneScene(scene);
+            if(plan.prePointer && before) {
+              const old=(before.ptrs||[]).find(p=>p.label===plan.prePointer);
+              if(old) base.ptrs=(base.ptrs||[]).map(p=>p.label===plan.prePointer?this.cloneScene(old):p);
+            }
+            if(plan.constructorNext && scene.pnode?.target != null) {
+              base.nodes=(base.nodes||[]).map(n=>n.id===scene.pnode.target?{...n,next:null}:n);
+            }
+            let red=this.markRhs(this.clearDestinationFlash(base),plan.source);
+            red.text=this.rhsMessage(plan);
+            out.push(red);
+            let selected=this.markRhs(base,plan.source);
+            for(const d of (plan.targets||[plan.target]).filter(Boolean)) selected=this.setDestinationFlash(selected,d);
+            selected.text=plan.constructorNext?'The p_next field of the new node is selected to receive the highlighted pointer.':scene.text;
+            out.push(selected);
+            let updated=this.markRhs(scene,plan.source);
+            updated.text=plan.constructorNext?'The highlighted pointer has been stored in the p_next field of the new node.':scene.text;
+            out.push(updated);
+          }
+          return out;
+        }
         enqueue(snaps) {
+          snaps = this.addRhsHighlights(snaps);
           snaps.forEach(s => this.layout(s));
           this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
           if (!this.sn.length) {
@@ -1191,7 +1281,7 @@
         renderScene(s) {
           this.lastNodes = s.nodes || [];
           this.drawStructBoxes(s);
-          (s.nodes || []).forEach(n => this.drawNode(n));
+          (s.nodes || []).forEach(n => this.drawNode({...n,redPNext:(s.redPNext||[]).includes(n.id)}));
           if (s.pnode) this.drawPNodeBox(s);
           this.drawStructArrows(s);
           this.drawLinks(s);
@@ -1209,7 +1299,7 @@
             font: VISUAL.fonts.value,
             fill: K.r
           });
-          this.paintDot(x + w + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, K.b);
+          this.paintDot(x + w + w / 2, y + w / 2, VISUAL.node.pointerDotRadius, (n.redPNext ? K.r : K.b));
           if (n.index !== undefined) {
             this.paintText(n.index, x + w - VISUAL.node.indexLabelOffsetX, y - VISUAL.node.indexLabelOffsetY, {
               font: VISUAL.fonts.index,
@@ -1253,7 +1343,7 @@
               const isDanglingStructPointer = r[0] === 'p_first' ?
                 (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.firstTargetX !== undefined && s.firstTargetY !== undefined) :
                 (r[2] !== null && r[2] !== undefined && !this.nodeById(s, r[2]) && s.lastTargetX !== undefined && s.lastTargetY !== undefined);
-              let color = ((r[0] === 'p_last') && s.markPLastArrow) ? K.r : K.b;
+              let color = ((r[0] === 'p_first' && s.redPFirst) || (r[0] === 'p_last' && (s.redPLast || s.markPLastArrow))) ? K.r : K.b;
               this.paintDot(x + w / 2, yy + h / 2, VISUAL.struct.pointerDotRadius, isDanglingStructPointer ? K.d : color);              
             }
         });
@@ -1275,14 +1365,14 @@
             firstY = s.firstTipY ?? (f ? f.y + h / 2 : s.firstTargetY);
           if (firstX !== undefined && firstY !== undefined) {
             const firstAmount = s.pFirstDetourAmount ?? (s.detourPFirst ? 1 : 0);
-            const firstColor = f ? K.b : K.d;
+            const firstColor = s.redPFirst ? K.r : (f ? K.b : K.d);
             if (firstAmount > VISUAL.stroke.detourThreshold) this.detourArrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth, firstAmount);
             else this.arrow(x + w / 2, y + h / 2, firstX, firstY, firstColor, VISUAL.stroke.normalWidth, !f)
           }
           const lastX = s.lastTipX ?? (l ? l.x : s.lastTargetX),
             lastY = s.lastTipY ?? (l ? l.y + this.cell * VISUAL.struct.lastArrowTargetYFactor : s.lastTargetY);
           if (lastX !== undefined && lastY !== undefined) {
-            const lastCol = s.markPLastArrow ? K.r : (l ? K.b : K.d);
+            const lastCol = (s.redPLast || s.markPLastArrow) ? K.r : (l ? K.b : K.d);
             if (((s.nodes && s.nodes.length === 1) || s.straightPLastArrow) && !s.keepCurvedPLastArrow) this.arrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth, !l);
             else this.lastArrow(x + w / 2, y + h + h / 2, lastX, lastY, lastCol, VISUAL.stroke.normalWidth)
           }
@@ -1296,8 +1386,9 @@
               if (tx !== undefined && ty !== undefined) {
                 const p = this.ptr(n),
                   amount = n.detourAmount ?? (n.detourNext ? 1 : 0);
-                if (amount > VISUAL.stroke.detourThreshold) this.detourArrow(p.x, p.y, tx, ty, K.b, VISUAL.stroke.normalWidth, amount);
-                else this.arrow(p.x, p.y, tx, ty, K.b, VISUAL.stroke.normalWidth)
+                const linkColor=(s.redPNext||[]).includes(n.id)?K.r:K.b;
+                if (amount > VISUAL.stroke.detourThreshold) this.detourArrow(p.x, p.y, tx, ty, linkColor, VISUAL.stroke.normalWidth, amount);
+                else this.arrow(p.x, p.y, tx, ty, linkColor, VISUAL.stroke.normalWidth)
               }
             }
           })
@@ -1317,13 +1408,13 @@
             baseline: 'alphabetic'
           });
           this.paintRect(p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c);
-          this.paintDot(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, K.b);
+          this.paintDot(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, VISUAL.pointerBox.dotRadius, s.redPNode ? K.r : K.b);
         }
         drawAuxPointers(s) {
           (s.ptrs || []).forEach(p => {
             const t = this.nodeById(s, p.target);
             const isDanglingAuxPointer = p.target !== null && p.target !== undefined && !t && p.targetX !== undefined && p.targetY !== undefined;
-            const pointerColor = isDanglingAuxPointer ? K.d : K.b;
+            const pointerColor = (s.redPtrs||[]).includes(p.label) ? K.r : (isDanglingAuxPointer ? K.d : K.b);
             this.paintText(p.label, p.x + VISUAL.pointerBox.centerX, p.y - VISUAL.pointerBox.auxLabelYOffset, {
               font: VISUAL.fonts.auxPointerLabel,
               fill: K.k,
@@ -1343,7 +1434,7 @@
             t = this.nodeById(s, p.target);
           const tx = p.tipX ?? (t ? t.x : undefined),
             ty = p.tipY ?? (t ? t.y + this.cell / 2 : undefined);
-          if (tx !== undefined && ty !== undefined) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, tx, ty, K.b, VISUAL.stroke.normalWidth)
+          if (tx !== undefined && ty !== undefined) this.arrow(p.x + VISUAL.pointerBox.centerX, p.y + VISUAL.pointerBox.centerY, tx, ty, s.redPNode ? K.r : K.b, VISUAL.stroke.normalWidth)
         }
         drawOverlays(s) {
           if (s.flashPFirst) this.flashStruct(0);
