@@ -1,5 +1,7 @@
+
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,56 +9,205 @@
     <style>
         :root {
             --bg-color: #ffffff;
-            --panel-bg: #f5f5f5;
-            --border-color: #ddd;
-            
-            /* UI Colors */
-            --btn-insert: #2E7D32; 
-            --btn-delete: #c62828; 
-            --btn-search: #1668BD; 
-            --btn-undo: #6A1B9A;   
+            --panel-bg: #f5f6f8;
+            --panel-alt: #eceff1;
+            --border-color: #d8dee4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --input-bg: #ffffff;
+            --input-border: #9aa4b2;
+
+            --btn-insert: #2E7D32;
+            --btn-delete: #c62828;
+            --btn-search: #1565C0;
+            --btn-undo: #6A1B9A;
             --btn-gray: #546E7A;
             --btn-random: #EF6C00;
+            --btn-step: #37474F;
+        }
+
+        body.dark {
+            --bg-color: #0f1419;
+            --panel-bg: #161b22;
+            --panel-alt: #1f2630;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #9da7b3;
+            --card-bg: rgba(22, 27, 34, 0.94);
+            --input-bg: #0d1117;
+            --input-border: #444c56;
+        }
+
+        * {
+            box-sizing: border-box;
         }
 
         body {
-            margin: 0; padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
-            display: flex; flex-direction: column; 
-            height: 100vh; height: 100dvh; 
-            overflow: hidden; user-select: none;
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            user-select: none;
+            transition: background-color 0.2s, color 0.2s;
         }
 
         header {
-            padding: 10px 20px; background-color: var(--panel-bg);
-            display: flex; flex-direction: column; gap: 10px;
+            padding: 8px 16px;
+            background-color: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
             border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
             flex-shrink: 0;
+            z-index: 10;
         }
 
-        .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .gui { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        
-        h1 { margin: 0; font-size: 1.2rem; color: #222; }
-        
-        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .sub-controls { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; color: #555; vertical-align: middle;}
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gui {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            width: 100%;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .controls,
+        .sub-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .sub-controls {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            gap: 8px;
+        }
+
+        .divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border-color);
+            margin: 0 2px;
+        }
+
+        .field-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"],
+        select {
+            padding: 5px 8px;
+            border-radius: 5px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.84rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
 
         input[type="text"] {
-            padding: 6px; border-radius: 4px; border: 1px solid #999;
-            background: #fff; color: #000; width: 60px; text-align: center; font-weight: bold;
+            width: 118px;
         }
-        input[type="range"] { width: 100px; cursor: pointer; }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--btn-search);
+            box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.2);
+        }
+
+        input[type="text"].input-error {
+            border-color: var(--btn-delete);
+            box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.25);
+        }
+
+        input[type="range"] {
+            width: 85px;
+            cursor: pointer;
+            accent-color: var(--btn-search);
+        }
+
+        .toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            padding: 3px 6px;
+            border-radius: 4px;
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+        }
+
+        .toggle-label input {
+            cursor: pointer;
+            margin: 0;
+        }
 
         button {
-            padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer;
-            font-weight: 600; color: white; transition: filter 0.2s, transform 0.1s;
-            font-size: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+            padding: 6px 11px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: filter 0.15s, transform 0.1s, opacity 0.15s;
+            font-size: 0.82rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+            white-space: nowrap;
         }
-        button:active { transform: scale(0.95); }
-        button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
+
+        button:hover:not(:disabled) {
+            filter: brightness(1.08);
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
 
         .btn-insert { background-color: var(--btn-insert); }
         .btn-delete { background-color: var(--btn-delete); }
@@ -64,1182 +215,2276 @@
         .btn-undo { background-color: var(--btn-undo); }
         .btn-clear { background-color: var(--btn-gray); }
         .btn-random { background-color: var(--btn-random); }
-        .btn-pause { background-color: #455A64; width: 80px;}
-        .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
+        .btn-step { background-color: var(--btn-step); padding: 6px 9px; }
 
-        #canvas-container {
-            flex-grow: 1; position: relative; overflow: hidden;
-            background-color: var(--bg-color);
-            cursor: default; 
-            min-height: 0;
+        .btn-pause {
+            background-color: #455A64;
+            min-width: 72px;
         }
-        canvas { display: block; width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; }
 
-        #legend {
-            position: absolute; top: 20px; left: 20px;
-            background: rgba(255,255,255,0.95); padding: 10px;
-            border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem;
-            pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        .btn-icon {
+            background-color: var(--panel-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            font-size: 0.86rem;
+            padding: 4px 10px;
+            box-shadow: none;
         }
-        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
-        .square { width: 14px; height: 14px; border-radius: 25%; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #1668BD; display:inline-block; }
-        .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
+
+        .btn-help {
+            background-color: #607D8B;
+            font-size: 0.95rem;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .speed-badge {
+            font-family: monospace;
+            font-weight: 700;
+            min-width: 38px;
+            text-align: center;
+            color: var(--text-primary);
+        }
 
         #status-bar {
-            padding: 8px 2px 0px 0px; background-color: var(--panel-bg);
-            font-size: 0.85rem; border-top: 1px solid var(--border-color);
-            display: flex; justify-content: space-between; color: #555;
-            flex-shrink: 0;
+            padding-top: 6px;
+            font-size: 0.84rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
         }
-        #status-text { font-weight: bold; color: #222; }
 
-        #author { 
+        #status-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .status-meta {
+            display: flex;
+            gap: 12px;
+            flex-shrink: 0;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            cursor: default;
+            min-height: 0;
+        }
+
+        canvas {
+            display: block;
             width: 100%;
-            background: #f4f7f6; 
-            font-size: 0.75em; color: #777; text-align: center; line-height: 2.5;
-            border-top: 1px solid #ddd;
-            flex-shrink: 0;
+            height: 100%;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
         }
 
-        /* Tooltip Style */
+        #legend {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: var(--card-bg);
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            backdrop-filter: blur(4px);
+            max-width: 215px;
+            z-index: 5;
+        }
+
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            gap: 12px;
+        }
+
+        #legend.collapsed .legend-header {
+            margin-bottom: 0;
+        }
+
+        #legend.collapsed .legend-body {
+            display: none;
+        }
+
+        .legend-toggle {
+            background: var(--panel-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 0.75rem;
+            box-shadow: none;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .square {
+            width: 14px;
+            height: 14px;
+            border-radius: 25%;
+            flex-shrink: 0;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+        }
+
+        .arrow-icon {
+            font-size: 15px;
+            font-weight: bold;
+            width: 14px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        #camera-controls {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            display: flex;
+            gap: 5px;
+            z-index: 5;
+        }
+
+        #camera-controls button {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            padding: 6px 10px;
+            font-size: 0.85rem;
+        }
+
         #tooltip {
             position: fixed;
             display: none;
-            background: rgba(26, 26, 26, 0.85);
-            color: #fff;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 16px;
+            background: rgba(15, 20, 25, 0.92);
+            color: #ffffff;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.82rem;
             pointer-events: none;
             z-index: 1000;
             white-space: nowrap;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+            line-height: 1.4;
         }
-        .tooltip-item { font-weight: bold; color: #ff6b6b; }
-        .tooltip-hash { font-weight: bold; color: #4fc3f7; }
 
-        /* Modal */
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
-        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .close:hover { color: black; }
-        h2 { color: #2E7D32; margin-top:0; }
-        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
-        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
-        .complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; }
+        .tooltip-item { font-weight: bold; color: #ff8a80; }
+        .tooltip-hash { font-weight: bold; color: #80d8ff; }
 
+        /* Array & Log Drawer */
+        #info-drawer {
+            background: var(--panel-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 8px 16px;
+            display: none;
+            gap: 16px;
+            flex-wrap: wrap;
+            max-height: 170px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            font-size: 0.82rem;
+        }
+
+        #info-drawer.open {
+            display: flex;
+        }
+
+        .drawer-col {
+            flex: 1 1 280px;
+            min-width: 240px;
+        }
+
+        .drawer-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #cell-list {
+            font-family: monospace;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            max-height: 105px;
+            overflow-y: auto;
+            line-height: 1.45;
+        }
+
+        #op-log {
+            margin: 0;
+            padding-left: 18px;
+            max-height: 105px;
+            overflow-y: auto;
+            color: var(--text-secondary);
+            font-family: monospace;
+            font-size: 0.78rem;
+        }
+
+        #op-log li {
+            line-height: 1.4;
+        }
+
+        #author {
+            width: 100%;
+            background: var(--panel-alt);
+            font-size: 0.74em;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 5px 10px;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            background-color: var(--panel-bg);
+            color: var(--text-primary);
+            margin: 4% auto;
+            padding: 20px 24px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 660px;
+            border-radius: 10px;
+            max-height: 84vh;
+            overflow-y: auto;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+        }
+
+        .close {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 26px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
+        }
+
+        h2 { color: #2E7D32; margin-top: 0; }
+        body.dark h2 { color: #66BB6A; }
+        h3 {
+            color: #1565C0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            margin-top: 16px;
+        }
+        body.dark h3 { color: #64B5F6; }
+        .modal p, .modal li { font-size: 0.92rem; line-height: 1.5; }
+
+        .complexity {
+            font-family: monospace;
+            background: var(--panel-alt);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #c62828;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        body.dark .complexity { color: #ff8a80; }
+
+        kbd {
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 8px 10px; }
+            h1 { font-size: 0.98rem; }
+            input[type="text"] { width: 96px; }
+            .divider { display: none; }
+            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; right: 8px; }
+            .status-meta { display: none; }
+        }
     </style>
 </head>
+
 <body>
 
-<header>
-    <div class="header-top">
-        <h1>Linear Probing Hash Table Visualizer</h1>
-        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
-    </div>
-    <div class="gui">
-        <div class="controls">
-            <input type="text" id="inputValue" title="Enter any character" placeholder="#" maxlength="1" onkeydown="if(event.key==='Enter') app.handleInsert()">
-            <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-delete" title="Delete a value" onclick="app.handleDelete()">Delete</button>
-            <button class="btn-search" title="Search for a value" onclick="app.handleSearch()">Search</button>
-            
-            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
-            
-            <button class="btn-random" title="Fill with random characters" onclick="app.handleRandomFill()">Random Fill</button>
-            
-            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
-
-            <button class="btn-undo" title="Undo last operation" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
-            <button class="btn-clear" title="Clear the table" onclick="app.handleClear()">Clear</button>
+    <header>
+        <div class="header-top">
+            <h1>Linear Probing Hash Table Visualizer</h1>
+            <div class="header-actions">
+                <button class="btn-icon" id="btnDrawer" title="Toggle Array &amp; Log">Array &amp; Log</button>
+                <button class="btn-icon" id="btnTheme" title="Toggle Dark / Light Theme">Dark</button>
+                <button class="btn-help" id="btnHelp" title="Help / Algorithms &amp; Shortcuts" aria-label="Help">?</button>
+            </div>
         </div>
-        <div class="sub-controls">
-            <label for="speedSlider">Slowdown:</label>
-            <label title="Slide right to slow down the animation">
-                <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
-            </label>
-            <button class="btn-pause" title="Pause or Resume" onclick="app.togglePause()" id="btnPause">Pause</button>
+
+        <div class="gui">
+            <div class="controls">
+                <input type="text" id="inputValue" placeholder="e.g. A, 42, cat"
+                    title="Enter a key (char, integer, or comma-separated list). Enter = Insert">
+                <button class="btn-insert" id="btnInsert" title="Insert or update key(s)">Insert</button>
+                <button class="btn-delete" id="btnDelete" title="Delete key(s)">Delete</button>
+                <button class="btn-search" id="btnSearch" title="Search key">Search</button>
+
+                <div class="divider"></div>
+
+                <label class="field-label" title="Initial number of cells">Cap
+                    <select id="selInitCap">
+                        <option value="7">7</option>
+                        <option value="11">11</option>
+                        <option value="17" selected>17</option>
+                    </select>
+                </label>
+
+                <label class="field-label" title="Maximum load factor before rehashing">Max &alpha;
+                    <select id="selMaxLF">
+                        <option value="0.5" selected>0.5</option>
+                        <option value="0.75">0.75</option>
+                        <option value="0.9">0.9</option>
+                    </select>
+                </label>
+
+                <label class="field-label" title="Deletion strategy (Java uses Backward Shift by default)">Del
+                    <select id="selDelMode">
+                        <option value="backward" selected>Backward Shift</option>
+                        <option value="rehashCluster">Rehash Cluster</option>
+                    </select>
+                </label>
+
+                <div class="divider"></div>
+
+                <button class="btn-random" id="btnRandom" title="Fill with random keys">Random Fill</button>
+                <label class="toggle-label" title="Run operations instantly without animation">
+                    <input type="checkbox" id="chkInstant"> Instant
+                </label>
+
+                <div class="divider"></div>
+
+                <button class="btn-undo" id="btnUndo" title="Undo last modification (Ctrl+Z)" disabled>Undo</button>
+                <button class="btn-clear" id="btnClear" title="Clear the table">Clear</button>
+            </div>
+
+            <div class="sub-controls">
+                <label for="speedSlider">Speed:</label>
+                <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1"
+                    title="Animation speed multiplier">
+                <span class="speed-badge" id="speedLabel">1.0x</span>
+
+                <button class="btn-step" id="btnStepBack" title="Step Backward (Left Arrow)" disabled>|&lt;</button>
+                <button class="btn-pause" id="btnPause" title="Pause or Resume (Space)" disabled>Pause</button>
+                <button class="btn-step" id="btnStepFwd" title="Step Forward (Right Arrow)" disabled>&gt;|</button>
+                <button class="btn-step" id="btnSkip" title="Skip animation to end" disabled>&gt;&gt;|</button>
+
+                <label class="toggle-label" title="Automatically fit camera on operations">
+                    <input type="checkbox" id="chkAutoFit" checked> Auto-Fit
+                </label>
+            </div>
+        </div>
+
+        <div id="status-bar">
+            <span id="status-text">Ready. Wheel/Pinch to Zoom, Drag to Pan, Hover/Click any key.</span>
+            <div class="status-meta">
+                <span id="step-counter">Step: -</span>
+                <span id="ht-stats">Size: 0 | Cap: 17 | &alpha;: 0.00 | Max Cluster: 0</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="canvas-container">
+        <canvas id="htCanvas"></canvas>
+
+        <div id="legend">
+            <div class="legend-header">
+                <span>Legend</span>
+                <button class="legend-toggle" id="btnToggleLegend" title="Collapse/Expand Legend">−</button>
+            </div>
+            <div class="legend-body">
+                <div class="legend-item"><div class="square" style="background:#99FFFF;"></div><span>Empty / Occupied Cell</span></div>
+                <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div><span>Stored Key</span></div>
+                <div class="legend-item"><div class="square" style="background:#E1BEE7;"></div><span>Probe Check</span></div>
+                <div class="legend-item"><div class="square" style="background:#00E676;"></div><span>Match / Insert Hit</span></div>
+                <div class="legend-item"><div class="square" style="background:#FFCA28; border:1px solid #EF6C00;"></div><span>Updated Key (Duplicate)</span></div>
+                <div class="legend-item"><div class="square" style="background:#D32F2F;"></div><span>Search Miss / Hole</span></div>
+                <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8631;</div><span>Probe Path</span></div>
+                <div class="legend-item"><div class="arrow-icon" style="color:#D50000;">&#8630;</div><span>Backward Shift</span></div>
+                <div class="legend-item"><div class="square" style="background:#FFD700;"></div><span>Rehashing Key</span></div>
+            </div>
+        </div>
+
+        <div id="camera-controls">
+            <button id="btnZoomOut" title="Zoom Out">−</button>
+            <button id="btnFitView" title="Fit Table to Screen">Fit</button>
+            <button id="btnZoomIn" title="Zoom In">+</button>
+        </div>
+
+        <div id="tooltip"></div>
+    </div>
+
+    <div id="info-drawer">
+        <div class="drawer-col">
+            <div class="drawer-title">Cells, Hash &amp; Probe Distance</div>
+            <div id="cell-list">-</div>
+        </div>
+        <div class="drawer-col">
+            <div class="drawer-title">
+                <span>Operation Log</span>
+                <button class="legend-toggle" id="btnClearLog">Clear Log</button>
+            </div>
+            <ol id="op-log"></ol>
         </div>
     </div>
-    <div id="status-bar">
-        <span id="status-text">Ready. Use Mouse/Touch to Pan & Zoom.</span>
+
+    <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <span class="close" id="btnCloseModal">&times;</span>
+            <h2 id="modalTitle">Linear Probing Hash Table</h2>
+
+            <h3>Concept</h3>
+            <p>An open addressing strategy where collisions are resolved by probing linearly: <code>(index + 1) % keys.length</code>. All keys belonging to a probe sequence form a contiguous <strong>cluster</strong> terminated by a <code>null</code> cell.</p>
+
+            <h3>Operations &amp; Complexity (aligned with Java)</h3>
+            <ul>
+                <li><strong>Insert</strong> <span class="complexity">O(1) avg</span> — First checks <code>loadFactor() &gt; maxLoadFactor</code> (rehashing to next prime &gt; <code>2 * capacity</code> if exceeded, <span class="complexity">O(n)</span>). Then calls <code>searchIndex(key)</code>: if an empty slot is found, inserts and increments <code>size</code>; if the key already exists, updates <code>keys[index] = key</code> (amber highlight).</li>
+                <li><strong>Search</strong> <span class="complexity">O(1) avg</span> — Probes from <code>hash(key)</code> until the key is found (<strong>Hit</strong>) or a <code>null</code> slot is encountered (<strong>Miss</strong>).</li>
+                <li><strong>Delete (Backward Shift — Java default)</strong> <span class="complexity">O(1) avg</span> — Empties the found slot (hole) and scans forward in the cluster. The first key whose <code>probeDistance(hash, hole) &lt; probeDistance(hash, current)</code> is shifted back into the hole, repeating until a <code>null</code> cell is reached.</li>
+                <li><strong>Delete (Rehash Cluster)</strong> — Alternative mode from <code>deleteByRehashingCluster</code> that clears and re-inserts every subsequent key in the cluster.</li>
+            </ul>
+
+            <h3>Tips &amp; Keyboard Shortcuts</h3>
+            <ul>
+                <li><strong>Batch Insert / Delete:</strong> Enter comma-separated keys (e.g., <code>A, B, 42, cat</code>).</li>
+                <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> Insert, <kbd>Space</kbd> Pause/Resume, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
+            </ul>
+        </div>
     </div>
-</header>
 
-<div id="canvas-container">
-    <canvas id="htCanvas"></canvas>
-    <div id="legend">
-        <div class="legend-item"><div class="square" style="background:#99FFFF;"></div>&nbsp; Cell</div>
-        <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div>&nbsp; Data</div>
-        <div class="legend-item"><div class="square" style="background:#E1BEE7;"></div>&nbsp; Probe Check</div>
-        <div class="legend-item"><div class="square" style="background:#00FF00;"></div>&nbsp; Match/Hit</div>
-        <div class="legend-item"><div class="square" style="background:#D32F2F; border: 2px solid #FF0000; width:12px; height:12px;"></div>&nbsp; Search Miss</div>
-        <div class="legend-item"><div class="dot" style="background:#1668BD;"></div>&nbsp; Null Pointer</div>
-        <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8631;</div>&nbsp; Probe Path</div>
-        <div class="legend-item"><div class="square" style="background:#FFD700;"></div>&nbsp; Rehash</div>
-    </div>
-    <div id="tooltip"></div>
-</div>
+    <script>
+        (() => {
+            'use strict';
 
-<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+            const LIGHT_THEME = {
+                STRUCT_KEYS_BG: '#99FFFF',
+                STRUCT_STATS_BG: '#B0F9B0',
+                CELL_BG: '#99FFFF',
+                CELL_STROKE: '#FFFFFF',
+                DOT: '#1668BD',
+                ARROW_REF: '#1668BD',
+                DATA_BG: '#B0F9B0',
+                TEXT_RED: '#CC0000',
+                TEXT_MAIN: '#1F2328',
+                TEXT_MUTED: '#6B7280',
+                ARROW_PROBE: '#7F00FF',
+                ARROW_SHIFT: '#D50000',
+                MISS_RING: '#D32F2F',
+                MISS_CELL_BG: '#D32F2F',
+                HOLE_BG: '#FFCDD2',
+                HOLE_STROKE: '#D32F2F',
+                HIT_CELL: '#00E676',
+                UPDATE_BG: '#FFCA28',
+                UPDATE_STROKE: '#EF6C00',
+                PROBE_CHECK_BG: '#E1BEE7',
+                HASH_BOX_BG: '#CC99FF',
+                FLY_BG: '#FFD700',
+                HOVER_RING: '#FF6D00'
+            };
 
-<div id="helpModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="app.toggleModal()">&times;</span>
-        <h2>Linear Probing Hash Table</h2>
-        
-        <h3>Concept</h3>
-        <p>An open addressing strategy where collisions are resolved by placing the item in the next open slot in the array. To maintain performance, the <strong>Load Factor</strong> (size/capacity),
-            which indicates the proportion of occupied cells,
-            should generally stay below 0.5.
-        If exceeded, the table is rehashed to a larger size.</p>
+            const DARK_THEME = {
+                ...LIGHT_THEME,
+                STRUCT_KEYS_BG: '#184e5e',
+                STRUCT_STATS_BG: '#245832',
+                CELL_BG: '#184e5e',
+                CELL_STROKE: '#30363d',
+                DOT: '#58A6FF',
+                ARROW_REF: '#58A6FF',
+                DATA_BG: '#245832',
+                TEXT_RED: '#FFFFFF',
+                TEXT_MAIN: '#E6EDF3',
+                TEXT_MUTED: '#9DA7B3',
+                ARROW_PROBE: '#CE93D8',
+                HOLE_BG: '#5c1f24',
+                HOLE_STROKE: '#ff6b6b',
+                PROBE_CHECK_BG: '#6A1B9A',
+                UPDATE_BG: '#FFB300',
+                UPDATE_STROKE: '#FFE082',
+                HASH_BOX_BG: '#6A1B9A',
+                HOVER_RING: '#FFB300'
+            };
 
-        <h3>Operations & Complexity</h3>
-        <ul>
-            <li>
-                <strong>Insert</strong> <span class="complexity">O(1) avg</span><br>
-                Computes <code>hash(key)</code>. If the cell is occupied (Collision), it probes linearly (<code>index + 1</code>) until a free cell is found.
-                <br><em>Note: If Load Factor > maxLoadFactor, <strong>Rehashing</strong> occurs (table doubles size to nearest prime, all keys re-inserted), taking <span class="complexity">O(n)</span>.</em>
-            </li>
-            <li>
-                <strong>Search</strong> <span class="complexity">O(1) avg</span><br>
-                Starts at <code>hash(key)</code>. Probes linearly until the key is found (<strong>Hit</strong>) or an empty cell is encountered (<strong>Miss</strong>).
-            </li>
-            <li>
-                <strong>Delete</strong> <span class="complexity">O(1) avg</span><br>
-                Finds and removes the key. Then, it scans the rest of the <strong>cluster</strong> (contiguous block of occupied cells). Any subsequent keys in the cluster must be <strong>re-inserted</strong> to ensure they remain reachable from their original hash index.
-            </li>
-        </ul>
-    </div>
-</div>
+            let COLORS = LIGHT_THEME;
 
-<script>
-const COLORS = {
-    STRUCT_KEYS_BG: '#99FFFF',  STRUCT_STATS_BG: '#B0F9B0', 
-    CELL_BG: '#99FFFF', CELL_STROKE: '#FFFFFF', 
-    DOT: '#1668BD', ARROW_REF: '#1668BD',   
-    DATA_BG: '#B0F9B0', TEXT_RED: '#CC0000',    
-    ARROW_PROBE: '#7F00FF', MISS_RING: '#D32F2F',   
-    MISS_CELL_BG: '#D32F2F', HIT_CELL: '#00FF00',    
-    PROBE_CHECK_BG: '#E1BEE7', HASH_BOX_BG: '#CC99FF'
-};
-
-function isPrime(num) {
-    if (num <= 1) return false;
-    if (num <= 3) return true;
-    if (num % 2 === 0 || num % 3 === 0) return false;
-    for (let i = 5; i * i <= num; i += 6) {
-        if (num % i === 0 || num % (i + 2) === 0) return false;
-    }
-    return true;
-}
-
-function nextPrime(num) {
-    if (num <= 1) return 2;
-    let prime = num;
-    while (true) {
-        prime++;
-        if (isPrime(prime)) return prime;
-    }
-}
-
-class LinearProbingHashTable {
-    constructor(capacity = 17) { 
-        this.capacity = capacity;
-        this.table = new Array(capacity).fill(null);
-        this.size = 0;
-        this.maxLoadFactor = 0.5;
-        this.history = [];
-        this.probePath = [];
-    }
-
-    saveToHistory() {
-        const state = {
-            table: [...this.table],
-            size: this.size,
-            capacity: this.capacity,
-            maxLoadFactor: this.maxLoadFactor
-        };
-        this.history.push(state);
-        if (this.history.length > 20) this.history.shift();
-    }
-
-    restoreFromHistory() {
-        if (this.history.length === 0) return null;
-        const state = this.history.pop();
-        this.table = state.table;
-        this.size = state.size;
-        this.capacity = state.capacity;
-        this.maxLoadFactor = state.maxLoadFactor;
-        return this;
-    }
-
-    hash(key) {
-        const code = key.charCodeAt(0);
-        return code % this.capacity;
-    }
-
-    getSnapshotData() {
-        return {
-            table: [...this.table],
-            size: this.size,
-            capacity: this.capacity,
-            maxLoadFactor: this.maxLoadFactor
-        };
-    }
-
-    resetProbePath() { this.probePath = []; }
-
-    performInsertLogic(key, recordSnapshot) {
-        let idx = this.hash(key);
-        let startIdx = idx;
-        let initialIdx = idx; 
-        
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Hash: '${key}' -> ${idx}`,
-            hashCalc: { key: key, hash: idx },
-            probeArrows: [...this.probePath],
-            startProbeIdx: initialIdx
-        });
-
-        while (this.table[idx] !== null) {
-            if (this.table[idx] === key) {
-                recordSnapshot(this.getSnapshotData(), { 
-                    text: `Key '${key}' exists.`, highlightIdx: idx, hit: true,
-                    hashCalc: { key: key, hash: initialIdx },
-                    probeArrows: [...this.probePath], startProbeIdx: initialIdx
-                });
-                return;
-            }
-            recordSnapshot(this.getSnapshotData(), { 
-                text: `Collision at ${idx}. Probing...`, highlightIdx: idx, probeCheck: true, 
-                hashCalc: { key: key, hash: initialIdx },
-                probeArrows: [...this.probePath], startProbeIdx: initialIdx
-            });
-
-            const nextIdx = (idx + 1) % this.capacity;
-            this.probePath.push({ from: idx, to: nextIdx });
-            idx = nextIdx;
-            if (idx === startIdx) return; 
-        }
-
-        this.table[idx] = key;
-        this.size++;
-        
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Inserted '${key}' at ${idx}.`, highlightIdx: idx, hit: true,
-            hashCalc: { key: key, hash: initialIdx },
-            probeArrows: [...this.probePath], startProbeIdx: initialIdx
-        });
-    }
-
-    insert(key, recordSnapshot) {
-        this.saveToHistory();
-        if ((this.size + 1) / this.capacity > this.maxLoadFactor) {
-            this.rehash(recordSnapshot);
-        }
-        this.resetProbePath();
-        this.performInsertLogic(key, recordSnapshot);
-        this.cleanUp(recordSnapshot);
-    }
-
-    rehash(recordSnapshot) {
-        const oldTable = [...this.table];
-        const oldCapacity = this.capacity;
-        this.capacity = nextPrime(this.capacity * 2);
-        this.table = new Array(this.capacity).fill(null);
-        this.size = 0;
-        
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Load Factor > ${this.maxLoadFactor}. Rehashing...`,
-            rehashMode: true, phase: 'SETUP',
-            oldTable: oldTable, oldCapacity: oldCapacity, processedIndices: [] 
-        });
-
-        const processedIndices = [];
-        for(let i=0; i<oldCapacity; i++) {
-            if(oldTable[i] !== null) {
-                const key = oldTable[i];
-                let newIdx = this.hash(key);
-                while(this.table[newIdx] !== null) {
-                    newIdx = (newIdx + 1) % this.capacity;
+            function isPrime(num) {
+                if (num <= 1) return false;
+                if (num <= 3) return true;
+                if (num % 2 === 0 || num % 3 === 0) return false;
+                for (let i = 5; i * i <= num; i += 6) {
+                    if (num % i === 0 || num % (i + 2) === 0) return false;
                 }
-                this.table[newIdx] = key;
-                this.size++;
-
-                recordSnapshot(this.getSnapshotData(), {
-                    text: `Moving '${key}' from index ${i} to ${newIdx}...`,
-                    rehashMode: true, phase: 'FLYING',
-                    oldTable: oldTable, oldCapacity: oldCapacity,
-                    processedIndices: [...processedIndices],
-                    flyingNode: { key: key, fromIdx: i, toIdx: newIdx }
-                });
-                processedIndices.push(i);
-            }
-        }
-        this.resetProbePath();
-        recordSnapshot(this.getSnapshotData(), { text: `Rehashing complete. New capacity: ${this.capacity}`, isCleanup: true });
-    }
-
-    search(key, recordSnapshot) {
-        this.resetProbePath();
-        let idx = this.hash(key);
-        let initialIdx = idx;
-        let steps = 0;
-
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Searching '${key}'. Hash: ${idx}`, 
-            hashCalc: { key: key, hash: idx },
-            probeArrows: [], startProbeIdx: initialIdx
-        });
-
-        while (this.table[idx] !== null) {
-            if (this.table[idx] === key) {
-                recordSnapshot(this.getSnapshotData(), { 
-                    text: `Found '${key}' at ${idx}.`, highlightIdx: idx, hit: true, 
-                    hashCalc: { key: key, hash: initialIdx },
-                    probeArrows: [...this.probePath], startProbeIdx: initialIdx
-                });
-                this.cleanUp(recordSnapshot);
-                return;
-            }
-            recordSnapshot(this.getSnapshotData(), { 
-                text: `Probing... (checking ${idx})`, highlightIdx: idx, probeCheck: true, 
-                hashCalc: { key: key, hash: initialIdx },
-                probeArrows: [...this.probePath], startProbeIdx: initialIdx
-            });
-
-            const nextIdx = (idx + 1) % this.capacity;
-            this.probePath.push({ from: idx, to: nextIdx });
-            idx = nextIdx;
-            steps++;
-            if (steps >= this.capacity) break;
-        }
-
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Index ${idx} is empty. Key '${key}' NOT found.`, highlightIdx: idx, miss: true, 
-            hashCalc: { key: key, hash: initialIdx },
-            probeArrows: [...this.probePath], startProbeIdx: initialIdx
-        });
-        this.cleanUp(recordSnapshot);
-    }
-
-    delete(key, recordSnapshot) {
-        this.saveToHistory();
-        this.resetProbePath();
-        let idx = this.hash(key);
-        let initialIdx = idx;
-        let steps = 0;
-
-        let foundIndex = -1;
-        while (this.table[idx] !== null) {
-            if (this.table[idx] === key) {
-                foundIndex = idx;
-                break;
-            }
-            recordSnapshot(this.getSnapshotData(), { 
-                text: `Checking ${idx}...`, highlightIdx: idx, probeCheck: true, 
-                hashCalc: { key: key, hash: initialIdx },
-                probeArrows: [...this.probePath], startProbeIdx: initialIdx
-            });
-            const nextIdx = (idx + 1) % this.capacity;
-            this.probePath.push({ from: idx, to: nextIdx });
-            idx = nextIdx;
-            steps++;
-            if (steps >= this.capacity) break;
-        }
-
-        if (foundIndex === -1) {
-            recordSnapshot(this.getSnapshotData(), { 
-                text: `Key '${key}' not found.`, highlightIdx: idx, miss: true, 
-                hashCalc: { key: key, hash: initialIdx },
-                probeArrows: [...this.probePath], startProbeIdx: initialIdx
-            });
-            this.cleanUp(recordSnapshot);
-            return;
-        }
-
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Found '${key}'. Removing...`, highlightIdx: foundIndex, hit: true, 
-            hashCalc: { key: key, hash: initialIdx },
-            probeArrows: [...this.probePath], startProbeIdx: initialIdx
-        });
-        
-        this.table[foundIndex] = null;
-        this.size--;
-        this.resetProbePath(); 
-
-        idx = (foundIndex + 1) % this.capacity;
-        while (this.table[idx] !== null) {
-            let keyToReinsert = this.table[idx];
-            this.table[idx] = null;
-            this.size--; 
-            let rehashIdx = this.hash(keyToReinsert);
-            
-            recordSnapshot(this.getSnapshotData(), { 
-                text: `Re-inserting '${keyToReinsert}' (was at ${idx}). New start: ${rehashIdx}`, 
-                highlightIdx: idx, hashCalc: { key: keyToReinsert, hash: rehashIdx }, startProbeIdx: rehashIdx 
-            });
-
-            let curr = rehashIdx;
-            let path = [];
-            while (this.table[curr] !== null) {
-                let next = (curr + 1) % this.capacity;
-                path.push({from: curr, to: next});
-                curr = next;
-            }
-            this.table[curr] = keyToReinsert;
-            this.size++;
-            
-            recordSnapshot(this.getSnapshotData(), { 
-                text: `Moved '${keyToReinsert}' to ${curr}.`, highlightIdx: curr, hit: true,
-                hashCalc: { key: keyToReinsert, hash: rehashIdx },
-                probeArrows: path, startProbeIdx: rehashIdx
-            });
-            idx = (idx + 1) % this.capacity;
-        }
-        recordSnapshot(this.getSnapshotData(), { text: "Deletion complete." });
-        this.cleanUp(recordSnapshot);
-    }
-    cleanUp(recordSnapshot) {
-        recordSnapshot(this.getSnapshotData(), { text: 'Ready.', probeArrows: [], isCleanup: true });
-    }
-}
-
-class Visualizer {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
-        this.boxSize = 40;
-        
-        this.snapshots = [];
-        this.currentSnapshotIndex = -1;
-        this.state = 'IDLE';
-        this.isPaused = false;
-        this.morphProgress = 0;
-        this.baseSpeed = 0.1;
-        this.currentSpeedFactor = 1;
-        this.pauseTimer = 0;
-        
-        // Camera System
-        this.camera = { x: 0, y: 0, scale: 1, targetX: 0, targetY: 0, targetScale: 1 };
-        this.isDragging = false;
-        this.dragStart = { x: 0, y: 0 };
-        this.initialCamera = { x: 0, y: 0 };
-        this.initialPinchDist = 0;
-        this.initialScale = 1;
-        this.hoveredItem = null;
-        
-        // Events
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        
-        this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
-        this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
-        this.canvas.addEventListener('mouseup', e => this.onMouseUp(e));
-        this.canvas.addEventListener('mouseleave', e => this.onMouseUp(e));
-        this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
-        this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
-        this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
-        this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
-
-        window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
-        this.lastTime = 0;
-        requestAnimationFrame(t => this.loop(t));
-    }
-
-    resize() {
-        const container = document.getElementById('canvas-container');
-        this.canvas.width = container.offsetWidth;
-        this.canvas.height = container.offsetHeight;
-        if(this.snapshots.length > 0 && this.currentSnapshotIndex >= 0) {
-            this.fitCameraToSnapshot(this.snapshots[this.currentSnapshotIndex]);
-        }
-    }
-
-    setSpeed(val) { this.currentSpeedFactor = 1 / val; }
-    togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
-
-    enqueueOperation(snapshots) {
-        this.snapshots.push(...snapshots);
-        if (this.state === 'IDLE' && this.snapshots.length > 0) {
-            if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
-            this.state = 'MORPH';
-            
-            // Auto fit camera on new operations, specially rehashes
-            const nextSnap = this.snapshots[this.currentSnapshotIndex];
-            if (nextSnap.meta && nextSnap.meta.rehashMode) {
-                 this.fitCameraToSnapshot(nextSnap);
-            }
-        }
-    }
-
-    loop(timestamp) {
-        if (!this.lastTime) this.lastTime = timestamp;
-        const dt = (timestamp - this.lastTime) / 1000;
-        this.lastTime = timestamp;
-
-        // Smooth Camera
-        const camFactor = 1 - Math.exp(-10 * dt);
-        this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
-        this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
-        this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
-
-        if (!this.isPaused) this.update();
-        this.draw();
-        requestAnimationFrame(t => this.loop(t));
-    }
-
-    update() {
-        if (this.state === 'MORPH') {
-            const snap = this.snapshots[this.currentSnapshotIndex];
-            
-            let moveSpeedModifier = 1.0;
-
-            if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') {
-                moveSpeedModifier = 0.15; // <--- Ajusta esto: 0.15 es MUY lento, 0.5 es medio lento.
+                return true;
             }
 
-            this.morphProgress += this.baseSpeed * this.currentSpeedFactor * moveSpeedModifier;
+            function nextPrime(num) {
+                if (num <= 1) return 2;
+                let p = num;
+                while (!isPrime(++p));
+                return p;
+            }
 
-            if (this.morphProgress >= 1) {
-                this.morphProgress = 1;
-                this.state = 'WAITING';
-                
-                this.pauseTimer = 10 / this.currentSpeedFactor; 
-                
-                if (snap.meta && snap.meta.pause) this.pauseTimer = 60; 
-                if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') {
-                    this.pauseTimer = 10 / this.currentSpeedFactor; 
+            class LinearProbingHashTable {
+                constructor(capacity = 17, maxLoadFactor = 0.5) {
+                    this.capacity = capacity;
+                    this.table = new Array(capacity).fill(null);
+                    this.size = 0;
+                    this.maxLoadFactor = maxLoadFactor;
+                    this.history = [];
+                    this.probePath = [];
+                }
+
+                saveToHistory() {
+                    this.history.push({
+                        table: [...this.table],
+                        size: this.size,
+                        capacity: this.capacity,
+                        maxLoadFactor: this.maxLoadFactor
+                    });
+                    if (this.history.length > 25) this.history.shift();
+                }
+
+                discardLastHistory() {
+                    if (this.history.length > 0) this.history.pop();
+                }
+
+                restoreFromHistory() {
+                    if (this.history.length === 0) return null;
+                    const state = this.history.pop();
+                    this.table = state.table;
+                    this.size = state.size;
+                    this.capacity = state.capacity;
+                    this.maxLoadFactor = state.maxLoadFactor;
+                    return this;
+                }
+
+                loadFactor() {
+                    return this.size / this.capacity;
+                }
+
+                advance(index) {
+                    return (index + 1) % this.capacity;
+                }
+
+                hashDetails(key, cap = this.capacity) {
+                    if (/^-?\d+$/.test(key)) {
+                        const n = parseInt(key, 10) | 0;
+                        const idx = (n & 0x7fffffff) % cap;
+                        return { idx, desc: `${n} mod ${cap} = ${idx}` };
+                    }
+                    if (key.length === 1) {
+                        const code = key.charCodeAt(0);
+                        const idx = (code & 0x7fffffff) % cap;
+                        return { idx, desc: `ASCII('${key}')=${code} mod ${cap} = ${idx}` };
+                    }
+                    let h = 0;
+                    for (let i = 0; i < key.length; i++) {
+                        h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
+                    }
+                    const idx = (h & 0x7fffffff) % cap;
+                    return { idx, desc: `hashCode("${key}")=${h} mod ${cap} = ${idx}` };
+                }
+
+                hash(key) {
+                    return this.hashDetails(key).idx;
+                }
+
+                probeDistance(hashValue, index) {
+                    const dist = (index - hashValue) % this.capacity;
+                    return dist < 0 ? dist + this.capacity : dist;
+                }
+
+                getMaxCluster() {
+                    if (this.size === 0) return 0;
+                    if (this.size === this.capacity) return this.capacity;
+                    const firstNull = this.table.indexOf(null);
+                    let maxRun = 0, run = 0;
+                    for (let offset = 1; offset <= this.capacity; offset++) {
+                        const idx = (firstNull + offset) % this.capacity;
+                        if (this.table[idx] !== null) {
+                            run++;
+                            if (run > maxRun) maxRun = run;
+                        } else {
+                            run = 0;
+                        }
+                    }
+                    return maxRun;
+                }
+
+                getSnapshotData() {
+                    return {
+                        table: [...this.table],
+                        size: this.size,
+                        capacity: this.capacity,
+                        maxLoadFactor: this.maxLoadFactor
+                    };
+                }
+
+                resetProbePath() { this.probePath = []; }
+
+                insert(key, recordSnapshot, recordHistory = true) {
+                    if (recordHistory) this.saveToHistory();
+
+                    // Matches Java LinearProbingHashTable.insert:
+                    // 1) Check loadFactor() > maxLoadFactor BEFORE searchIndex(key)
+                    let rehashed = false;
+                    if (this.loadFactor() > this.maxLoadFactor) {
+                        this.rehash(recordSnapshot);
+                        rehashed = true;
+                    }
+
+                    this.resetProbePath();
+                    const { idx: initialIdx, desc } = this.hashDetails(key);
+                    let idx = initialIdx;
+                    let steps = 0;
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Hash: ${desc}`,
+                        hashCalc: { key, hash: initialIdx },
+                        probeArrows: [],
+                        startProbeIdx: initialIdx
+                    });
+
+                    while (this.table[idx] !== null) {
+                        if (this.table[idx] === key) {
+                            // Java: keys[index] = key; (replaces/updates existing key, size unchanged)
+                            this.table[idx] = key;
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Key '${key}' found at ${idx}: updating keys[${idx}] = '${key}' (size stays ${this.size}).`,
+                                highlightIdx: idx,
+                                update: true,
+                                hashCalc: { key, hash: initialIdx },
+                                probeArrows: [...this.probePath],
+                                startProbeIdx: initialIdx,
+                                pause: true
+                            });
+                            if (recordHistory && !rehashed) this.discardLastHistory();
+                            this.cleanUp(recordSnapshot, `Updated '${key}'. Ready.`);
+                            return true;
+                        }
+
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Collision at ${idx} ('${this.table[idx]}'). Probing next...`,
+                            highlightIdx: idx,
+                            probeCheck: true,
+                            hashCalc: { key, hash: initialIdx },
+                            probeArrows: [...this.probePath],
+                            startProbeIdx: initialIdx
+                        });
+
+                        const nextIdx = this.advance(idx);
+                        this.probePath.push({ from: idx, to: nextIdx });
+                        idx = nextIdx;
+                        steps++;
+                        if (steps >= this.capacity) {
+                            // Full table safety fallback (should not happen with maxLoadFactor < 1)
+                            this.rehash(recordSnapshot);
+                            return this.insert(key, recordSnapshot, false);
+                        }
+                    }
+
+                    this.table[idx] = key;
+                    this.size++;
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Inserted '${key}' at index ${idx}.`,
+                        highlightIdx: idx,
+                        hit: true,
+                        hashCalc: { key, hash: initialIdx },
+                        probeArrows: [...this.probePath],
+                        startProbeIdx: initialIdx,
+                        pause: true
+                    });
+
+                    this.cleanUp(recordSnapshot, `Inserted '${key}'. Ready.`);
+                    return true;
+                }
+
+                rehash(recordSnapshot) {
+                    const oldTable = [...this.table];
+                    const oldCapacity = this.capacity;
+                    this.capacity = nextPrime(this.capacity * 2);
+                    this.table = new Array(this.capacity).fill(null);
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `loadFactor (${(this.size / oldCapacity).toFixed(2)}) > ${this.maxLoadFactor}. Rehashing ${oldCapacity} -> ${this.capacity}...`,
+                        rehashMode: true,
+                        phase: 'SETUP',
+                        oldTable,
+                        oldCapacity,
+                        processedIndices: [],
+                        pause: true
+                    });
+
+                    const processedIndices = [];
+                    for (let i = 0; i < oldCapacity; i++) {
+                        if (oldTable[i] !== null) {
+                            const key = oldTable[i];
+                            let newIdx = this.hash(key);
+                            while (this.table[newIdx] !== null) {
+                                newIdx = this.advance(newIdx);
+                            }
+                            this.table[newIdx] = key;
+
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Rehashing '${key}': ${i} -> ${newIdx}`,
+                                rehashMode: true,
+                                phase: 'FLYING',
+                                oldTable,
+                                oldCapacity,
+                                processedIndices: [...processedIndices],
+                                flyingNode: { key, fromIdx: i, toIdx: newIdx }
+                            });
+                            processedIndices.push(i);
+                        }
+                    }
+
+                    this.resetProbePath();
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Rehashing complete. New capacity: ${this.capacity}.`,
+                        isCleanup: true,
+                        pause: true
+                    });
+                }
+
+                search(key, recordSnapshot) {
+                    this.resetProbePath();
+                    const { idx: initialIdx, desc } = this.hashDetails(key);
+                    let idx = initialIdx;
+                    let steps = 0;
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Searching '${key}'. Hash: ${desc}`,
+                        hashCalc: { key, hash: initialIdx },
+                        probeArrows: [],
+                        startProbeIdx: initialIdx
+                    });
+
+                    while (this.table[idx] !== null) {
+                        if (this.table[idx] === key) {
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Found '${key}' at index ${idx} (probe dist = ${this.probeDistance(initialIdx, idx)}).`,
+                                highlightIdx: idx,
+                                hit: true,
+                                hashCalc: { key, hash: initialIdx },
+                                probeArrows: [...this.probePath],
+                                startProbeIdx: initialIdx,
+                                pause: true
+                            });
+                            this.cleanUp(recordSnapshot, `Found '${key}' at index ${idx}. Ready.`);
+                            return true;
+                        }
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Probing index ${idx} ('${this.table[idx]}')...`,
+                            highlightIdx: idx,
+                            probeCheck: true,
+                            hashCalc: { key, hash: initialIdx },
+                            probeArrows: [...this.probePath],
+                            startProbeIdx: initialIdx
+                        });
+
+                        const nextIdx = this.advance(idx);
+                        this.probePath.push({ from: idx, to: nextIdx });
+                        idx = nextIdx;
+                        steps++;
+                        if (steps >= this.capacity) break;
+                    }
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Index ${idx} is null. Key '${key}' NOT found (Miss).`,
+                        highlightIdx: idx,
+                        miss: true,
+                        hashCalc: { key, hash: initialIdx },
+                        probeArrows: [...this.probePath],
+                        startProbeIdx: initialIdx,
+                        pause: true
+                    });
+                    this.cleanUp(recordSnapshot, `'${key}' not found.`);
+                    return false;
+                }
+
+                delete(key, recordSnapshot, mode = 'backward', recordHistory = true) {
+                    if (recordHistory) this.saveToHistory();
+                    this.resetProbePath();
+
+                    const { idx: initialIdx, desc } = this.hashDetails(key);
+                    let idx = initialIdx;
+                    let steps = 0;
+                    let foundIndex = -1;
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Searching '${key}' to delete. Hash: ${desc}`,
+                        hashCalc: { key, hash: initialIdx },
+                        probeArrows: [],
+                        startProbeIdx: initialIdx
+                    });
+
+                    while (this.table[idx] !== null) {
+                        if (this.table[idx] === key) {
+                            foundIndex = idx;
+                            break;
+                        }
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Checking index ${idx} ('${this.table[idx]}')...`,
+                            highlightIdx: idx,
+                            probeCheck: true,
+                            hashCalc: { key, hash: initialIdx },
+                            probeArrows: [...this.probePath],
+                            startProbeIdx: initialIdx
+                        });
+                        const nextIdx = this.advance(idx);
+                        this.probePath.push({ from: idx, to: nextIdx });
+                        idx = nextIdx;
+                        steps++;
+                        if (steps >= this.capacity) break;
+                    }
+
+                    if (foundIndex === -1) {
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Index ${idx} is null. Key '${key}' not found.`,
+                            highlightIdx: idx,
+                            miss: true,
+                            hashCalc: { key, hash: initialIdx },
+                            probeArrows: [...this.probePath],
+                            startProbeIdx: initialIdx,
+                            pause: true
+                        });
+                        if (recordHistory) this.discardLastHistory();
+                        this.cleanUp(recordSnapshot, `'${key}' not found.`);
+                        return false;
+                    }
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Found '${key}' at index ${foundIndex}. Removing...`,
+                        highlightIdx: foundIndex,
+                        hit: true,
+                        hashCalc: { key, hash: initialIdx },
+                        probeArrows: [...this.probePath],
+                        startProbeIdx: initialIdx,
+                        pause: true
+                    });
+
+                    this.resetProbePath();
+
+                    if (mode === 'backward') {
+                        // Exact Java LinearProbingHashTable.delete(int index) - Backward Shifting
+                        this.size--;
+                        let emptyIndex = foundIndex;
+
+                        while (true) {
+                            this.table[emptyIndex] = null;
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Hole at index ${emptyIndex}. Scanning cluster for keys to shift back...`,
+                                holeIdx: emptyIndex,
+                                pause: true
+                            });
+
+                            let currentIndex = emptyIndex;
+                            let keyToShift = null;
+                            let keyToShiftHash = 0;
+                            let clusterEnded = false;
+
+                            while (true) {
+                                currentIndex = this.advance(currentIndex);
+                                keyToShift = this.table[currentIndex];
+
+                                if (keyToShift === null) {
+                                    recordSnapshot(this.getSnapshotData(), {
+                                        text: `Reached empty cell at ${currentIndex}. Cluster repair complete.`,
+                                        holeIdx: emptyIndex,
+                                        highlightIdx: currentIndex,
+                                        miss: true,
+                                        pause: true
+                                    });
+                                    clusterEnded = true;
+                                    break;
+                                }
+
+                                keyToShiftHash = this.hash(keyToShift);
+                                const dEmpty = this.probeDistance(keyToShiftHash, emptyIndex);
+                                const dCurr = this.probeDistance(keyToShiftHash, currentIndex);
+
+                                if (dEmpty >= dCurr) {
+                                    recordSnapshot(this.getSnapshotData(), {
+                                        text: `'${keyToShift}' (hash=${keyToShiftHash}): dist(hole ${emptyIndex})=${dEmpty} >= dist(cur ${currentIndex})=${dCurr} -> safe, skip.`,
+                                        holeIdx: emptyIndex,
+                                        highlightIdx: currentIndex,
+                                        probeCheck: true,
+                                        hashCalc: { key: keyToShift, hash: keyToShiftHash }
+                                    });
+                                } else {
+                                    recordSnapshot(this.getSnapshotData(), {
+                                        text: `'${keyToShift}' (hash=${keyToShiftHash}): dist(hole ${emptyIndex})=${dEmpty} < dist(cur ${currentIndex})=${dCurr} -> must shift back!`,
+                                        holeIdx: emptyIndex,
+                                        highlightIdx: currentIndex,
+                                        probeCheck: true,
+                                        hashCalc: { key: keyToShift, hash: keyToShiftHash },
+                                        shiftArrow: { from: currentIndex, to: emptyIndex },
+                                        pause: true
+                                    });
+                                    break;
+                                }
+                            }
+
+                            if (clusterEnded) break;
+
+                            this.table[emptyIndex] = keyToShift;
+                            this.table[currentIndex] = null;
+
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Shifted '${keyToShift}' from ${currentIndex} back to ${emptyIndex}.`,
+                                highlightIdx: emptyIndex,
+                                hit: true,
+                                holeIdx: currentIndex,
+                                hashCalc: { key: keyToShift, hash: keyToShiftHash },
+                                pause: true
+                            });
+
+                            emptyIndex = currentIndex;
+                        }
+                    } else {
+                        // Alternative Java private method: deleteByRehashingCluster(int index)
+                        this.table[foundIndex] = null;
+                        this.size--;
+                        let cur = this.advance(foundIndex);
+
+                        while (this.table[cur] !== null) {
+                            const keyToRelocate = this.table[cur];
+                            this.table[cur] = null;
+                            const h = this.hash(keyToRelocate);
+
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Re-inserting '${keyToRelocate}' (was at ${cur}). Hash = ${h}.`,
+                                highlightIdx: cur,
+                                hashCalc: { key: keyToRelocate, hash: h },
+                                startProbeIdx: h
+                            });
+
+                            let dest = h;
+                            const path = [];
+                            while (this.table[dest] !== null) {
+                                const next = this.advance(dest);
+                                path.push({ from: dest, to: next });
+                                dest = next;
+                            }
+                            this.table[dest] = keyToRelocate;
+
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Relocated '${keyToRelocate}' to ${dest}.`,
+                                highlightIdx: dest,
+                                hit: true,
+                                hashCalc: { key: keyToRelocate, hash: h },
+                                probeArrows: path,
+                                startProbeIdx: h,
+                                pause: true
+                            });
+
+                            cur = this.advance(cur);
+                        }
+                    }
+
+                    this.cleanUp(recordSnapshot, `Deleted '${key}'. Ready.`);
+                    return true;
+                }
+
+                cleanUp(recordSnapshot, text = 'Ready.') {
+                    recordSnapshot(this.getSnapshotData(), { text, probeArrows: [], isCleanup: true });
                 }
             }
-        } else if (this.state === 'WAITING') {
-            this.pauseTimer--;
-            if (this.pauseTimer <= 0) {
-                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
-                    const prevSnap = this.snapshots[this.currentSnapshotIndex];
-                    this.currentSnapshotIndex++;
-                    const nextSnap = this.snapshots[this.currentSnapshotIndex];
-                    
+
+            class Visualizer {
+                constructor(canvasId, callbacks = {}) {
+                    this.canvas = document.getElementById(canvasId);
+                    this.ctx = this.canvas.getContext('2d');
+                    this.callbacks = callbacks;
+
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = 800;
+                    this.viewHeight = 600;
+                    this.boxSize = 46;
+
+                    this.snapshots = [];
+                    this.currentSnapshotIndex = 0;
+                    this.state = 'IDLE'; // 'IDLE' | 'CAMERA' | 'MORPH' | 'WAITING'
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 0;
+                    this.baseMorphSpeed = 2.6;
+                    this.speedMultiplier = 1;
+                    this.pauseTimer = 0;
+                    this.autoFit = true;
+
+                    this.camera = { x: 0, y: 0, scale: 1, targetX: 0, targetY: 0, targetScale: 1 };
+                    this.isDragging = false;
+                    this.dragMoved = false;
+                    this.pointerDownItem = null;
+                    this.hoveredItem = null;
+                    this.dragStart = { x: 0, y: 0 };
+                    this.initialCamera = { x: 0, y: 0 };
+                    this.initialPinchDist = 0;
+                    this.initialScale = 1;
+
+                    this.bindEvents();
+                    this.resize();
+                    this.lastTime = 0;
+                    requestAnimationFrame(t => this.loop(t));
+                }
+
+                bindEvents() {
+                    window.addEventListener('resize', () => this.resize());
+                    this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+                    this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+                    this.canvas.addEventListener('mouseup', () => this.onMouseUp());
+                    this.canvas.addEventListener('mouseleave', () => this.onMouseLeave());
+                    this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+                    this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
+                    this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
+                    this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
+                }
+
+                notifyState() {
+                    if (this.callbacks.onStateChange) {
+                        this.callbacks.onStateChange({
+                            state: this.state,
+                            isPaused: this.isPaused,
+                            index: this.currentSnapshotIndex,
+                            total: this.snapshots.length
+                        });
+                    }
+                }
+
+                setStatus(text) {
+                    if (this.callbacks.onStatus) this.callbacks.onStatus(text);
+                }
+
+                resize() {
+                    const container = document.getElementById('canvas-container');
+                    const rect = container.getBoundingClientRect();
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = Math.max(1, rect.width);
+                    this.viewHeight = Math.max(1, rect.height);
+                    this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
+                    this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
+
+                    if (this.snapshots.length > 0) {
+                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                        if (snap) {
+                            this.fitCameraToSnapshot(snap);
+                            this.camera.x = this.camera.targetX;
+                            this.camera.y = this.camera.targetY;
+                            this.camera.scale = this.camera.targetScale;
+                        }
+                    }
+                }
+
+                setSpeed(val) { this.speedMultiplier = val; }
+
+                fitCurrent() {
+                    if (this.snapshots.length === 0) return;
+                    const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                    this.fitCameraToSnapshot(snap);
+                }
+
+                fitCameraToSnapshot(snap) {
+                    const meta = snap.meta || {};
+                    const data = snap.tableData;
+                    let contentW, contentH, centerXOffset = 0;
+
+                    if (meta.rehashMode) {
+                        const oldW = meta.oldCapacity * this.boxSize;
+                        const newW = data.capacity * this.boxSize;
+                        contentW = oldW + 150 + newW;
+                        contentH = 340;
+                    } else {
+                        const arrayW = data.capacity * this.boxSize;
+                        const sidePanelW = 225;
+                        contentW = arrayW + sidePanelW;
+                        contentH = 360;
+                        centerXOffset = -sidePanelW / 2;
+                    }
+
+                    const scale = Math.min(this.viewWidth / (contentW + 70), this.viewHeight / (contentH + 70), 2.2);
+                    this.camera.targetScale = Math.max(0.15, scale);
+                    this.camera.targetX = centerXOffset;
+                    this.camera.targetY = 0;
+                }
+
+                resetWithSnapshot(snap, statusText = 'Ready.') {
+                    this.snapshots = [snap];
+                    this.currentSnapshotIndex = 0;
+                    this.state = 'IDLE';
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 1;
+                    this.pauseTimer = 0;
+                    this.hoveredItem = null;
+                    document.getElementById('tooltip').style.display = 'none';
+                    this.fitCameraToSnapshot(snap);
+                    this.camera.x = this.camera.targetX;
+                    this.camera.y = this.camera.targetY;
+                    this.camera.scale = this.camera.targetScale;
+                    this.setStatus(statusText);
+                    this.notifyState();
+                }
+
+                enqueueOperation(snapshots, instant = false) {
+                    if (!snapshots || snapshots.length === 0) return;
+
+                    this.snapshots = snapshots;
+                    this.currentSnapshotIndex = 0;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.singleStepTarget = null;
+                    this.isPaused = false;
+                    this.hoveredItem = null;
+                    document.getElementById('tooltip').style.display = 'none';
+
+                    if (instant || snapshots.length <= 1) {
+                        this.currentSnapshotIndex = snapshots.length - 1;
+                        this.morphProgress = 1;
+                        this.state = 'IDLE';
+                        const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit) this.fitCameraToSnapshot(last);
+                        this.setStatus(last.meta?.text || 'Ready.');
+                        this.notifyState();
+                        return;
+                    }
+
+                    if (this.autoFit) {
+                        this.fitCameraToSnapshot(snapshots[0]);
+                        this.state = 'CAMERA';
+                    } else {
+                        this.startStep(1);
+                    }
+                    this.notifyState();
+                }
+
+                startStep(index) {
+                    if (index >= this.snapshots.length) {
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        const last = this.snapshots[this.snapshots.length - 1];
+                        this.setStatus(last?.meta?.text || 'Ready.');
+                        this.notifyState();
+                        return;
+                    }
+                    this.currentSnapshotIndex = index;
+                    const snap = this.snapshots[index];
+                    if (this.autoFit) this.fitCameraToSnapshot(snap);
+                    if (snap.meta && snap.meta.text) this.setStatus(snap.meta.text);
                     this.morphProgress = 0;
                     this.state = 'MORPH';
-                    if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
-                    
-                    // Intelligent Camera Fit on layout change (Rehash entry/exit)
-                    const isRehashPrev = prevSnap.meta && prevSnap.meta.rehashMode;
-                    const isRehashNext = nextSnap.meta && nextSnap.meta.rehashMode;
-                    if (isRehashNext && !isRehashPrev) this.fitCameraToSnapshot(nextSnap);
-                    if (!isRehashNext && isRehashPrev) this.fitCameraToSnapshot(nextSnap);
-                    
-                } else {
-                    this.state = 'IDLE';
-                    document.getElementById('status-text').innerText = "Ready.";
+                    this.notifyState();
                 }
-            }
-        }
-    }
 
-    // --- Interaction Handlers ---
-
-    screenToWorld(mx, my) {
-        const w = this.canvas.width, h = this.canvas.height;
-        return {
-            x: this.camera.x + (mx - w/2) / this.camera.scale,
-            y: this.camera.y + (my - h/2) / this.camera.scale
-        };
-    }
-
-    checkHit(mx, my) {
-        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
-        const snap = this.snapshots[this.currentSnapshotIndex];
-        const data = snap.tableData;
-        const meta = snap.meta || {};
-
-        if(meta.rehashMode) return null; 
-
-        const world = this.screenToWorld(mx, my);
-        const cellSize = this.boxSize;
-        const boxW = 30, boxH = 30;
-        
-        // Layout calculation matched to drawStruct
-        const totalW = data.capacity * cellSize;
-        const startX = -totalW / 2; // Centered at 0
-        const dataYStart = 0 + cellSize/2 + 60; // Assuming table at y=0
-
-        for (let i = 0; i < data.capacity; i++) {
-            if (data.table[i] !== null) {
-                const cellCenterX = startX + i * cellSize + cellSize/2;
-                const boxX = cellCenterX - boxW/2;
-                const boxY = dataYStart; // Relative to table center Y=0
-                
-                if (world.x >= boxX && world.x <= boxX + boxW && 
-                    world.y >= boxY && world.y <= boxY + boxH) {
-                    return { index: i, value: data.table[i] };
-                }
-            }
-        }
-        return null;
-    }
-
-    onMouseDown(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        
-        const item = this.checkHit(mx, my);
-        if (item) {
-            document.getElementById('inputValue').value = item.value;
-            // document.getElementById('inputValue').focus();
-            return;
-        }
-
-        this.isDragging = true;
-        this.dragStart = { x: mx, y: my };
-        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
-        this.canvas.style.cursor = 'grabbing';
-    }
-
-    onMouseMove(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-
-        // Tooltip Logic
-        const item = this.checkHit(mx, my);
-        const tooltip = document.getElementById('tooltip');
-        if (item) {
-            this.canvas.style.cursor = 'pointer';
-            const hash = item.value.charCodeAt(0) % app.ht.capacity; 
-            tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.value}</span> is <span class="tooltip-hash">${hash}</span>`;
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 15) + 'px';
-            tooltip.style.top = (e.clientY + 15) + 'px';
-        } else {
-            if(!this.isDragging) this.canvas.style.cursor = 'default';
-            tooltip.style.display = 'none';
-        }
-
-        if (this.isDragging) {
-            const dx = mx - this.dragStart.x;
-            const dy = my - this.dragStart.y;
-            this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
-            this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
-        }
-    }
-
-    onMouseUp(e) {
-        this.isDragging = false;
-        this.canvas.style.cursor = 'default';
-    }
-
-    onWheel(e) {
-        e.preventDefault();
-        const zoomIntensity = 0.001;
-        const scroll = e.deltaY;
-        let newScale = this.camera.targetScale * (1 - scroll * zoomIntensity);
-        newScale = Math.min(Math.max(0.1, newScale), 5);
-
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        const w = this.canvas.width, h = this.canvas.height;
-
-        const worldX = this.camera.targetX + (mx - w / 2) / this.camera.targetScale;
-        const worldY = this.camera.targetY + (my - h / 2) / this.camera.targetScale;
-
-        this.camera.targetScale = newScale;
-        this.camera.targetX = worldX - (mx - w / 2) / newScale;
-        this.camera.targetY = worldY - (my - h / 2) / newScale;
-    }
-
-    getTouchDist(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
-
-    onTouchStart(e) {
-        if (e.touches.length === 1) {
-            const t = e.touches[0];
-            const rect = this.canvas.getBoundingClientRect();
-            const mx = t.clientX - rect.left, my = t.clientY - rect.top;
-            const item = this.checkHit(mx, my);
-            if (item) {
-                document.getElementById('inputValue').value = item.value;
-                // document.getElementById('inputValue').focus();
-                return;
-            }
-            this.isDragging = true;
-            this.dragStart = { x: mx, y: my };
-            this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
-        } else if (e.touches.length === 2) {
-            this.isDragging = false;
-            this.initialPinchDist = this.getTouchDist(e.touches);
-            this.initialScale = this.camera.targetScale;
-        }
-    }
-
-    onTouchMove(e) {
-        e.preventDefault();
-        if (e.touches.length === 1 && this.isDragging) {
-            const t = e.touches[0];
-            const rect = this.canvas.getBoundingClientRect();
-            const mx = t.clientX - rect.left, my = t.clientY - rect.top;
-            const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
-            this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
-            this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
-        } else if (e.touches.length === 2) {
-            const dist = this.getTouchDist(e.touches);
-            if (this.initialPinchDist > 0) {
-                const scaleFactor = dist / this.initialPinchDist;
-                this.camera.targetScale = Math.min(Math.max(0.1, this.initialScale * scaleFactor), 5);
-            }
-        }
-    }
-
-    onTouchEnd(e) { this.isDragging = false; this.initialPinchDist = 0; }
-
-    fitCameraToSnapshot(snap) {
-        const meta = snap.meta || {};
-        const data = snap.tableData;
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        
-        let contentW, contentH;
-        let centerXOffset = 0;
-
-        if (meta.rehashMode) {
-            const oldW = meta.oldCapacity * this.boxSize;
-            const newW = data.capacity * this.boxSize;
-            contentW = oldW + 150 + newW; 
-            contentH = 400;
-        } else {
-            const arrayW = data.capacity * this.boxSize;
-            const sidePanelW = 190; // 130 width + 20 padding
-
-            contentW = arrayW + sidePanelW; 
-            contentH = 350;
-            
-            // Correction logic:
-            // Array center is 0. Left boundary is -arrayW/2 - sidePanelW. Right is arrayW/2.
-            // Midpoint = (-arrayW/2 - sidePanelW + arrayW/2) / 2 = -sidePanelW / 2
-            centerXOffset = -sidePanelW / 2;
-        }
-
-        const scale = Math.min(w / (contentW + 80), h / (contentH + 80), 5.0);
-        
-        this.camera.targetScale = scale;
-        this.camera.targetX = centerXOffset;
-        this.camera.targetY = 0;
-        
-        // Immediate set for initial load
-        if(Math.abs(this.camera.x) < 0.001 && this.camera.scale === 1) {
-            this.camera.x = centerXOffset; this.camera.y = 0; this.camera.scale = scale;
-        }
-    }
-
-    draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        if (this.snapshots.length === 0) return;
-
-        const idx = Math.max(0, this.currentSnapshotIndex);
-        const snap = this.snapshots[idx];
-        const meta = snap.meta || {};
-
-        this.ctx.save();
-        this.ctx.translate(this.canvas.width/2, this.canvas.height/2);
-        this.ctx.scale(this.camera.scale, this.camera.scale);
-        this.ctx.translate(-this.camera.x, -this.camera.y);
-
-        this.drawScene(snap.tableData, meta);
-        this.ctx.restore();
-    }
-
-    drawScene(data, meta) {
-        // Layout Strategy: Center everything around (0,0) world coordinates
-        const baseY = 0;
-        const leftPanelW = 100;
-        
-        if (meta.rehashMode) {
-            // Rehash: Old(Left) -> New(Right). Center is midpoint of gap.
-            const oldW = meta.oldCapacity * this.boxSize;
-            const newW = data.capacity * this.boxSize;
-            const gap = 150;
-            const totalW = oldW + gap + newW;
-            const startX = -totalW / 2;
-            
-            this.drawRehashScene(data, meta, startX, baseY);
-        } else {
-            // Normal: Table centered at 0. Struct panel to left.
-            const totalW = data.capacity * this.boxSize;
-            const startX = -totalW / 2;
-            
-            // Draw Struct Panel (Shifted left of the table)
-            this.drawStruct(startX - leftPanelW - 20, baseY, 80, data, startX);
-            this.drawArray(startX, baseY, this.boxSize, data, meta);
-
-            if (meta.hashCalc) {
-                this.drawHashBox(0, baseY - 120, meta.hashCalc);
-            }
-        }
-    }
-
-        paintRect(x, y, w, h, fill, {
-          stroke = null,
-          lineWidth = 1,
-          alpha = 1,
-          radius = 8
-        } = {}) {
-          const c = this.ctx;
-
-          c.save();
-          c.globalAlpha *= alpha;
-
-          c.beginPath();
-          c.roundRect(x, y, w, h, radius);
-
-          c.fillStyle = fill;
-          c.fill();
-
-          if (stroke) {
-            c.strokeStyle = stroke;
-            c.lineWidth = lineWidth;
-            c.stroke();
-          }
-
-          c.restore();
-        }
-
-
-
-    drawRehashScene(data, meta, startX, baseY) {
-        const ctx = this.ctx;
-        const cellSize = this.boxSize;
-        
-        const oldTableX = startX;
-        const oldW = meta.oldCapacity * cellSize;
-        const gap = 150;
-        const newTableX = oldTableX + oldW + gap;
-
-        // 1. OLD TABLE
-        ctx.fillStyle = '#777'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("Old Table", oldTableX + oldW/2, baseY - 30);
-        
-        const oldTableDisplay = [...meta.oldTable];
-        meta.processedIndices.forEach(idx => oldTableDisplay[idx] = null);
-        if (meta.phase === 'FLYING' && meta.flyingNode) {
-            oldTableDisplay[meta.flyingNode.fromIdx] = null;
-        }
-
-        const dummyOldData = { capacity: meta.oldCapacity, table: oldTableDisplay };
-        this.drawArray(oldTableX, baseY, cellSize, dummyOldData, { isCleanup: true });
-
-        // 2. ARROW
-        const arrowX1 = oldTableX + oldW + 20;
-        const arrowX2 = newTableX - 20;
-        this.drawArrow(arrowX1, baseY + cellSize/2, arrowX2, baseY + cellSize/2, '#555', 15);
-        ctx.fillStyle = '#555'; ctx.font = '12px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("Rehashing", (arrowX1+arrowX2)/2, baseY + cellSize/2 - 10);
-
-        // 3. NEW TABLE
-        ctx.fillStyle = '#2E7D32'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("New Table", newTableX + (data.capacity * cellSize)/2, baseY - 30);
-        
-        let newTableDisplay = [...data.table];
-        if (meta.phase === 'FLYING' && meta.flyingNode) {
-             if (newTableDisplay[meta.flyingNode.toIdx] === meta.flyingNode.key) {
-                 newTableDisplay[meta.flyingNode.toIdx] = null;
-             }
-        }
-        
-        const dummyNewData = { capacity: data.capacity, table: newTableDisplay };
-        this.drawArray(newTableX, baseY, cellSize, dummyNewData, { isCleanup: true });
-
-        // 4. FLYING ANIMATION
-        if (meta.phase === 'FLYING' && meta.flyingNode) {
-            const fNode = meta.flyingNode;
-            const srcX = oldTableX + fNode.fromIdx * cellSize + cellSize/2;
-            const srcY = baseY + cellSize/2 + 60; 
-            const destX = newTableX + fNode.toIdx * cellSize + cellSize/2;
-            const destY = baseY + cellSize/2 + 60;
-
-            const t = this.morphProgress;
-            const ease = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-
-            const currX = srcX + (destX - srcX) * ease;
-            const currY = srcY + (destY - srcY) * ease - (Math.sin(t * Math.PI) * 50); 
-
-            const boxW = 30; const boxH = 30;
-            ctx.fillStyle = '#FFD700'; 
-            ctx.strokeStyle = '#000'; ctx.lineWidth = 1;
-            this.paintRect(currX - boxW/2, currY, boxW, boxH, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
-                  
-            ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center';
-            ctx.fillText(fNode.key, currX, currY + 22);
-        }
-    }
-
-    drawStruct(x, y, w, data, arrowDestX) {
-        const ctx = this.ctx;
-        const h = 35; 
-
-        // Row 1: Keys
-        ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000';
-        ctx.fillText('keys', x - 5, y + 23);
-        ctx.fillStyle = COLORS.STRUCT_KEYS_BG; 
-        ctx.strokeStyle = '#fff'; 
-        this.paintRect(x, y, w, h, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
-
-        const dotX = x + w/2; const dotY = y + h/2;
-        ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2); ctx.fillStyle = COLORS.DOT; ctx.fill();
-        this.drawArrow(dotX, dotY, arrowDestX, dotY, COLORS.ARROW_REF, 10);
-
-        // Row 2: Size
-        ctx.textAlign = 'right'; ctx.fillStyle = '#000'; ctx.fillText('size', x - 5, y + h + 23);
-        ctx.fillStyle = COLORS.STRUCT_STATS_BG; 
-        ctx.strokeStyle = '#fff'; 
-        this.paintRect(x, y + h, w, h, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
-
-        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.fillText(data.size, x + w/2, y + h + 24);
-
-        // Row 3: MaxLoadFactor
-        ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000'; ctx.fillText('maxLoadFactor', x - 5, y + h*2 + 23);
-        ctx.fillStyle = COLORS.STRUCT_STATS_BG; 
-        ctx.strokeStyle = '#fff'; 
-        this.paintRect(x, y + h*2, w, h, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
-
-        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '18px Arial'; ctx.fillText(data.maxLoadFactor, x + w/2, y + h*2 + 24);
-    }
-
-    drawArray(x, y, size, data, meta) {
-        const ctx = this.ctx;
-        const table = data.table;
-
-        for(let i = 0; i < data.capacity; i++) {
-            const cx = x + i * size;
-            const cy = y;
-
-            ctx.fillStyle = '#000'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
-            ctx.fillText(i, cx + size/2, cy - 8);
-
-            let cellColor = COLORS.CELL_BG;
-            if (meta.highlightIdx === i) {
-                if (meta.hit) cellColor = COLORS.HIT_CELL;
-                else if (meta.miss) cellColor = COLORS.MISS_CELL_BG;
-                else if (meta.probeCheck) cellColor = COLORS.PROBE_CHECK_BG;
-            }
-
-            ctx.fillStyle = cellColor; 
-            ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1; 
-            this.paintRect(cx, cy, size, size, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
- 
-            const dotX = cx + size/2; const dotY = cy + size/2;
-            const occupied = table[i] !== null;
-
-            ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2); ctx.fillStyle = COLORS.DOT; ctx.fill();
-
-            if (occupied) {
-                this.drawArrow(dotX, dotY, dotX, dotY + 60, COLORS.ARROW_REF, 10);
-                const boxY = dotY + 60; const boxW = 30; const boxH = 30;
-                let dataColor = COLORS.DATA_BG;
-                if (meta.highlightIdx === i && (meta.hit || meta.probeCheck)) dataColor = cellColor;
-
-                ctx.fillStyle = dataColor; 
-                this.paintRect(dotX - boxW/2, boxY, boxW, boxH, ctx.fillStyle);
- 
-                ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.fillText(table[i], dotX, boxY + 22);
-            } else {
-                ctx.strokeStyle = COLORS.DOT; ctx.lineWidth = 2; ctx.stroke(); 
-            }
-
-            if (meta.highlightIdx === i && meta.miss) {
-                ctx.beginPath(); ctx.arc(dotX, dotY, 12, 0, Math.PI*2);
-                ctx.strokeStyle = COLORS.MISS_RING; ctx.lineWidth = 3; ctx.stroke();
-            }
-        }
-
-        if (!meta.rehashMode) {
-            const arrowY = y - 25; 
-            if (meta.startProbeIdx !== undefined) {
-                 const ax = x + meta.startProbeIdx * size + size/2;
-                 this.drawArrow(ax, arrowY - 30, ax, arrowY, COLORS.ARROW_PROBE, 10);
-            }
-            if (meta.probeArrows) {
-                meta.probeArrows.forEach(arrow => {
-                    const idx1 = arrow.from; const idx2 = arrow.to;
-                    const x1 = x + idx1 * size + 2*size/3; const x2 = x + idx2 * size + size/2;
-                    ctx.strokeStyle = COLORS.ARROW_PROBE; ctx.lineWidth = 3; ctx.beginPath(); ctx.moveTo(x1, arrowY);
-                    
-                    if (Math.abs(idx2 - idx1) > 1 && idx2 < idx1) { // Wraparound
-                        ctx.quadraticCurveTo(x1 + 30, arrowY - 60, x1 + 60, arrowY - 10); ctx.stroke();
-                        ctx.beginPath(); ctx.moveTo(x2 - 30, arrowY - 10);
-                        const cpInX = x2 - 15; const cpInY = arrowY - 40;
-                        ctx.quadraticCurveTo(cpInX, cpInY, x2 - 1, arrowY - 3); ctx.stroke();
-                        const angle = Math.atan2(arrowY - cpInY, x2 - cpInX);
-                        this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
-                    } else {
-                        const midX = (x1 + x2) / 2; const cpY = arrowY - 50;
-                        ctx.quadraticCurveTo(midX, cpY, x2 - 1, arrowY - 3); ctx.stroke();
-                        const angle = Math.atan2(arrowY - cpY, x2 - midX);
-                        this.drawArrowHead(x2, arrowY, angle, COLORS.ARROW_PROBE, 10);
+                togglePause() {
+                    if (this.state === 'IDLE' && this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        return this.isPaused;
                     }
-                });
+                    this.isPaused = !this.isPaused;
+                    if (!this.isPaused) {
+                        this.singleStepTarget = null;
+                        if (this.state === 'IDLE' && this.currentSnapshotIndex < this.snapshots.length - 1) {
+                            this.startStep(this.currentSnapshotIndex + 1);
+                        }
+                    }
+                    this.notifyState();
+                    return this.isPaused;
+                }
+
+                stepForward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+
+                    if (this.state === 'CAMERA') {
+                        this.camera.x = this.camera.targetX;
+                        this.camera.y = this.camera.targetY;
+                        this.camera.scale = this.camera.targetScale;
+                    }
+
+                    if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        this.morphProgress = 1;
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        this.setStatus(this.snapshots[this.currentSnapshotIndex].meta?.text || 'Ready.');
+                        this.notifyState();
+                        return;
+                    }
+
+                    const nextIdx = this.currentSnapshotIndex + 1;
+                    this.singleStepTarget = nextIdx;
+                    this.startStep(nextIdx);
+                }
+
+                stepBackward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+                    this.singleStepTarget = null;
+
+                    if (this.currentSnapshotIndex > 0) {
+                        this.currentSnapshotIndex--;
+                    }
+                    this.morphProgress = 1;
+                    this.state = 'IDLE';
+                    const cur = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit) this.fitCameraToSnapshot(cur);
+                    this.setStatus(cur.meta?.text || `Step ${this.currentSnapshotIndex + 1}`);
+                    this.notifyState();
+                }
+
+                skipToEnd() {
+                    if (this.snapshots.length === 0) return;
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.currentSnapshotIndex = this.snapshots.length - 1;
+                    this.morphProgress = 1;
+                    this.pauseTimer = 0;
+                    this.state = 'IDLE';
+                    const last = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit) this.fitCameraToSnapshot(last);
+                    this.setStatus(last.meta?.text || 'Ready.');
+                    this.notifyState();
+                }
+
+                // --- Interaction ---
+
+                screenToWorld(mx, my) {
+                    return {
+                        x: this.camera.x + (mx - this.viewWidth / 2) / this.camera.scale,
+                        y: this.camera.y + (my - this.viewHeight / 2) / this.camera.scale
+                    };
+                }
+
+                checkHit(mx, my) {
+                    if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
+                    const snap = this.snapshots[this.currentSnapshotIndex];
+                    const data = snap.tableData;
+                    const meta = snap.meta || {};
+                    if (meta.rehashMode) return null;
+
+                    const world = this.screenToWorld(mx, my);
+                    const cellSize = this.boxSize;
+                    const boxW = 36, boxH = 32;
+                    const startX = -(data.capacity * cellSize) / 2;
+                    const dataYStart = cellSize / 2 + 56;
+
+                    for (let i = 0; i < data.capacity; i++) {
+                        if (data.table[i] !== null) {
+                            const cx = startX + i * cellSize + cellSize / 2;
+                            const bx = cx - boxW / 2;
+                            if (world.x >= bx && world.x <= bx + boxW && world.y >= dataYStart && world.y <= dataYStart + boxH) {
+                                const info = this.callbacks.getKeyInfo
+                                    ? this.callbacks.getKeyInfo(data.table[i], i, data.capacity)
+                                    : { hash: i, dist: 0, desc: '' };
+                                return { index: i, value: data.table[i], ...info };
+                            }
+                        }
+                    }
+                    return null;
+                }
+
+                showTooltip(item, clientX, clientY) {
+                    const tooltip = document.getElementById('tooltip');
+                    tooltip.innerHTML = `Key <span class="tooltip-item">'${item.value}'</span> &rarr; <span class="tooltip-hash">${item.desc}</span> (stored at ${item.index}, probe dist = ${item.dist})`;
+                    tooltip.style.display = 'block';
+                    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+                    const left = Math.min(clientX + 14, window.innerWidth - tw - 10);
+                    const top = Math.min(clientY + 14, window.innerHeight - th - 10);
+                    tooltip.style.left = `${Math.max(8, left)}px`;
+                    tooltip.style.top = `${Math.max(8, top)}px`;
+                }
+
+                onMouseDown(e) {
+                    if (e.button !== 0) return;
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+                    this.isDragging = true;
+                    this.dragMoved = false;
+                    this.pointerDownItem = this.checkHit(mx, my);
+                    this.dragStart = { x: mx, y: my };
+                    this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                }
+
+                onMouseMove(e) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+                    if (this.isDragging) {
+                        const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
+
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x - dx / this.camera.scale;
+                            this.camera.targetY = this.initialCamera.y - dy / this.camera.scale;
+                            this.canvas.style.cursor = 'grabbing';
+                            this.hoveredItem = null;
+                            document.getElementById('tooltip').style.display = 'none';
+                            return;
+                        }
+                    }
+
+                    const item = this.checkHit(mx, my);
+                    this.hoveredItem = item;
+                    if (item) {
+                        this.canvas.style.cursor = 'pointer';
+                        this.showTooltip(item, e.clientX, e.clientY);
+                    } else {
+                        this.canvas.style.cursor = 'default';
+                        document.getElementById('tooltip').style.display = 'none';
+                    }
+                }
+
+                onMouseUp() {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownItem) {
+                        if (this.callbacks.onItemClick) this.callbacks.onItemClick(this.pointerDownItem);
+                    }
+                    this.isDragging = false;
+                    this.pointerDownItem = null;
+                    this.canvas.style.cursor = this.hoveredItem ? 'pointer' : 'default';
+                }
+
+                onMouseLeave() {
+                    this.isDragging = false;
+                    this.pointerDownItem = null;
+                    this.hoveredItem = null;
+                    this.canvas.style.cursor = 'default';
+                    document.getElementById('tooltip').style.display = 'none';
+                }
+
+                zoomAt(newScale, anchorX, anchorY) {
+                    newScale = Math.min(Math.max(0.15, newScale), 4.5);
+                    const worldX = this.camera.targetX + (anchorX - this.viewWidth / 2) / this.camera.targetScale;
+                    const worldY = this.camera.targetY + (anchorY - this.viewHeight / 2) / this.camera.targetScale;
+                    this.camera.targetScale = newScale;
+                    this.camera.targetX = worldX - (anchorX - this.viewWidth / 2) / newScale;
+                    this.camera.targetY = worldY - (anchorY - this.viewHeight / 2) / newScale;
+                }
+
+                zoomBy(multiplier) {
+                    this.zoomAt(this.camera.targetScale * multiplier, this.viewWidth / 2, this.viewHeight / 2);
+                }
+
+                onWheel(e) {
+                    e.preventDefault();
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                    const factor = Math.exp(-e.deltaY * 0.0012);
+                    this.zoomAt(this.camera.targetScale * factor, mx, my);
+                }
+
+                getTouchDist(touches) {
+                    return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+                }
+
+                onTouchStart(e) {
+                    if (e.touches.length === 1) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+
+                        this.isDragging = true;
+                        this.dragMoved = false;
+                        this.pointerDownItem = this.checkHit(mx, my);
+                        this.dragStart = { x: mx, y: my };
+                        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                    } else if (e.touches.length === 2) {
+                        this.isDragging = false;
+                        this.pointerDownItem = null;
+                        this.initialPinchDist = this.getTouchDist(e.touches);
+                        this.initialScale = this.camera.targetScale;
+                    }
+                }
+
+                onTouchMove(e) {
+                    e.preventDefault();
+                    document.getElementById('tooltip').style.display = 'none';
+
+                    if (e.touches.length === 1 && this.isDragging) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+                        const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 6) this.dragMoved = true;
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x - dx / this.camera.scale;
+                            this.camera.targetY = this.initialCamera.y - dy / this.camera.scale;
+                        }
+                    } else if (e.touches.length === 2 && this.initialPinchDist > 0) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+                        const midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+                        const scaleFactor = this.getTouchDist(e.touches) / this.initialPinchDist;
+                        this.zoomAt(this.initialScale * scaleFactor, midX, midY);
+                    }
+                }
+
+                onTouchEnd() {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownItem) {
+                        if (this.callbacks.onItemClick) this.callbacks.onItemClick(this.pointerDownItem);
+                    }
+                    this.isDragging = false;
+                    this.pointerDownItem = null;
+                    this.initialPinchDist = 0;
+                }
+
+                // --- LOOP & RENDERING ---
+
+                loop(timestamp) {
+                    if (!this.lastTime) this.lastTime = timestamp;
+                    const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+                    this.lastTime = timestamp;
+
+                    const camFactor = 1 - Math.exp(-10 * dt);
+                    this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
+                    this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
+                    this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
+
+                    const playingSingle = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+
+                    if (!this.isPaused || playingSingle) {
+                        if (this.state === 'CAMERA') {
+                            const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
+                            if (dist < 4 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.04) {
+                                this.startStep(1);
+                            }
+                        } else if (this.state === 'MORPH') {
+                            const snap = this.snapshots[this.currentSnapshotIndex];
+                            const mod = (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') ? 0.55 : 1.0;
+                            this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * mod * dt;
+
+                            if (this.morphProgress >= 1) {
+                                this.morphProgress = 1;
+                                if (playingSingle) {
+                                    this.singleStepTarget = null;
+                                    this.state = 'IDLE';
+                                    this.notifyState();
+                                } else {
+                                    this.state = 'WAITING';
+                                    let waitSec = 0.25 / this.speedMultiplier;
+                                    if (snap.meta && snap.meta.pause) waitSec = 0.72 / this.speedMultiplier;
+                                    if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') waitSec = 0.08 / this.speedMultiplier;
+                                    this.pauseTimer = waitSec;
+                                }
+                            }
+                        } else if (this.state === 'WAITING') {
+                            this.pauseTimer -= dt;
+                            if (this.pauseTimer <= 0) {
+                                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                                    this.startStep(this.currentSnapshotIndex + 1);
+                                } else {
+                                    this.state = 'IDLE';
+                                    this.setStatus('Ready.');
+                                    this.notifyState();
+                                }
+                            }
+                        }
+                    }
+
+                    this.draw();
+                    requestAnimationFrame(t => this.loop(t));
+                }
+
+                draw() {
+                    const ctx = this.ctx;
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    if (this.snapshots.length === 0) return;
+
+                    const idx = Math.min(Math.max(0, this.currentSnapshotIndex), this.snapshots.length - 1);
+                    const snap = this.snapshots[idx];
+                    const meta = snap.meta || {};
+
+                    ctx.save();
+                    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+                    ctx.translate(this.viewWidth / 2, this.viewHeight / 2);
+                    ctx.scale(this.camera.scale, this.camera.scale);
+                    ctx.translate(-this.camera.x, -this.camera.y);
+
+                    this.drawScene(snap.tableData, meta);
+                    ctx.restore();
+                }
+
+                drawScene(data, meta) {
+                    const baseY = 0;
+                    const leftPanelW = 105;
+
+                    if (meta.rehashMode) {
+                        const oldW = meta.oldCapacity * this.boxSize;
+                        const newW = data.capacity * this.boxSize;
+                        const totalW = oldW + 150 + newW;
+                        this.drawRehashScene(data, meta, -totalW / 2, baseY);
+                        return;
+                    }
+
+                    const startX = -(data.capacity * this.boxSize) / 2;
+                    this.drawStruct(startX - leftPanelW - 20, baseY, 72, data, startX);
+                    this.drawArray(startX, baseY, this.boxSize, data, meta);
+
+                    if (meta.hashCalc) {
+                        const fade = meta.isCleanup ? (1 - this.morphProgress) : 1;
+                        if (fade > 0.02) {
+                            this.ctx.save();
+                            this.ctx.globalAlpha = fade;
+                            this.drawHashBox(0, baseY - 132, meta.hashCalc);
+                            this.ctx.restore();
+                        }
+                    }
+                }
+
+                paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1, radius = 7 } = {}) {
+                    const c = this.ctx;
+                    c.save();
+                    c.globalAlpha *= alpha;
+                    c.beginPath();
+                    c.roundRect(x, y, w, h, radius);
+                    c.fillStyle = fill;
+                    c.fill();
+                    if (stroke) {
+                        c.strokeStyle = stroke;
+                        c.lineWidth = lineWidth;
+                        c.stroke();
+                    }
+                    c.restore();
+                }
+
+                drawRehashScene(data, meta, startX, baseY) {
+                    const ctx = this.ctx;
+                    const cellSize = this.boxSize;
+                    const oldTableX = startX;
+                    const oldW = meta.oldCapacity * cellSize;
+                    const newTableX = oldTableX + oldW + 150;
+
+                    ctx.fillStyle = COLORS.TEXT_MUTED;
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Old Table', oldTableX + oldW / 2, baseY - 32);
+
+                    const oldTableDisplay = [...meta.oldTable];
+                    meta.processedIndices.forEach(idx => oldTableDisplay[idx] = null);
+                    if (meta.phase === 'FLYING' && meta.flyingNode) {
+                        oldTableDisplay[meta.flyingNode.fromIdx] = null;
+                    }
+                    this.drawArray(oldTableX, baseY, cellSize, { capacity: meta.oldCapacity, table: oldTableDisplay }, { isCleanup: true });
+
+                    const arrowX1 = oldTableX + oldW + 20;
+                    const arrowX2 = newTableX - 20;
+                    this.drawArrow(arrowX1, baseY + cellSize / 2, arrowX2, baseY + cellSize / 2, COLORS.TEXT_MUTED, 14);
+                    ctx.fillStyle = COLORS.TEXT_MUTED;
+                    ctx.font = '12px Arial';
+                    ctx.fillText('Rehashing', (arrowX1 + arrowX2) / 2, baseY + cellSize / 2 - 12);
+
+                    ctx.fillStyle = '#2E7D32';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.fillText('New Table', newTableX + (data.capacity * cellSize) / 2, baseY - 32);
+
+                    const newTableDisplay = [...data.table];
+                    if (meta.phase === 'FLYING' && meta.flyingNode && newTableDisplay[meta.flyingNode.toIdx] === meta.flyingNode.key) {
+                        newTableDisplay[meta.flyingNode.toIdx] = null;
+                    }
+                    this.drawArray(newTableX, baseY, cellSize, { capacity: data.capacity, table: newTableDisplay }, { isCleanup: true });
+
+                    if (meta.phase === 'FLYING' && meta.flyingNode) {
+                        const fNode = meta.flyingNode;
+                        const srcX = oldTableX + fNode.fromIdx * cellSize + cellSize / 2;
+                        const srcY = baseY + cellSize / 2 + 56;
+                        const destX = newTableX + fNode.toIdx * cellSize + cellSize / 2;
+                        const destY = baseY + cellSize / 2 + 56;
+
+                        const t = this.morphProgress;
+                        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                        const currX = srcX + (destX - srcX) * ease;
+                        const currY = srcY + (destY - srcY) * ease - (Math.sin(t * Math.PI) * 52);
+
+                        const boxW = 36, boxH = 32;
+                        this.paintRect(currX - boxW / 2, currY, boxW, boxH, COLORS.FLY_BG, { stroke: '#222', lineWidth: 1.5 });
+                        const str = String(fNode.key);
+                        const fs = str.length <= 2 ? 19 : str.length === 3 ? 15 : 11;
+                        ctx.fillStyle = '#111111';
+                        ctx.font = `700 ${fs}px "Segoe UI", Arial, sans-serif`;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(str, currX, currY + boxH / 2 + 1);
+                    }
+                }
+
+                drawStruct(x, y, w, data, arrowDestX) {
+                    const ctx = this.ctx;
+                    const h = 36;
+
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '15px monospace';
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.fillText('keys', x - 8, y + h / 2);
+                    this.paintRect(x, y, w, h, COLORS.STRUCT_KEYS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+
+                    const dotX = x + w / 2, dotY = y + h / 2;
+                    ctx.beginPath();
+                    ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = COLORS.DOT;
+                    ctx.fill();
+                    this.drawArrow(dotX, dotY, arrowDestX, dotY, COLORS.ARROW_REF, 10);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = '15px monospace';
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.fillText('size', x - 8, y + h + h / 2);
+                    this.paintRect(x, y + h, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = COLORS.TEXT_RED;
+                    ctx.font = 'bold 20px Arial';
+                    ctx.fillText(data.size, x + w / 2, y + h + h / 2 + 1);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = '14px monospace';
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.fillText('maxLoadFactor', x - 8, y + h * 2 + h / 2);
+                    this.paintRect(x, y + h * 2, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = COLORS.TEXT_RED;
+                    ctx.font = 'bold 18px Arial';
+                    ctx.fillText(data.maxLoadFactor, x + w / 2, y + h * 2 + h / 2 + 1);
+                }
+
+                drawArray(x, y, size, data, meta) {
+                    const ctx = this.ctx;
+                    const table = data.table;
+
+                    for (let i = 0; i < data.capacity; i++) {
+                        const cx = x + i * size;
+                        const cy = y;
+
+                        ctx.fillStyle = COLORS.TEXT_MAIN;
+                        ctx.font = '14px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(i, cx + size / 2, cy - 6);
+
+                        let cellColor = COLORS.CELL_BG;
+                        let cellStroke = COLORS.CELL_STROKE;
+                        let cellStrokeW = 1.5;
+
+                        if (meta.holeIdx === i) {
+                            cellColor = COLORS.HOLE_BG;
+                            cellStroke = COLORS.HOLE_STROKE;
+                            cellStrokeW = 2.5;
+                        }
+                        if (meta.highlightIdx === i) {
+                            if (meta.hit) cellColor = COLORS.HIT_CELL;
+                            else if (meta.update) {
+                                cellColor = COLORS.UPDATE_BG;
+                                cellStroke = COLORS.UPDATE_STROKE;
+                                cellStrokeW = 2.5;
+                            }
+                            else if (meta.miss) cellColor = COLORS.MISS_CELL_BG;
+                            else if (meta.probeCheck) cellColor = COLORS.PROBE_CHECK_BG;
+                        }
+
+                        this.paintRect(cx, cy, size, size, cellColor, { stroke: cellStroke, lineWidth: cellStrokeW });
+
+                        const dotX = cx + size / 2;
+                        const dotY = cy + size / 2;
+                        const occupied = table[i] !== null;
+
+                        ctx.beginPath();
+                        ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = (meta.highlightIdx === i && meta.miss) ? '#FFFFFF' : COLORS.DOT;
+                        ctx.fill();
+
+                        if (occupied) {
+                            this.drawArrow(dotX, dotY, dotX, dotY + 56, COLORS.ARROW_REF, 9);
+                            const boxY = dotY + 56;
+                            const boxW = 36, boxH = 32;
+
+                            let dataColor = COLORS.DATA_BG;
+                            let dataStroke = COLORS.CELL_STROKE;
+                            let dataStrokeW = 1;
+                            let textCol = COLORS.TEXT_RED;
+
+                            if (meta.highlightIdx === i) {
+                                if (meta.hit) { dataColor = COLORS.HIT_CELL; textCol = '#111111'; }
+                                else if (meta.update) {
+                                    dataColor = COLORS.UPDATE_BG;
+                                    dataStroke = COLORS.UPDATE_STROKE;
+                                    dataStrokeW = 2.5;
+                                    textCol = '#111111';
+                                }
+                                else if (meta.probeCheck) {
+                                    dataColor = COLORS.PROBE_CHECK_BG;
+                                    textCol = COLORS === DARK_THEME ? '#FFFFFF' : '#111111';
+                                }
+                            }
+
+                            const isHovered = this.hoveredItem && this.hoveredItem.index === i;
+                            if (isHovered) {
+                                dataStroke = COLORS.HOVER_RING;
+                                dataStrokeW = 2.5;
+                            }
+
+                            this.paintRect(dotX - boxW / 2, boxY, boxW, boxH, dataColor, { stroke: dataStroke, lineWidth: dataStrokeW });
+
+                            const str = String(table[i]);
+                            const fs = str.length <= 2 ? 19 : str.length === 3 ? 15 : str.length === 4 ? 12 : 10;
+                            ctx.fillStyle = textCol;
+                            ctx.font = `700 ${fs}px "Segoe UI", Arial, sans-serif`;
+                            ctx.textAlign = 'center';
+                            ctx.textBaseline = 'middle';
+                            ctx.fillText(str, dotX, boxY + boxH / 2 + 1);
+                        }
+
+                        if (meta.highlightIdx === i && meta.miss) {
+                            ctx.beginPath();
+                            ctx.arc(dotX, dotY, 12, 0, Math.PI * 2);
+                            ctx.strokeStyle = COLORS.MISS_RING;
+                            ctx.lineWidth = 3;
+                            ctx.stroke();
+                        }
+                    }
+
+                    if (!meta.rehashMode) {
+                        const arrowY = y - 24;
+                        if (meta.startProbeIdx !== undefined) {
+                            const ax = x + meta.startProbeIdx * size + size / 2;
+                            this.drawArrow(ax, arrowY - 30, ax, arrowY, COLORS.ARROW_PROBE, 9);
+                        }
+                        if (meta.probeArrows) {
+                            meta.probeArrows.forEach(arrow => {
+                                const idx1 = arrow.from, idx2 = arrow.to;
+                                const x1 = x + idx1 * size + (2 * size) / 3;
+                                const x2 = x + idx2 * size + size / 2;
+                                ctx.strokeStyle = COLORS.ARROW_PROBE;
+                                ctx.lineWidth = 3;
+                                ctx.beginPath();
+                                ctx.moveTo(x1, arrowY);
+
+                                if (Math.abs(idx2 - idx1) > 1 && idx2 < idx1) {
+                                    ctx.quadraticCurveTo(x1 + 30, arrowY - 56, x1 + 58, arrowY - 10);
+                                    ctx.stroke();
+                                    ctx.beginPath();
+                                    ctx.moveTo(x2 - 28, arrowY - 10);
+                                    const cpInX = x2 - 14, cpInY = arrowY - 38;
+                                    ctx.quadraticCurveTo(cpInX, cpInY, x2 - 1, arrowY - 3);
+                                    ctx.stroke();
+                                    this.drawArrowHead(x2, arrowY, Math.atan2(arrowY - cpInY, x2 - cpInX), COLORS.ARROW_PROBE, 9);
+                                } else {
+                                    const midX = (x1 + x2) / 2, cpY = arrowY - 46;
+                                    ctx.quadraticCurveTo(midX, cpY, x2 - 1, arrowY - 3);
+                                    ctx.stroke();
+                                    this.drawArrowHead(x2, arrowY, Math.atan2(arrowY - cpY, x2 - midX), COLORS.ARROW_PROBE, 9);
+                                }
+                            });
+                        }
+
+                        // Backward-shift arrow drawn cleanly below data boxes
+                        if (meta.shiftArrow) {
+                            const { from, to } = meta.shiftArrow;
+                            const fx = x + from * size + size / 2;
+                            const tx = x + to * size + size / 2;
+                            const sy = y + size / 2 + 56 + 38;
+
+                            ctx.save();
+                            ctx.strokeStyle = COLORS.ARROW_SHIFT;
+                            ctx.lineWidth = 3;
+                            if (from > to) {
+                                const midX = (fx + tx) / 2;
+                                const cpY = sy + Math.min(68, 28 + (from - to) * 14);
+                                ctx.beginPath();
+                                ctx.moveTo(fx, sy);
+                                ctx.quadraticCurveTo(midX, cpY, tx, sy + 2);
+                                ctx.stroke();
+                                this.drawArrowHead(tx, sy + 2, Math.atan2(sy + 2 - cpY, tx - midX), COLORS.ARROW_SHIFT, 9);
+                            } else {
+                                // Wrap-around shift (e.g., from 0 back to capacity - 1)
+                                ctx.beginPath();
+                                ctx.moveTo(fx, sy);
+                                ctx.quadraticCurveTo(fx - 26, sy + 42, fx - 54, sy + 12);
+                                ctx.stroke();
+                                ctx.beginPath();
+                                ctx.moveTo(tx + 34, sy + 16);
+                                const cpX = tx + 16, cpY = sy + 36;
+                                ctx.quadraticCurveTo(cpX, cpY, tx, sy + 2);
+                                ctx.stroke();
+                                this.drawArrowHead(tx, sy + 2, Math.atan2(sy + 2 - cpY, tx - cpX), COLORS.ARROW_SHIFT, 9);
+                            }
+                            ctx.restore();
+                        }
+                    }
+                }
+
+                drawArrow(x1, y1, x2, y2, color, headSize = 6) {
+                    const ctx = this.ctx;
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 3;
+                    const angle = Math.atan2(y2 - y1, x2 - x1);
+                    const shorten = headSize * 0.85;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2 - shorten * Math.cos(angle), y2 - shorten * Math.sin(angle));
+                    ctx.stroke();
+                    this.drawArrowHead(x2, y2, angle, color, headSize);
+                }
+
+                drawArrowHead(x, y, angle, color, size) {
+                    const ctx = this.ctx;
+                    ctx.fillStyle = color;
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(angle);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-size * 1.4, -size / 2);
+                    ctx.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                drawHashBox(x, y, info) {
+                    const ctx = this.ctx;
+                    const w = 94, h = 38;
+                    const boxX = x - w / 2, boxY = y;
+
+                    const keyStr = String(info.key);
+                    const keyFont = keyStr.length <= 2 ? 22 : keyStr.length <= 4 ? 17 : 13;
+                    ctx.fillStyle = COLORS.TEXT_RED;
+                    ctx.font = `bold ${keyFont}px Arial`;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(keyStr, boxX - 42, boxY + h / 2);
+                    this.drawArrow(boxX - 36, boxY + h / 2, boxX - 2, boxY + h / 2, COLORS.ARROW_PROBE, 8);
+
+                    this.paintRect(boxX, boxY, w, h, COLORS.HASH_BOX_BG, { radius: 5 });
+                    ctx.fillStyle = COLORS === DARK_THEME ? '#FFFFFF' : '#111111';
+                    ctx.font = 'bold 18px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('hash', boxX + w / 2, boxY + h / 2);
+
+                    this.drawArrow(boxX + w + 2, boxY + h / 2, boxX + w + 38, boxY + h / 2, COLORS.ARROW_PROBE, 8);
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.font = 'bold 22px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(info.hash, boxX + w + 44, boxY + h / 2);
+                }
             }
-        }
-    }
 
-    drawArrow(x1, y1, x2, y2, color, headSize=5) {
-        const ctx = this.ctx;
-        ctx.strokeStyle = color; ctx.lineWidth = 3;
-        ctx.beginPath(); 
-        if (x1 == x2) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2-headSize); } 
-        else { ctx.moveTo(x1, y1); ctx.lineTo(x2 - headSize, y2); }
-        ctx.stroke();
-        const angle = Math.atan2(y2-y1, x2-x1);
-        this.drawArrowHead(x2, y2, angle, color, headSize);
-    }
+            const app = {
+                ht: new LinearProbingHashTable(17, 0.5),
+                viz: null,
+                isDark: false,
+                logs: [],
 
-    drawArrowHead(x, y, angle, color, size) {
-        const ctx = this.ctx; 
-        ctx.fillStyle = color;
-        ctx.save(); 
-        ctx.translate(x, y); 
-        ctx.rotate(angle);
-        
-        ctx.beginPath(); 
-        ctx.moveTo(0, 0); 
-        
-        ctx.lineTo(-size * 1.4, -size/2); 
-        
-        ctx.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size/2); 
-        
-        ctx.closePath(); 
-        ctx.fill(); 
-        ctx.restore();
-    }
+                init() {
+                    this.viz = new Visualizer('htCanvas', {
+                        onStatus: text => {
+                            document.getElementById('status-text').innerText = text;
+                        },
+                        onItemClick: item => {
+                            document.getElementById('inputValue').value = item.value;
+                            this.viz.setStatus(`Selected '${item.value}' (${item.desc}, probe dist = ${item.dist})`);
+                        },
+                        getKeyInfo: (val, idx, cap) => {
+                            const d = this.ht.hashDetails(val, cap);
+                            const dist = ((idx - d.idx) % cap + cap) % cap;
+                            return { hash: d.idx, desc: d.desc, dist };
+                        },
+                        onStateChange: info => this.syncPlaybackUI(info)
+                    });
 
+                    this.bindUIEvents();
+                    this.viz.resetWithSnapshot({ tableData: this.ht.getSnapshotData(), meta: { text: 'Ready.' } });
+                    this.updateStats();
+                    this.updateUI();
+                },
 
-    drawHashBox(x, y, info) {
-        const ctx = this.ctx;
-        const w = 100; const h = 40;
-        const boxX = x - w/2; const boxY = y;
-        ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '24px Arial'; ctx.textAlign = 'right';
-        ctx.fillText(info.key, boxX - 40, boxY + 26);
-        this.drawArrow(boxX - 35, boxY + 18, boxX - 1, boxY + 18, COLORS.ARROW_PROBE, 10);
-        ctx.fillStyle = COLORS.HASH_BOX_BG; 
-        this.paintRect(boxX, boxY, w, h, ctx.fillStyle, {radius: 2});
+                bindUIEvents() {
+                    const inp = document.getElementById('inputValue');
+                    inp.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') this.handleInsert();
+                    });
 
-        ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center'; ctx.fillText('hash', boxX + w/2, boxY + 26);
-        this.drawArrow(boxX + w + 1, boxY + 18, boxX + w + 40, boxY + 18, COLORS.ARROW_PROBE, 10);
-        ctx.fillStyle = '#000'; ctx.font = '24px Arial'; ctx.textAlign = 'left';
-        ctx.fillText(info.hash, boxX + w + 45, boxY + 26);
-    }
-}
+                    document.getElementById('btnInsert').addEventListener('click', () => this.handleInsert());
+                    document.getElementById('btnDelete').addEventListener('click', () => this.handleDelete());
+                    document.getElementById('btnSearch').addEventListener('click', () => this.handleSearch());
+                    document.getElementById('btnRandom').addEventListener('click', () => this.handleRandomFill());
+                    document.getElementById('btnUndo').addEventListener('click', () => this.handleUndo());
+                    document.getElementById('btnClear').addEventListener('click', () => this.handleClear(true));
 
-const app = {
-    ht: new LinearProbingHashTable(17),
-    viz: null,
-    
-    init: function() { 
-        this.viz = new Visualizer('htCanvas'); 
-        this.viz.snapshots = [{ tableData: this.ht.getSnapshotData(), meta: { text: "Ready." } }];
-        this.viz.currentSnapshotIndex = 0;
-        this.viz.fitCameraToSnapshot(this.viz.snapshots[0]); // Auto fit start
-        this.viz.draw();
-        this.updateUI(); 
-    },
-    
-    updateSpeed: function() { 
-        this.viz.setSpeed(parseFloat(document.getElementById('speedSlider').value)); 
-    },
-    
-    togglePause: function() {
-        const isPaused = this.viz.togglePause();
-        document.getElementById('btnPause').innerText = isPaused ? "Resume" : "Pause";
-    },
+                    document.getElementById('selInitCap').addEventListener('change', () => {
+                        if (!this.isBusy()) this.handleClear(false);
+                    });
 
-    updateUI: function() {
-        document.getElementById('btnUndo').disabled = (this.ht.history.length === 0);
-    },
+                    document.getElementById('selMaxLF').addEventListener('change', () => {
+                        const lf = parseFloat(document.getElementById('selMaxLF').value);
+                        this.ht.maxLoadFactor = lf;
+                        if (this.ht.loadFactor() > lf && !this.isBusy()) {
+                            this.runOp(rec => {
+                                this.ht.saveToHistory();
+                                this.ht.rehash(rec);
+                                this.ht.cleanUp(rec, `Rehashed for Max α = ${lf}. Ready.`);
+                            }, { instant: document.getElementById('chkInstant').checked, logText: `Max α -> ${lf} (rehash)` });
+                        } else {
+                            this.viz.resetWithSnapshot({ tableData: this.ht.getSnapshotData(), meta: { text: `Max Load Factor set to ${lf}.` } }, `Max Load Factor set to ${lf}.`);
+                            this.updateStats();
+                        }
+                    });
 
-    runOp: function(fn) {
-        if(this.viz.isPaused) this.togglePause();
-        const snaps = [];
-        snaps.push({ tableData: this.ht.getSnapshotData(), meta: {} });
-        fn((tableData, metaData) => { snaps.push({ tableData: tableData, meta: metaData }); });
-        this.viz.enqueueOperation(snaps);
-        this.updateUI();
-    },
+                    document.getElementById('speedSlider').addEventListener('input', e => {
+                        const val = parseFloat(e.target.value);
+                        document.getElementById('speedLabel').innerText = val.toFixed(2).replace(/\.00$/, '.0') + 'x';
+                        this.viz.setSpeed(val);
+                    });
 
-    handleInsert: function() {
-        const el = document.getElementById('inputValue');
-        const val = el.value.charAt(0); 
-        if (val.length > 0) {
-            this.runOp(record => this.ht.insert(val, record));
-            el.value = ''; 
-        }
-    },
+                    document.getElementById('btnPause').addEventListener('click', () => this.viz.togglePause());
+                    document.getElementById('btnStepBack').addEventListener('click', () => this.viz.stepBackward());
+                    document.getElementById('btnStepFwd').addEventListener('click', () => this.viz.stepForward());
+                    document.getElementById('btnSkip').addEventListener('click', () => this.viz.skipToEnd());
 
-    handleDelete: function() {
-        const el = document.getElementById('inputValue');
-        const val = el.value.charAt(0);
-        if (val.length > 0) {
-            this.runOp(record => this.ht.delete(val, record));
-            el.value = '';
-        }
-    },
+                    document.getElementById('chkAutoFit').addEventListener('change', e => {
+                        this.viz.autoFit = e.target.checked;
+                    });
 
-    handleSearch: function() {
-        const el = document.getElementById('inputValue');
-        const val = el.value.charAt(0);
-        if (val.length > 0) {
-            this.runOp(record => this.ht.search(val, record));
-        }
-    },
+                    document.getElementById('btnZoomIn').addEventListener('click', () => this.viz.zoomBy(1.25));
+                    document.getElementById('btnZoomOut').addEventListener('click', () => this.viz.zoomBy(0.8));
+                    document.getElementById('btnFitView').addEventListener('click', () => this.viz.fitCurrent());
 
-    handleUndo: function() {
-        const oldTable = this.ht.restoreFromHistory();
-        if (oldTable) {
-            const snap = { tableData: this.ht.getSnapshotData(), meta: { text: "Undo successful." } };
-            this.viz.enqueueOperation([snap]);
-            this.viz.fitCameraToSnapshot(snap);
-            this.updateUI();
-        }
-    },
+                    document.getElementById('btnToggleLegend').addEventListener('click', () => {
+                        const legend = document.getElementById('legend');
+                        const collapsed = legend.classList.toggle('collapsed');
+                        document.getElementById('btnToggleLegend').innerText = collapsed ? '+' : '−';
+                    });
 
-    handleClear: function() {
-        this.ht = new LinearProbingHashTable(17);
-        const snap = { tableData: this.ht.getSnapshotData(), meta: { text: "Table cleared." } };
-        this.viz.snapshots = [snap];
-        this.viz.currentSnapshotIndex = 0;
-        this.viz.state = 'IDLE';
-        this.viz.fitCameraToSnapshot(snap);
-        this.viz.draw(); 
-        this.updateUI();
-    },
+                    document.getElementById('btnDrawer').addEventListener('click', () => {
+                        document.getElementById('info-drawer').classList.toggle('open');
+                        setTimeout(() => this.viz.resize(), 10);
+                    });
 
-    handleRandomFill: function() {
-        this.handleClear();
-        const count = 7; 
-        const snaps = [];
-        const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
-        snaps.push({ tableData: this.ht.getSnapshotData(), meta: { text: "Starting Random Fill..." } });
-        
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split('');
+                    document.getElementById('btnClearLog').addEventListener('click', () => {
+                        this.logs = [];
+                        this.renderLog();
+                    });
 
-        for (let i = chars.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [chars[i], chars[j]] = [chars[j], chars[i]];
-        }
+                    document.getElementById('btnTheme').addEventListener('click', () => this.toggleTheme());
+                    document.getElementById('btnHelp').addEventListener('click', () => this.toggleModal(true));
+                    document.getElementById('btnCloseModal').addEventListener('click', () => this.toggleModal(false));
 
-        for(let i=0; i<count; i++) {
-            this.ht.insert(chars[i], batchRecord);
-        }
-        
-        this.viz.enqueueOperation(snaps);
-        this.updateUI();
-    },
+                    window.addEventListener('click', e => {
+                        if (e.target === document.getElementById('helpModal')) this.toggleModal(false);
+                    });
 
-    toggleModal: function() {
-        const m = document.getElementById('helpModal');
-        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
-    }
-};
+                    window.addEventListener('keydown', e => {
+                        const modalOpen = document.getElementById('helpModal').style.display === 'block';
+                        if (e.key === 'Escape' && modalOpen) {
+                            this.toggleModal(false);
+                            return;
+                        }
+                        if (document.activeElement === inp || modalOpen) return;
 
-window.onload = () => app.init();
-</script>
+                        if (e.code === 'Space') {
+                            e.preventDefault();
+                            if (!document.getElementById('btnPause').disabled) this.viz.togglePause();
+                        } else if (e.key === 'ArrowRight') {
+                            if (!document.getElementById('btnStepFwd').disabled) this.viz.stepForward();
+                        } else if (e.key === 'ArrowLeft') {
+                            if (!document.getElementById('btnStepBack').disabled) this.viz.stepBackward();
+                        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                            e.preventDefault();
+                            if (!document.getElementById('btnUndo').disabled) this.handleUndo();
+                        }
+                    });
+                },
+
+                toggleTheme() {
+                    this.isDark = !this.isDark;
+                    document.body.classList.toggle('dark', this.isDark);
+                    COLORS = this.isDark ? DARK_THEME : LIGHT_THEME;
+                    document.getElementById('btnTheme').innerText = this.isDark ? 'Light' : 'Dark';
+                },
+
+                toggleModal(show) {
+                    const m = document.getElementById('helpModal');
+                    const open = show !== undefined ? show : m.style.display !== 'block';
+                    m.style.display = open ? 'block' : 'none';
+                },
+
+                addLog(entry) {
+                    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    this.logs.unshift(`[${time}] ${entry}`);
+                    if (this.logs.length > 40) this.logs.pop();
+                    this.renderLog();
+                },
+
+                renderLog() {
+                    const list = document.getElementById('op-log');
+                    list.innerHTML = '';
+                    this.logs.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        list.appendChild(li);
+                    });
+                },
+
+                isBusy() {
+                    return this.viz.state !== 'IDLE' || (this.viz.isPaused && this.viz.currentSnapshotIndex < this.viz.snapshots.length - 1);
+                },
+
+                syncPlaybackUI({ state, isPaused, index, total }) {
+                    const busy = state !== 'IDLE' || (isPaused && index < total - 1);
+                    ['btnInsert', 'btnDelete', 'btnSearch', 'btnRandom', 'selInitCap', 'selMaxLF', 'selDelMode'].forEach(id => {
+                        document.getElementById(id).disabled = busy;
+                    });
+                    document.getElementById('btnUndo').disabled = busy || this.ht.history.length === 0;
+
+                    const hasSteps = total > 1;
+                    const atEnd = index >= total - 1 && state === 'IDLE';
+                    document.getElementById('btnPause').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnPause').innerText = isPaused ? 'Resume' : 'Pause';
+                    document.getElementById('btnStepBack').disabled = !hasSteps || (index === 0 && state === 'IDLE');
+                    document.getElementById('btnStepFwd').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnSkip').disabled = !hasSteps || atEnd;
+
+                    document.getElementById('step-counter').innerText =
+                        total > 1 ? `Step: ${Math.min(index + 1, total)}/${total}` : 'Step: -';
+                },
+
+                updateStats() {
+                    const data = this.ht.getSnapshotData();
+                    const lf = data.capacity > 0 ? (data.size / data.capacity).toFixed(2) : '0.00';
+                    const maxCluster = this.ht.getMaxCluster();
+                    document.getElementById('ht-stats').innerText =
+                        `Size: ${data.size} | Cap: ${data.capacity} | α: ${lf} | Max Cluster: ${maxCluster}`;
+
+                    const cellList = document.getElementById('cell-list');
+                    cellList.innerHTML = data.table.map((k, i) => {
+                        if (k === null) return `<div>[${i}]: null</div>`;
+                        const h = this.ht.hash(k);
+                        const d = this.ht.probeDistance(h, i);
+                        return `<div>[${i}]: '${k}' (hash=${h}, dist=${d})</div>`;
+                    }).join('');
+                },
+
+                updateUI() {
+                    this.syncPlaybackUI({
+                        state: this.viz.state,
+                        isPaused: this.viz.isPaused,
+                        index: this.viz.currentSnapshotIndex,
+                        total: this.viz.snapshots.length
+                    });
+                },
+
+                parseKeys(singleOnly = false) {
+                    const inp = document.getElementById('inputValue');
+                    const raw = inp.value.trim();
+                    if (!raw) {
+                        this.flashError('Please enter a key first.');
+                        return null;
+                    }
+                    const parts = raw.split(/[\s,;]+/).filter(Boolean);
+                    if (singleOnly && parts.length > 1) {
+                        this.flashError('Search accepts a single key.');
+                        return null;
+                    }
+                    for (const p of parts) {
+                        if (p.length > 6) {
+                            this.flashError(`Key "${p}" is too long (max 6 chars).`);
+                            return null;
+                        }
+                    }
+                    return parts;
+                },
+
+                flashError(msg) {
+                    const inp = document.getElementById('inputValue');
+                    inp.classList.add('input-error');
+                    this.viz.setStatus(msg);
+                    setTimeout(() => inp.classList.remove('input-error'), 700);
+                },
+
+                runOp(fn, { instant = false, logText = null } = {}) {
+                    if (this.isBusy()) return;
+                    const snaps = [{ tableData: this.ht.getSnapshotData(), meta: {} }];
+                    fn((tableData, metaData) => snaps.push({ tableData, meta: metaData }));
+                    this.viz.enqueueOperation(snaps, instant);
+                    this.updateStats();
+                    this.updateUI();
+                    if (logText) this.addLog(logText);
+                },
+
+                handleInsert() {
+                    const keys = this.parseKeys(false);
+                    if (!keys) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    document.getElementById('inputValue').value = '';
+
+                    this.runOp(rec => {
+                        if (keys.length > 1) this.ht.saveToHistory();
+                        for (const k of keys) {
+                            this.ht.insert(k, rec, keys.length === 1);
+                        }
+                    }, {
+                        instant,
+                        logText: `Insert (${keys.join(', ')})`
+                    });
+                },
+
+                handleDelete() {
+                    const keys = this.parseKeys(false);
+                    if (!keys) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    const mode = document.getElementById('selDelMode').value;
+                    document.getElementById('inputValue').value = '';
+
+                    this.runOp(rec => {
+                        if (keys.length > 1) this.ht.saveToHistory();
+                        let anyDeleted = false;
+                        for (const k of keys) {
+                            if (this.ht.delete(k, rec, mode, keys.length === 1)) anyDeleted = true;
+                        }
+                        if (keys.length > 1 && !anyDeleted) this.ht.discardLastHistory();
+                    }, {
+                        instant,
+                        logText: `Delete[${mode}] (${keys.join(', ')})`
+                    });
+                },
+
+                handleSearch() {
+                    const keys = this.parseKeys(true);
+                    if (!keys) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    let found = false;
+                    this.runOp(rec => {
+                        found = this.ht.search(keys[0], rec);
+                    }, {
+                        instant,
+                        logText: `Search '${keys[0]}' -> ${found ? 'Hit' : 'Miss'}`
+                    });
+                },
+
+                handleUndo() {
+                    if (this.isBusy() || this.ht.history.length === 0) return;
+                    const prevData = this.ht.getSnapshotData();
+                    const restored = this.ht.restoreFromHistory();
+                    if (!restored) return;
+
+                    document.getElementById('selInitCap').value = String(this.ht.capacity);
+                    document.getElementById('selMaxLF').value = String(this.ht.maxLoadFactor);
+
+                    this.viz.enqueueOperation([
+                        { tableData: prevData, meta: {} },
+                        { tableData: this.ht.getSnapshotData(), meta: { text: 'Undo successful.' } }
+                    ], false);
+                    this.updateStats();
+                    this.updateUI();
+                    this.addLog('Undo');
+                },
+
+                handleClear(saveHistory = true) {
+                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 17;
+                    const lf = parseFloat(document.getElementById('selMaxLF').value) || 0.5;
+
+                    if (saveHistory && this.ht.size > 0) {
+                        this.ht.saveToHistory();
+                    }
+                    const oldHistory = this.ht.history;
+                    this.ht = new LinearProbingHashTable(cap, lf);
+                    this.ht.history = oldHistory;
+
+                    this.viz.resetWithSnapshot(
+                        { tableData: this.ht.getSnapshotData(), meta: { text: `Table cleared (Cap=${cap}, Max α=${lf}).` } },
+                        `Table cleared (Cap=${cap}, Max α=${lf}).`
+                    );
+                    this.updateStats();
+                    this.updateUI();
+                    if (saveHistory) this.addLog('Cleared table');
+                },
+
+                handleRandomFill() {
+                    if (this.isBusy()) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    if (this.ht.size > 0) this.ht.saveToHistory();
+
+                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 17;
+                    const lf = parseFloat(document.getElementById('selMaxLF').value) || 0.5;
+                    const oldHistory = this.ht.history;
+                    this.ht = new LinearProbingHashTable(cap, lf);
+                    this.ht.history = oldHistory;
+
+                    const count = Math.max(3, Math.min(10, Math.floor(cap * lf)));
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!?+-*&%$'.split('');
+                    for (let i = chars.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [chars[i], chars[j]] = [chars[j], chars[i]];
+                    }
+                    const chosen = chars.slice(0, count);
+
+                    const snaps = [{ tableData: this.ht.getSnapshotData(), meta: { text: 'Starting Random Fill...' } }];
+                    const rec = (data, meta) => snaps.push({ tableData: data, meta });
+                    for (const ch of chosen) {
+                        this.ht.insert(ch, rec, false);
+                    }
+
+                    this.viz.enqueueOperation(snaps, instant);
+                    this.updateStats();
+                    this.updateUI();
+                    this.addLog(`Random Fill (${chosen.join(', ')})`);
+                }
+            };
+
+            window.addEventListener('DOMContentLoaded', () => app.init());
+        })();
+    </script>
 </body>
+
 </html>

@@ -1,1446 +1,2415 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Separate Chaining Visualizer (Final)</title>
+    <title>Separate Chaining Hash Table Visualizer</title>
     <style>
         :root {
             --bg-color: #ffffff;
-            --panel-bg: #f5f5f5;
-            --border-color: #ddd;
-            --btn-insert: #2E7D32; 
-            --btn-delete: #c62828; 
-            --btn-search: #1668BD; 
-            --btn-undo: #6A1B9A;   
+            --panel-bg: #f5f6f8;
+            --panel-alt: #eceff1;
+            --border-color: #d8dee4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --card-bg: rgba(255, 255, 255, 0.95);
+            --input-bg: #ffffff;
+            --input-border: #9aa4b2;
+
+            --btn-insert: #2E7D32;
+            --btn-delete: #c62828;
+            --btn-search: #1565C0;
+            --btn-undo: #6A1B9A;
             --btn-gray: #546E7A;
             --btn-random: #EF6C00;
+            --btn-step: #37474F;
         }
 
-        body { margin: 0; padding: 0; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background-color: var(--bg-color); display: flex; flex-direction: column; height: 100vh; height: 100dvh; overflow: hidden; user-select: none; }
-        header { padding: 10px 20px; background-color: var(--panel-bg); display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid var(--border-color); box-shadow: 0 2px 4px rgba(0,0,0,0.05); flex-shrink: 0; }
-        .header-top { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        .gui { display: flex; justify-content: space-between; align-items: center; width: 100%; }
-        h1 { margin: 0; font-size: 1.2rem; color: #222; }
-        .controls { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-        .sub-controls { display: flex; gap: 15px; align-items: center; font-size: 0.9rem; color: #555; vertical-align: middle;}
-        input[type="text"] { padding: 6px; border-radius: 4px; border: 1px solid #999; background: #fff; color: #000; width: 60px; text-align: center; font-weight: bold; }
-        input[type="range"] { width: 100px; cursor: pointer; }
-        button { padding: 6px 14px; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; color: white; transition: filter 0.2s, transform 0.1s; font-size: 0.85rem; box-shadow: 0 1px 3px rgba(0,0,0,0.2); }
-        button:active { transform: scale(0.95); }
-        button:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }
-        .btn-insert { background-color: var(--btn-insert); } .btn-delete { background-color: var(--btn-delete); }
-        .btn-search { background-color: var(--btn-search); } .btn-undo { background-color: var(--btn-undo); }
-        .btn-clear { background-color: var(--btn-gray); } .btn-random { background-color: var(--btn-random); }
-        .btn-pause { background-color: #455A64; width: 80px;} .btn-help { background-color: #607D8B; font-size: 1.1rem; padding: 4px 10px; border-radius: 50%; }
-        #canvas-container { flex-grow: 1; position: relative; overflow: hidden; background-color: var(--bg-color); cursor: default; min-height: 0; }
-        canvas { display: block; width: 100%; height: 100%; -webkit-tap-highlight-color: transparent; }
-        #legend { position: absolute; top: 20px; left: 20px; background: rgba(255,255,255,0.75); padding: 10px; border: 1px solid #ddd; border-radius: 8px; font-size: 0.8rem; pointer-events: none; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
-        .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; color: #333; }
-        .square { width: 14px; height: 14px; border-radius: 25%; }
-        .dot { width: 10px; height: 10px; border-radius: 50%; background: #1668BD; display:inline-block; }
-        .arrow-icon { font-size: 16px; font-weight: bold; color: #cc0000; }
-        #status-bar { padding: 8px 2px 0px 0px; background-color: var(--panel-bg); font-size: 0.85rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; color: #555; flex-shrink: 0; }
-        #status-text { font-weight: bold; color: #222; }
-        #author { width: 100%; background: #f4f7f6; font-size: 0.75em; color: #777; text-align: center; line-height: 2.5; border-top: 1px solid #ddd; flex-shrink: 0; }
-        
-        /* Tooltip Styles */
+        body.dark {
+            --bg-color: #0f1419;
+            --panel-bg: #161b22;
+            --panel-alt: #1f2630;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #9da7b3;
+            --card-bg: rgba(22, 27, 34, 0.94);
+            --input-bg: #0d1117;
+            --input-border: #444c56;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', system-ui, -apple-system, Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+            user-select: none;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        header {
+            padding: 8px 16px;
+            background-color: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gui {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            width: 100%;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .controls,
+        .sub-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .sub-controls {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            gap: 8px;
+        }
+
+        .divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border-color);
+            margin: 0 2px;
+        }
+
+        .field-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+        }
+
+        input[type="text"],
+        select {
+            padding: 5px 8px;
+            border-radius: 5px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-weight: 600;
+            font-size: 0.84rem;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input[type="text"] {
+            width: 120px;
+        }
+
+        input[type="text"]:focus,
+        select:focus {
+            outline: none;
+            border-color: var(--btn-search);
+            box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.2);
+        }
+
+        input[type="text"].input-error {
+            border-color: var(--btn-delete);
+            box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.25);
+        }
+
+        input[type="range"] {
+            width: 85px;
+            cursor: pointer;
+            accent-color: var(--btn-search);
+        }
+
+        .toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            padding: 3px 6px;
+            border-radius: 4px;
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+        }
+
+        .toggle-label input {
+            cursor: pointer;
+            margin: 0;
+        }
+
+        button {
+            padding: 6px 11px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: filter 0.15s, transform 0.1s, opacity 0.15s;
+            font-size: 0.82rem;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) {
+            filter: brightness(1.08);
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+            box-shadow: none;
+        }
+
+        .btn-insert { background-color: var(--btn-insert); }
+        .btn-delete { background-color: var(--btn-delete); }
+        .btn-search { background-color: var(--btn-search); }
+        .btn-undo { background-color: var(--btn-undo); }
+        .btn-clear { background-color: var(--btn-gray); }
+        .btn-random { background-color: var(--btn-random); }
+        .btn-step { background-color: var(--btn-step); padding: 6px 9px; }
+
+        .btn-pause {
+            background-color: #455A64;
+            min-width: 72px;
+        }
+
+        .btn-icon {
+            background-color: var(--panel-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            font-size: 0.86rem;
+            padding: 4px 10px;
+            box-shadow: none;
+        }
+
+        .btn-help {
+            background-color: #607D8B;
+            font-size: 0.95rem;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .speed-badge {
+            font-family: monospace;
+            font-weight: 700;
+            min-width: 38px;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        #status-bar {
+            padding-top: 6px;
+            font-size: 0.84rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+        }
+
+        #status-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .status-meta {
+            display: flex;
+            gap: 12px;
+            flex-shrink: 0;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        #canvas-container {
+            flex-grow: 1;
+            position: relative;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            cursor: default;
+            min-height: 0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        #legend {
+            position: absolute;
+            top: 14px;
+            right: 14px;
+            background: var(--card-bg);
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 0.78rem;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
+            backdrop-filter: blur(4px);
+            max-width: 215px;
+            z-index: 5;
+        }
+
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            gap: 12px;
+        }
+
+        #legend.collapsed .legend-header {
+            margin-bottom: 0;
+        }
+
+        #legend.collapsed .legend-body {
+            display: none;
+        }
+
+        .legend-toggle {
+            background: var(--panel-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 0.75rem;
+            box-shadow: none;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .square {
+            width: 14px;
+            height: 14px;
+            border-radius: 25%;
+            flex-shrink: 0;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+        }
+
+        .arrow-icon {
+            font-size: 15px;
+            font-weight: bold;
+            color: #7F00FF;
+            width: 14px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        #camera-controls {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            display: flex;
+            gap: 5px;
+            z-index: 5;
+        }
+
+        #camera-controls button {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
+            padding: 6px 10px;
+            font-size: 0.85rem;
+        }
+
         #tooltip {
             position: fixed;
             display: none;
-            background: rgba(26, 26, 26, 0.9);
+            background: rgba(15, 20, 25, 0.92);
             color: #ffffff;
             padding: 8px 12px;
             border-radius: 6px;
-            font-size: 15px;
+            font-size: 0.82rem;
             pointer-events: none;
             z-index: 1000;
             white-space: nowrap;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            backdrop-filter: blur(4px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.28);
+            line-height: 1.4;
         }
+
         .tooltip-item { font-weight: bold; color: #ff8a80; }
         .tooltip-hash { font-weight: bold; color: #80d8ff; }
 
-        .modal { display: none; position: fixed; z-index: 100; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); }
-        .modal-content { background-color: #fefefe; margin: 5% auto; padding: 20px; border: 1px solid #888; width: 80%; max-width: 600px; border-radius: 8px; max-height: 80vh; overflow-y: auto; }
-        .close { color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer; }
-        .close:hover { color: black; }
-        h2 { color: #2E7D32; margin-top:0; }
-        h3 { color: #1668BD; border-bottom: 1px solid #eee; padding-bottom: 5px; margin-top: 15px;}
-        p, li { font-size: 0.95rem; line-height: 1.5; color: #333; }
+        #info-drawer {
+            background: var(--panel-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 8px 16px;
+            display: none;
+            gap: 16px;
+            flex-wrap: wrap;
+            max-height: 170px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            font-size: 0.82rem;
+        }
+
+        #info-drawer.open {
+            display: flex;
+        }
+
+        .drawer-col {
+            flex: 1 1 280px;
+            min-width: 240px;
+        }
+
+        .drawer-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #bucket-list {
+            font-family: monospace;
+            font-size: 0.78rem;
+            color: var(--text-secondary);
+            max-height: 105px;
+            overflow-y: auto;
+            line-height: 1.45;
+        }
+
+        #op-log {
+            margin: 0;
+            padding-left: 18px;
+            max-height: 105px;
+            overflow-y: auto;
+            color: var(--text-secondary);
+            font-family: monospace;
+            font-size: 0.78rem;
+        }
+
+        #op-log li {
+            line-height: 1.4;
+        }
+
+        #author {
+            width: 100%;
+            background: var(--panel-alt);
+            font-size: 0.74em;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 5px 10px;
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.55);
+            backdrop-filter: blur(2px);
+        }
+
+        .modal-content {
+            background-color: var(--panel-bg);
+            color: var(--text-primary);
+            margin: 4% auto;
+            padding: 20px 24px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 640px;
+            border-radius: 10px;
+            max-height: 84vh;
+            overflow-y: auto;
+            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
+        }
+
+        .close {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 26px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
+        }
+
+        h2 { color: #2E7D32; margin-top: 0; }
+        body.dark h2 { color: #66BB6A; }
+        h3 {
+            color: #1565C0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            margin-top: 16px;
+        }
+        body.dark h3 { color: #64B5F6; }
+        .modal p, .modal li { font-size: 0.92rem; line-height: 1.5; }
+
+        .complexity {
+            font-family: monospace;
+            background: var(--panel-alt);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #c62828;
+            border: 1px solid var(--border-color);
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        body.dark .complexity { color: #ff8a80; }
+
+        kbd {
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 8px 10px; }
+            h1 { font-size: 0.98rem; }
+            input[type="text"] { width: 98px; }
+            .divider { display: none; }
+            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; right: 8px; }
+            .status-meta { display: none; }
+        }
     </style>
 </head>
+
 <body>
 
-<header>
-    <div class="header-top">
-        <h1>Separate Chaining Hash Table Visualizer</h1>
-        <button class="btn-help" onclick="app.toggleModal()" title="Help / Algorithms">?</button>
-    </div>
-    <div class="gui">
-        <div class="controls">
-            <input type="text" id="inputValue" title="Enter any character" placeholder="#" maxlength="1" onkeydown="if(event.key==='Enter') app.handleInsert()">
-            <button class="btn-insert" title="Insert a value" onclick="app.handleInsert()">Insert</button>
-            <button class="btn-delete" title="Delete a value" onclick="app.handleDelete()">Delete</button>
-            <button class="btn-search" title="Search for a value" onclick="app.handleSearch()">Search</button>
-            
-            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
-            
-            <button class="btn-random" title="Fill with random characters" onclick="app.handleRandomFill()">Random Fill</button>
-            
-            <div style="width:1px; height:20px; background:#ccc; margin: 0 5px;"></div>
-
-            <button class="btn-undo" title="Undo last operation" onclick="app.handleUndo()" id="btnUndo" disabled>Undo</button>
-            <button class="btn-clear" title="Clear the table" onclick="app.handleClear()">Clear</button>
+    <header>
+        <div class="header-top">
+            <h1>Separate Chaining Hash Table Visualizer</h1>
+            <div class="header-actions">
+                <button class="btn-icon" id="btnDrawer" title="Toggle Buckets &amp; Log">Buckets &amp; Log</button>
+                <button class="btn-icon" id="btnTheme" title="Toggle Dark / Light Theme">Dark</button>
+                <button class="btn-help" id="btnHelp" title="Help / Algorithms &amp; Shortcuts" aria-label="Help">?</button>
+            </div>
         </div>
-        <div class="sub-controls">
-            <label for="speedSlider">Slowdown:</label>
-            <label title="Slide right to slow down the animation">
-                <input type="range" id="speedSlider" min="1" max="5" step="0.1" value="1" oninput="app.updateSpeed()">
-            </label>
-            <button class="btn-pause" title="Pause or Resume" onclick="app.togglePause()" id="btnPause">Pause</button>
+
+        <div class="gui">
+            <div class="controls">
+                <input type="text" id="inputValue" placeholder="e.g. A, 42, cat"
+                    title="Enter a key (char, integer, or comma-separated list). Enter = Insert">
+                <button class="btn-insert" id="btnInsert" title="Insert / update key(s)">Insert</button>
+                <button class="btn-delete" id="btnDelete" title="Delete key(s)">Delete</button>
+                <button class="btn-search" id="btnSearch" title="Search key">Search</button>
+
+                <div class="divider"></div>
+
+                <label class="field-label" title="Initial number of chains">Cap
+                    <select id="selInitCap">
+                        <option value="5" selected>5</option>
+                        <option value="7">7</option>
+                        <option value="11">11</option>
+                    </select>
+                </label>
+
+                <label class="field-label" title="Maximum load factor before rehashing">Max &alpha;
+                    <select id="selMaxLF">
+                        <option value="0.75">0.75</option>
+                        <option value="1.0">1.0</option>
+                        <option value="1.5">1.5</option>
+                        <option value="2.0" selected>2.0</option>
+                    </select>
+                </label>
+
+                <div class="divider"></div>
+
+                <button class="btn-random" id="btnRandom" title="Fill with random keys">Random Fill</button>
+                <label class="toggle-label" title="Run operations instantly without animation">
+                    <input type="checkbox" id="chkInstant"> Instant
+                </label>
+
+                <div class="divider"></div>
+
+                <button class="btn-undo" id="btnUndo" title="Undo last modification (Ctrl+Z)" disabled>Undo</button>
+                <button class="btn-clear" id="btnClear" title="Clear the table">Clear</button>
+            </div>
+
+            <div class="sub-controls">
+                <label for="speedSlider">Speed:</label>
+                <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1"
+                    title="Animation speed multiplier">
+                <span class="speed-badge" id="speedLabel">1.0x</span>
+
+                <button class="btn-step" id="btnStepBack" title="Step Backward (Left Arrow)" disabled>|&lt;</button>
+                <button class="btn-pause" id="btnPause" title="Pause or Resume (Space)" disabled>Pause</button>
+                <button class="btn-step" id="btnStepFwd" title="Step Forward (Right Arrow)" disabled>&gt;|</button>
+                <button class="btn-step" id="btnSkip" title="Skip animation to end" disabled>&gt;&gt;|</button>
+
+                <label class="toggle-label" title="Automatically fit camera on operations">
+                    <input type="checkbox" id="chkAutoFit" checked> Auto-Fit
+                </label>
+            </div>
+        </div>
+
+        <div id="status-bar">
+            <span id="status-text">Ready. Wheel/Pinch to Zoom, Drag to Pan, Hover/Click any node.</span>
+            <div class="status-meta">
+                <span id="step-counter">Step: -</span>
+                <span id="ht-stats">Size: 0 | Cap: 5 | &alpha;: 0.00 | Max Chain: 0</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="canvas-container">
+        <canvas id="htCanvas"></canvas>
+
+        <div id="legend">
+            <div class="legend-header">
+                <span>Legend</span>
+                <button class="legend-toggle" id="btnToggleLegend" title="Collapse/Expand Legend">−</button>
+            </div>
+            <div class="legend-body">
+                <div class="legend-item"><div class="square" style="background:#99FFFF;"></div><span>Pointer Cell</span></div>
+                <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div><span>Data Node</span></div>
+                <div class="legend-item"><div class="square" style="background:#CC99FF;"></div><span>Examining</span></div>
+                <div class="legend-item"><div class="square" style="background:#00E676;"></div><span>Match / Insert Hit</span></div>
+                <div class="legend-item"><div class="square" style="background:#FFCA28; border:1px solid #EF6C00;"></div><span>Updated Node (Duplicate)</span></div>
+                <div class="legend-item"><div class="square" style="background:#D32F2F;"></div><span>Search Miss</span></div>
+                <div class="legend-item"><div class="arrow-icon">&#8595;</div><span>Hash Index</span></div>
+                <div class="legend-item"><div class="square" style="background:#FFD700;"></div><span>Rehashing Node</span></div>
+            </div>
+        </div>
+
+        <div id="camera-controls">
+            <button id="btnZoomOut" title="Zoom Out">−</button>
+            <button id="btnFitView" title="Fit Table to Screen">Fit</button>
+            <button id="btnZoomIn" title="Zoom In">+</button>
+        </div>
+
+        <div id="tooltip"></div>
+    </div>
+
+    <div id="info-drawer">
+        <div class="drawer-col">
+            <div class="drawer-title">Buckets &amp; Chains</div>
+            <div id="bucket-list">-</div>
+        </div>
+        <div class="drawer-col">
+            <div class="drawer-title">
+                <span>Operation Log</span>
+                <button class="legend-toggle" id="btnClearLog">Clear Log</button>
+            </div>
+            <ol id="op-log"></ol>
         </div>
     </div>
-    <div id="status-bar">
-        <span id="status-text">Ready. Use Mouse/Touch to Pan & Zoom.</span>
+
+    <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <span class="close" id="btnCloseModal">&times;</span>
+            <h2 id="modalTitle">Separate Chaining Hash Table</h2>
+
+            <h3>Concept</h3>
+            <p><strong>Separate Chaining</strong> resolves collisions by maintaining a linked list of nodes at each array index. Before inserting, if <code>loadFactor() &gt; maxLoadFactor</code>, the table <strong>rehashes</strong> to the next prime &gt; <code>2 * capacity</code>.</p>
+
+            <h3>Hash Function (Java-style)</h3>
+            <ul>
+                <li><strong>Integers</strong> (e.g. <code>42</code>): <code>(42 &amp; 0x7fffffff) mod capacity</code></li>
+                <li><strong>Single Characters</strong> (e.g. <code>A</code>): <code>ASCII('A') mod capacity</code></li>
+                <li><strong>Strings</strong> (e.g. <code>cat</code>): Java <code>String.hashCode()</code> (polynomial base 31) masked with <code>0x7fffffff mod capacity</code></li>
+            </ul>
+
+            <h3>Operations &amp; Complexity</h3>
+            <ul>
+                <li><strong>Insert</strong> <span class="complexity">O(1) avg</span> — Checks <code>loadFactor() &gt; maxLoadFactor</code> (rehashes if exceeded, <span class="complexity">O(n)</span>), then searches the chain using <code>Finder</code>. If absent, inserts at the <strong>head</strong>. If already present, updates <code>finder.current.key = key</code> (highlighted in amber).</li>
+                <li><strong>Search</strong> <span class="complexity">O(1) avg</span> — Traverses the chain at <code>hash(key)</code>. Expected steps depend on &alpha;.</li>
+                <li><strong>Delete</strong> <span class="complexity">O(1) avg</span> — Finds the node via <code>Finder</code> and unlinks it from the chain.</li>
+            </ul>
+
+            <h3>Tips &amp; Keyboard Shortcuts</h3>
+            <ul>
+                <li><strong>Batch Insert / Delete:</strong> Enter comma-separated keys (e.g., <code>A, B, 42, 17</code>).</li>
+                <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> Insert, <kbd>Space</kbd> Pause/Resume, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
+            </ul>
+        </div>
     </div>
-</header>
 
-<div id="canvas-container">
-    <canvas id="htCanvas"></canvas>
-    <div id="legend">
-        <div class="legend-item"><div class="square" style="background:#99FFFF;"></div>&nbsp; Pointer Cell</div>
-        <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div>&nbsp; Data</div>
-        <div class="legend-item"><div class="square" style="background:#CC99FF;"></div>&nbsp; Examining</div>
-        <div class="legend-item"><div class="square" style="background:#00E676;"></div>&nbsp; Match/Hit</div>
-        <div class="legend-item"><div class="square" style="background:#D32F2F; border:1px solid #D32F2F;"></div>&nbsp; Search Miss</div>
-        <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8595;</div>&nbsp; Hash Index</div>
-        <div class="legend-item"><div class="square" style="background:#FFD700;"></div>&nbsp; Rehash</div>
-    </div>
-    <div id="tooltip"></div>
-</div>
+    <script>
+        (() => {
+            'use strict';
 
-<div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+            const LIGHT_THEME = {
+                STRUCT_KEYS_BG: '#99FFFF',
+                STRUCT_STATS_BG: '#B0F9B0',
+                CELL_BG: '#99FFFF',
+                CELL_STROKE: '#FFFFFF',
+                DATA_BG: '#B0F9B0',
+                TEXT_RED: '#CC0000',
+                TEXT_MAIN: '#1F2328',
+                TEXT_MUTED: '#6B7280',
+                DOT: '#1668BD',
+                ARROW_REF: '#1668BD',
+                ARROW_PROBE: '#7F00FF',
+                EXAMINE_BG: '#CC99FF',
+                MISS_BG: '#D32F2F',
+                HIT_BG: '#00E676',
+                UPDATE_BG: '#FFCA28',
+                UPDATE_STROKE: '#EF6C00',
+                HASH_BOX_BG: '#CC99FF',
+                FLY_BG: '#FFD700',
+                HOVER_RING: '#FF6D00'
+            };
 
-<div id="helpModal" class="modal">
-    <div class="modal-content">
-        <span class="close" onclick="app.toggleModal()">&times;</span>
-        <h2>Separate Chaining Hash Table</h2>
-        
-        <h3>Concept</h3>
-        <p><strong>Separate Chaining</strong> resolves collisions by maintaining a linked list of nodes for each index in the array. If multiple keys hash to the same index, they are simply added to that index's list.
-        To maintain performance, the <strong>Load Factor</strong> (size/capacity), which indicates the expected number of elements per list, is kept below a threshold (here, 2.0). If exceeded, the table is rehashed to a larger size.
-        </p>
+            const DARK_THEME = {
+                ...LIGHT_THEME,
+                STRUCT_KEYS_BG: '#184e5e',
+                STRUCT_STATS_BG: '#245832',
+                CELL_BG: '#184e5e',
+                CELL_STROKE: '#30363d',
+                DATA_BG: '#245832',
+                TEXT_RED: '#FFFFFF',
+                TEXT_MAIN: '#E6EDF3',
+                TEXT_MUTED: '#9DA7B3',
+                DOT: '#58A6FF',
+                ARROW_REF: '#58A6FF',
+                ARROW_PROBE: '#CE93D8',
+                EXAMINE_BG: '#7B1FA2',
+                UPDATE_BG: '#FFB300',
+                UPDATE_STROKE: '#FFE082',
+                HASH_BOX_BG: '#6A1B9A',
+                HOVER_RING: '#FFB300'
+            };
 
-        <h3>Operations & Complexity</h3>
-        <style>.complexity { font-family: monospace; background: #eee; padding: 2px 5px; border-radius: 4px; color: #c62828; font-size: 0.85rem; font-weight: bold; }</style>
-        
-        <ul>
-            <li>
-                <strong>Insert</strong> <span class="complexity">O(1) avg</span><br>
-                Computes <code>hash(key)</code>. Traverses the list to check duplicates. If not found, inserts at the <strong>head</strong>.
-                <br><em>Note: If Load Factor > maxLoadFactor, <strong>Rehashing</strong> occurs (table doubles size to nearest prime, all keys re-inserted), taking <span class="complexity">O(n)</span>.</em>
-            </li>
-            <li>
-                <strong>Search</strong> <span class="complexity">O(1) avg</span><br>
-                Calculates index and traverses the linked list. Time depends on Load Factor α.
-            </li>
-            <li>
-                <strong>Delete</strong> <span class="complexity">O(1) avg</span><br>
-                Finds the node and updates pointers to remove it.
-            </li>
-        </ul>
-    </div>
-</div>
+            let COLORS = LIGHT_THEME;
 
-<script>
-const COLORS = {
-    STRUCT_KEYS_BG: '#99FFFF',  
-    STRUCT_STATS_BG: '#B0F9B0', 
-    CELL_BG: '#99FFFF',     
-    CELL_STROKE: '#FFFFFF', 
-    DATA_BG: '#B0F9B0',     
-    TEXT_RED: '#CC0000',    
-    DOT: '#1668BD',         
-    ARROW_REF: '#1668BD',   
-    ARROW_PROBE: '#7F00FF', 
-    EXAMINE_BG: '#CC99FF',  
-    MISS_BG: '#D32F2F',     
-    HIT_BG: '#00E676',      
-    MISS_STROKE: '#D32F2F', 
-    HASH_BOX_BG: '#CC99FF'
-};
-
-function isPrime(num) {
-    if (num <= 1) return false;
-    if (num <= 3) return true;
-    if (num % 2 === 0 || num % 3 === 0) return false;
-    for (let i = 5; i * i <= num; i += 6) {
-        if (num % i === 0 || num % (i + 2) === 0) return false;
-    }
-    return true;
-}
-
-function nextPrime(num) {
-    if (num <= 1) return 2;
-    let prime = num;
-    let found = false;
-    while (!found) {
-        prime++;
-        if (isPrime(prime)) found = true;
-    }
-    return prime;
-}
-
-class Node {
-    constructor(key, next = null) {
-        this.key = key;
-        this.next = next;
-        this.id = Math.random(); 
-    }
-}
-
-class SeparateChainingHashTable {
-    constructor(capacity = 5) { 
-        this.capacity = capacity;
-        this.table = new Array(capacity).fill(null);
-        this.size = 0;
-        this.maxLoadFactor = 2.0; 
-        this.history = [];
-    }
-
-    cloneTable(table) {
-        const newTable = new Array(table.length).fill(null);
-        for(let i = 0; i < table.length; i++) {
-            if (table[i]) {
-                let curr = table[i];
-                let newHead = new Node(curr.key);
-                newHead.id = curr.id;
-                let newCurr = newHead;
-                curr = curr.next;
-                while(curr) {
-                    newCurr.next = new Node(curr.key);
-                    newCurr.next.id = curr.id;
-                    newCurr = newCurr.next;
-                    curr = curr.next;
+            function isPrime(num) {
+                if (num <= 1) return false;
+                if (num <= 3) return true;
+                if (num % 2 === 0 || num % 3 === 0) return false;
+                for (let i = 5; i * i <= num; i += 6) {
+                    if (num % i === 0 || num % (i + 2) === 0) return false;
                 }
-                newTable[i] = newHead;
-            }
-        }
-        return newTable;
-    }
-
-    serializeTable(table) {
-        return table.map(head => {
-            const list = [];
-            let curr = head;
-            while(curr) {
-                list.push({ key: curr.key, id: curr.id });
-                curr = curr.next;
-            }
-            return list;
-        });
-    }
-
-    saveToHistory() {
-        const state = {
-            table: this.cloneTable(this.table),
-            size: this.size,
-            capacity: this.capacity,
-            maxLoadFactor: this.maxLoadFactor
-        };
-        this.history.push(state);
-        if (this.history.length > 20) this.history.shift();
-    }
-
-    restoreFromHistory() {
-        if (this.history.length === 0) return null;
-        const state = this.history.pop();
-        this.table = state.table;
-        this.size = state.size;
-        this.capacity = state.capacity;
-        this.maxLoadFactor = state.maxLoadFactor;
-        return this;
-    }
-
-    hash(key) {
-        const code = key.charCodeAt(0);
-        return code % this.capacity;
-    }
-
-    getSnapshotData() {
-        return {
-            table: this.serializeTable(this.table),
-            size: this.size,
-            capacity: this.capacity,
-            maxLoadFactor: this.maxLoadFactor,
-            maxDepth: this.table.reduce((max, list) => {
-                let d = 0;
-                let curr = list;
-                while(curr) { d++; curr = curr.next; }
-                return Math.max(max, d);
-            }, 0)
-        };
-    }
-
-    // --- Logic ---
-
-    performSearchLogic(key, recordSnapshot) {
-        let idx = this.hash(key);
-        
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Hash: '${key}' -> ${idx}`,
-            hashCalc: { key: key, hash: idx },
-            targetIndex: idx
-        });
-
-        if (this.table[idx] === null) {
-            recordSnapshot(this.getSnapshotData(), { 
-                text: `Index ${idx} is empty (Miss).`,
-                hashCalc: { key: key, hash: idx },
-                targetIndex: idx,
-                missIndex: idx 
-            });
-            return { found: false, depth: 0, idx };
-        }
-
-        let curr = this.table[idx];
-        let depth = 0;
-
-        while (curr) {
-            if (curr.key === key) {
-                recordSnapshot(this.getSnapshotData(), { 
-                    text: `Found '${key}' (Hit).`, 
-                    hashCalc: { key: key, hash: idx },
-                    targetIndex: idx,
-                    highlightNode: { col: idx, depth: depth, type: 'HIT' }
-                });
-                return { found: true, depth, idx };
-            } else {
-                recordSnapshot(this.getSnapshotData(), { 
-                    text: `Comparing with '${curr.key}'...`,
-                    hashCalc: { key: key, hash: idx },
-                    targetIndex: idx,
-                    highlightNode: { col: idx, depth: depth, type: 'EXAMINE' }
-                });
+                return true;
             }
 
-            if (!curr.next) {
-                recordSnapshot(this.getSnapshotData(), { 
-                    text: `End of list. Key '${key}' NOT found (Miss).`, 
-                    hashCalc: { key: key, hash: idx },
-                    targetIndex: idx,
-                    highlightNode: { col: idx, depth: depth, type: 'MISS_PTR' }
-                });
-                return { found: false, depth, idx };
+            function nextPrime(num) {
+                if (num <= 1) return 2;
+                let p = num;
+                while (!isPrime(++p));
+                return p;
             }
 
-            curr = curr.next;
-            depth++;
-        }
-    }
-
-    insert(key, recordSnapshot) {
-        this.saveToHistory();
-
-        if ((this.size + 1) / this.capacity > this.maxLoadFactor) {
-            this.rehash(recordSnapshot);
-        }
-
-        const result = this.performSearchLogic(key, recordSnapshot);
-        
-        if (result.found) {
-            this.cleanUp(recordSnapshot);
-            return; 
-        }
-
-        let idx = result.idx;
-        
-        const newNode = new Node(key, this.table[idx]);
-        this.table[idx] = newNode;
-        this.size++;
-        
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Inserting '${key}' at head...`, 
-            hashCalc: { key: key, hash: idx },
-            targetIndex: idx,
-            animation: 'slideDown',
-            animationCol: idx,
-            highlightNode: { col: idx, depth: 0, type: 'HIT' }
-        });
-
-        this.cleanUp(recordSnapshot);
-    }
-
-    search(key, recordSnapshot) {
-        this.performSearchLogic(key, recordSnapshot);
-        this.cleanUp(recordSnapshot);
-    }
-
-    delete(key, recordSnapshot) {
-        this.saveToHistory();
-        
-        const result = this.performSearchLogic(key, recordSnapshot);
-        
-        if (!result.found) {
-            this.cleanUp(recordSnapshot);
-            return;
-        }
-
-        let idx = result.idx;
-        
-        const oldData = this.getSnapshotData();
-        
-        recordSnapshot(oldData, {
-            text: `Removing '${key}'. Sliding up...`,
-            hashCalc: { key: key, hash: idx },
-            targetIndex: idx,
-            animation: 'slideUp',
-            animationCol: idx,
-            animationDepth: result.depth 
-        });
-
-        let curr = this.table[idx];
-        let prev = null;
-        while(curr && curr.key !== key) {
-            prev = curr;
-            curr = curr.next;
-        }
-        if (prev) {
-            prev.next = curr.next;
-        } else {
-            this.table[idx] = curr.next;
-        }
-        this.size--;
-
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Deleted '${key}'.`, 
-            hashCalc: { key: key, hash: idx }
-        });
-        
-        this.cleanUp(recordSnapshot);
-    }
-
-    rehash(recordSnapshot) {
-        const oldCapacity = this.capacity;
-        const oldTableRef = this.cloneTable(this.table); 
-        const oldSerialized = this.serializeTable(oldTableRef); 
-        
-        this.capacity = nextPrime(this.capacity * 2);
-        this.table = new Array(this.capacity).fill(null);
-        this.size = 0;
-        
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Load Factor > ${this.maxLoadFactor}. Rehashing ${oldCapacity} -> ${this.capacity}...`,
-            rehashMode: true,
-            phase: 'SETUP',
-            oldTable: oldSerialized,
-            oldCapacity: oldCapacity,
-            processedIds: [] 
-        });
-
-        let allNodes = [];
-        for(let i = 0; i < oldTableRef.length; i++) {
-            let curr = oldTableRef[i];
-            let depth = 0;
-            while(curr) {
-                allNodes.push({ key: curr.key, id: curr.id, oldIdx: i, oldDepth: depth });
-                curr = curr.next;
-                depth++;
-            }
-        }
-
-        const processedIds = [];
-
-        for (let nodeInfo of allNodes) {
-            let key = nodeInfo.key;
-            let newIdx = this.hash(key);
-            
-            const newNode = new Node(key, this.table[newIdx]);
-            newNode.id = nodeInfo.id; 
-            this.table[newIdx] = newNode;
-            this.size++;
-
-            recordSnapshot(this.getSnapshotData(), {
-                text: `Moving '${key}'... (Index ${nodeInfo.oldIdx} -> ${newIdx})`,
-                rehashMode: true,
-                phase: 'FLYING',
-                oldTable: oldSerialized,
-                oldCapacity: oldCapacity,
-                processedIds: [...processedIds], 
-                flyingNode: { 
-                    key: key, 
-                    id: nodeInfo.id,
-                    fromIdx: nodeInfo.oldIdx, 
-                    fromDepth: nodeInfo.oldDepth,
-                    toIdx: newIdx
+            class Node {
+                static nextId = 0;
+                constructor(key, next = null) {
+                    this.key = key;
+                    this.next = next;
+                    this.id = Node.nextId++;
                 }
-            });
+            }
 
-            processedIds.push(nodeInfo.id);
-        }
+            class SeparateChainingHashTable {
+                constructor(capacity = 5, maxLoadFactor = 2.0) {
+                    this.capacity = capacity;
+                    this.table = new Array(capacity).fill(null);
+                    this.size = 0;
+                    this.maxLoadFactor = maxLoadFactor;
+                    this.history = [];
+                }
 
-        recordSnapshot(this.getSnapshotData(), { 
-            text: `Rehashing complete. New capacity: ${this.capacity}.`,
-            isCleanup: true 
-        });
-    }
-
-    cleanUp(recordSnapshot) {
-        recordSnapshot(this.getSnapshotData(), { text: 'Ready.', isCleanup: true });
-    }
-}
-
-class Visualizer {
-    constructor(canvasId) {
-        this.canvas = document.getElementById(canvasId);
-        this.ctx = this.canvas.getContext('2d');
-        
-        // Centralized Dimensions Configuration
-        this.layout = {
-            arrayCellSize: 40,
-            nodeWidth: 30,
-            nodeBoxH: 30,
-            nodePtrH: 20,
-            nodeVerticalStep: 60, // nodeBoxH + nodePtrH + gap
-            leftPanelW: 140,
-            rehashGap: 180,
-            baseY: -100
-        };
-        
-        this.snapshots = [];
-        this.currentSnapshotIndex = -1;
-        this.state = 'IDLE';
-        this.isPaused = false;
-        this.morphProgress = 0;
-        this.baseSpeed = 0.075;
-        this.currentSpeedFactor = 1;
-        this.pauseTimer = 0;
-        
-        // Camera System
-        this.camera = { x: 0, y: 0, scale: 1, targetX: 0, targetY: 0, targetScale: 1 };
-        this.isDragging = false;
-        this.dragStart = { x: 0, y: 0 };
-        this.initialCamera = { x: 0, y: 0 };
-        this.initialPinchDist = 0;
-        this.initialScale = 1;
-        
-        this.resize();
-        window.addEventListener('resize', () => this.resize());
-        
-        this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
-        this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
-        this.canvas.addEventListener('mouseup', e => this.onMouseUp(e));
-        this.canvas.addEventListener('mouseleave', e => this.onMouseUp(e));
-        this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
-        this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
-        this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
-        this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
-
-        window.onclick = (e) => { if (e.target == document.getElementById('helpModal')) app.toggleModal(); }
-        this.lastTime = 0;
-        requestAnimationFrame(t => this.loop(t));
-    }
-
-    resize() {
-        const container = document.getElementById('canvas-container');
-        this.canvas.width = container.offsetWidth;
-        this.canvas.height = container.offsetHeight;
-        if (this.snapshots.length > 0 && this.currentSnapshotIndex >= 0) {
-            const bounds = this.getSnapshotBounds(this.snapshots[this.currentSnapshotIndex]);
-            this.fitBoundsToScreen(bounds);
-            this.camera.x = this.camera.targetX;
-            this.camera.y = this.camera.targetY;
-            this.camera.scale = this.camera.targetScale;
-        }
-    }
-
-    setSpeed(val) { this.currentSpeedFactor = 1 / val; }
-    togglePause() { this.isPaused = !this.isPaused; return this.isPaused; }
-
-    // --- Core Layout & Bounds Logic (Auto-Fit) ---
-
-    getSnapshotBounds(snap) {
-        const meta = snap.meta || {};
-        const data = snap.tableData;
-        const L = this.layout;
-        
-        let minX, maxX, minY, maxY;
-
-        if (meta.rehashMode) {
-            // Rehash Layout
-            const oldW = meta.oldCapacity * L.arrayCellSize;
-            const newW = data.capacity * L.arrayCellSize;
-            const totalRehashW = oldW + L.rehashGap + newW;
-            const startX = -totalRehashW / 2;
-
-            minX = startX - 20; 
-            maxX = startX + totalRehashW + 20;
-
-            // Determine max depth to calculate height
-            const oldMaxDepth = meta.oldTable.reduce((m, l) => Math.max(m, l ? l.length : 0), 0);
-            const globalMaxDepth = Math.max(data.maxDepth, oldMaxDepth);
-
-            minY = L.baseY - 110; 
-            maxY = L.baseY + L.arrayCellSize + 20 + (globalMaxDepth * L.nodeVerticalStep) + 120;
-
-        } else {
-            // Standard Layout
-            const arrayW = data.capacity * L.arrayCellSize;
-            const totalW = L.leftPanelW + arrayW;
-            const startX = -totalW / 2 + L.leftPanelW;
-
-            // MinX covers the structure panel on the left
-            minX = startX - L.leftPanelW - 80;
-            maxX = startX + arrayW + 20;
-
-            minY = L.baseY - 160; 
-            
-            // Tighten bottom margin: maxDepth + 1 for potential pointers
-            const visibleDepth = Math.max(0, data.maxDepth); 
-            maxY = L.baseY + Math.max(110, L.arrayCellSize + 0 + (visibleDepth * L.nodeVerticalStep));
-        }
-        
-        return { minX, maxX, minY, maxY };
-    }
-
-    fitBoundsToScreen(bounds) {
-        const w = this.canvas.width;
-        const h = this.canvas.height;
-        
-        const contentW = bounds.maxX - bounds.minX;
-        const contentH = bounds.maxY - bounds.minY;
-        const centerX = (bounds.minX + bounds.maxX) / 2;
-        const centerY = (bounds.minY + bounds.maxY) / 2;
-
-        const paddingX = 40;
-        const paddingY = 40;
-
-        const scale = Math.min(
-            w / (contentW + paddingX),
-            h / (contentH + paddingY),
-            2 // Max zoom
-        );
-        
-        this.camera.targetScale = scale;
-        this.camera.targetX = centerX;
-        this.camera.targetY = centerY;
-    }
-
-    enqueueOperation(snapshots) {
-        if (snapshots.length === 0) return;
-
-        // Progressive Zoom: Fit to union of Current + Next only
-        let gMinX = Infinity, gMaxX = -Infinity, gMinY = Infinity, gMaxY = -Infinity;
-        
-        // 1. Current State
-        if (this.currentSnapshotIndex >= 0 && this.currentSnapshotIndex < this.snapshots.length) {
-            const b = this.getSnapshotBounds(this.snapshots[this.currentSnapshotIndex]);
-            gMinX = Math.min(gMinX, b.minX); gMaxX = Math.max(gMaxX, b.maxX);
-            gMinY = Math.min(gMinY, b.minY); gMaxY = Math.max(gMaxY, b.maxY);
-        }
-
-        // 2. First New Snapshot
-        if (snapshots.length > 0) {
-            const b = this.getSnapshotBounds(snapshots[0]);
-            gMinX = Math.min(gMinX, b.minX); gMaxX = Math.max(gMaxX, b.maxX);
-            gMinY = Math.min(gMinY, b.minY); gMaxY = Math.max(gMaxY, b.maxY);
-        }
-
-        if (gMinX === Infinity) {
-             const b = this.getSnapshotBounds(snapshots[0]);
-             gMinX = b.minX; gMaxX = b.maxX; gMinY = b.minY; gMaxY = b.maxY;
-        }
-
-        this.fitBoundsToScreen({ minX: gMinX, maxX: gMaxX, minY: gMinY, maxY: gMaxY });
-        
-        // 3. Queue Snapshots
-        this.snapshots.push(...snapshots);
-        if (this.currentSnapshotIndex === -1) this.currentSnapshotIndex = 0;
-
-        // 4. Activate Camera
-        if (this.state === 'IDLE' || this.state === 'WAITING' || this.state === 'MORPH') {
-             this.state = 'CAMERA';
-             const nextSnap = this.snapshots[this.currentSnapshotIndex];
-             if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
-        }
-    }
-
-    // --- Interaction ---
-
-    screenToWorld(mx, my) {
-        const w = this.canvas.width, h = this.canvas.height;
-        return {
-            x: this.camera.x + (mx - w/2) / this.camera.scale,
-            y: this.camera.y + (my - h/2) / this.camera.scale
-        };
-    }
-
-    checkHit(mx, my) {
-        if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
-        const snap = this.snapshots[this.currentSnapshotIndex];
-        const data = snap.tableData;
-        const meta = snap.meta || {};
-        const L = this.layout;
-
-        if(meta.rehashMode) return null; 
-
-        const world = this.screenToWorld(mx, my);
-        
-        // Layout must match getSnapshotBounds / drawScene
-        const arrayW = data.capacity * L.arrayCellSize;
-        const totalW = L.leftPanelW + arrayW;
-        const startX = -totalW / 2 + L.leftPanelW;
-        const listTop = L.baseY + L.arrayCellSize + 20;
-
-        for (let i = 0; i < data.capacity; i++) {
-            const list = data.table[i];
-            if (list && list.length > 0) {
-                const cx = startX + i * L.arrayCellSize + L.arrayCellSize/2;
-                let cy = listTop;
-                for(let k = 0; k < list.length; k++) {
-                    // Check intersection with the node box
-                    if (world.x >= cx - L.nodeWidth/2 && world.x <= cx + L.nodeWidth/2 && 
-                        world.y >= cy && world.y <= cy + L.nodeBoxH + L.nodePtrH) {
-                        return { key: list[k].key, hash: app.ht.hash(list[k].key) };
+                cloneTable(table) {
+                    const newTable = new Array(table.length).fill(null);
+                    for (let i = 0; i < table.length; i++) {
+                        if (table[i]) {
+                            let curr = table[i];
+                            const newHead = new Node(curr.key);
+                            newHead.id = curr.id;
+                            let newCurr = newHead;
+                            curr = curr.next;
+                            while (curr) {
+                                newCurr.next = new Node(curr.key);
+                                newCurr.next.id = curr.id;
+                                newCurr = newCurr.next;
+                                curr = curr.next;
+                            }
+                            newTable[i] = newHead;
+                        }
                     }
-                    cy += L.nodeVerticalStep; 
+                    return newTable;
+                }
+
+                serializeTable(table) {
+                    return table.map(head => {
+                        const list = [];
+                        let curr = head;
+                        while (curr) {
+                            list.push({ key: curr.key, id: curr.id });
+                            curr = curr.next;
+                        }
+                        return list;
+                    });
+                }
+
+                saveToHistory() {
+                    this.history.push({
+                        table: this.cloneTable(this.table),
+                        size: this.size,
+                        capacity: this.capacity,
+                        maxLoadFactor: this.maxLoadFactor
+                    });
+                    if (this.history.length > 25) this.history.shift();
+                }
+
+                discardLastHistory() {
+                    if (this.history.length > 0) this.history.pop();
+                }
+
+                restoreFromHistory() {
+                    if (this.history.length === 0) return null;
+                    const state = this.history.pop();
+                    this.table = state.table;
+                    this.size = state.size;
+                    this.capacity = state.capacity;
+                    this.maxLoadFactor = state.maxLoadFactor;
+                    return this;
+                }
+
+                loadFactor() {
+                    return this.size / this.capacity;
+                }
+
+                hashDetails(key, cap = this.capacity) {
+                    if (/^-?\d+$/.test(key)) {
+                        const n = parseInt(key, 10) | 0;
+                        const idx = (n & 0x7fffffff) % cap;
+                        return { idx, desc: `${n} mod ${cap} = ${idx}` };
+                    }
+                    if (key.length === 1) {
+                        const code = key.charCodeAt(0);
+                        const idx = (code & 0x7fffffff) % cap;
+                        return { idx, desc: `ASCII('${key}')=${code} mod ${cap} = ${idx}` };
+                    }
+                    let h = 0;
+                    for (let i = 0; i < key.length; i++) {
+                        h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
+                    }
+                    const idx = (h & 0x7fffffff) % cap;
+                    return { idx, desc: `hashCode("${key}")=${h} mod ${cap} = ${idx}` };
+                }
+
+                hash(key) {
+                    return this.hashDetails(key).idx;
+                }
+
+                getMaxDepth() {
+                    let max = 0;
+                    for (const head of this.table) {
+                        let d = 0, curr = head;
+                        while (curr) { d++; curr = curr.next; }
+                        if (d > max) max = d;
+                    }
+                    return max;
+                }
+
+                getSnapshotData() {
+                    return {
+                        table: this.serializeTable(this.table),
+                        size: this.size,
+                        capacity: this.capacity,
+                        maxLoadFactor: this.maxLoadFactor,
+                        maxDepth: this.getMaxDepth()
+                    };
+                }
+
+                performSearchLogic(key, recordSnapshot) {
+                    const { idx, desc } = this.hashDetails(key);
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Finder: hash(${key}) -> ${desc}`,
+                        hashCalc: { key, hash: idx },
+                        targetIndex: idx
+                    });
+
+                    if (this.table[idx] === null) {
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Bucket ${idx} is empty (Miss).`,
+                            hashCalc: { key, hash: idx },
+                            targetIndex: idx,
+                            missIndex: idx,
+                            pause: true
+                        });
+                        return { found: false, depth: 0, idx };
+                    }
+
+                    let curr = this.table[idx];
+                    let depth = 0;
+
+                    while (curr) {
+                        if (curr.key === key) {
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Found '${key}' at bucket ${idx}, depth ${depth} (Hit).`,
+                                hashCalc: { key, hash: idx },
+                                targetIndex: idx,
+                                highlightNode: { col: idx, depth, type: 'HIT' },
+                                pause: true
+                            });
+                            return { found: true, depth, idx };
+                        }
+
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Comparing '${key}' with '${curr.key}'...`,
+                            hashCalc: { key, hash: idx },
+                            targetIndex: idx,
+                            highlightNode: { col: idx, depth, type: 'EXAMINE' }
+                        });
+
+                        if (!curr.next) {
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `End of chain. Key '${key}' not found (Miss).`,
+                                hashCalc: { key, hash: idx },
+                                targetIndex: idx,
+                                highlightNode: { col: idx, depth, type: 'MISS_PTR' },
+                                pause: true
+                            });
+                            return { found: false, depth, idx };
+                        }
+
+                        curr = curr.next;
+                        depth++;
+                    }
+                    return { found: false, depth, idx };
+                }
+
+                insert(key, recordSnapshot, recordHistory = true) {
+                    if (recordHistory) this.saveToHistory();
+
+                    // Matches Java SeparateChainingHashTable.insert:
+                    // 1) Check loadFactor() > maxLoadFactor BEFORE Finder
+                    let rehashed = false;
+                    if (this.loadFactor() > this.maxLoadFactor) {
+                        this.rehash(recordSnapshot);
+                        rehashed = true;
+                    }
+
+                    // 2) Run Finder
+                    const result = this.performSearchLogic(key, recordSnapshot);
+
+                    // 3) If found: finder.current.key = key (highlight updated node!)
+                    if (result.found) {
+                        let curr = this.table[result.idx];
+                        let d = 0;
+                        while (curr && d < result.depth) {
+                            curr = curr.next;
+                            d++;
+                        }
+                        if (curr) curr.key = key;
+
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Key '${key}' found at bucket ${result.idx}: updating finder.current.key = '${key}' (size stays ${this.size}).`,
+                            hashCalc: { key, hash: result.idx },
+                            targetIndex: result.idx,
+                            highlightNode: { col: result.idx, depth: result.depth, type: 'UPDATE' },
+                            pause: true
+                        });
+
+                        if (recordHistory && !rehashed) this.discardLastHistory();
+                        this.cleanUp(recordSnapshot, `Updated '${key}'. Ready.`);
+                        return true;
+                    }
+
+                    // 4) Not found: insert new node at head of chain
+                    const idx = result.idx;
+                    const newNode = new Node(key, this.table[idx]);
+                    this.table[idx] = newNode;
+                    this.size++;
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Inserting '${key}' at head of bucket ${idx}...`,
+                        hashCalc: { key, hash: idx },
+                        targetIndex: idx,
+                        animation: 'slideDown',
+                        animationCol: idx,
+                        highlightNode: { col: idx, depth: 0, type: 'HIT' },
+                        pause: true
+                    });
+
+                    this.cleanUp(recordSnapshot, `Inserted '${key}'. Ready.`);
+                    return true;
+                }
+
+                search(key, recordSnapshot) {
+                    const res = this.performSearchLogic(key, recordSnapshot);
+                    this.cleanUp(recordSnapshot, res.found ? `Found '${key}' at bucket ${res.idx}. Ready.` : `'${key}' not found.`);
+                    return res.found;
+                }
+
+                delete(key, recordSnapshot, recordHistory = true) {
+                    if (recordHistory) this.saveToHistory();
+
+                    const result = this.performSearchLogic(key, recordSnapshot);
+                    if (!result.found) {
+                        if (recordHistory) this.discardLastHistory();
+                        this.cleanUp(recordSnapshot, `'${key}' not found.`);
+                        return false;
+                    }
+
+                    const idx = result.idx;
+                    const oldData = this.getSnapshotData();
+
+                    recordSnapshot(oldData, {
+                        text: `Removing '${key}' from bucket ${idx}. Sliding chain up...`,
+                        hashCalc: { key, hash: idx },
+                        targetIndex: idx,
+                        animation: 'slideUp',
+                        animationCol: idx,
+                        animationDepth: result.depth
+                    });
+
+                    let curr = this.table[idx], prev = null;
+                    while (curr && curr.key !== key) {
+                        prev = curr;
+                        curr = curr.next;
+                    }
+                    if (prev) prev.next = curr.next;
+                    else this.table[idx] = curr.next;
+                    this.size--;
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Deleted '${key}'.`,
+                        hashCalc: { key, hash: idx },
+                        pause: true
+                    });
+
+                    this.cleanUp(recordSnapshot, `Deleted '${key}'. Ready.`);
+                    return true;
+                }
+
+                rehash(recordSnapshot) {
+                    const oldCapacity = this.capacity;
+                    const oldTableRef = this.cloneTable(this.table);
+                    const oldSerialized = this.serializeTable(oldTableRef);
+
+                    this.capacity = nextPrime(this.capacity * 2);
+                    this.table = new Array(this.capacity).fill(null);
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `loadFactor (${(this.size / oldCapacity).toFixed(2)}) > ${this.maxLoadFactor}. Rehashing ${oldCapacity} -> ${this.capacity}...`,
+                        rehashMode: true,
+                        phase: 'SETUP',
+                        oldTable: oldSerialized,
+                        oldCapacity,
+                        processedIds: [],
+                        pause: true
+                    });
+
+                    const allNodes = [];
+                    for (let i = 0; i < oldTableRef.length; i++) {
+                        let curr = oldTableRef[i], depth = 0;
+                        while (curr) {
+                            allNodes.push({ key: curr.key, id: curr.id, oldIdx: i, oldDepth: depth });
+                            curr = curr.next;
+                            depth++;
+                        }
+                    }
+
+                    const processedIds = [];
+                    for (const nodeInfo of allNodes) {
+                        const newIdx = this.hash(nodeInfo.key);
+                        const newNode = new Node(nodeInfo.key, this.table[newIdx]);
+                        newNode.id = nodeInfo.id;
+                        this.table[newIdx] = newNode;
+
+                        recordSnapshot(this.getSnapshotData(), {
+                            text: `Rehashing '${nodeInfo.key}': bucket ${nodeInfo.oldIdx} -> ${newIdx}`,
+                            rehashMode: true,
+                            phase: 'FLYING',
+                            oldTable: oldSerialized,
+                            oldCapacity,
+                            processedIds: [...processedIds],
+                            flyingNode: {
+                                key: nodeInfo.key,
+                                id: nodeInfo.id,
+                                fromIdx: nodeInfo.oldIdx,
+                                fromDepth: nodeInfo.oldDepth,
+                                toIdx: newIdx
+                            }
+                        });
+
+                        processedIds.push(nodeInfo.id);
+                    }
+
+                    recordSnapshot(this.getSnapshotData(), {
+                        text: `Rehashing complete. New capacity: ${this.capacity}.`,
+                        isCleanup: true,
+                        pause: true
+                    });
+                }
+
+                cleanUp(recordSnapshot, text = 'Ready.') {
+                    recordSnapshot(this.getSnapshotData(), { text, isCleanup: true });
                 }
             }
-        }
-        return null;
-    }
 
-    onMouseDown(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        
-        const item = this.checkHit(mx, my);
-        if (item) {
-            document.getElementById('inputValue').value = item.key;
-            return;
-        }
+            class Visualizer {
+                constructor(canvasId, callbacks = {}) {
+                    this.canvas = document.getElementById(canvasId);
+                    this.ctx = this.canvas.getContext('2d');
+                    this.callbacks = callbacks;
 
-        this.isDragging = true;
-        this.dragStart = { x: mx, y: my };
-        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
-        this.canvas.style.cursor = 'grabbing';
-    }
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = 800;
+                    this.viewHeight = 600;
 
-    onMouseMove(e) {
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                    this.layout = {
+                        arrayCellSize: 44,
+                        nodeWidth: 38,
+                        nodeBoxH: 30,
+                        nodePtrH: 20,
+                        nodeVerticalStep: 62,
+                        leftPanelW: 165,
+                        rehashGap: 180,
+                        baseY: -90
+                    };
 
-        const item = this.checkHit(mx, my);
-        const tooltip = document.getElementById('tooltip');
-        if (item) {
-            this.canvas.style.cursor = 'pointer';
-            tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.key}</span> is <span class="tooltip-hash">${item.hash}</span>`;
-            tooltip.style.display = 'block';
-            tooltip.style.left = (e.clientX + 15) + 'px';
-            tooltip.style.top = (e.clientY + 15) + 'px';
-        } else {
-            if(!this.isDragging) this.canvas.style.cursor = 'default';
-            tooltip.style.display = 'none';
-        }
+                    this.snapshots = [];
+                    this.currentSnapshotIndex = 0;
+                    this.state = 'IDLE'; // 'IDLE' | 'CAMERA' | 'MORPH' | 'WAITING'
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 0;
+                    this.baseMorphSpeed = 2.6;
+                    this.speedMultiplier = 1;
+                    this.pauseTimer = 0;
+                    this.autoFit = true;
 
-        if (this.isDragging) {
-            const dx = mx - this.dragStart.x;
-            const dy = my - this.dragStart.y;
-            this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
-            this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
-        }
-    }
+                    this.camera = { x: 0, y: 0, scale: 1, targetX: 0, targetY: 0, targetScale: 1 };
+                    this.isDragging = false;
+                    this.dragMoved = false;
+                    this.pointerDownItem = null;
+                    this.hoveredItem = null;
+                    this.dragStart = { x: 0, y: 0 };
+                    this.initialCamera = { x: 0, y: 0 };
+                    this.initialPinchDist = 0;
+                    this.initialScale = 1;
 
-    onMouseUp(e) {
-        this.isDragging = false;
-        this.canvas.style.cursor = 'default';
-    }
-
-    onWheel(e) {
-        e.preventDefault();
-        const zoomIntensity = 0.001;
-        const scroll = e.deltaY;
-        let newScale = this.camera.targetScale * (1 - scroll * zoomIntensity);
-        newScale = Math.min(Math.max(0.1, newScale), 5);
-
-        const rect = this.canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left, my = e.clientY - rect.top;
-        const w = this.canvas.width, h = this.canvas.height;
-
-        const worldX = this.camera.targetX + (mx - w / 2) / this.camera.targetScale;
-        const worldY = this.camera.targetY + (my - h / 2) / this.camera.targetScale;
-
-        this.camera.targetScale = newScale;
-        this.camera.targetX = worldX - (mx - w / 2) / newScale;
-        this.camera.targetY = worldY - (my - h / 2) / newScale;
-    }
-
-    getTouchDist(touches) { return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY); }
-
-    onTouchStart(e) {
-        if (e.touches.length === 1) {
-            const t = e.touches[0];
-            const rect = this.canvas.getBoundingClientRect();
-            const mx = t.clientX - rect.left, my = t.clientY - rect.top;
-            
-            const item = this.checkHit(mx, my);
-            const tooltip = document.getElementById('tooltip');
-
-            if (item) {
-                // Set value and Show Tooltip on Touch
-                document.getElementById('inputValue').value = item.key;
-                tooltip.innerHTML = `Hash of <span class="tooltip-item">${item.key}</span> is <span class="tooltip-hash">${item.hash}</span>`;
-                tooltip.style.display = 'block';
-                tooltip.style.left = (mx + 15) + 'px';
-                tooltip.style.top = (my + 15) + 'px';
-                return;
-            } else {
-                // Hide tooltip if touching empty space
-                tooltip.style.display = 'none';
-            }
-
-            this.isDragging = true;
-            this.dragStart = { x: mx, y: my };
-            this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
-        } else if (e.touches.length === 2) {
-            this.isDragging = false;
-            this.initialPinchDist = this.getTouchDist(e.touches);
-            this.initialScale = this.camera.targetScale;
-        }
-    }
-
-    onTouchMove(e) {
-        e.preventDefault();
-        
-        // Hide tooltip immediately when moving
-        document.getElementById('tooltip').style.display = 'none';
-
-        if (e.touches.length === 1 && this.isDragging) {
-            const t = e.touches[0];
-            const rect = this.canvas.getBoundingClientRect();
-            const mx = t.clientX - rect.left, my = t.clientY - rect.top;
-            const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
-            this.camera.targetX = this.initialCamera.x - (dx / this.camera.scale);
-            this.camera.targetY = this.initialCamera.y - (dy / this.camera.scale);
-        } else if (e.touches.length === 2) {
-            const dist = this.getTouchDist(e.touches);
-            if (this.initialPinchDist > 0) {
-                const scaleFactor = dist / this.initialPinchDist;
-                this.camera.targetScale = Math.min(Math.max(0.1, this.initialScale * scaleFactor), 5);
-            }
-        }
-    }
-
-    onTouchEnd(e) { this.isDragging = false; this.initialPinchDist = 0; }
-
-    loop(timestamp) {
-        if (!this.lastTime) this.lastTime = timestamp;
-        const dt = (timestamp - this.lastTime) / 1000;
-        this.lastTime = timestamp;
-
-        // Inertia Camera Logic
-        const camFactor = 1 - Math.exp(-10 * dt);
-        this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
-        this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
-        this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
-
-        // State Machine
-        if (this.state === 'CAMERA') {
-            const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
-            // If camera is close enough, start morphing
-            if (dist < 5 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.05) {
-                this.state = 'MORPH';
-            }
-        } 
-        else if (this.state === 'MORPH' && !this.isPaused) {
-            const snap = this.snapshots[this.currentSnapshotIndex];
-            let moveSpeedModifier = 1.0;
-
-            if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') {
-                moveSpeedModifier = 0.35; 
-            }
-
-            this.morphProgress += this.baseSpeed * this.currentSpeedFactor * moveSpeedModifier;
-
-            if (this.morphProgress >= 1) {
-                this.morphProgress = 1;
-                this.state = 'WAITING';
-                
-                this.pauseTimer = 30 / this.currentSpeedFactor;
-                if (snap.meta && snap.meta.pause) this.pauseTimer = 60;
-                if (snap.meta && snap.meta.isCleanup) this.pauseTimer = 20;
-                if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') {
-                    this.pauseTimer = 5 / this.currentSpeedFactor; 
+                    this.bindEvents();
+                    this.resize();
+                    this.lastTime = 0;
+                    requestAnimationFrame(t => this.loop(t));
                 }
-            }
-        } 
-        else if (this.state === 'WAITING' && !this.isPaused) {
-            this.pauseTimer--;
-            if (this.pauseTimer <= 0) {
-                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
-                    this.currentSnapshotIndex++;
-                    const nextSnap = this.snapshots[this.currentSnapshotIndex];
-                    
-                    // Progressive Zoom Update:
-                    // Check bounds of the next step and adjust camera smoothly
-                    const nextBounds = this.getSnapshotBounds(nextSnap);
-                    this.fitBoundsToScreen(nextBounds);
 
+                bindEvents() {
+                    window.addEventListener('resize', () => this.resize());
+                    this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+                    this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+                    this.canvas.addEventListener('mouseup', () => this.onMouseUp());
+                    this.canvas.addEventListener('mouseleave', () => this.onMouseLeave());
+                    this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+                    this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
+                    this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
+                    this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
+                }
+
+                notifyState() {
+                    if (this.callbacks.onStateChange) {
+                        this.callbacks.onStateChange({
+                            state: this.state,
+                            isPaused: this.isPaused,
+                            index: this.currentSnapshotIndex,
+                            total: this.snapshots.length
+                        });
+                    }
+                }
+
+                setStatus(text) {
+                    if (this.callbacks.onStatus) this.callbacks.onStatus(text);
+                }
+
+                resize() {
+                    const container = document.getElementById('canvas-container');
+                    const rect = container.getBoundingClientRect();
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = Math.max(1, rect.width);
+                    this.viewHeight = Math.max(1, rect.height);
+                    this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
+                    this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
+
+                    if (this.snapshots.length > 0) {
+                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                        if (snap) {
+                            this.fitBoundsToScreen(this.getSnapshotBounds(snap));
+                            this.camera.x = this.camera.targetX;
+                            this.camera.y = this.camera.targetY;
+                            this.camera.scale = this.camera.targetScale;
+                        }
+                    }
+                }
+
+                setSpeed(val) { this.speedMultiplier = val; }
+
+                getSnapshotBounds(snap) {
+                    const meta = snap.meta || {};
+                    const data = snap.tableData;
+                    const L = this.layout;
+
+                    if (meta.rehashMode) {
+                        const oldW = meta.oldCapacity * L.arrayCellSize;
+                        const newW = data.capacity * L.arrayCellSize;
+                        const totalRehashW = oldW + L.rehashGap + newW;
+                        const startX = -totalRehashW / 2;
+                        const oldMaxDepth = meta.oldTable.reduce((m, l) => Math.max(m, l ? l.length : 0), 0);
+                        const globalMaxDepth = Math.max(data.maxDepth, oldMaxDepth);
+
+                        return {
+                            minX: startX - 30,
+                            maxX: startX + totalRehashW + 30,
+                            minY: L.baseY - 60,
+                            maxY: L.baseY + L.arrayCellSize + 150 + globalMaxDepth * L.nodeVerticalStep
+                        };
+                    }
+
+                    const arrayW = data.capacity * L.arrayCellSize;
+                    const totalW = L.leftPanelW + arrayW;
+                    const startX = -totalW / 2 + L.leftPanelW;
+                    const visibleDepth = Math.max(0, data.maxDepth);
+
+                    return {
+                        minX: startX - L.leftPanelW - 125,
+                        maxX: startX + arrayW + 40,
+                        minY: L.baseY - 150,
+                        maxY: L.baseY + Math.max(135, L.arrayCellSize + 40 + visibleDepth * L.nodeVerticalStep)
+                    };
+                }
+
+                fitCurrent() {
+                    if (this.snapshots.length === 0) return;
+                    const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                    this.fitBoundsToScreen(this.getSnapshotBounds(snap));
+                }
+
+                fitBoundsToScreen(bounds) {
+                    const contentW = bounds.maxX - bounds.minX;
+                    const contentH = bounds.maxY - bounds.minY;
+                    const centerX = (bounds.minX + bounds.maxX) / 2;
+                    const centerY = (bounds.minY + bounds.maxY) / 2;
+
+                    const scale = Math.min(
+                        this.viewWidth / (contentW + 60),
+                        this.viewHeight / (contentH + 60),
+                        1.8
+                    );
+                    this.camera.targetScale = Math.max(0.15, scale);
+                    this.camera.targetX = centerX;
+                    this.camera.targetY = centerY;
+                }
+
+                resetWithSnapshot(snap, statusText = 'Ready.') {
+                    this.snapshots = [snap];
+                    this.currentSnapshotIndex = 0;
+                    this.state = 'IDLE';
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 1;
+                    this.pauseTimer = 0;
+                    this.hoveredItem = null;
+                    document.getElementById('tooltip').style.display = 'none';
+                    this.fitBoundsToScreen(this.getSnapshotBounds(snap));
+                    this.camera.x = this.camera.targetX;
+                    this.camera.y = this.camera.targetY;
+                    this.camera.scale = this.camera.targetScale;
+                    this.setStatus(statusText);
+                    this.notifyState();
+                }
+
+                enqueueOperation(snapshots, instant = false) {
+                    if (!snapshots || snapshots.length === 0) return;
+
+                    this.snapshots = snapshots;
+                    this.currentSnapshotIndex = 0;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.singleStepTarget = null;
+                    this.isPaused = false;
+                    this.hoveredItem = null;
+                    document.getElementById('tooltip').style.display = 'none';
+
+                    if (instant || snapshots.length <= 1) {
+                        this.currentSnapshotIndex = snapshots.length - 1;
+                        this.morphProgress = 1;
+                        this.state = 'IDLE';
+                        const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit) this.fitBoundsToScreen(this.getSnapshotBounds(last));
+                        this.setStatus(last.meta?.text || 'Ready.');
+                        this.notifyState();
+                        return;
+                    }
+
+                    if (this.autoFit) {
+                        this.fitBoundsToScreen(this.getSnapshotBounds(snapshots[0]));
+                        this.state = 'CAMERA';
+                    } else {
+                        this.startStep(1);
+                    }
+                    this.notifyState();
+                }
+
+                startStep(index) {
+                    if (index >= this.snapshots.length) {
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        const last = this.snapshots[this.snapshots.length - 1];
+                        this.setStatus(last?.meta?.text || 'Ready.');
+                        this.notifyState();
+                        return;
+                    }
+                    this.currentSnapshotIndex = index;
+                    const snap = this.snapshots[index];
+                    if (this.autoFit) this.fitBoundsToScreen(this.getSnapshotBounds(snap));
+                    if (snap.meta && snap.meta.text) this.setStatus(snap.meta.text);
                     this.morphProgress = 0;
                     this.state = 'MORPH';
-                    if (nextSnap.meta && nextSnap.meta.text) document.getElementById('status-text').innerText = nextSnap.meta.text;
-                    
-                } else {
-                    this.state = 'IDLE';
-                    document.getElementById('status-text').innerText = "Ready.";
+                    this.notifyState();
                 }
-            }
-        }
-        
-        this.draw();
-        requestAnimationFrame(t => this.loop(t));
-    }
 
-    draw() {
-        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        if (this.snapshots.length === 0) return;
-
-        const idx = Math.max(0, this.currentSnapshotIndex);
-        const snap = this.snapshots[idx];
-        const meta = snap.meta || {};
-
-        this.ctx.save();
-        // Camera Transform: Center World 0,0
-        this.ctx.translate(this.canvas.width/2, this.canvas.height/2);
-        this.ctx.scale(this.camera.scale, this.camera.scale);
-        this.ctx.translate(-this.camera.x, -this.camera.y);
-
-        this.drawScene(snap.tableData, meta);
-        this.ctx.restore();
-    }
-
-    drawScene(data, meta) {
-        const L = this.layout;
-        
-        // World Coordinates Calculation: Center everything around (0,0)
-        // Standard View: Table + Panel centered
-        const totalW = L.leftPanelW + data.capacity * L.arrayCellSize;
-        const startX = -totalW / 2 + L.leftPanelW;
-        
-        if (meta.rehashMode) {
-            // Rehash View: Old + Gap + New centered
-            const oldW = meta.oldCapacity * L.arrayCellSize;
-            const newW = data.capacity * L.arrayCellSize;
-            const rehashTotalW = oldW + L.rehashGap + newW;
-            const rehashStartX = -rehashTotalW / 2;
-            
-            this.drawRehashScene(data, meta, rehashStartX, L.baseY + 120);
-            return;
-        }
-
-        this.drawStruct(startX - L.leftPanelW + 10, L.baseY, 40, data, startX);
-        this.drawArrayAndLists(startX, L.baseY, L.arrayCellSize, data, meta);
-
-        if (meta.hashCalc) {
-            const fade = meta.isCleanup ? (1 - this.morphProgress) : 1;
-            if (fade > 0) {
-                this.ctx.globalAlpha = fade;
-                const arrayCenterX = startX + (data.capacity * L.arrayCellSize) / 2;
-                this.drawHashBox(arrayCenterX, L.baseY - 110, meta.hashCalc);
-                this.ctx.globalAlpha = 1;
-            }
-        }
-    }
-
-    drawRehashScene(data, meta, startX, baseY) {
-        const ctx = this.ctx;
-        const L = this.layout;
-        
-        const oldTableX = startX;
-        const newTableX = startX + (meta.oldCapacity * L.arrayCellSize) + L.rehashGap;
-
-        // 1. OLD TABLE
-        ctx.fillStyle = '#777'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("Old Table", oldTableX + (meta.oldCapacity * L.arrayCellSize)/2, baseY - 30);
-
-        const filteredOldTable = meta.oldTable.map(list => 
-            list.filter(item => !meta.processedIds.includes(item.id) && (meta.flyingNode ? meta.flyingNode.id !== item.id : true))
-        );
-        
-        const oldDataDummy = { capacity: meta.oldCapacity, table: filteredOldTable };
-        this.drawArrayAndLists(oldTableX, baseY, L.arrayCellSize, oldDataDummy, { isCleanup: true });
-
-        // 2. ARROW
-        const arrowX1 = oldTableX + (meta.oldCapacity * L.arrayCellSize) + 20;
-        const arrowX2 = newTableX - 20;
-        this.drawArrow(arrowX1, baseY + L.arrayCellSize/2, arrowX2, baseY + L.arrayCellSize/2, '#555', 15);
-        ctx.fillStyle = '#555'; ctx.font = '12px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("Rehashing", (arrowX1+arrowX2)/2, baseY + L.arrayCellSize/2 - 10);
-
-        // 3. NEW TABLE
-        ctx.fillStyle = '#2E7D32'; ctx.font = 'bold 16px Arial'; ctx.textAlign = 'center';
-        ctx.fillText("New Table", newTableX + (data.capacity * L.arrayCellSize)/2, baseY - 30);
-
-        let newDataForDraw = data;
-        if (meta.phase === 'FLYING' && meta.flyingNode) {
-            newDataForDraw = {
-                ...data,
-                table: data.table.map(list => list.filter(n => n.id !== meta.flyingNode.id))
-            };
-        }
-        this.drawArrayAndLists(newTableX, baseY, L.arrayCellSize, newDataForDraw, { isCleanup: true });
-
-        // 4. FLYING NODE
-        if (meta.phase === 'FLYING' && meta.flyingNode) {
-            const fNode = meta.flyingNode;
-            
-            const srcX = oldTableX + fNode.fromIdx * L.arrayCellSize + L.arrayCellSize/2;
-            const srcY = baseY + L.arrayCellSize + 20 + fNode.fromDepth * L.nodeVerticalStep;
-            
-            const destList = data.table[fNode.toIdx];
-            const destDepth = destList.findIndex(n => n.id === fNode.id); 
-            
-            const destX = newTableX + fNode.toIdx * L.arrayCellSize + L.arrayCellSize/2;
-            const destY = baseY + L.arrayCellSize + 20 + (destDepth >= 0 ? destDepth : 0) * L.nodeVerticalStep;
-
-            const t = this.morphProgress; 
-            const ease = t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-            
-            const currX = srcX + (destX - srcX) * ease;
-            const currY = srcY + (destY - srcY) * ease;
-            
-            this.ctx.globalAlpha = 1;
-            this.drawSingleNode(currX, currY, fNode.key, '#FFD700', '#FFD700', '#000', 2); 
-            
-            if (t > 0.1) {
-                ctx.save();
-                ctx.globalAlpha = 0.3;
-                ctx.setLineDash([5, 5]);
-                ctx.beginPath();
-                ctx.moveTo(srcX, srcY + 15);
-                ctx.lineTo(currX, currY + 15);
-                ctx.strokeStyle = '#FFD700';
-                ctx.stroke();
-                ctx.restore();
-            }
-        }
-    }
-    paintRect(x, y, w, h, fill, {
-          stroke = null,
-          lineWidth = 1,
-          alpha = 1,
-          radius = 8
-        } = {}) {
-          const c = this.ctx;
-
-          c.save();
-          c.globalAlpha *= alpha;
-
-          c.beginPath();
-          c.roundRect(x, y, w, h, radius);
-
-          c.fillStyle = fill;
-          c.fill();
-
-          if (stroke) {
-            c.strokeStyle = stroke;
-            c.lineWidth = lineWidth;
-            c.stroke();
-          }
-
-          c.restore();
-        }
-
-    drawStruct(x, y, w, data, arrowDestX) {
-        const ctx = this.ctx;
-        const h = 35; 
-
-        ctx.textAlign = 'right'; ctx.font = '16px Arial'; ctx.fillStyle = '#000';
-        ctx.fillText('table', x - 5, y + 23);
-        //ctx.fillStyle = COLORS.STRUCT_KEYS_BG;
-        this.paintRect(x, y, w, h, COLORS.STRUCT_KEYS_BG, {stroke: '#fff', lineWidth: 2});
-        // ctx.strokeStyle = '#fff'; ctx.strokeRect(x, y, w, h);
-        
-        const dotX = x + w/2; const dotY = y + h/2;
-        ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
-        ctx.fillStyle = COLORS.DOT; ctx.fill();
-        this.drawArrow(dotX, dotY, arrowDestX, dotY, COLORS.ARROW_REF, 10);
-
-        ctx.textAlign = 'right'; ctx.fillStyle = '#000';
-        ctx.fillText('size', x - 5, y + h + 23);
-        this.paintRect(x, y + h, w, h, COLORS.STRUCT_STATS_BG, {stroke: '#fff', lineWidth: 2});
-        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '22px Arial';
-        ctx.fillText(data.size, x + w/2, y + h + 24);
-
-        ctx.textAlign = 'right'; ctx.font = '14px Arial'; ctx.fillStyle = '#000';
-        ctx.fillText('maxLoadFactor', x - 5, y + h*2 + 23);
-        ctx.fillStyle = COLORS.STRUCT_STATS_BG;
-        this.paintRect(x, y + h*2, w, h, COLORS.STRUCT_STATS_BG, {stroke: '#fff', lineWidth: 2});
-        ctx.textAlign = 'center'; ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '22px Arial';
-        ctx.fillText(data.maxLoadFactor, x + w/2, y + h*2 + 24);
-    }
-
-    drawArrayAndLists(x, y, size, data, meta) {
-        const ctx = this.ctx;
-        const table = data.table;
-        const listStartY = y + size + 20;
-        const L = this.layout;
-
-        const isAnimating = (this.state !== 'IDLE'); 
-
-        for(let i = 0; i < data.capacity; i++) {
-            const cx = x + i * size;
-            const cy = y;
-
-            // Index
-            ctx.fillStyle = '#000'; ctx.font = '14px monospace'; ctx.textAlign = 'center';
-            ctx.fillText(i, cx + size/2, cy - 8);
-
-            // Cell
-            ctx.fillStyle = COLORS.CELL_BG;
-            if (meta.missIndex === i && !meta.isCleanup) ctx.fillStyle = COLORS.MISS_BG;
-
-            ctx.strokeStyle = COLORS.CELL_STROKE; ctx.lineWidth = 1;
-            this.paintRect(cx, cy, size, size, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
-      
-            const dotX = cx + size/2;
-            const dotY = cy + size/2;
-            ctx.beginPath(); ctx.arc(dotX, dotY, 5, 0, Math.PI*2);
-            ctx.fillStyle = (meta.missIndex === i && !meta.isCleanup) ? '#fff' : COLORS.DOT; 
-            ctx.strokeStyle = ctx.fillStyle;
-            ctx.fill();
-
-            const list = table[i] || [];
-            const hasList = list.length > 0;
-            
-            let showGhostInsert = (meta.animation === 'slideDown' && meta.animationCol === i && isAnimating);
-
-            if (hasList) {
-                this.drawArrow(dotX, dotY, dotX, listStartY, COLORS.ARROW_REF, 8);
-                this.drawLinkedListNodes(dotX, listStartY, list, i, meta, isAnimating, this.morphProgress);
-            } else {
-                if (showGhostInsert) {
-                    this.drawArrow(dotX, dotY, dotX, listStartY, COLORS.ARROW_REF, 8);
-                    
-                    const splitTime = 0.7;
-                    let ghostAlpha = 0;
-                    if (this.morphProgress > splitTime) {
-                        ghostAlpha = (this.morphProgress - splitTime) / (1 - splitTime);
+                togglePause() {
+                    if (this.state === 'IDLE' && this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        return this.isPaused;
                     }
-                    
-                    if (ghostAlpha > 0) {
-                        ctx.globalAlpha = ghostAlpha;
-                        this.drawSingleNode(dotX, listStartY, meta.animationKey, COLORS.HIT_BG, COLORS.CELL_BG);
-                        ctx.globalAlpha = 1;
-                    }
-                } else {
-                    ctx.strokeStyle = (meta.missIndex === i && !meta.isCleanup) ? '#fff' : COLORS.DOT; 
-                    ctx.lineWidth = 2; ctx.stroke();
-                }
-            }
-
-            if (meta.targetIndex === i && !meta.isCleanup) {
-                 this.drawArrow(dotX, dotY - 70, dotX, dotY - 42, COLORS.ARROW_PROBE, 8);
-            }
-        }
-    }
-
-    drawLinkedListNodes(centerX, startY, list, colIndex, meta, isAnimating, progress) {
-        const ctx = this.ctx;
-        const L = this.layout;
-
-        const getVisualProps = (k) => {
-            let y = startY + k * L.nodeVerticalStep;
-            let alpha = 1;
-            
-            if (isAnimating && meta.animationCol === colIndex) {
-                if (meta.animation === 'slideDown') {
-                    const splitTime = 0.7;
-                    if (k === 0) {
-                        y = startY; 
-                        if (progress < splitTime) {
-                            alpha = 0; 
-                        } else {
-                            alpha = (progress - splitTime) / (1 - splitTime);
+                    this.isPaused = !this.isPaused;
+                    if (!this.isPaused) {
+                        this.singleStepTarget = null;
+                        if (this.state === 'IDLE' && this.currentSnapshotIndex < this.snapshots.length - 1) {
+                            this.startStep(this.currentSnapshotIndex + 1);
                         }
+                    }
+                    this.notifyState();
+                    return this.isPaused;
+                }
+
+                stepForward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+
+                    if (this.state === 'CAMERA') {
+                        this.camera.x = this.camera.targetX;
+                        this.camera.y = this.camera.targetY;
+                        this.camera.scale = this.camera.targetScale;
+                    }
+
+                    if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        this.morphProgress = 1;
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        this.setStatus(this.snapshots[this.currentSnapshotIndex].meta?.text || 'Ready.');
+                        this.notifyState();
+                        return;
+                    }
+
+                    const nextIdx = this.currentSnapshotIndex + 1;
+                    this.singleStepTarget = nextIdx;
+                    this.startStep(nextIdx);
+                }
+
+                stepBackward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+                    this.singleStepTarget = null;
+
+                    if (this.currentSnapshotIndex > 0) {
+                        this.currentSnapshotIndex--;
+                    }
+                    this.morphProgress = 1;
+                    this.state = 'IDLE';
+                    const cur = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit) this.fitBoundsToScreen(this.getSnapshotBounds(cur));
+                    this.setStatus(cur.meta?.text || `Step ${this.currentSnapshotIndex + 1}`);
+                    this.notifyState();
+                }
+
+                skipToEnd() {
+                    if (this.snapshots.length === 0) return;
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.currentSnapshotIndex = this.snapshots.length - 1;
+                    this.morphProgress = 1;
+                    this.pauseTimer = 0;
+                    this.state = 'IDLE';
+                    const last = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit) this.fitBoundsToScreen(this.getSnapshotBounds(last));
+                    this.setStatus(last.meta?.text || 'Ready.');
+                    this.notifyState();
+                }
+
+                // --- Interaction ---
+
+                screenToWorld(mx, my) {
+                    return {
+                        x: this.camera.x + (mx - this.viewWidth / 2) / this.camera.scale,
+                        y: this.camera.y + (my - this.viewHeight / 2) / this.camera.scale
+                    };
+                }
+
+                checkHit(mx, my) {
+                    if (this.snapshots.length === 0 || this.currentSnapshotIndex < 0) return null;
+                    const snap = this.snapshots[this.currentSnapshotIndex];
+                    const data = snap.tableData;
+                    const meta = snap.meta || {};
+                    const L = this.layout;
+
+                    if (meta.rehashMode) return null;
+
+                    const world = this.screenToWorld(mx, my);
+                    const arrayW = data.capacity * L.arrayCellSize;
+                    const totalW = L.leftPanelW + arrayW;
+                    const startX = -totalW / 2 + L.leftPanelW;
+                    const listTop = L.baseY + L.arrayCellSize + 20;
+
+                    for (let i = 0; i < data.capacity; i++) {
+                        const list = data.table[i];
+                        if (list && list.length > 0) {
+                            const cx = startX + i * L.arrayCellSize + L.arrayCellSize / 2;
+                            let cy = listTop;
+                            for (let k = 0; k < list.length; k++) {
+                                if (world.x >= cx - L.nodeWidth / 2 && world.x <= cx + L.nodeWidth / 2 &&
+                                    world.y >= cy && world.y <= cy + L.nodeBoxH + L.nodePtrH) {
+                                    const details = this.callbacks.getHashDetails
+                                        ? this.callbacks.getHashDetails(list[k].key, data.capacity)
+                                        : { idx: i, desc: `bucket ${i}` };
+                                    return { id: list[k].id, key: list[k].key, bucket: i, depth: k, desc: details.desc };
+                                }
+                                cy += L.nodeVerticalStep;
+                            }
+                        }
+                    }
+                    return null;
+                }
+
+                showTooltip(item, clientX, clientY) {
+                    const tooltip = document.getElementById('tooltip');
+                    tooltip.innerHTML = `Key <span class="tooltip-item">'${item.key}'</span> &rarr; <span class="tooltip-hash">${item.desc}</span> (depth ${item.depth})`;
+                    tooltip.style.display = 'block';
+                    const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
+                    const left = Math.min(clientX + 14, window.innerWidth - tw - 10);
+                    const top = Math.min(clientY + 14, window.innerHeight - th - 10);
+                    tooltip.style.left = `${Math.max(8, left)}px`;
+                    tooltip.style.top = `${Math.max(8, top)}px`;
+                }
+
+                onMouseDown(e) {
+                    if (e.button !== 0) return;
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+                    this.isDragging = true;
+                    this.dragMoved = false;
+                    this.pointerDownItem = this.checkHit(mx, my);
+                    this.dragStart = { x: mx, y: my };
+                    this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                }
+
+                onMouseMove(e) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+
+                    if (this.isDragging) {
+                        const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
+
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x - dx / this.camera.scale;
+                            this.camera.targetY = this.initialCamera.y - dy / this.camera.scale;
+                            this.canvas.style.cursor = 'grabbing';
+                            this.hoveredItem = null;
+                            document.getElementById('tooltip').style.display = 'none';
+                            return;
+                        }
+                    }
+
+                    const item = this.checkHit(mx, my);
+                    this.hoveredItem = item;
+                    if (item) {
+                        this.canvas.style.cursor = 'pointer';
+                        this.showTooltip(item, e.clientX, e.clientY);
                     } else {
-                        const slideProgress = Math.min(progress / splitTime, 1); 
-                        y = startY + (k - 1 + slideProgress) * L.nodeVerticalStep;
-                    }
-                } 
-                else if (meta.animation === 'slideUp') {
-                    if (k === meta.animationDepth) {
-                        alpha = 1 - progress; 
-                    } else if (k > meta.animationDepth) {
-                        y = startY + (k - progress) * L.nodeVerticalStep;
+                        this.canvas.style.cursor = 'default';
+                        document.getElementById('tooltip').style.display = 'none';
                     }
                 }
-            }
-            return { y, alpha };
-        };
 
-        for(let k = 0; k < list.length; k++) {
-            const node = list[k];
-            const props = getVisualProps(k);
-            
-            if (props.alpha <= 0.01) continue; 
+                onMouseUp() {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownItem) {
+                        if (this.callbacks.onItemClick) this.callbacks.onItemClick(this.pointerDownItem);
+                    }
+                    this.isDragging = false;
+                    this.pointerDownItem = null;
+                    this.canvas.style.cursor = this.hoveredItem ? 'pointer' : 'default';
+                }
 
-            ctx.globalAlpha = props.alpha;
+                onMouseLeave() {
+                    this.isDragging = false;
+                    this.pointerDownItem = null;
+                    this.hoveredItem = null;
+                    this.canvas.style.cursor = 'default';
+                    document.getElementById('tooltip').style.display = 'none';
+                }
 
-            let bg = COLORS.DATA_BG;
-            let ptrBg = COLORS.CELL_BG;
-            let fgPtr = COLORS.DOT;
-            let ptrBorder = '#fff';
-            let ptrWidth = 1;
+                zoomAt(newScale, anchorX, anchorY) {
+                    newScale = Math.min(Math.max(0.15, newScale), 4.5);
+                    const worldX = this.camera.targetX + (anchorX - this.viewWidth / 2) / this.camera.targetScale;
+                    const worldY = this.camera.targetY + (anchorY - this.viewHeight / 2) / this.camera.targetScale;
+                    this.camera.targetScale = newScale;
+                    this.camera.targetX = worldX - (anchorX - this.viewWidth / 2) / newScale;
+                    this.camera.targetY = worldY - (anchorY - this.viewHeight / 2) / newScale;
+                }
 
-            if (!meta.isCleanup && meta.highlightNode && meta.highlightNode.col === colIndex && meta.highlightNode.depth === k) {
-                const type = meta.highlightNode.type;
-                if (type === 'HIT') bg = COLORS.HIT_BG;
-                if (type === 'EXAMINE') bg = COLORS.EXAMINE_BG;
-                if (type === 'MISS_PTR') {
-                    ptrBg = COLORS.MISS_BG; 
-                    fgPtr = '#fff';
-                    ptrWidth = 2;
+                zoomBy(multiplier) {
+                    this.zoomAt(this.camera.targetScale * multiplier, this.viewWidth / 2, this.viewHeight / 2);
+                }
+
+                onWheel(e) {
+                    e.preventDefault();
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+                    const factor = Math.exp(-e.deltaY * 0.0012);
+                    this.zoomAt(this.camera.targetScale * factor, mx, my);
+                }
+
+                getTouchDist(touches) {
+                    return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
+                }
+
+                onTouchStart(e) {
+                    if (e.touches.length === 1) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+
+                        this.isDragging = true;
+                        this.dragMoved = false;
+                        this.pointerDownItem = this.checkHit(mx, my);
+                        this.dragStart = { x: mx, y: my };
+                        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                    } else if (e.touches.length === 2) {
+                        this.isDragging = false;
+                        this.pointerDownItem = null;
+                        this.initialPinchDist = this.getTouchDist(e.touches);
+                        this.initialScale = this.camera.targetScale;
+                    }
+                }
+
+                onTouchMove(e) {
+                    e.preventDefault();
+                    document.getElementById('tooltip').style.display = 'none';
+
+                    if (e.touches.length === 1 && this.isDragging) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mx = t.clientX - rect.left, my = t.clientY - rect.top;
+                        const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 6) this.dragMoved = true;
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x - dx / this.camera.scale;
+                            this.camera.targetY = this.initialCamera.y - dy / this.camera.scale;
+                        }
+                    } else if (e.touches.length === 2 && this.initialPinchDist > 0) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+                        const midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+                        const scaleFactor = this.getTouchDist(e.touches) / this.initialPinchDist;
+                        this.zoomAt(this.initialScale * scaleFactor, midX, midY);
+                    }
+                }
+
+                onTouchEnd(e) {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownItem) {
+                        if (this.callbacks.onItemClick) this.callbacks.onItemClick(this.pointerDownItem);
+                    }
+                    if (e.touches.length === 0) {
+                        this.isDragging = false;
+                        this.pointerDownItem = null;
+                        this.initialPinchDist = 0;
+                    }
+                }
+
+                // --- LOOP & RENDERING ---
+
+                loop(timestamp) {
+                    if (!this.lastTime) this.lastTime = timestamp;
+                    const dt = Math.min((timestamp - this.lastTime) / 1000, 0.1);
+                    this.lastTime = timestamp;
+
+                    const camFactor = 1 - Math.exp(-10 * dt);
+                    this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
+                    this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
+                    this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
+
+                    const playingSingle = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+
+                    if (!this.isPaused || playingSingle) {
+                        if (this.state === 'CAMERA') {
+                            const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
+                            if (dist < 4 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.04) {
+                                this.startStep(1);
+                            }
+                        } else if (this.state === 'MORPH') {
+                            const snap = this.snapshots[this.currentSnapshotIndex];
+                            const mod = (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') ? 0.55 : 1.0;
+                            this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * mod * dt;
+
+                            if (this.morphProgress >= 1) {
+                                this.morphProgress = 1;
+                                if (playingSingle) {
+                                    this.singleStepTarget = null;
+                                    this.state = 'IDLE';
+                                    this.notifyState();
+                                } else {
+                                    this.state = 'WAITING';
+                                    let waitSec = 0.35 / this.speedMultiplier;
+                                    if (snap.meta && snap.meta.pause) waitSec = 0.7 / this.speedMultiplier;
+                                    if (snap.meta && snap.meta.isCleanup) waitSec = 0.25 / this.speedMultiplier;
+                                    if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') waitSec = 0.08 / this.speedMultiplier;
+                                    this.pauseTimer = waitSec;
+                                }
+                            }
+                        } else if (this.state === 'WAITING') {
+                            this.pauseTimer -= dt;
+                            if (this.pauseTimer <= 0) {
+                                if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                                    this.startStep(this.currentSnapshotIndex + 1);
+                                } else {
+                                    this.state = 'IDLE';
+                                    this.setStatus('Ready.');
+                                    this.notifyState();
+                                }
+                            }
+                        }
+                    }
+
+                    this.draw();
+                    requestAnimationFrame(t => this.loop(t));
+                }
+
+                draw() {
+                    const ctx = this.ctx;
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+                    if (this.snapshots.length === 0) return;
+
+                    const idx = Math.min(Math.max(0, this.currentSnapshotIndex), this.snapshots.length - 1);
+                    const snap = this.snapshots[idx];
+                    const meta = snap.meta || {};
+
+                    ctx.save();
+                    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+                    ctx.translate(this.viewWidth / 2, this.viewHeight / 2);
+                    ctx.scale(this.camera.scale, this.camera.scale);
+                    ctx.translate(-this.camera.x, -this.camera.y);
+
+                    this.drawScene(snap.tableData, meta);
+                    ctx.restore();
+                }
+
+                drawScene(data, meta) {
+                    const L = this.layout;
+                    const totalW = L.leftPanelW + data.capacity * L.arrayCellSize;
+                    const startX = -totalW / 2 + L.leftPanelW;
+
+                    if (meta.rehashMode) {
+                        const oldW = meta.oldCapacity * L.arrayCellSize;
+                        const newW = data.capacity * L.arrayCellSize;
+                        const rehashStartX = -(oldW + L.rehashGap + newW) / 2;
+                        this.drawRehashScene(data, meta, rehashStartX, L.baseY + 100);
+                        return;
+                    }
+
+                    this.drawStruct(startX - L.leftPanelW + 10, L.baseY, 44, data, startX);
+                    this.drawArrayAndLists(startX, L.baseY, L.arrayCellSize, data, meta);
+
+                    if (meta.hashCalc) {
+                        const fade = meta.isCleanup ? (1 - this.morphProgress) : 1;
+                        if (fade > 0.02) {
+                            this.ctx.save();
+                            this.ctx.globalAlpha = fade;
+                            const arrayCenterX = startX + (data.capacity * L.arrayCellSize) / 2;
+                            this.drawHashBox(arrayCenterX, L.baseY - 115, meta.hashCalc);
+                            this.ctx.restore();
+                        }
+                    }
+                }
+
+                drawRehashScene(data, meta, startX, baseY) {
+                    const ctx = this.ctx;
+                    const L = this.layout;
+
+                    const oldTableX = startX;
+                    const newTableX = startX + meta.oldCapacity * L.arrayCellSize + L.rehashGap;
+
+                    ctx.fillStyle = COLORS.TEXT_MUTED;
+                    ctx.font = 'bold 16px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Old Table', oldTableX + (meta.oldCapacity * L.arrayCellSize) / 2, baseY - 32);
+
+                    const filteredOldTable = meta.oldTable.map(list =>
+                        list.filter(item => !meta.processedIds.includes(item.id) && (meta.flyingNode ? meta.flyingNode.id !== item.id : true))
+                    );
+                    this.drawArrayAndLists(oldTableX, baseY, L.arrayCellSize, { capacity: meta.oldCapacity, table: filteredOldTable }, { isCleanup: true });
+
+                    const arrowX1 = oldTableX + meta.oldCapacity * L.arrayCellSize + 20;
+                    const arrowX2 = newTableX - 20;
+                    this.drawArrow(arrowX1, baseY + L.arrayCellSize / 2, arrowX2, baseY + L.arrayCellSize / 2, COLORS.TEXT_MUTED, 14);
+                    ctx.fillStyle = COLORS.TEXT_MUTED;
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('Rehashing', (arrowX1 + arrowX2) / 2, baseY + L.arrayCellSize / 2 - 12);
+
+                    ctx.fillStyle = '#2E7D32';
+                    ctx.font = 'bold 16px Arial';
+                    ctx.fillText('New Table', newTableX + (data.capacity * L.arrayCellSize) / 2, baseY - 32);
+
+                    let newDataForDraw = data;
+                    if (meta.phase === 'FLYING' && meta.flyingNode) {
+                        newDataForDraw = {
+                            ...data,
+                            table: data.table.map(list => list.filter(n => n.id !== meta.flyingNode.id))
+                        };
+                    }
+                    this.drawArrayAndLists(newTableX, baseY, L.arrayCellSize, newDataForDraw, { isCleanup: true });
+
+                    if (meta.phase === 'FLYING' && meta.flyingNode) {
+                        const fNode = meta.flyingNode;
+                        const srcX = oldTableX + fNode.fromIdx * L.arrayCellSize + L.arrayCellSize / 2;
+                        const srcY = baseY + L.arrayCellSize + 20 + fNode.fromDepth * L.nodeVerticalStep;
+
+                        const destList = data.table[fNode.toIdx];
+                        const destDepth = destList.findIndex(n => n.id === fNode.id);
+                        const destX = newTableX + fNode.toIdx * L.arrayCellSize + L.arrayCellSize / 2;
+                        const destY = baseY + L.arrayCellSize + 20 + (destDepth >= 0 ? destDepth : 0) * L.nodeVerticalStep;
+
+                        const t = this.morphProgress;
+                        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                        const currX = srcX + (destX - srcX) * ease;
+                        const currY = srcY + (destY - srcY) * ease;
+
+                        this.drawSingleNode(currX, currY, fNode.key, COLORS.FLY_BG, COLORS.FLY_BG, '#222', 2, COLORS.DOT, '#111');
+
+                        if (t > 0.1) {
+                            ctx.save();
+                            ctx.globalAlpha = 0.35;
+                            ctx.setLineDash([5, 5]);
+                            ctx.beginPath();
+                            ctx.moveTo(srcX, srcY + 15);
+                            ctx.lineTo(currX, currY + 15);
+                            ctx.strokeStyle = COLORS.FLY_BG;
+                            ctx.lineWidth = 2;
+                            ctx.stroke();
+                            ctx.restore();
+                        }
+                    }
+                }
+
+                paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1, radius = 7 } = {}) {
+                    const c = this.ctx;
+                    c.save();
+                    c.globalAlpha *= alpha;
+                    c.beginPath();
+                    c.roundRect(x, y, w, h, radius);
+                    c.fillStyle = fill;
+                    c.fill();
+                    if (stroke) {
+                        c.strokeStyle = stroke;
+                        c.lineWidth = lineWidth;
+                        c.stroke();
+                    }
+                    c.restore();
+                }
+
+                drawStruct(x, y, w, data, arrowDestX) {
+                    const ctx = this.ctx;
+                    const h = 36;
+
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.font = '16px monospace';
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.fillText('table', x - 8, y + h / 2);
+                    this.paintRect(x, y, w, h, COLORS.STRUCT_KEYS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+
+                    const dotX = x + w / 2, dotY = y + h / 2;
+                    ctx.beginPath();
+                    ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+                    ctx.fillStyle = COLORS.DOT;
+                    ctx.fill();
+                    this.drawArrow(dotX, dotY, arrowDestX, dotY, COLORS.ARROW_REF, 10);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = '16px monospace';
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.fillText('size', x - 8, y + h + h / 2);
+                    this.paintRect(x, y + h, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = COLORS.TEXT_RED;
+                    ctx.font = 'bold 20px Arial';
+                    ctx.fillText(data.size, x + w / 2, y + h + h / 2 + 1);
+
+                    ctx.textAlign = 'right';
+                    ctx.font = '14px monospace';
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.fillText('maxLoadFactor', x - 8, y + h * 2 + h / 2);
+                    this.paintRect(x, y + h * 2, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+                    ctx.textAlign = 'center';
+                    ctx.fillStyle = COLORS.TEXT_RED;
+                    ctx.font = 'bold 17px Arial';
+                    ctx.fillText(data.maxLoadFactor, x + w / 2, y + h * 2 + h / 2 + 1);
+                }
+
+                drawArrayAndLists(x, y, size, data, meta) {
+                    const ctx = this.ctx;
+                    const table = data.table;
+                    const listStartY = y + size + 20;
+                    const isAnimating = this.state === 'MORPH' || this.state === 'WAITING';
+
+                    for (let i = 0; i < data.capacity; i++) {
+                        const cx = x + i * size;
+                        const cy = y;
+
+                        ctx.fillStyle = COLORS.TEXT_MAIN;
+                        ctx.font = '14px monospace';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'bottom';
+                        ctx.fillText(i, cx + size / 2, cy - 6);
+
+                        let cellBg = COLORS.CELL_BG;
+                        if (meta.missIndex === i && !meta.isCleanup) cellBg = COLORS.MISS_BG;
+                        this.paintRect(cx, cy, size, size, cellBg, { stroke: COLORS.CELL_STROKE, lineWidth: 1.5 });
+
+                        const dotX = cx + size / 2;
+                        const dotY = cy + size / 2;
+                        ctx.beginPath();
+                        ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
+                        ctx.fillStyle = (meta.missIndex === i && !meta.isCleanup) ? '#fff' : COLORS.DOT;
+                        ctx.fill();
+
+                        const list = table[i] || [];
+                        if (list.length > 0) {
+                            this.drawArrow(dotX, dotY, dotX, listStartY, COLORS.ARROW_REF, 8);
+                            this.drawLinkedListNodes(dotX, listStartY, list, i, meta, isAnimating, this.morphProgress);
+                        }
+
+                        if (meta.targetIndex === i && !meta.isCleanup) {
+                            this.drawArrow(dotX, dotY - 72, dotX, dotY - 40, COLORS.ARROW_PROBE, 8);
+                        }
+                    }
+                }
+
+                drawLinkedListNodes(centerX, startY, list, colIndex, meta, isAnimating, progress) {
+                    const ctx = this.ctx;
+                    const L = this.layout;
+
+                    const getVisualProps = k => {
+                        let y = startY + k * L.nodeVerticalStep;
+                        let alpha = 1;
+
+                        if (isAnimating && meta.animationCol === colIndex) {
+                            if (meta.animation === 'slideDown') {
+                                const splitTime = 0.65;
+                                if (k === 0) {
+                                    y = startY;
+                                    alpha = progress < splitTime ? 0 : (progress - splitTime) / (1 - splitTime);
+                                } else {
+                                    const slideProgress = Math.min(progress / splitTime, 1);
+                                    y = startY + (k - 1 + slideProgress) * L.nodeVerticalStep;
+                                }
+                            } else if (meta.animation === 'slideUp') {
+                                if (k === meta.animationDepth) {
+                                    alpha = 1 - progress;
+                                } else if (k > meta.animationDepth) {
+                                    y = startY + (k - progress) * L.nodeVerticalStep;
+                                }
+                            }
+                        }
+                        return { y, alpha };
+                    };
+
+                    for (let k = 0; k < list.length; k++) {
+                        const node = list[k];
+                        const props = getVisualProps(k);
+                        if (props.alpha <= 0.01) continue;
+
+                        ctx.save();
+                        ctx.globalAlpha = props.alpha;
+
+                        let bg = COLORS.DATA_BG;
+                        let ptrBg = COLORS.CELL_BG;
+                        let fgPtr = COLORS.DOT;
+                        let dataBorder = COLORS.CELL_STROKE;
+                        let dataBorderWidth = 1;
+                        let ptrBorder = COLORS.CELL_STROKE;
+                        let ptrWidth = 1;
+                        let dataTextColor = COLORS.TEXT_RED;
+
+                        if (!meta.isCleanup && meta.highlightNode && meta.highlightNode.col === colIndex && meta.highlightNode.depth === k) {
+                            const type = meta.highlightNode.type;
+                            if (type === 'HIT') {
+                                bg = COLORS.HIT_BG;
+                                dataTextColor = '#111111';
+                            } else if (type === 'UPDATE') {
+                                bg = COLORS.UPDATE_BG;
+                                dataBorder = COLORS.UPDATE_STROKE;
+                                dataBorderWidth = 2.5;
+                                dataTextColor = '#111111';
+                            } else if (type === 'EXAMINE') {
+                                bg = COLORS.EXAMINE_BG;
+                                dataTextColor = COLORS === DARK_THEME ? '#FFFFFF' : '#111111';
+                            } else if (type === 'MISS_PTR') {
+                                ptrBg = COLORS.MISS_BG;
+                                fgPtr = '#FFFFFF';
+                                ptrBorder = '#FFFFFF';
+                                ptrWidth = 2;
+                            }
+                        }
+
+                        const isHovered = this.hoveredItem && this.hoveredItem.id === node.id;
+                        if (isHovered) {
+                            dataBorder = COLORS.HOVER_RING;
+                            dataBorderWidth = 2.5;
+                            ptrBorder = COLORS.HOVER_RING;
+                            ptrWidth = 2.5;
+                        }
+
+                        this.drawSingleNode(centerX, props.y, node.key, bg, ptrBg, ptrBorder, ptrWidth, fgPtr, dataTextColor, dataBorder, dataBorderWidth);
+
+                        if (k < list.length - 1) {
+                            const nextProps = getVisualProps(k + 1);
+                            const dotY = props.y + L.nodeBoxH + L.nodePtrH / 2;
+                            ctx.globalAlpha = Math.min(props.alpha, nextProps.alpha);
+
+                            let targetY = nextProps.y;
+                            if (isAnimating && meta.animation === 'slideUp' && k === meta.animationDepth - 1 && k + 2 < list.length) {
+                                targetY = getVisualProps(k + 2).y;
+                                ctx.globalAlpha = 1;
+                            }
+                            if (ctx.globalAlpha > 0.05) {
+                                this.drawArrow(centerX, dotY, centerX, targetY, COLORS.ARROW_REF, 8);
+                            }
+                        }
+                        ctx.restore();
+                    }
+                }
+
+                drawSingleNode(centerX, y, val, bgData, bgPtr, ptrBorder = '#fff', ptrWidth = 1, fgPtr = COLORS.DOT, textCol = COLORS.TEXT_RED, dataBorder = COLORS.CELL_STROKE, dataBorderWidth = 1) {
+                    const ctx = this.ctx;
+                    const L = this.layout;
+
+                    this.paintRect(centerX - L.nodeWidth / 2, y, L.nodeWidth, L.nodeBoxH, bgData, {
+                        stroke: dataBorder,
+                        lineWidth: dataBorderWidth
+                    });
+
+                    const str = String(val);
+                    const fontSize = str.length <= 2 ? 19 : str.length === 3 ? 15 : str.length === 4 ? 12 : 10;
+                    ctx.fillStyle = textCol;
+                    ctx.font = `700 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(str, centerX, y + L.nodeBoxH / 2 + 1);
+
+                    const ptrY = y + L.nodeBoxH;
+                    this.paintRect(centerX - L.nodeWidth / 2, ptrY, L.nodeWidth, L.nodePtrH, bgPtr, {
+                        stroke: ptrBorder,
+                        lineWidth: ptrWidth,
+                        radius: 4
+                    });
+
+                    ctx.beginPath();
+                    ctx.arc(centerX, ptrY + L.nodePtrH / 2, 4, 0, Math.PI * 2);
+                    ctx.fillStyle = fgPtr;
+                    ctx.fill();
+                }
+
+                drawArrow(x1, y1, x2, y2, color, headSize = 6) {
+                    const ctx = this.ctx;
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 3;
+                    const angle = Math.atan2(y2 - y1, x2 - x1);
+                    const shorten = headSize * 0.85;
+                    ctx.beginPath();
+                    ctx.moveTo(x1, y1);
+                    ctx.lineTo(x2 - shorten * Math.cos(angle), y2 - shorten * Math.sin(angle));
+                    ctx.stroke();
+                    this.drawArrowHead(x2, y2, angle, color, headSize);
+                }
+
+                drawArrowHead(x, y, angle, color, size) {
+                    const ctx = this.ctx;
+                    ctx.fillStyle = color;
+                    ctx.save();
+                    ctx.translate(x, y);
+                    ctx.rotate(angle);
+                    ctx.beginPath();
+                    ctx.moveTo(0, 0);
+                    ctx.lineTo(-size * 1.4, -size / 2);
+                    ctx.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size / 2);
+                    ctx.closePath();
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                drawHashBox(x, y, info) {
+                    const ctx = this.ctx;
+                    const w = 94, h = 38;
+                    const boxX = x - w / 2, boxY = y;
+
+                    const keyStr = String(info.key);
+                    const keyFont = keyStr.length <= 2 ? 22 : keyStr.length <= 4 ? 17 : 13;
+                    ctx.fillStyle = COLORS.TEXT_RED;
+                    ctx.font = `bold ${keyFont}px Arial`;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(keyStr, boxX - 42, boxY + h / 2);
+                    this.drawArrow(boxX - 36, boxY + h / 2, boxX - 2, boxY + h / 2, COLORS.ARROW_PROBE, 8);
+
+                    this.paintRect(boxX, boxY, w, h, COLORS.HASH_BOX_BG, { radius: 5 });
+                    ctx.fillStyle = COLORS === DARK_THEME ? '#FFFFFF' : '#111111';
+                    ctx.font = 'bold 18px monospace';
+                    ctx.textAlign = 'center';
+                    ctx.fillText('hash', boxX + w / 2, boxY + h / 2);
+
+                    this.drawArrow(boxX + w + 2, boxY + h / 2, boxX + w + 38, boxY + h / 2, COLORS.ARROW_PROBE, 8);
+                    ctx.fillStyle = COLORS.TEXT_MAIN;
+                    ctx.font = 'bold 22px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.fillText(info.hash, boxX + w + 44, boxY + h / 2);
                 }
             }
-            if (node.highlight === 'HIT') bg = COLORS.HIT_BG;
 
-            this.drawSingleNode(centerX, props.y, node.key, bg, ptrBg, ptrBorder, ptrWidth, fgPtr);
+            const app = {
+                ht: new SeparateChainingHashTable(5, 2.0),
+                viz: null,
+                isDark: false,
+                logs: [],
 
-            if (k < list.length - 1) {
-                const nextProps = getVisualProps(k+1);
-                const dotY = props.y + L.nodeBoxH + L.nodePtrH/2;
-                
-                ctx.globalAlpha = Math.min(props.alpha, nextProps.alpha);
-                
-                let targetY = nextProps.y;
-                
-                if (isAnimating && meta.animation === 'slideUp' && k === meta.animationDepth - 1 && k+2 < list.length) {
-                     const sliderProps = getVisualProps(k+2);
-                     targetY = sliderProps.y;
-                     ctx.globalAlpha = 1;
+                init() {
+                    this.viz = new Visualizer('htCanvas', {
+                        onStatus: text => {
+                            document.getElementById('status-text').innerText = text;
+                        },
+                        onItemClick: item => {
+                            document.getElementById('inputValue').value = item.key;
+                            this.viz.setStatus(`Selected '${item.key}' (${item.desc})`);
+                        },
+                        getHashDetails: (key, cap) => this.ht.hashDetails(key, cap),
+                        onStateChange: info => this.syncPlaybackUI(info)
+                    });
+
+                    this.bindUIEvents();
+                    this.viz.resetWithSnapshot({ tableData: this.ht.getSnapshotData(), meta: { text: 'Ready.' } });
+                    this.updateStats();
+                    this.updateUI();
+                },
+
+                bindUIEvents() {
+                    const inp = document.getElementById('inputValue');
+                    inp.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') this.handleInsert();
+                    });
+
+                    document.getElementById('btnInsert').addEventListener('click', () => this.handleInsert());
+                    document.getElementById('btnDelete').addEventListener('click', () => this.handleDelete());
+                    document.getElementById('btnSearch').addEventListener('click', () => this.handleSearch());
+                    document.getElementById('btnRandom').addEventListener('click', () => this.handleRandomFill());
+                    document.getElementById('btnUndo').addEventListener('click', () => this.handleUndo());
+                    document.getElementById('btnClear').addEventListener('click', () => this.handleClear(true));
+
+                    document.getElementById('selInitCap').addEventListener('change', () => this.handleReconfigure());
+                    document.getElementById('selMaxLF').addEventListener('change', () => {
+                        const lf = parseFloat(document.getElementById('selMaxLF').value);
+                        this.ht.maxLoadFactor = lf;
+                        if (this.ht.loadFactor() > lf && !this.isBusy()) {
+                            this.runOp(rec => {
+                                this.ht.saveToHistory();
+                                this.ht.rehash(rec);
+                                this.ht.cleanUp(rec, `Rehashed for Max α = ${lf}. Ready.`);
+                            }, { instant: document.getElementById('chkInstant').checked, logText: `Max α -> ${lf} (rehash)` });
+                        } else {
+                            this.viz.resetWithSnapshot({ tableData: this.ht.getSnapshotData(), meta: { text: `Max Load Factor set to ${lf}.` } }, `Max Load Factor set to ${lf}.`);
+                            this.updateStats();
+                        }
+                    });
+
+                    document.getElementById('speedSlider').addEventListener('input', e => {
+                        const val = parseFloat(e.target.value);
+                        document.getElementById('speedLabel').innerText = val.toFixed(2).replace(/\.00$/, '.0') + 'x';
+                        this.viz.setSpeed(val);
+                    });
+
+                    document.getElementById('btnPause').addEventListener('click', () => this.viz.togglePause());
+                    document.getElementById('btnStepBack').addEventListener('click', () => this.viz.stepBackward());
+                    document.getElementById('btnStepFwd').addEventListener('click', () => this.viz.stepForward());
+                    document.getElementById('btnSkip').addEventListener('click', () => this.viz.skipToEnd());
+
+                    document.getElementById('chkAutoFit').addEventListener('change', e => {
+                        this.viz.autoFit = e.target.checked;
+                    });
+
+                    document.getElementById('btnZoomIn').addEventListener('click', () => this.viz.zoomBy(1.25));
+                    document.getElementById('btnZoomOut').addEventListener('click', () => this.viz.zoomBy(0.8));
+                    document.getElementById('btnFitView').addEventListener('click', () => this.viz.fitCurrent());
+
+                    document.getElementById('btnToggleLegend').addEventListener('click', () => {
+                        const legend = document.getElementById('legend');
+                        const collapsed = legend.classList.toggle('collapsed');
+                        document.getElementById('btnToggleLegend').innerText = collapsed ? '+' : '−';
+                    });
+
+                    document.getElementById('btnDrawer').addEventListener('click', () => {
+                        document.getElementById('info-drawer').classList.toggle('open');
+                        setTimeout(() => this.viz.resize(), 10);
+                    });
+
+                    document.getElementById('btnClearLog').addEventListener('click', () => {
+                        this.logs = [];
+                        this.renderLog();
+                    });
+
+                    document.getElementById('btnTheme').addEventListener('click', () => this.toggleTheme());
+                    document.getElementById('btnHelp').addEventListener('click', () => this.toggleModal(true));
+                    document.getElementById('btnCloseModal').addEventListener('click', () => this.toggleModal(false));
+
+                    window.addEventListener('click', e => {
+                        if (e.target === document.getElementById('helpModal')) this.toggleModal(false);
+                    });
+
+                    window.addEventListener('keydown', e => {
+                        const modalOpen = document.getElementById('helpModal').style.display === 'block';
+                        if (e.key === 'Escape' && modalOpen) {
+                            this.toggleModal(false);
+                            return;
+                        }
+                        if (document.activeElement === inp || modalOpen) return;
+
+                        if (e.code === 'Space') {
+                            e.preventDefault();
+                            if (!document.getElementById('btnPause').disabled) this.viz.togglePause();
+                        } else if (e.key === 'ArrowRight') {
+                            if (!document.getElementById('btnStepFwd').disabled) this.viz.stepForward();
+                        } else if (e.key === 'ArrowLeft') {
+                            if (!document.getElementById('btnStepBack').disabled) this.viz.stepBackward();
+                        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                            e.preventDefault();
+                            if (!document.getElementById('btnUndo').disabled) this.handleUndo();
+                        }
+                    });
+                },
+
+                toggleTheme() {
+                    this.isDark = !this.isDark;
+                    document.body.classList.toggle('dark', this.isDark);
+                    COLORS = this.isDark ? DARK_THEME : LIGHT_THEME;
+                    document.getElementById('btnTheme').innerText = this.isDark ? 'Light' : 'Dark';
+                },
+
+                toggleModal(show) {
+                    const m = document.getElementById('helpModal');
+                    const open = show !== undefined ? show : m.style.display !== 'block';
+                    m.style.display = open ? 'block' : 'none';
+                },
+
+                addLog(entry) {
+                    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    this.logs.unshift(`[${time}] ${entry}`);
+                    if (this.logs.length > 40) this.logs.pop();
+                    this.renderLog();
+                },
+
+                renderLog() {
+                    const list = document.getElementById('op-log');
+                    list.innerHTML = '';
+                    this.logs.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        list.appendChild(li);
+                    });
+                },
+
+                isBusy() {
+                    return this.viz.state !== 'IDLE' || (this.viz.isPaused && this.viz.currentSnapshotIndex < this.viz.snapshots.length - 1);
+                },
+
+                syncPlaybackUI({ state, isPaused, index, total }) {
+                    const busy = state !== 'IDLE' || (isPaused && index < total - 1);
+                    ['btnInsert', 'btnDelete', 'btnSearch', 'btnRandom', 'selInitCap', 'selMaxLF'].forEach(id => {
+                        document.getElementById(id).disabled = busy;
+                    });
+                    document.getElementById('btnUndo').disabled = busy || this.ht.history.length === 0;
+
+                    const hasSteps = total > 1;
+                    const atEnd = index >= total - 1 && state === 'IDLE';
+                    document.getElementById('btnPause').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnPause').innerText = isPaused ? 'Resume' : 'Pause';
+                    document.getElementById('btnStepBack').disabled = !hasSteps || (index === 0 && state === 'IDLE');
+                    document.getElementById('btnStepFwd').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnSkip').disabled = !hasSteps || atEnd;
+
+                    document.getElementById('step-counter').innerText =
+                        total > 1 ? `Step: ${Math.min(index + 1, total)}/${total}` : 'Step: -';
+                },
+
+                updateStats() {
+                    const data = this.ht.getSnapshotData();
+                    const lf = data.capacity > 0 ? (data.size / data.capacity).toFixed(2) : '0.00';
+                    document.getElementById('ht-stats').innerText =
+                        `Size: ${data.size} | Cap: ${data.capacity} | α: ${lf} | Max Chain: ${data.maxDepth}`;
+
+                    const bucketDiv = document.getElementById('bucket-list');
+                    bucketDiv.innerHTML = data.table.map((chain, i) => {
+                        const vals = chain.length ? chain.map(n => n.key).join(' -> ') : 'null';
+                        return `<div>[${i}]: ${vals}</div>`;
+                    }).join('');
+                },
+
+                updateUI() {
+                    this.syncPlaybackUI({
+                        state: this.viz.state,
+                        isPaused: this.viz.isPaused,
+                        index: this.viz.currentSnapshotIndex,
+                        total: this.viz.snapshots.length
+                    });
+                },
+
+                parseKeys(singleOnly = false) {
+                    const inp = document.getElementById('inputValue');
+                    const raw = inp.value.trim();
+                    if (!raw) {
+                        this.flashError('Please enter a key first.');
+                        return null;
+                    }
+                    const parts = raw.split(/[\s,;]+/).filter(Boolean);
+                    if (singleOnly && parts.length > 1) {
+                        this.flashError('Search accepts a single key.');
+                        return null;
+                    }
+                    for (const p of parts) {
+                        if (p.length > 6) {
+                            this.flashError(`Key "${p}" is too long (max 6 chars).`);
+                            return null;
+                        }
+                    }
+                    return parts;
+                },
+
+                flashError(msg) {
+                    const inp = document.getElementById('inputValue');
+                    inp.classList.add('input-error');
+                    this.viz.setStatus(msg);
+                    setTimeout(() => inp.classList.remove('input-error'), 700);
+                },
+
+                runOp(fn, { instant = false, logText = null } = {}) {
+                    if (this.isBusy()) return;
+                    const snaps = [{ tableData: this.ht.getSnapshotData(), meta: {} }];
+                    fn((tableData, metaData) => snaps.push({ tableData, meta: metaData }));
+                    this.viz.enqueueOperation(snaps, instant);
+                    this.updateStats();
+                    this.updateUI();
+                    if (logText) this.addLog(logText);
+                },
+
+                handleInsert() {
+                    const keys = this.parseKeys(false);
+                    if (!keys) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    document.getElementById('inputValue').value = '';
+
+                    this.runOp(rec => {
+                        if (keys.length > 1) this.ht.saveToHistory();
+                        for (const k of keys) {
+                            this.ht.insert(k, rec, keys.length === 1);
+                        }
+                    }, {
+                        instant,
+                        logText: `Insert (${keys.join(', ')})`
+                    });
+                },
+
+                handleDelete() {
+                    const keys = this.parseKeys(false);
+                    if (!keys) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    document.getElementById('inputValue').value = '';
+
+                    this.runOp(rec => {
+                        if (keys.length > 1) this.ht.saveToHistory();
+                        let anyDeleted = false;
+                        for (const k of keys) {
+                            if (this.ht.delete(k, rec, keys.length === 1)) anyDeleted = true;
+                        }
+                        if (keys.length > 1 && !anyDeleted) this.ht.discardLastHistory();
+                    }, {
+                        instant,
+                        logText: `Delete (${keys.join(', ')})`
+                    });
+                },
+
+                handleSearch() {
+                    const keys = this.parseKeys(true);
+                    if (!keys) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    let found = false;
+                    this.runOp(rec => {
+                        found = this.ht.search(keys[0], rec);
+                    }, {
+                        instant,
+                        logText: `Search '${keys[0]}' -> ${found ? 'Hit' : 'Miss'}`
+                    });
+                },
+
+                handleUndo() {
+                    if (this.isBusy() || this.ht.history.length === 0) return;
+                    const prevData = this.ht.getSnapshotData();
+                    const restored = this.ht.restoreFromHistory();
+                    if (!restored) return;
+
+                    document.getElementById('selInitCap').value = String(this.ht.capacity);
+                    document.getElementById('selMaxLF').value = String(this.ht.maxLoadFactor);
+
+                    this.viz.enqueueOperation([
+                        { tableData: prevData, meta: {} },
+                        { tableData: this.ht.getSnapshotData(), meta: { text: 'Undo successful.' } }
+                    ], false);
+                    this.updateStats();
+                    this.updateUI();
+                    this.addLog('Undo');
+                },
+
+                handleReconfigure() {
+                    if (this.isBusy()) return;
+                    this.handleClear(false);
+                },
+
+                handleClear(saveHistory = true) {
+                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 5;
+                    const lf = parseFloat(document.getElementById('selMaxLF').value) || 2.0;
+
+                    if (saveHistory && this.ht.size > 0) {
+                        this.ht.saveToHistory();
+                    }
+                    const oldHistory = this.ht.history;
+                    this.ht = new SeparateChainingHashTable(cap, lf);
+                    this.ht.history = oldHistory;
+
+                    this.viz.resetWithSnapshot(
+                        { tableData: this.ht.getSnapshotData(), meta: { text: `Table cleared (Cap=${cap}, Max α=${lf}).` } },
+                        `Table cleared (Cap=${cap}, Max α=${lf}).`
+                    );
+                    this.updateStats();
+                    this.updateUI();
+                    if (saveHistory) this.addLog('Cleared table');
+                },
+
+                handleRandomFill() {
+                    if (this.isBusy()) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    if (this.ht.size > 0) this.ht.saveToHistory();
+
+                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 5;
+                    const lf = parseFloat(document.getElementById('selMaxLF').value) || 2.0;
+                    const oldHistory = this.ht.history;
+                    this.ht = new SeparateChainingHashTable(cap, lf);
+                    this.ht.history = oldHistory;
+
+                    const count = Math.max(5, Math.min(11, Math.floor(cap * lf)));
+                    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz!?+-*&%$'.split('');
+                    for (let i = chars.length - 1; i > 0; i--) {
+                        const j = Math.floor(Math.random() * (i + 1));
+                        [chars[i], chars[j]] = [chars[j], chars[i]];
+                    }
+                    const chosen = chars.slice(0, count);
+
+                    const snaps = [{ tableData: this.ht.getSnapshotData(), meta: { text: 'Starting Random Fill...' } }];
+                    const rec = (data, meta) => snaps.push({ tableData: data, meta });
+                    for (const ch of chosen) {
+                        this.ht.insert(ch, rec, false);
+                    }
+
+                    this.viz.enqueueOperation(snaps, instant);
+                    this.updateStats();
+                    this.updateUI();
+                    this.addLog(`Random Fill (${chosen.join(', ')})`);
                 }
+            };
 
-                if (ctx.globalAlpha > 0.05) {
-                    this.drawArrow(centerX, dotY, centerX, targetY, COLORS.ARROW_REF, 8);
-                }
-            } 
-            
-            ctx.globalAlpha = 1;
-        }
-    }
-
-    drawSingleNode(centerX, y, val, bgData, bgPtr, ptrBorder='#fff', ptrWidth=1, fgPtr = COLORS.DOT) {
-        const ctx = this.ctx;
-        const L = this.layout;
-
-        ctx.fillStyle = bgData;
-        ctx.strokeStyle = '#fff'; ctx.lineWidth = 1;
-        this.paintRect(centerX - L.nodeWidth/2, y, L.nodeWidth, L.nodeBoxH, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth});
-      
-        
-        ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '20px Arial'; ctx.textAlign = 'center';
-        ctx.fillText(val, centerX, y + 22);
-
-        const ptrY = y + L.nodeBoxH;
-        ctx.fillStyle = bgPtr;
-        ctx.strokeStyle = ptrBorder; ctx.lineWidth = ptrWidth;
-        this.paintRect(centerX - L.nodeWidth/2, ptrY, L.nodeWidth, L.nodePtrH, ctx.fillStyle, {stroke: ctx.strokeStyle, lineWidth: ctx.lineWidth, radius: 4});
-        
-        const dotY = ptrY + L.nodePtrH/2;
-        ctx.beginPath(); ctx.arc(centerX, dotY, 4, 0, Math.PI*2);
-        ctx.fillStyle = fgPtr; ctx.fill();
-    }
-
-    drawArrow(x1, y1, x2, y2, color, headSize=5) {
-        const ctx = this.ctx;
-        ctx.strokeStyle = color; ctx.lineWidth = 3;
-        ctx.beginPath(); 
-        if (x1 == x2) { ctx.moveTo(x1, y1); ctx.lineTo(x2, y2-headSize); } 
-        else { ctx.moveTo(x1, y1); ctx.lineTo(x2 - headSize, y2); }
-        ctx.stroke();
-        const angle = Math.atan2(y2-y1, x2-x1);
-        this.drawArrowHead(x2, y2, angle, color, headSize);
-    }
-
-    drawArrowHead(x, y, angle, color, size) {
-        const ctx = this.ctx; 
-        ctx.fillStyle = color;
-        ctx.save(); 
-        ctx.translate(x, y); 
-        ctx.rotate(angle);
-        
-        ctx.beginPath(); 
-        ctx.moveTo(0, 0); 
-        
-        ctx.lineTo(-size * 1.4, -size/2); 
-        
-        ctx.quadraticCurveTo(-size * 0.9, 0, -size * 1.4, size/2); 
-        
-        ctx.closePath(); 
-        ctx.fill(); 
-        ctx.restore();
-    }
-
-    drawHashBox(x, y, info) {
-        const ctx = this.ctx;
-        const w = 100; const h = 40;
-        const boxX = x - w/2; const boxY = y;
-
-        ctx.fillStyle = COLORS.TEXT_RED; ctx.font = '24px Arial'; ctx.textAlign = 'right';
-        ctx.fillText(info.key, boxX - 40, boxY + 26);
-        this.drawArrow(boxX - 35, boxY + 18, boxX - 1, boxY + 18, COLORS.ARROW_PROBE, 8);
-
-        ctx.fillStyle = COLORS.HASH_BOX_BG;
-        this.paintRect(boxX, boxY, w, h, ctx.fillStyle, {radius: 4});
-        ctx.fillStyle = '#000'; ctx.font = '20px Arial'; ctx.textAlign = 'center';
-        ctx.fillText('hash', boxX + w/2, boxY + 26);      
-
-        this.drawArrow(boxX + w + 1, boxY + 18, boxX + w + 40, boxY + 18, COLORS.ARROW_PROBE, 8);
-        ctx.fillStyle = '#000'; ctx.font = '24px Arial'; ctx.textAlign = 'left';
-        ctx.fillText(info.hash, boxX + w + 45, boxY + 26);
-    }
-}
-
-const app = {
-    ht: new SeparateChainingHashTable(5),
-    viz: null,
-
-    init: function() { 
-        this.viz = new Visualizer('htCanvas'); 
-        
-        const initialData = this.ht.getSnapshotData();
-        
-        this.viz.snapshots = [{ 
-            tableData: initialData, 
-            meta: { text: "Ready." } 
-        }];
-        this.viz.currentSnapshotIndex = 0;
-        
-        // Initial Auto-Fit
-        const bounds = this.viz.getSnapshotBounds(this.viz.snapshots[0]);
-        this.viz.fitBoundsToScreen(bounds);
-        this.viz.camera.x = this.viz.camera.targetX;
-        this.viz.camera.y = this.viz.camera.targetY;
-        this.viz.camera.scale = this.viz.camera.targetScale;
-
-        this.viz.draw();
-        this.updateUI(); 
-    },
-    
-    updateSpeed: function() { 
-        this.viz.setSpeed(parseFloat(document.getElementById('speedSlider').value)); 
-    },
-    
-    togglePause: function() {
-        const isPaused = this.viz.togglePause();
-        document.getElementById('btnPause').innerText = isPaused ? "Resume" : "Pause";
-    },
-
-    updateUI: function() {
-        document.getElementById('btnUndo').disabled = (this.ht.history.length === 0);
-    },
-
-    runOp: function(fn) {
-        if(this.viz.isPaused) this.togglePause();
-        if(this.viz.state !== 'IDLE') return;
-
-        const snaps = [];
-        snaps.push({ tableData: this.ht.getSnapshotData(), meta: {} });
-        fn((tableData, metaData) => { snaps.push({ tableData: tableData, meta: metaData }); });
-        this.viz.enqueueOperation(snaps);
-        this.updateUI();
-    },
-
-    handleInsert: function() {
-        const el = document.getElementById('inputValue');
-        const val = el.value.charAt(0); 
-        if (val.length > 0) {
-            this.runOp(record => this.ht.insert(val, record));
-            el.value = ''; 
-        }
-    },
-
-    handleDelete: function() {
-        const el = document.getElementById('inputValue');
-        const val = el.value.charAt(0);
-        if (val.length > 0) {
-            this.runOp(record => this.ht.delete(val, record));
-            el.value = '';
-        }
-    },
-
-    handleSearch: function() {
-        const el = document.getElementById('inputValue');
-        const val = el.value.charAt(0);
-        if (val.length > 0) {
-            this.runOp(record => this.ht.search(val, record));
-        }
-    },
-
-    handleUndo: function() {
-        const oldTable = this.ht.restoreFromHistory();
-        if (oldTable) {
-            this.viz.enqueueOperation([{ tableData: this.ht.getSnapshotData(), meta: { text: "Undo successful." } }]);
-            this.updateUI();
-        }
-    },
-
-    handleClear: function() {
-        // Stop any ongoing animation immediately
-        this.viz.state = 'IDLE'; 
-        this.viz.currentSnapshotIndex = -1;
-        this.viz.snapshots = [];
-
-        this.ht = new SeparateChainingHashTable(5);
-        const snap = { tableData: this.ht.getSnapshotData(), meta: { text: "Table cleared." } };
-        
-        // Directly push and fit, without smooth transition from broken state
-        this.viz.snapshots = [snap];
-        this.viz.currentSnapshotIndex = 0;
-        const bounds = this.viz.getSnapshotBounds(snap);
-        this.viz.fitBoundsToScreen(bounds);
-        this.viz.draw();
-        
-        this.updateUI();
-    },
-
-    handleRandomFill: function() {
-        this.handleClear();
-        
-        // Re-enable state for random fill
-        this.viz.state = 'IDLE'; 
-        
-        const count = 9; 
-        const snaps = [];
-        const batchRecord = (data, meta) => snaps.push({tableData: data, meta: meta});
-        snaps.push({ tableData: this.ht.getSnapshotData(), meta: { text: "Starting Random Fill..." } });
-        
-        const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split('');
-
-        for (let i = chars.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [chars[i], chars[j]] = [chars[j], chars[i]];
-        }
-
-        for(let i=0; i<count; i++) {
-            this.ht.insert(chars[i], batchRecord);
-        }
-        
-        this.viz.enqueueOperation(snaps);
-        this.updateUI();
-    },
-
-    toggleModal: function() {
-        const m = document.getElementById('helpModal');
-        m.style.display = (m.style.display === 'block') ? 'none' : 'block';
-    }
-};
-
-window.onload = () => app.init();
-
-</script>
+            window.addEventListener('DOMContentLoaded', () => app.init());
+        })();
+    </script>
 </body>
+
 </html>
