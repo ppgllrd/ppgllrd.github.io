@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -297,8 +296,8 @@
 
         #legend {
             position: absolute;
-            top: 14px;
-            right: 14px;
+            top: 10px;
+            left: 10px;
             background: var(--card-bg);
             padding: 8px 10px;
             border: 1px solid var(--border-color);
@@ -544,7 +543,7 @@
             h1 { font-size: 0.98rem; }
             input[type="text"] { width: 96px; }
             .divider { display: none; }
-            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; right: 8px; }
+            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; left: 8px; right: auto; }
             .status-meta { display: none; }
         }
     </style>
@@ -573,7 +572,7 @@
                 <div class="divider"></div>
 
                 <label class="field-label" title="Initial number of cells">Cap
-                    <select id="selInitCap">
+                    <select id="selInitCap" autocomplete="off">
                         <option value="7">7</option>
                         <option value="11">11</option>
                         <option value="17" selected>17</option>
@@ -581,17 +580,17 @@
                 </label>
 
                 <label class="field-label" title="Maximum load factor before rehashing">Max &alpha;
-                    <select id="selMaxLF">
+                    <select id="selMaxLF" autocomplete="off">
                         <option value="0.5" selected>0.5</option>
                         <option value="0.75">0.75</option>
                         <option value="0.9">0.9</option>
                     </select>
                 </label>
 
-                <label class="field-label" title="Deletion strategy (Java uses Backward Shift by default)">Del
-                    <select id="selDelMode">
-                        <option value="backward" selected>Backward Shift</option>
-                        <option value="rehashCluster">Rehash Cluster</option>
+                <label class="field-label" title="Deletion strategy">Del
+                    <select id="selDelMode" autocomplete="off"s>
+                        <option value="rehashCluster" selected>Rehash Cluster</option>
+                        <option value="backward">Backward Shift</option>
                     </select>
                 </label>
 
@@ -599,7 +598,7 @@
 
                 <button class="btn-random" id="btnRandom" title="Fill with random keys">Random Fill</button>
                 <label class="toggle-label" title="Run operations instantly without animation">
-                    <input type="checkbox" id="chkInstant"> Instant
+                    <input type="checkbox" id="chkInstant" autocomplete="off"> Instant
                 </label>
 
                 <div class="divider"></div>
@@ -611,7 +610,7 @@
             <div class="sub-controls">
                 <label for="speedSlider">Speed:</label>
                 <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1"
-                    title="Animation speed multiplier">
+                    title="Animation speed multiplier" autocomplete="off">
                 <span class="speed-badge" id="speedLabel">1.0x</span>
 
                 <button class="btn-step" id="btnStepBack" title="Step Backward (Left Arrow)" disabled>|&lt;</button>
@@ -620,7 +619,7 @@
                 <button class="btn-step" id="btnSkip" title="Skip animation to end" disabled>&gt;&gt;|</button>
 
                 <label class="toggle-label" title="Automatically fit camera on operations">
-                    <input type="checkbox" id="chkAutoFit" checked> Auto-Fit
+                    <input type="checkbox" id="chkAutoFit" checked autocomplete="off"> Auto-Fit
                 </label>
             </div>
         </div>
@@ -841,19 +840,20 @@
                     return this.hashDetails(key).idx;
                 }
 
-                probeDistance(hashValue, index) {
-                    const dist = (index - hashValue) % this.capacity;
-                    return dist < 0 ? dist + this.capacity : dist;
+                probeDistance(hashValue, index, capacity = this.capacity) {
+                    const dist = (index - hashValue) % capacity;
+                    return dist < 0 ? dist + capacity : dist;
                 }
 
-                getMaxCluster() {
-                    if (this.size === 0) return 0;
-                    if (this.size === this.capacity) return this.capacity;
-                    const firstNull = this.table.indexOf(null);
+                getMaxCluster(table = this.table, size = this.size, capacity = this.capacity) {
+                    if (size === 0) return 0;
+                    if (size === capacity) return capacity;
+                    const firstNull = table.indexOf(null);
+                    if (firstNull === -1) return capacity;
                     let maxRun = 0, run = 0;
-                    for (let offset = 1; offset <= this.capacity; offset++) {
-                        const idx = (firstNull + offset) % this.capacity;
-                        if (this.table[idx] !== null) {
+                    for (let offset = 1; offset <= capacity; offset++) {
+                        const idx = (firstNull + offset) % capacity;
+                        if (table[idx] !== null) {
                             run++;
                             if (run > maxRun) maxRun = run;
                         } else {
@@ -873,6 +873,12 @@
                 }
 
                 resetProbePath() { this.probePath = []; }
+
+                clear() {
+                    this.table = new Array(this.capacity).fill(null);
+                    this.size = 0;
+                    this.probePath = [];
+                }
 
                 insert(key, recordSnapshot, recordHistory = true) {
                     if (recordHistory) this.saveToHistory();
@@ -1055,7 +1061,7 @@
                     return false;
                 }
 
-                delete(key, recordSnapshot, mode = 'backward', recordHistory = true) {
+                delete(key, recordSnapshot, mode = 'rehashCluster', recordHistory = true) {
                     if (recordHistory) this.saveToHistory();
                     this.resetProbePath();
 
@@ -1318,7 +1324,7 @@
                     this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
                     this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
 
-                    if (this.snapshots.length > 0) {
+                    if (this.autoFit && this.snapshots.length > 0) {
                         const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
                         if (snap) {
                             this.fitCameraToSnapshot(snap);
@@ -1784,7 +1790,7 @@
                     }
                 }
 
-                paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1, radius = 7 } = {}) {
+                paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1, radius = 7, inset = false } = {}) {
                     const c = this.ctx;
                     c.save();
                     c.globalAlpha *= alpha;
@@ -1793,6 +1799,17 @@
                     c.fillStyle = fill;
                     c.fill();
                     if (stroke) {
+                        if (inset) {
+                            const half = lineWidth / 2;
+                            c.beginPath();
+                            c.roundRect(
+                                x + half,
+                                y + half,
+                                Math.max(0, w - lineWidth),
+                                Math.max(0, h - lineWidth),
+                                Math.max(0, radius - half)
+                            );
+                        }
                         c.strokeStyle = stroke;
                         c.lineWidth = lineWidth;
                         c.stroke();
@@ -1849,14 +1866,14 @@
                         const currY = srcY + (destY - srcY) * ease - (Math.sin(t * Math.PI) * 52);
 
                         const boxW = 36, boxH = 32;
-                        this.paintRect(currX - boxW / 2, currY, boxW, boxH, COLORS.FLY_BG, { stroke: '#222', lineWidth: 1.5 });
+                        this.paintRect(currX - boxW / 2, currY, boxW, boxH, COLORS.FLY_BG, { stroke: '#222', lineWidth: 1.5, inset: true });
                         const str = String(fNode.key);
                         const fs = str.length <= 2 ? 19 : str.length === 3 ? 15 : 11;
                         ctx.fillStyle = '#111111';
                         ctx.font = `700 ${fs}px "Segoe UI", Arial, sans-serif`;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText(str, currX, currY + boxH / 2 + 1);
+                        ctx.fillText(str, currX, currY + boxH / 2 + 1, boxW - 6);
                     }
                 }
 
@@ -1869,7 +1886,7 @@
                     ctx.font = '15px monospace';
                     ctx.fillStyle = COLORS.TEXT_MAIN;
                     ctx.fillText('keys', x - 8, y + h / 2);
-                    this.paintRect(x, y, w, h, COLORS.STRUCT_KEYS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+                    this.paintRect(x, y, w, h, COLORS.STRUCT_KEYS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2, inset: true });
 
                     const dotX = x + w / 2, dotY = y + h / 2;
                     ctx.beginPath();
@@ -1882,7 +1899,7 @@
                     ctx.font = '15px monospace';
                     ctx.fillStyle = COLORS.TEXT_MAIN;
                     ctx.fillText('size', x - 8, y + h + h / 2);
-                    this.paintRect(x, y + h, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+                    this.paintRect(x, y + h, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2, inset: true });
                     ctx.textAlign = 'center';
                     ctx.fillStyle = COLORS.TEXT_RED;
                     ctx.font = 'bold 20px Arial';
@@ -1892,7 +1909,7 @@
                     ctx.font = '14px monospace';
                     ctx.fillStyle = COLORS.TEXT_MAIN;
                     ctx.fillText('maxLoadFactor', x - 8, y + h * 2 + h / 2);
-                    this.paintRect(x, y + h * 2, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2 });
+                    this.paintRect(x, y + h * 2, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2, inset: true });
                     ctx.textAlign = 'center';
                     ctx.fillStyle = COLORS.TEXT_RED;
                     ctx.font = 'bold 18px Arial';
@@ -1933,7 +1950,7 @@
                             else if (meta.probeCheck) cellColor = COLORS.PROBE_CHECK_BG;
                         }
 
-                        this.paintRect(cx, cy, size, size, cellColor, { stroke: cellStroke, lineWidth: cellStrokeW });
+                        this.paintRect(cx, cy, size, size, cellColor, { stroke: cellStroke, lineWidth: cellStrokeW, inset: true });
 
                         const dotX = cx + size / 2;
                         const dotY = cy + size / 2;
@@ -1974,7 +1991,7 @@
                                 dataStrokeW = 2.5;
                             }
 
-                            this.paintRect(dotX - boxW / 2, boxY, boxW, boxH, dataColor, { stroke: dataStroke, lineWidth: dataStrokeW });
+                            this.paintRect(dotX - boxW / 2, boxY, boxW, boxH, dataColor, { stroke: dataStroke, lineWidth: dataStrokeW, inset: true });
 
                             const str = String(table[i]);
                             const fs = str.length <= 2 ? 19 : str.length === 3 ? 15 : str.length === 4 ? 12 : 10;
@@ -1982,7 +1999,7 @@
                             ctx.font = `700 ${fs}px "Segoe UI", Arial, sans-serif`;
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
-                            ctx.fillText(str, dotX, boxY + boxH / 2 + 1);
+                            ctx.fillText(str, dotX, boxY + boxH / 2 + 1, boxW - 6);
                         }
 
                         if (meta.highlightIdx === i && meta.miss) {
@@ -2162,9 +2179,7 @@
                     document.getElementById('btnUndo').addEventListener('click', () => this.handleUndo());
                     document.getElementById('btnClear').addEventListener('click', () => this.handleClear(true));
 
-                    document.getElementById('selInitCap').addEventListener('change', () => {
-                        if (!this.isBusy()) this.handleClear(false);
-                    });
+                    document.getElementById('selInitCap').addEventListener('change', () => this.handleReconfigure());
 
                     document.getElementById('selMaxLF').addEventListener('change', () => {
                         const lf = parseFloat(document.getElementById('selMaxLF').value);
@@ -2281,6 +2296,11 @@
                 },
 
                 syncPlaybackUI({ state, isPaused, index, total }) {
+                    const currentSnap = this.viz?.snapshots?.[index];
+                    if (currentSnap?.tableData) {
+                        this.updateStats(currentSnap.tableData);
+                    }
+
                     const busy = state !== 'IDLE' || (isPaused && index < total - 1);
                     ['btnInsert', 'btnDelete', 'btnSearch', 'btnRandom', 'selInitCap', 'selMaxLF', 'selDelMode'].forEach(id => {
                         document.getElementById(id).disabled = busy;
@@ -2299,18 +2319,17 @@
                         total > 1 ? `Step: ${Math.min(index + 1, total)}/${total}` : 'Step: -';
                 },
 
-                updateStats() {
-                    const data = this.ht.getSnapshotData();
+                updateStats(data = this.ht.getSnapshotData()) {
                     const lf = data.capacity > 0 ? (data.size / data.capacity).toFixed(2) : '0.00';
-                    const maxCluster = this.ht.getMaxCluster();
+                    const maxCluster = this.ht.getMaxCluster(data.table, data.size, data.capacity);
                     document.getElementById('ht-stats').innerText =
                         `Size: ${data.size} | Cap: ${data.capacity} | α: ${lf} | Max Cluster: ${maxCluster}`;
 
                     const cellList = document.getElementById('cell-list');
                     cellList.innerHTML = data.table.map((k, i) => {
                         if (k === null) return `<div>[${i}]: null</div>`;
-                        const h = this.ht.hash(k);
-                        const d = this.ht.probeDistance(h, i);
+                        const h = this.ht.hashDetails(k, data.capacity).idx;
+                        const d = this.ht.probeDistance(h, i, data.capacity);
                         return `<div>[${i}]: '${k}' (hash=${h}, dist=${d})</div>`;
                     }).join('');
                 },
@@ -2357,7 +2376,6 @@
                     const snaps = [{ tableData: this.ht.getSnapshotData(), meta: {} }];
                     fn((tableData, metaData) => snaps.push({ tableData, meta: metaData }));
                     this.viz.enqueueOperation(snaps, instant);
-                    this.updateStats();
                     this.updateUI();
                     if (logText) this.addLog(logText);
                 },
@@ -2418,32 +2436,50 @@
                     const restored = this.ht.restoreFromHistory();
                     if (!restored) return;
 
-                    document.getElementById('selInitCap').value = String(this.ht.capacity);
+                    if ([7, 11, 17].includes(this.ht.capacity)) {
+                        document.getElementById('selInitCap').value = String(this.ht.capacity);
+                    }
                     document.getElementById('selMaxLF').value = String(this.ht.maxLoadFactor);
 
                     this.viz.enqueueOperation([
                         { tableData: prevData, meta: {} },
                         { tableData: this.ht.getSnapshotData(), meta: { text: 'Undo successful.' } }
                     ], false);
-                    this.updateStats();
                     this.updateUI();
                     this.addLog('Undo');
                 },
 
-                handleClear(saveHistory = true) {
+                handleReconfigure() {
+                    if (this.isBusy()) return;
+                    if (this.ht.size > 0) {
+                        this.ht.saveToHistory();
+                    }
                     const cap = parseInt(document.getElementById('selInitCap').value, 10) || 17;
                     const lf = parseFloat(document.getElementById('selMaxLF').value) || 0.5;
 
-                    if (saveHistory && this.ht.size > 0) {
-                        this.ht.saveToHistory();
-                    }
                     const oldHistory = this.ht.history;
                     this.ht = new LinearProbingHashTable(cap, lf);
                     this.ht.history = oldHistory;
 
                     this.viz.resetWithSnapshot(
-                        { tableData: this.ht.getSnapshotData(), meta: { text: `Table cleared (Cap=${cap}, Max α=${lf}).` } },
-                        `Table cleared (Cap=${cap}, Max α=${lf}).`
+                        { tableData: this.ht.getSnapshotData(), meta: { text: `Table reset (Cap=${cap}, Max α=${lf}).` } },
+                        `Table reset (Cap=${cap}, Max α=${lf}).`
+                    );
+                    this.updateStats();
+                    this.updateUI();
+                    this.addLog(`Reset capacity -> ${cap}`);
+                },
+
+                handleClear(saveHistory = true) {
+                    if (saveHistory && this.ht.size > 0) {
+                        this.ht.saveToHistory();
+                    }
+                    this.ht.clear();
+
+                    const msg = `Table cleared (Cap=${this.ht.capacity}, Max α=${this.ht.maxLoadFactor}).`;
+                    this.viz.resetWithSnapshot(
+                        { tableData: this.ht.getSnapshotData(), meta: { text: msg } },
+                        msg
                     );
                     this.updateStats();
                     this.updateUI();
@@ -2476,7 +2512,6 @@
                     }
 
                     this.viz.enqueueOperation(snaps, instant);
-                    this.updateStats();
                     this.updateUI();
                     this.addLog(`Random Fill (${chosen.join(', ')})`);
                 }
