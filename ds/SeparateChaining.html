@@ -543,7 +543,7 @@
             h1 { font-size: 0.98rem; }
             input[type="text"] { width: 98px; }
             .divider { display: none; }
-            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; right: 8px; }
+            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; left: auto; right: 8px; }
             .status-meta { display: none; }
         }
     </style>
@@ -683,8 +683,8 @@
 
             <h3>Hash Function (Java-style)</h3>
             <ul>
-                <li><strong>Integers</strong> (e.g. <code>42</code>): <code>(42 &amp; 0x7fffffff) mod capacity</code></li>
-                <li><strong>Single Characters</strong> (e.g. <code>A</code>): <code>ASCII('A') mod capacity</code></li>
+                <li><strong>Integers</strong> (e.g. <code>42</code>, <code>-5</code>): <code>(n &amp; 0x7fffffff) mod capacity</code></li>
+                <li><strong>Single Characters</strong> (e.g. <code>A</code>): <code>(ASCII('A') &amp; 0x7fffffff) mod capacity</code></li>
                 <li><strong>Strings</strong> (e.g. <code>cat</code>): Java <code>String.hashCode()</code> (polynomial base 31) masked with <code>0x7fffffff mod capacity</code></li>
             </ul>
 
@@ -850,20 +850,36 @@
                 hashDetails(key, cap = this.capacity) {
                     if (/^-?\d+$/.test(key)) {
                         const n = parseInt(key, 10) | 0;
-                        const idx = (n & 0x7fffffff) % cap;
-                        return { idx, desc: `${n} mod ${cap} = ${idx}` };
+                        const masked = n & 0x7fffffff;
+                        const idx = masked % cap;
+                        const desc = n < 0
+                            ? `${n} & 0x7fffffff = ${masked} mod ${cap} = ${idx}`
+                            : `(${n} & 0x7fffffff) mod ${cap} = ${idx}`;
+                        return { idx, rawHash: n, masked, cap, kind: 'int', desc };
                     }
                     if (key.length === 1) {
                         const code = key.charCodeAt(0);
-                        const idx = (code & 0x7fffffff) % cap;
-                        return { idx, desc: `ASCII('${key}')=${code} mod ${cap} = ${idx}` };
+                        const masked = code & 0x7fffffff;
+                        const idx = masked % cap;
+                        return {
+                            idx,
+                            rawHash: code,
+                            masked,
+                            cap,
+                            kind: 'char',
+                            desc: `ASCII('${key}')=${code} -> (${code} & 0x7fffffff) mod ${cap} = ${idx}`
+                        };
                     }
                     let h = 0;
                     for (let i = 0; i < key.length; i++) {
                         h = (Math.imul(31, h) + key.charCodeAt(i)) | 0;
                     }
-                    const idx = (h & 0x7fffffff) % cap;
-                    return { idx, desc: `hashCode("${key}")=${h} mod ${cap} = ${idx}` };
+                    const masked = h & 0x7fffffff;
+                    const idx = masked % cap;
+                    const desc = h < 0
+                        ? `hashCode("${key}")=${h} -> (${h} & 0x7fffffff)=${masked} mod ${cap} = ${idx}`
+                        : `hashCode("${key}")=${h} -> (${h} & 0x7fffffff) mod ${cap} = ${idx}`;
+                    return { idx, rawHash: h, masked, cap, kind: 'string', desc };
                 }
 
                 hash(key) {
@@ -891,23 +907,32 @@
                 }
 
                 performSearchLogic(key, recordSnapshot) {
-                    const { idx, desc } = this.hashDetails(key);
+                    const hInfo = this.hashDetails(key);
+                    const idx = hInfo.idx;
+                    const hashCalc = {
+                        key,
+                        hash: idx,
+                        rawHash: hInfo.rawHash,
+                        masked: hInfo.masked,
+                        cap: hInfo.cap,
+                        kind: hInfo.kind
+                    };
 
                     recordSnapshot(this.getSnapshotData(), {
-                        text: `Finder: hash(${key}) -> ${desc}`,
-                        hashCalc: { key, hash: idx },
+                        text: `Finder: hash(${key}) -> ${hInfo.desc}`,
+                        hashCalc,
                         targetIndex: idx
                     });
 
                     if (this.table[idx] === null) {
                         recordSnapshot(this.getSnapshotData(), {
                             text: `Bucket ${idx} is empty (Miss).`,
-                            hashCalc: { key, hash: idx },
+                            hashCalc,
                             targetIndex: idx,
                             missIndex: idx,
                             pause: true
                         });
-                        return { found: false, depth: 0, idx };
+                        return { found: false, depth: 0, idx, hashCalc };
                     }
 
                     let curr = this.table[idx];
@@ -917,17 +942,17 @@
                         if (curr.key === key) {
                             recordSnapshot(this.getSnapshotData(), {
                                 text: `Found '${key}' at bucket ${idx}, depth ${depth} (Hit).`,
-                                hashCalc: { key, hash: idx },
+                                hashCalc,
                                 targetIndex: idx,
                                 highlightNode: { col: idx, depth, type: 'HIT' },
                                 pause: true
                             });
-                            return { found: true, depth, idx };
+                            return { found: true, depth, idx, hashCalc };
                         }
 
                         recordSnapshot(this.getSnapshotData(), {
                             text: `Comparing '${key}' with '${curr.key}'...`,
-                            hashCalc: { key, hash: idx },
+                            hashCalc,
                             targetIndex: idx,
                             highlightNode: { col: idx, depth, type: 'EXAMINE' }
                         });
@@ -935,18 +960,18 @@
                         if (!curr.next) {
                             recordSnapshot(this.getSnapshotData(), {
                                 text: `End of chain. Key '${key}' not found (Miss).`,
-                                hashCalc: { key, hash: idx },
+                                hashCalc,
                                 targetIndex: idx,
                                 highlightNode: { col: idx, depth, type: 'MISS_PTR' },
                                 pause: true
                             });
-                            return { found: false, depth, idx };
+                            return { found: false, depth, idx, hashCalc };
                         }
 
                         curr = curr.next;
                         depth++;
                     }
-                    return { found: false, depth, idx };
+                    return { found: false, depth, idx, hashCalc };
                 }
 
                 insert(key, recordSnapshot, recordHistory = true) {
@@ -975,7 +1000,7 @@
 
                         recordSnapshot(this.getSnapshotData(), {
                             text: `Key '${key}' found at bucket ${result.idx}: updating finder.current.key = '${key}' (size stays ${this.size}).`,
-                            hashCalc: { key, hash: result.idx },
+                            hashCalc: result.hashCalc,
                             targetIndex: result.idx,
                             highlightNode: { col: result.idx, depth: result.depth, type: 'UPDATE' },
                             pause: true
@@ -994,7 +1019,7 @@
 
                     recordSnapshot(this.getSnapshotData(), {
                         text: `Inserting '${key}' at head of bucket ${idx}...`,
-                        hashCalc: { key, hash: idx },
+                        hashCalc: result.hashCalc,
                         targetIndex: idx,
                         animation: 'slideDown',
                         animationCol: idx,
@@ -1027,7 +1052,7 @@
 
                     recordSnapshot(oldData, {
                         text: `Removing '${key}' from bucket ${idx}. Sliding chain up...`,
-                        hashCalc: { key, hash: idx },
+                        hashCalc: result.hashCalc,
                         targetIndex: idx,
                         animation: 'slideUp',
                         animationCol: idx,
@@ -1045,7 +1070,7 @@
 
                     recordSnapshot(this.getSnapshotData(), {
                         text: `Deleted '${key}'.`,
-                        hashCalc: { key, hash: idx },
+                        hashCalc: result.hashCalc,
                         pause: true
                     });
 
@@ -1083,13 +1108,14 @@
 
                     const processedIds = [];
                     for (const nodeInfo of allNodes) {
-                        const newIdx = this.hash(nodeInfo.key);
+                        const hInfo = this.hashDetails(nodeInfo.key);
+                        const newIdx = hInfo.idx;
                         const newNode = new Node(nodeInfo.key, this.table[newIdx]);
                         newNode.id = nodeInfo.id;
                         this.table[newIdx] = newNode;
 
                         recordSnapshot(this.getSnapshotData(), {
-                            text: `Rehashing '${nodeInfo.key}': bucket ${nodeInfo.oldIdx} -> ${newIdx}`,
+                            text: `Rehashing '${nodeInfo.key}': bucket ${nodeInfo.oldIdx} -> ${newIdx} (${hInfo.desc})`,
                             rehashMode: true,
                             phase: 'FLYING',
                             oldTable: oldSerialized,
@@ -1208,7 +1234,7 @@
                     this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
                     this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
 
-                    if (this.snapshots.length > 0) {
+                    if (this.autoFit && this.snapshots.length > 0) {
                         const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
                         if (snap) {
                             this.fitBoundsToScreen(this.getSnapshotBounds(snap));
@@ -1460,7 +1486,7 @@
 
                 showTooltip(item, clientX, clientY) {
                     const tooltip = document.getElementById('tooltip');
-                    tooltip.innerHTML = `Key <span class="tooltip-item">'${item.key}'</span> &rarr; <span class="tooltip-hash">${item.desc}</span> (depth ${item.depth})`;
+                    tooltip.innerHTML = `Key <span class="tooltip-item">'${item.key}'</span><br><span class="tooltip-hash">${item.desc}</span>`;
                     tooltip.style.display = 'block';
                     const tw = tooltip.offsetWidth, th = tooltip.offsetHeight;
                     const left = Math.min(clientX + 14, window.innerWidth - tw - 10);
@@ -1726,7 +1752,10 @@
                     const filteredOldTable = meta.oldTable.map(list =>
                         list.filter(item => !meta.processedIds.includes(item.id) && (meta.flyingNode ? meta.flyingNode.id !== item.id : true))
                     );
-                    this.drawArrayAndLists(oldTableX, baseY, L.arrayCellSize, { capacity: meta.oldCapacity, table: filteredOldTable }, { isCleanup: true });
+                    const oldMeta = (meta.phase === 'FLYING' && meta.flyingNode)
+                        ? { isCleanup: true, rehashOldSlideCol: meta.flyingNode.fromIdx }
+                        : { isCleanup: true };
+                    this.drawArrayAndLists(oldTableX, baseY, L.arrayCellSize, { capacity: meta.oldCapacity, table: filteredOldTable }, oldMeta);
 
                     const arrowX1 = oldTableX + meta.oldCapacity * L.arrayCellSize + 20;
                     const arrowX2 = newTableX - 20;
@@ -1741,34 +1770,47 @@
                     ctx.fillText('New Table', newTableX + (data.capacity * L.arrayCellSize) / 2, baseY - 32);
 
                     let newDataForDraw = data;
+                    let newMeta = { isCleanup: true };
                     if (meta.phase === 'FLYING' && meta.flyingNode) {
                         newDataForDraw = {
                             ...data,
                             table: data.table.map(list => list.filter(n => n.id !== meta.flyingNode.id))
                         };
+                        newMeta = { isCleanup: true, rehashNewSlideCol: meta.flyingNode.toIdx };
                     }
-                    this.drawArrayAndLists(newTableX, baseY, L.arrayCellSize, newDataForDraw, { isCleanup: true });
+                    this.drawArrayAndLists(newTableX, baseY, L.arrayCellSize, newDataForDraw, newMeta);
 
                     if (meta.phase === 'FLYING' && meta.flyingNode) {
                         const fNode = meta.flyingNode;
+                        const listStartY = baseY + L.arrayCellSize + 20;
                         const srcX = oldTableX + fNode.fromIdx * L.arrayCellSize + L.arrayCellSize / 2;
-                        const srcY = baseY + L.arrayCellSize + 20 + fNode.fromDepth * L.nodeVerticalStep;
+                        const srcY = listStartY; // Always departs from head (depth 0) of remaining chain
 
                         const destList = data.table[fNode.toIdx];
-                        const destDepth = destList.findIndex(n => n.id === fNode.id);
                         const destX = newTableX + fNode.toIdx * L.arrayCellSize + L.arrayCellSize / 2;
-                        const destY = baseY + L.arrayCellSize + 20 + (destDepth >= 0 ? destDepth : 0) * L.nodeVerticalStep;
+                        const destY = listStartY; // Always lands at head (depth 0)
 
                         const t = this.morphProgress;
                         const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
                         const currX = srcX + (destX - srcX) * ease;
                         const currY = srcY + (destY - srcY) * ease;
 
+                        // Connecting arrow from flying node to the existing head sliding down
+                        if (destList.length > 1 && t > 0.65) {
+                            const slideProg = Math.min(t / 0.72, 1);
+                            const easeSlide = slideProg < 0.5 ? 2 * slideProg * slideProg : -1 + (4 - 2 * slideProg) * slideProg;
+                            const headY = listStartY + easeSlide * L.nodeVerticalStep;
+                            ctx.save();
+                            ctx.globalAlpha = Math.min(1, (t - 0.65) / 0.35);
+                            this.drawArrow(currX, currY + L.nodeBoxH + L.nodePtrH / 2, destX, headY, COLORS.ARROW_REF, 8);
+                            ctx.restore();
+                        }
+
                         this.drawSingleNode(currX, currY, fNode.key, COLORS.FLY_BG, COLORS.FLY_BG, '#222', 2, COLORS.DOT, '#111');
 
-                        if (t > 0.1) {
+                        if (t > 0.1 && t < 0.98) {
                             ctx.save();
-                            ctx.globalAlpha = 0.35;
+                            ctx.globalAlpha = 0.35 * (1 - t);
                             ctx.setLineDash([5, 5]);
                             ctx.beginPath();
                             ctx.moveTo(srcX, srcY + 15);
@@ -1849,9 +1891,11 @@
 
                 drawArrayAndLists(x, y, size, data, meta) {
                     const ctx = this.ctx;
+                    const L = this.layout;
                     const table = data.table;
                     const listStartY = y + size + 20;
                     const isAnimating = this.state === 'MORPH' || this.state === 'WAITING';
+                    const t = this.morphProgress;
 
                     for (let i = 0; i < data.capacity; i++) {
                         const cx = x + i * size;
@@ -1876,8 +1920,29 @@
 
                         const list = table[i] || [];
                         if (list.length > 0) {
+                            let arrowEndY = listStartY;
+                            if (meta.rehashOldSlideCol === i) {
+                                const p = Math.min(t / 0.45, 1);
+                                const easeUp = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+                                arrowEndY = listStartY + (1 - easeUp) * L.nodeVerticalStep;
+                            } else if (meta.rehashNewSlideCol === i) {
+                                const p = Math.min(t / 0.72, 1);
+                                const easeDown = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+                                const headY = listStartY + easeDown * L.nodeVerticalStep;
+                                if (t < 0.72) {
+                                    arrowEndY = headY;
+                                } else {
+                                    const blend = (t - 0.72) / 0.28;
+                                    arrowEndY = headY * (1 - blend) + listStartY * blend;
+                                }
+                            }
+                            this.drawArrow(dotX, dotY, dotX, arrowEndY, COLORS.ARROW_REF, 8);
+                            this.drawLinkedListNodes(dotX, listStartY, list, i, meta, isAnimating, t);
+                        } else if (meta.rehashNewSlideCol === i && t > 0.72) {
+                            ctx.save();
+                            ctx.globalAlpha = Math.min(1, (t - 0.72) / 0.28);
                             this.drawArrow(dotX, dotY, dotX, listStartY, COLORS.ARROW_REF, 8);
-                            this.drawLinkedListNodes(dotX, listStartY, list, i, meta, isAnimating, this.morphProgress);
+                            ctx.restore();
                         }
 
                         if (meta.targetIndex === i && !meta.isCleanup) {
@@ -1894,7 +1959,15 @@
                         let y = startY + k * L.nodeVerticalStep;
                         let alpha = 1;
 
-                        if (isAnimating && meta.animationCol === colIndex) {
+                        if (meta.rehashOldSlideCol === colIndex) {
+                            const p = Math.min(progress / 0.45, 1);
+                            const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+                            y = startY + (k + 1 - ease) * L.nodeVerticalStep;
+                        } else if (meta.rehashNewSlideCol === colIndex) {
+                            const p = Math.min(progress / 0.72, 1);
+                            const ease = p < 0.5 ? 2 * p * p : -1 + (4 - 2 * p) * p;
+                            y = startY + (k + ease) * L.nodeVerticalStep;
+                        } else if (isAnimating && meta.animationCol === colIndex) {
                             if (meta.animation === 'slideDown') {
                                 const splitTime = 0.65;
                                 if (k === 0) {
@@ -1997,7 +2070,7 @@
                     ctx.font = `700 ${fontSize}px "Segoe UI", Arial, sans-serif`;
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
-                    ctx.fillText(str, centerX, y + L.nodeBoxH / 2 + 1);
+                    ctx.fillText(str, centerX, y + L.nodeBoxH / 2 + 1, L.nodeWidth - 6);
 
                     const ptrY = y + L.nodeBoxH;
                     this.paintRect(centerX - L.nodeWidth / 2, ptrY, L.nodeWidth, L.nodePtrH, bgPtr, {
@@ -2045,7 +2118,6 @@
                     const ctx = this.ctx;
                     const w = 94, h = 38;
                     const boxX = x - w / 2, boxY = y;
-
                     const keyStr = String(info.key);
                     const keyFont = keyStr.length <= 2 ? 22 : keyStr.length <= 4 ? 17 : 13;
                     ctx.fillStyle = COLORS.TEXT_RED;
@@ -2226,7 +2298,7 @@
                     const currentSnap = this.viz?.snapshots?.[index];
                     if (currentSnap?.tableData) {
                         this.updateStats(currentSnap.tableData);
-                    }    
+                    }
 
                     const busy = state !== 'IDLE' || (isPaused && index < total - 1);
                     ['btnInsert', 'btnDelete', 'btnSearch', 'btnRandom', 'selInitCap', 'selMaxLF'].forEach(id => {
@@ -2300,7 +2372,6 @@
                     const snaps = [{ tableData: this.ht.getSnapshotData(), meta: {} }];
                     fn((tableData, metaData) => snaps.push({ tableData, meta: metaData }));
                     this.viz.enqueueOperation(snaps, instant);
-                    this.updateStats();
                     this.updateUI();
                     if (logText) this.addLog(logText);
                 },
@@ -2369,13 +2440,15 @@
                         { tableData: prevData, meta: {} },
                         { tableData: this.ht.getSnapshotData(), meta: { text: 'Undo successful.' } }
                     ], false);
-                    this.updateStats();
                     this.updateUI();
                     this.addLog('Undo');
                 },
 
                 handleReconfigure() {
                     if (this.isBusy()) return;
+                    if (this.ht.size > 0) {
+                        this.ht.saveToHistory();
+                    }
                     const cap = parseInt(document.getElementById('selInitCap').value, 10) || 5;
                     const lf = parseFloat(document.getElementById('selMaxLF').value) || 2.0;
 
@@ -2389,6 +2462,7 @@
                     );
                     this.updateStats();
                     this.updateUI();
+                    this.addLog(`Reset capacity -> ${cap}`);
                 },
 
                 handleClear(saveHistory = true) {
@@ -2433,7 +2507,6 @@
                     }
 
                     this.viz.enqueueOperation(snaps, instant);
-                    this.updateStats();
                     this.updateUI();
                     this.addLog(`Random Fill (${chosen.join(', ')})`);
                 }
