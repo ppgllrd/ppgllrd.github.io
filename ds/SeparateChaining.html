@@ -296,8 +296,8 @@
 
         #legend {
             position: absolute;
-            top: 14px;
-            right: 14px;
+            top: 10px;
+            left: 10px;
             background: var(--card-bg);
             padding: 8px 10px;
             border: 1px solid var(--border-color);
@@ -1117,6 +1117,11 @@
                 cleanUp(recordSnapshot, text = 'Ready.') {
                     recordSnapshot(this.getSnapshotData(), { text, isCleanup: true });
                 }
+
+                clear() {
+                    this.table = new Array(this.capacity).fill(null);
+                    this.size = 0;
+                }
             }
 
             class Visualizer {
@@ -1135,7 +1140,7 @@
                         nodeBoxH: 30,
                         nodePtrH: 20,
                         nodeVerticalStep: 62,
-                        leftPanelW: 165,
+                        leftPanelW: 100,
                         rehashGap: 180,
                         baseY: -90
                     };
@@ -1776,7 +1781,7 @@
                     }
                 }
 
-                paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1, radius = 7 } = {}) {
+                paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1, radius = 7, inset = false } = {}) {
                     const c = this.ctx;
                     c.save();
                     c.globalAlpha *= alpha;
@@ -1785,6 +1790,17 @@
                     c.fillStyle = fill;
                     c.fill();
                     if (stroke) {
+                        if (inset) {
+                            const half = lineWidth / 2;
+                            c.beginPath();
+                            c.roundRect(
+                                x + half,
+                                y + half,
+                                Math.max(0, w - lineWidth),
+                                Math.max(0, h - lineWidth),
+                                Math.max(0, radius - half)
+                            );
+                        }
                         c.strokeStyle = stroke;
                         c.lineWidth = lineWidth;
                         c.stroke();
@@ -1865,7 +1881,7 @@
                         }
 
                         if (meta.targetIndex === i && !meta.isCleanup) {
-                            this.drawArrow(dotX, dotY - 72, dotX, dotY - 40, COLORS.ARROW_PROBE, 8);
+                            this.drawArrow(dotX, dotY - 77, dotX, dotY - 45, COLORS.ARROW_PROBE, 8);
                         }
                     }
                 }
@@ -1971,7 +1987,8 @@
 
                     this.paintRect(centerX - L.nodeWidth / 2, y, L.nodeWidth, L.nodeBoxH, bgData, {
                         stroke: dataBorder,
-                        lineWidth: dataBorderWidth
+                        lineWidth: dataBorderWidth,
+                        inset: true
                     });
 
                     const str = String(val);
@@ -1986,7 +2003,8 @@
                     this.paintRect(centerX - L.nodeWidth / 2, ptrY, L.nodeWidth, L.nodePtrH, bgPtr, {
                         stroke: ptrBorder,
                         lineWidth: ptrWidth,
-                        radius: 4
+                        radius: 4,
+                        inset: true
                     });
 
                     ctx.beginPath();
@@ -2205,6 +2223,11 @@
                 },
 
                 syncPlaybackUI({ state, isPaused, index, total }) {
+                    const currentSnap = this.viz?.snapshots?.[index];
+                    if (currentSnap?.tableData) {
+                        this.updateStats(currentSnap.tableData);
+                    }    
+
                     const busy = state !== 'IDLE' || (isPaused && index < total - 1);
                     ['btnInsert', 'btnDelete', 'btnSearch', 'btnRandom', 'selInitCap', 'selMaxLF'].forEach(id => {
                         document.getElementById(id).disabled = busy;
@@ -2223,8 +2246,7 @@
                         total > 1 ? `Step: ${Math.min(index + 1, total)}/${total}` : 'Step: -';
                 },
 
-                updateStats() {
-                    const data = this.ht.getSnapshotData();
+                updateStats(data = this.ht.getSnapshotData()) {
                     const lf = data.capacity > 0 ? (data.size / data.capacity).toFixed(2) : '0.00';
                     document.getElementById('ht-stats').innerText =
                         `Size: ${data.size} | Cap: ${data.capacity} | α: ${lf} | Max Chain: ${data.maxDepth}`;
@@ -2338,7 +2360,9 @@
                     const restored = this.ht.restoreFromHistory();
                     if (!restored) return;
 
-                    document.getElementById('selInitCap').value = String(this.ht.capacity);
+                    if ([5, 7, 11].includes(this.ht.capacity)) {
+                        document.getElementById('selInitCap').value = String(this.ht.capacity);
+                    }
                     document.getElementById('selMaxLF').value = String(this.ht.maxLoadFactor);
 
                     this.viz.enqueueOperation([
@@ -2352,23 +2376,31 @@
 
                 handleReconfigure() {
                     if (this.isBusy()) return;
-                    this.handleClear(false);
-                },
-
-                handleClear(saveHistory = true) {
                     const cap = parseInt(document.getElementById('selInitCap').value, 10) || 5;
                     const lf = parseFloat(document.getElementById('selMaxLF').value) || 2.0;
 
-                    if (saveHistory && this.ht.size > 0) {
-                        this.ht.saveToHistory();
-                    }
                     const oldHistory = this.ht.history;
                     this.ht = new SeparateChainingHashTable(cap, lf);
                     this.ht.history = oldHistory;
 
                     this.viz.resetWithSnapshot(
-                        { tableData: this.ht.getSnapshotData(), meta: { text: `Table cleared (Cap=${cap}, Max α=${lf}).` } },
-                        `Table cleared (Cap=${cap}, Max α=${lf}).`
+                        { tableData: this.ht.getSnapshotData(), meta: { text: `Table reset (Cap=${cap}, Max α=${lf}).` } },
+                        `Table reset (Cap=${cap}, Max α=${lf}).`
+                    );
+                    this.updateStats();
+                    this.updateUI();
+                },
+
+                handleClear(saveHistory = true) {
+                    if (saveHistory && this.ht.size > 0) {
+                        this.ht.saveToHistory();
+                    }
+                    this.ht.clear();
+
+                    const msg = `Table cleared (Cap=${this.ht.capacity}, Max α=${this.ht.maxLoadFactor}).`;
+                    this.viz.resetWithSnapshot(
+                        { tableData: this.ht.getSnapshotData(), meta: { text: msg } },
+                        msg
                     );
                     this.updateStats();
                     this.updateUI();
