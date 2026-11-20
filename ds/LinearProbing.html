@@ -574,8 +574,8 @@
                 <label class="field-label" title="Initial number of cells">Cap
                     <select id="selInitCap" autocomplete="off">
                         <option value="7">7</option>
-                        <option value="11">11</option>
-                        <option value="17" selected>17</option>
+                        <option value="11" selected>11</option>
+                        <option value="17">17</option>
                     </select>
                 </label>
 
@@ -588,7 +588,7 @@
                 </label>
 
                 <label class="field-label" title="Deletion strategy">Del
-                    <select id="selDelMode" autocomplete="off"s>
+                    <select id="selDelMode" autocomplete="off">
                         <option value="rehashCluster" selected>Rehash Cluster</option>
                         <option value="backward">Backward Shift</option>
                     </select>
@@ -692,8 +692,8 @@
             <ul>
                 <li><strong>Insert</strong> <span class="complexity">O(1) avg</span> — First checks <code>loadFactor() &gt; maxLoadFactor</code> (rehashing to next prime &gt; <code>2 * capacity</code> if exceeded, <span class="complexity">O(n)</span>). Then calls <code>searchIndex(key)</code>: if an empty slot is found, inserts and increments <code>size</code>; if the key already exists, updates <code>keys[index] = key</code> (amber highlight).</li>
                 <li><strong>Search</strong> <span class="complexity">O(1) avg</span> — Probes from <code>hash(key)</code> until the key is found (<strong>Hit</strong>) or a <code>null</code> slot is encountered (<strong>Miss</strong>).</li>
-                <li><strong>Delete (Backward Shift — Java default)</strong> <span class="complexity">O(1) avg</span> — Empties the found slot (hole) and scans forward in the cluster. The first key whose <code>probeDistance(hash, hole) &lt; probeDistance(hash, current)</code> is shifted back into the hole, repeating until a <code>null</code> cell is reached.</li>
-                <li><strong>Delete (Rehash Cluster)</strong> — Alternative mode from <code>deleteByRehashingCluster</code> that clears and re-inserts every subsequent key in the cluster.</li>
+                <li><strong>Delete (Rehash Cluster — default)</strong> <span class="complexity">O(1) avg</span> — Mode that clears and re-inserts every subsequent key in the cluster.</li>
+                <li><strong>Delete (Backward Shift)</strong> — Alternative that empties the found slot (hole) and scans forward in the cluster. The first key whose <code>probeDistance(hash, hole) &lt; probeDistance(hash, current)</code> is shifted back into the hole, repeating until a <code>null</code> cell is reached.</li>
             </ul>
 
             <h3>Tips &amp; Keyboard Shortcuts</h3>
@@ -1355,7 +1355,7 @@
                         contentH = 340;
                     } else {
                         const arrayW = data.capacity * this.boxSize;
-                        const sidePanelW = 225;
+                        const sidePanelW = 250;
                         contentW = arrayW + sidePanelW;
                         contentH = 360;
                         centerXOffset = -sidePanelW / 2;
@@ -2183,15 +2183,19 @@
 
                     document.getElementById('selMaxLF').addEventListener('change', () => {
                         const lf = parseFloat(document.getElementById('selMaxLF').value);
-                        this.ht.maxLoadFactor = lf;
                         if (this.ht.loadFactor() > lf && !this.isBusy()) {
                             this.runOp(rec => {
-                                this.ht.saveToHistory();
-                                this.ht.rehash(rec);
+                                this.ht.saveToHistory();     
+                                this.ht.maxLoadFactor = lf;  
+                                this.ht.rehash(rec);         
                                 this.ht.cleanUp(rec, `Rehashed for Max α = ${lf}. Ready.`);
                             }, { instant: document.getElementById('chkInstant').checked, logText: `Max α -> ${lf} (rehash)` });
                         } else {
-                            this.viz.resetWithSnapshot({ tableData: this.ht.getSnapshotData(), meta: { text: `Max Load Factor set to ${lf}.` } }, `Max Load Factor set to ${lf}.`);
+                            this.ht.maxLoadFactor = lf;
+                            this.viz.resetWithSnapshot(
+                                { tableData: this.ht.getSnapshotData(), meta: { text: `Max Load Factor set to ${lf}.` } },
+                                `Max Load Factor set to ${lf}.`
+                            );
                             this.updateStats();
                         }
                     });
