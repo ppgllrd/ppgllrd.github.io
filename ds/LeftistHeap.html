@@ -1,9 +1,10 @@
+
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Weight-Biased Leftist Min-Heap Visualizer</title>
     <style>
         :root {
@@ -13,13 +14,13 @@
             --border-color: #d8dee4;
             --text-primary: #1f2328;
             --text-secondary: #57606a;
-            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-bg: rgba(255, 255, 255, 0.96);
             --input-bg: #ffffff;
             --input-border: #9aa4b2;
 
-            /* UI Colors */
+            /* UI Colors (Flat) */
             --btn-insert: #2E7D32;
-            --btn-delete: #c62828;
+            --btn-delete: #C62828;
             --btn-search: #1565C0;
             --btn-undo: #6A1B9A;
             --btn-gray: #546E7A;
@@ -36,7 +37,7 @@
             --border-color: #30363d;
             --text-primary: #e6edf3;
             --text-secondary: #9da7b3;
-            --card-bg: rgba(22, 27, 34, 0.94);
+            --card-bg: rgba(22, 27, 34, 0.96);
             --input-bg: #0d1117;
             --input-border: #444c56;
         }
@@ -45,17 +46,22 @@
             box-sizing: border-box;
         }
 
+        html,
         body {
             margin: 0;
             padding: 0;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        body {
             font-family: 'Segoe UI', system-ui, -apple-system, Tahoma, Geneva, Verdana, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-primary);
             display: flex;
             flex-direction: column;
-            height: 100vh;
-            height: 100dvh;
-            overflow: hidden;
             user-select: none;
             transition: background-color 0.2s, color 0.2s;
         }
@@ -67,7 +73,6 @@
             flex-direction: column;
             gap: 8px;
             border-bottom: 1px solid var(--border-color);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.06);
             flex-shrink: 0;
             z-index: 10;
         }
@@ -132,18 +137,16 @@
             width: 135px;
             font-weight: 600;
             font-size: 0.85rem;
-            transition: border-color 0.15s, box-shadow 0.15s;
+            transition: border-color 0.15s;
         }
 
         input[type="text"]:focus {
             outline: none;
             border-color: var(--btn-search);
-            box-shadow: 0 0 0 2px rgba(21, 101, 192, 0.2);
         }
 
         input[type="text"].input-error {
             border-color: var(--btn-delete);
-            box-shadow: 0 0 0 2px rgba(198, 40, 40, 0.25);
         }
 
         input[type="range"] {
@@ -179,7 +182,6 @@
             color: white;
             transition: filter 0.15s, transform 0.1s, opacity 0.15s;
             font-size: 0.82rem;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18);
             white-space: nowrap;
         }
 
@@ -194,7 +196,6 @@
         button:disabled {
             opacity: 0.4;
             cursor: not-allowed;
-            box-shadow: none;
         }
 
         .btn-insert { background-color: var(--btn-insert); }
@@ -218,7 +219,6 @@
             border: 1px solid var(--border-color);
             font-size: 0.88rem;
             padding: 4px 10px;
-            box-shadow: none;
         }
 
         .btn-help {
@@ -269,7 +269,7 @@
         }
 
         #canvas-container {
-            flex-grow: 1;
+            flex: 1 1 0;
             position: relative;
             overflow: hidden;
             background-color: var(--bg-color);
@@ -285,7 +285,7 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Collapsible Legend */
+        /* Collapsible Flat Legend */
         #legend {
             position: absolute;
             top: 14px;
@@ -293,10 +293,8 @@
             background: var(--card-bg);
             padding: 8px 10px;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 6px;
             font-size: 0.78rem;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
-            backdrop-filter: blur(4px);
             max-width: 225px;
             z-index: 5;
         }
@@ -326,7 +324,6 @@
             border-radius: 4px;
             padding: 1px 6px;
             font-size: 0.75rem;
-            box-shadow: none;
         }
 
         .legend-item {
@@ -370,7 +367,7 @@
             height: 28px;
             border-radius: 50%;
             background: #B0F9B0;
-            border: 2px solid #7ED87E;
+            border: 2px solid #66BB6A;
             text-align: center;
             line-height: 24px;
             position: relative;
@@ -380,11 +377,11 @@
         }
 
         .node-val {
-            color: #9E0000;
+            color: #8E0000;
             font-size: 11px;
         }
 
-        .node-weight {
+        .node-badge-r {
             position: absolute;
             top: -5px;
             right: -5px;
@@ -392,14 +389,14 @@
             line-height: 12px;
             min-width: 14px;
             height: 14px;
-            color: #1668BD;
+            color: #1976D2;
             background: #ffffff;
-            border: 1px solid #1668BD;
+            border: 1px solid #1976D2;
             border-radius: 50%;
             text-align: center;
         }
 
-        /* Camera Floating Controls */
+        /* Camera Floating Controls (Flat) */
         #camera-controls {
             position: absolute;
             bottom: 14px;
@@ -413,7 +410,6 @@
             background: var(--card-bg);
             color: var(--text-primary);
             border: 1px solid var(--border-color);
-            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.12);
             padding: 6px 10px;
             font-size: 0.85rem;
         }
@@ -482,12 +478,12 @@
             font-size: 0.74em;
             color: var(--text-secondary);
             text-align: center;
-            padding: 5px 10px;
+            padding: 5px 10px calc(5px + env(safe-area-inset-bottom));
             border-top: 1px solid var(--border-color);
             flex-shrink: 0;
         }
 
-        /* Modal */
+        /* Modal (Flat) */
         .modal {
             display: none;
             position: fixed;
@@ -497,7 +493,6 @@
             width: 100%;
             height: 100%;
             background-color: rgba(0, 0, 0, 0.55);
-            backdrop-filter: blur(2px);
         }
 
         .modal-content {
@@ -508,10 +503,9 @@
             border: 1px solid var(--border-color);
             width: 90%;
             max-width: 650px;
-            border-radius: 10px;
+            border-radius: 8px;
             max-height: 84vh;
             overflow-y: auto;
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.25);
         }
 
         .close {
@@ -619,10 +613,13 @@
                 <span class="speed-badge" id="speedLabel">1.0x</span>
 
                 <button class="btn-step" id="btnStepBack" title="Step Backward (Left Arrow)" disabled>|&lt;</button>
-                <button class="btn-pause" id="btnPause" title="Pause / Resume / Restart (Space)" disabled>Pause</button>
+                <button class="btn-pause" id="btnPause" title="Pause / Resume (Space)" disabled>Pause</button>
                 <button class="btn-step" id="btnStepFwd" title="Step Forward (Right Arrow)" disabled>&gt;|</button>
                 <button class="btn-step" id="btnSkip" title="Skip animation to end" disabled>&gt;&gt;|</button>
 
+                <label class="toggle-label" title="Show inactive null pointer markers">
+                    <input type="checkbox" id="chkShowNulls" checked> Nulls
+                </label>
                 <label class="toggle-label" title="Automatically zoom &amp; center heap on operations">
                     <input type="checkbox" id="chkAutoFit" checked> Auto-Fit
                 </label>
@@ -648,17 +645,18 @@
             </div>
             <div class="legend-body">
                 <div class="legend-item">
-                    <div class="node-sample"><span class="node-val">V</span><span class="node-weight">w</span></div>
+                    <div class="node-sample"><span class="node-val">V</span><span class="node-badge-r">w</span></div>
                     <span>Value / Weight</span>
                 </div>
                 <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:1px solid #66BB6A"></div><span>Tree 1 (Main)</span></div>
-                <div class="legend-item"><div class="dot" style="background:#99FFFF; border:1px solid #26C6DA"></div><span>Tree 2 (Merging)</span></div>
-                <div class="legend-item"><div class="dot" style="background:#CC99FF;"></div><span>Comparing / Min</span></div>
-                <div class="legend-item"><div class="dot" style="background:#D32F2F;"></div><span>Deleting Root</span></div>
-                <div class="legend-item"><div class="dot" style="width:10px; height:10px; background:#F44336; margin-left:2px;"></div><span>Heavier Right (Swap)</span></div>
+                <div class="legend-item"><div class="dot" style="background:#80DEEA; border:1px solid #0097A7"></div><span>Tree 2 (Merging)</span></div>
+                <div class="legend-item"><div class="dot" style="background:#CE93D8; border:1px solid #8E24AA"></div><span>Comparing / Min</span></div>
+                <div class="legend-item"><div class="dot" style="background:#E53935;"></div><span>Deleting Root</span></div>
+                <div class="legend-item"><div class="dot" style="width:10px; height:10px; background:#E53935; margin-left:2px;"></div><span>Heavier Right (Swap)</span></div>
+                <div class="legend-item"><div class="line-icon" style="background:#FF8F00;"></div><span>Right Spine Path</span></div>
                 <div class="legend-item"><div class="arrow-icon">&#8644;</div><span>Swap Children</span></div>
-                <div class="legend-item"><div class="dot" style="background:#E0E0E0; border:1px solid #9E9E9E"></div><span>Queued (Inactive)</span></div>
-                <div class="legend-item"><div class="line-icon" style="background:#1668BD;"></div><span>Null Link</span></div>
+                <div class="legend-item"><div class="dot" style="background:#E2E8F0; border:1px solid #94A3B8"></div><span>Queued (Inactive)</span></div>
+                <div class="legend-item"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
             </div>
         </div>
 
@@ -718,7 +716,7 @@
             <h3>Tips &amp; Keyboard Shortcuts</h3>
             <ul>
                 <li><strong>Batch Insert:</strong> Enter comma-separated numbers (e.g., <code>40, 15, 30, 5, 22</code>).</li>
-                <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click a node to copy its value, hover to inspect weights and leftist invariant.</li>
+                <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click/tap a node to copy its value, hover to highlight its subtree and inspect weights and leftist invariant.</li>
                 <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> Insert, <kbd>Space</kbd> Pause/Resume, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
             </ul>
         </div>
@@ -728,116 +726,123 @@
         (() => {
             'use strict';
 
-            const LIGHT_THEME = {
-                FILL1: '#B0F9B0',
-                STROKE1: '#7ED87E',
-                FILL2: '#99FFFF',
-                STROKE2: '#4DD0E1',
-                COMPARE_FILL: '#CC99FF',
-                COMPARE_STROKE: '#9C27B0',
-                MINIMUM: '#CC99FF',
-                MINIMUM_STROKE: '#9C27B0',
-                DELETE: '#D32F2F',
-                TEXT_VAL: '#9E0000',
-                EDGE: '#1668BD',
-                WEIGHT_TEXT: '#1668BD',
-                WEIGHT_STROKE: '#1668BD',
-                WEIGHT_HIGHLIGHT: '#F44336',
-                VIOLATION_NULL: '#F44336',
-                ARROW: '#D50000',
-                BADGE_BG: '#FFFFFF',
-                INACTIVE_FILL: '#F2F4F7',
-                INACTIVE_STROKE: '#B8C0CC',
-                INACTIVE_EDGE: '#DCE1E8',
-                INACTIVE_TEXT: '#8C95A2',
-                INACTIVE_WEIGHT_STROKE: '#B8C0CC',
-                TOOLTIP_BG: '#FFFFFF',
-                TOOLTIP_BORDER: '#D0D7DE'
-            };
-
-            const DARK_THEME = {
-                ...LIGHT_THEME,
-                FILL1: '#2E6F40',
-                STROKE1: '#4CAF50',
-                FILL2: '#006978',
-                STROKE2: '#26C6DA',
-                COMPARE_FILL: '#8E24AA',
-                COMPARE_STROKE: '#CE93D8',
-                MINIMUM: '#8E24AA',
-                MINIMUM_STROKE: '#CE93D8',
-                TEXT_VAL: '#FFFFFF',
-                EDGE: '#58A6FF',
-                WEIGHT_TEXT: '#58A6FF',
-                WEIGHT_STROKE: '#58A6FF',
-                BADGE_BG: '#161B22',
-                INACTIVE_FILL: '#1F2630',
-                INACTIVE_STROKE: '#444C56',
-                INACTIVE_EDGE: '#2D333B',
-                INACTIVE_TEXT: '#6E7681',
-                INACTIVE_WEIGHT_STROKE: '#444C56',
-                TOOLTIP_BG: '#1F2630',
-                TOOLTIP_BORDER: '#444C56'
-            };
-
-            let COLORS = LIGHT_THEME;
-
-            class Node {
-                constructor(val, origin = 1) {
-                    this.id = Node.idCounter++;
-                    this.val = val;
-                    this.weight = 1;
-                    this.left = null;
-                    this.right = null;
-                    this.origin = origin; // 1 = Tree 1 (Main), 2 = Tree 2 (Incoming/Merging)
-                    this.x = 0;
-                    this.y = 0;
-                    this.highlight = false;
-                    this.highlightWeights = false;
+            /* =================================================================
+             * 1. FLAT THEMES & VISUAL PALETTES
+             * ================================================================= */
+            const THEMES = {
+                light: {
+                    BG_DOT: 'rgba(31, 35, 40, 0.11)',
+                    LEVEL_LINE: 'rgba(31, 35, 40, 0.08)',
+                    LEVEL_TEXT: 'rgba(87, 96, 106, 0.72)',
+                    FILL1: '#B0F9B0',
+                    STROKE1: '#66BB6A',
+                    FILL2: '#80DEEA',
+                    STROKE2: '#0097A7',
+                    TEXT_VAL1: '#8E0000',
+                    TEXT_VAL2: '#00363A',
+                    COMPARE_FILL: '#CE93D8',
+                    COMPARE_STROKE: '#8E24AA',
+                    COMPARE_TEXT: '#2A0845',
+                    MINIMUM: '#CE93D8',
+                    MINIMUM_STROKE: '#8E24AA',
+                    MINIMUM_TEXT: '#2A0845',
+                    DELETE: '#E53935',
+                    EDGE: '#1976D2',
+                    PATH_EDGE: '#FF8F00',
+                    NULL_LINK: '#1976D2',
+                    VIOLATION_NULL: '#E53935',
+                    ARROW: '#D50000',
+                    WEIGHT_TEXT: '#1976D2',
+                    WEIGHT_STROKE: '#1976D2',
+                    WEIGHT_HIGHLIGHT: '#E53935',
+                    BADGE_BG: '#FFFFFF',
+                    INACTIVE_FILL: '#E2E8F0',
+                    INACTIVE_STROKE: '#94A3B8',
+                    INACTIVE_EDGE: '#CBD5E1',
+                    INACTIVE_TEXT: '#64748B',
+                    INACTIVE_WEIGHT_STROKE: '#94A3B8',
+                    PILL_BG: '#FFFFFF',
+                    PILL_BORDER: '#CBD5E1',
+                    RING_FOCUS: '#1976D2'
+                },
+                dark: {
+                    BG_DOT: 'rgba(230, 237, 243, 0.09)',
+                    LEVEL_LINE: 'rgba(230, 237, 243, 0.07)',
+                    LEVEL_TEXT: 'rgba(157, 167, 179, 0.68)',
+                    FILL1: '#235334',
+                    STROKE1: '#4CAF50',
+                    FILL2: '#006978',
+                    STROKE2: '#26C6DA',
+                    TEXT_VAL1: '#E6EDF3',
+                    TEXT_VAL2: '#E0F7FA',
+                    COMPARE_FILL: '#7B1FA2',
+                    COMPARE_STROKE: '#CE93D8',
+                    COMPARE_TEXT: '#F3E5F5',
+                    MINIMUM: '#7B1FA2',
+                    MINIMUM_STROKE: '#CE93D8',
+                    MINIMUM_TEXT: '#F3E5F5',
+                    DELETE: '#EF5350',
+                    EDGE: '#58A6FF',
+                    PATH_EDGE: '#FFB300',
+                    NULL_LINK: '#58A6FF',
+                    VIOLATION_NULL: '#FF5252',
+                    ARROW: '#FF5252',
+                    WEIGHT_TEXT: '#58A6FF',
+                    WEIGHT_STROKE: '#58A6FF',
+                    WEIGHT_HIGHLIGHT: '#EF5350',
+                    BADGE_BG: '#161B22',
+                    INACTIVE_FILL: '#1F2630',
+                    INACTIVE_STROKE: '#444C56',
+                    INACTIVE_EDGE: '#2D333B',
+                    INACTIVE_TEXT: '#6E7681',
+                    INACTIVE_WEIGHT_STROKE: '#444C56',
+                    PILL_BG: '#1F2630',
+                    PILL_BORDER: '#444C56',
+                    RING_FOCUS: '#58A6FF'
                 }
+            };
 
-                clone() {
-                    const n = new Node(this.val, this.origin);
-                    n.id = this.id;
-                    n.weight = this.weight;
-                    n.highlight = this.highlight;
-                    n.highlightWeights = this.highlightWeights;
-                    n.x = this.x;
-                    n.y = this.y;
-                    if (this.left) n.left = this.left.clone();
-                    if (this.right) n.right = this.right.clone();
-                    return n;
+            /* =================================================================
+             * 2. PURE DATA MODEL & UNIFIED SNAPSHOT CONTRACT
+             * ================================================================= */
+            class Node {
+                constructor(val, left = null, right = null, id = Node.nextId++) {
+                    this.val = val;
+                    this.left = left;
+                    this.right = right;
+                    this.weight = 1 + (left ? left.weight : 0) + (right ? right.weight : 0);
+                    this.id = id;
+                    Object.freeze(this);
                 }
             }
-            Node.idCounter = 0;
+            Node.nextId = 0;
 
-            const WBLT = {
-                getWeight: n => n ? n.weight : 0,
-
-                updateWeight(n) {
-                    if (n) n.weight = 1 + this.getWeight(n.left) + this.getWeight(n.right);
+            const TreeUtils = {
+                getWeight(node) {
+                    return node ? node.weight : 0;
                 },
 
-                getHeight(n) {
-                    if (!n) return 0;
-                    return 1 + Math.max(this.getHeight(n.left), this.getHeight(n.right));
+                getHeight(node) {
+                    if (!node) return 0;
+                    return 1 + Math.max(this.getHeight(node.left), this.getHeight(node.right));
                 },
 
-                getRightSpineLength(n) {
+                getRightSpineLength(node) {
                     let len = 0;
-                    while (n) {
+                    let cur = node;
+                    while (cur) {
                         len++;
-                        n = n.right;
+                        cur = cur.right;
                     }
                     return len;
                 },
 
-                normalizeOrigin(n, origin = 1) {
-                    if (!n) return;
-                    n.origin = origin;
-                    n.highlight = false;
-                    n.highlightWeights = false;
-                    this.normalizeOrigin(n.left, origin);
-                    this.normalizeOrigin(n.right, origin);
+                collectIds(node, set = new Set()) {
+                    if (!node) return set;
+                    set.add(node.id);
+                    this.collectIds(node.left, set);
+                    this.collectIds(node.right, set);
+                    return set;
                 },
 
                 getTraversals(root) {
@@ -845,201 +850,388 @@
                     const inFn = n => { if (!n) return; inFn(n.left); inorder.push(n.val); inFn(n.right); };
                     const preFn = n => { if (!n) return; preorder.push(n.val); preFn(n.left); preFn(n.right); };
                     const postFn = n => { if (!n) return; postFn(n.left); postFn(n.right); postorder.push(n.val); };
-                    inFn(root); preFn(root); postFn(root);
+                    inFn(root);
+                    preFn(root);
+                    postFn(root);
 
                     if (root) {
                         const q = [root];
-                        while (q.length) {
-                            const cur = q.shift();
+                        for (let i = 0; i < q.length; i++) {
+                            const cur = q[i];
                             level.push(cur.val);
                             if (cur.left) q.push(cur.left);
                             if (cur.right) q.push(cur.right);
                         }
                     }
                     return { inorder, preorder, postorder, level };
-                },
+                }
+            };
 
-                performMerge(h1, h2) {
-                    if (!h1) return h2;
-                    if (!h2) return h1;
-                    if (h1.val > h2.val) {
-                        const temp = h1; h1 = h2; h2 = temp;
-                    }
-                    h1.right = this.performMerge(h1.right, h2);
-                    this.updateWeight(h1);
-                    if (this.getWeight(h1.left) < this.getWeight(h1.right)) {
-                        const temp = h1.left; h1.left = h1.right; h1.right = temp;
-                    }
-                    return h1;
-                },
+            /**
+             * Standardized snapshot contract:
+             * { roots, statsRoot, highlights, tree2Ids, weightHighlights, swapNodeIds, violationNull, pathIds, focusIndices, shouldFit, text, pause }
+             */
+            class SnapshotRecorder {
+                constructor(initialRoots = [], initialStatsRoot = null, initialText = null) {
+                    this.snapshots = [{
+                        roots: initialRoots ? [...initialRoots] : [],
+                        statsRoot: initialStatsRoot || null,
+                        highlights: new Map(),
+                        tree2Ids: new Set(),
+                        weightHighlights: new Set(),
+                        swapNodeIds: new Set(),
+                        violationNull: null,
+                        pathIds: [],
+                        focusIndices: null,
+                        shouldFit: false,
+                        text: initialText,
+                        pause: 0
+                    }];
+                }
 
-                recordMerge(rootList, h1Original, h2Original) {
-                    const steps = [];
-                    const worldRoots = rootList.map(r => r ? r.clone() : null).filter(Boolean);
+                emit(roots, options = {}) {
+                    const rawH = options.highlights;
+                    const highlights = rawH instanceof Map
+                        ? new Map(rawH)
+                        : new Map(Array.isArray(rawH) ? rawH : []);
 
-                    let t1 = h1Original ? worldRoots.find(n => n.id === h1Original.id) : null;
-                    let t2 = h2Original ? worldRoots.find(n => n.id === h2Original.id) : null;
+                    const pause = typeof options.pause === 'number'
+                        ? options.pause
+                        : (options.pause ? 0.72 : 0);
 
-                    if (!h1Original && !h2Original) {
-                        if (worldRoots.length > 0) t1 = worldRoots[0];
-                        if (worldRoots.length > 1) t2 = worldRoots[1];
-                    }
+                    this.snapshots.push({
+                        roots: roots ? roots.filter(Boolean) : [],
+                        statsRoot: options.statsRoot !== undefined ? options.statsRoot : null,
+                        highlights,
+                        tree2Ids: options.tree2Ids ? new Set(options.tree2Ids) : new Set(),
+                        weightHighlights: options.weightHighlights ? new Set(options.weightHighlights) : new Set(),
+                        swapNodeIds: options.swapNodeIds ? new Set(options.swapNodeIds) : new Set(),
+                        violationNull: options.violationNull || null,
+                        pathIds: options.pathIds ? [...options.pathIds] : [],
+                        focusIndices: options.focusIndices ? [...options.focusIndices] : null,
+                        shouldFit: Boolean(options.shouldFit),
+                        text: options.text ?? null,
+                        pause
+                    });
+                }
+            }
 
-                    if (!t1 && !t2) return steps;
-                    if (!t1 || !t2) {
-                        const survivor = t1 || t2;
-                        steps.push({
-                            msg: `Other heap is empty (∅). ${survivor.val} remains root.`,
-                            roots: worldRoots.map(r => r.clone())
+            /* =================================================================
+             * 3. WEIGHT-BIASED LEFTIST MIN-HEAP ENGINE (STRATEGY)
+             * ================================================================= */
+            class WBLTHeap {
+                constructor() {
+                    this.root = null;
+                    this.history = [];
+                    this.maxHistory = 25;
+                }
+
+                pushHistory(prevRoot) {
+                    if (prevRoot === this.root) return false;
+                    this.history.push(prevRoot);
+                    if (this.history.length > this.maxHistory) this.history.shift();
+                    return true;
+                }
+
+                restoreFromHistory() {
+                    if (this.history.length === 0) return undefined;
+                    this.root = this.history.pop();
+                    return this.root;
+                }
+
+                clear() {
+                    this.root = null;
+                }
+
+                mergeWithSteps(h1, h2, recorder, options = {}) {
+                    const unrelatedQueue = options.unrelatedQueue || [];
+                    const tree2Ids = options.tree2Ids || new Set();
+                    const focusIndices = options.focusIndices || null;
+                    const shouldFit = Boolean(options.shouldFit);
+                    const msgPrefix = options.msgPrefix || '';
+                    const statsRoot = options.statsRoot !== undefined ? options.statsRoot : null;
+
+                    if (!h1 && !h2) return null;
+
+                    if (!h1 || !h2) {
+                        const survivor = h1 || h2;
+                        recorder.emit([survivor, ...unrelatedQueue], {
+                            statsRoot,
+                            tree2Ids,
+                            focusIndices,
+                            shouldFit,
+                            text: `${msgPrefix}Other heap is empty (∅). ${survivor.val} remains root.`
                         });
-                        return steps;
+                        return survivor;
                     }
 
-                    const snapshot = (msg, highlightIds = [], highlightWeights = [], pause = false, swapNodeIds = [], violationNull = null) => {
-                        const frames = worldRoots.map(r => r.clone());
-                        const mark = n => {
-                            if (!n) return;
-                            n.highlight = highlightIds.includes(n.id) ? 'compare' : false;
-                            n.highlightWeights = highlightWeights.includes(n.id);
-                            mark(n.left);
-                            mark(n.right);
-                        };
-                        frames.forEach(mark);
-                        steps.push({ msg, roots: frames, pause, swapNodeIds, violationNull });
+                    const takeSnapshot = (mainTree, floating = [], opts = {}) => {
+                        const highlights = (opts.highlightIds || []).map(id => [id, 'COMPARE']);
+                        recorder.emit([mainTree, ...floating, ...unrelatedQueue], {
+                            statsRoot,
+                            highlights,
+                            tree2Ids,
+                            weightHighlights: opts.weightHighlightIds || [],
+                            swapNodeIds: opts.swapNodeIds || [],
+                            violationNull: opts.violationNull || null,
+                            pathIds: opts.pathIds || [],
+                            focusIndices,
+                            shouldFit,
+                            text: `${msgPrefix}${opts.msg}`,
+                            pause: opts.pause || false
+                        });
                     };
 
-                    snapshot(`Merge Start: ${t1.val} and ${t2.val}`);
+                    takeSnapshot(h1, [h2], { msg: `Merge Start: ${h1.val} and ${h2.val}` });
 
-                    function mergeRec(a, b, parent) {
-                        if (a && b) {
-                            snapshot(`Comparing roots: ${a.val} vs ${b.val}`, [a.id, b.id], [], true);
-                        }
-
+                    const mergeRec = (a, b, parentVal, parentId, wrap, pathIds) => {
                         if (!a) {
-                            if (parent) {
-                                const idx = worldRoots.findIndex(n => n.id === b.id);
-                                if (idx !== -1) worldRoots.splice(idx, 1);
-                                parent.right = b;
-                                snapshot(`Right child was empty (∅) -> attached ${b.val} to Right of ${parent.val}`, [b.id, parent.id], [], true);
+                            if (parentId !== null) {
+                                takeSnapshot(wrap(b), [], {
+                                    msg: `Right child was empty (∅) -> attached ${b.val} to Right of ${parentVal}`,
+                                    highlightIds: [b.id, parentId],
+                                    pathIds: [...pathIds, b.id],
+                                    pause: true
+                                });
                             }
                             return b;
                         }
                         if (!b) return a;
 
+                        takeSnapshot(wrap(a), [b], {
+                            msg: `Comparing roots: ${a.val} vs ${b.val}`,
+                            highlightIds: [a.id, b.id],
+                            pathIds,
+                            pause: true
+                        });
+
+                        let cur = a;
+                        let other = b;
+
                         if (a.val > b.val) {
-                            const temp = a; a = b; b = temp;
-
-                            if (parent) {
-                                parent.right = a;
-                            } else {
-                                const i1 = worldRoots.findIndex(n => n.id === b.id);
-                                const i2 = worldRoots.findIndex(n => n.id === a.id);
-                                if (i1 !== -1) worldRoots[i1] = a;
-                                if (i2 !== -1) worldRoots[i2] = b;
-                            }
-
-                            if (!worldRoots.some(n => n.id === b.id)) worldRoots.push(b);
-                            if (parent) {
-                                const idxA = worldRoots.findIndex(n => n.id === a.id);
-                                if (idxA !== -1) worldRoots.splice(idxA, 1);
-                            }
-                            snapshot(`Swap: ${a.val} < ${b.val} -> ${a.val} stays`, [a.id, b.id], [], true);
+                            cur = b;
+                            other = a;
+                            takeSnapshot(wrap(cur), [other], {
+                                msg: `Swap: ${cur.val} < ${other.val} -> ${cur.val} stays`,
+                                highlightIds: [cur.id, other.id],
+                                pathIds,
+                                pause: true
+                            });
                         }
 
-                        snapshot(`Descending right spine of ${a.val}`, [a.id]);
+                        const nextPath = [...pathIds, cur.id];
+                        takeSnapshot(wrap(cur), [other], {
+                            msg: `Descending right spine of ${cur.val}`,
+                            highlightIds: [cur.id],
+                            pathIds: nextPath
+                        });
 
-                        a.right = mergeRec(a.right, b, a);
+                        const mergedRight = mergeRec(
+                            cur.right,
+                            other,
+                            cur.val,
+                            cur.id,
+                            sub => wrap(new Node(cur.val, cur.left, sub, cur.id)),
+                            nextPath
+                        );
 
-                        if (a.right) {
-                            const idx = worldRoots.findIndex(n => n.id === a.right.id);
-                            if (idx !== -1) worldRoots.splice(idx, 1);
-                        }
+                        const updatedCur = new Node(cur.val, cur.left, mergedRight, cur.id);
+                        const wL = TreeUtils.getWeight(updatedCur.left);
+                        const wR = TreeUtils.getWeight(updatedCur.right);
 
-                        WBLT.updateWeight(a);
-                        const wL = WBLT.getWeight(a.left);
-                        const wR = WBLT.getWeight(a.right);
-                        snapshot(`Back at ${a.val}. Weight: ${a.weight} (L:${wL}, R:${wR})`, [a.id]);
+                        takeSnapshot(wrap(updatedCur), [], {
+                            msg: `Back at ${updatedCur.val}. Weight: ${updatedCur.weight} (L:${wL}, R:${wR})`,
+                            highlightIds: [updatedCur.id],
+                            pathIds: nextPath
+                        });
 
                         if (wL < wR) {
-                            const highlightWeights = a.right ? [a.right.id] : [];
-                            const violationNull = !a.left ? { nodeId: a.id, side: 'L' } : null;
-                            snapshot(
-                                `Leftist Violation at ${a.val} (wL=${wL} < wR=${wR}). Swapping children.`,
-                                [a.id],
-                                highlightWeights,
-                                true,
-                                [a.id],
-                                violationNull
-                            );
-                            const temp = a.left;
-                            a.left = a.right;
-                            a.right = temp;
-                            snapshot(
-                                `Children swapped at ${a.val} (wL=${wR} >= wR=${wL}).`,
-                                [a.id],
-                                highlightWeights,
-                                true
-                            );
+                            const highlightWeights = updatedCur.right ? [updatedCur.right.id] : [];
+                            const violationNull = !updatedCur.left ? { nodeId: updatedCur.id, side: 'L' } : null;
+
+                            takeSnapshot(wrap(updatedCur), [], {
+                                msg: `Leftist Violation at ${updatedCur.val} (wL=${wL} < wR=${wR}). Swapping children.`,
+                                highlightIds: [updatedCur.id],
+                                weightHighlightIds: highlightWeights,
+                                swapNodeIds: [updatedCur.id],
+                                violationNull,
+                                pathIds: nextPath,
+                                pause: true
+                            });
+
+                            const swappedCur = new Node(updatedCur.val, updatedCur.right, updatedCur.left, updatedCur.id);
+                            takeSnapshot(wrap(swappedCur), [], {
+                                msg: `Children swapped at ${swappedCur.val} (wL=${wR} >= wR=${wL}).`,
+                                highlightIds: [swappedCur.id],
+                                weightHighlightIds: highlightWeights,
+                                pathIds,
+                                pause: true
+                            });
+                            return swappedCur;
                         }
 
-                        return a;
+                        return updatedCur;
+                    };
+
+                    const mergedResult = mergeRec(h1, h2, null, null, sub => sub, []);
+                    takeSnapshot(mergedResult, [], { msg: 'Merge Complete.' });
+                    return mergedResult;
+                }
+
+                insert(val, recorder, msgPrefix = '') {
+                    const newNode = new Node(val);
+                    const tree2Ids = TreeUtils.collectIds(newNode);
+                    const merged = this.mergeWithSteps(this.root, newNode, recorder, {
+                        tree2Ids,
+                        msgPrefix,
+                        statsRoot: this.root
+                    });
+                    this.root = merged;
+                    return merged;
+                }
+
+                deleteMin(recorder) {
+                    if (!this.root) {
+                        recorder.emit([], { statsRoot: null, pause: true, text: 'Heap is empty.' });
+                        return null;
                     }
 
-                    mergeRec(t1, t2, null);
-                    snapshot('Merge Complete.');
-                    return steps;
+                    const deletedRoot = this.root;
+                    const minVal = deletedRoot.val;
+
+                    recorder.emit([deletedRoot], {
+                        statsRoot: deletedRoot,
+                        highlights: [[deletedRoot.id, 'DELETE']],
+                        pause: true,
+                        text: `Selected Minimum (${minVal}) for deletion`
+                    });
+
+                    const h1 = deletedRoot.left;
+                    const h2 = deletedRoot.right;
+                    const childrenRoots = [h1, h2].filter(Boolean);
+                    const tree2Ids = h2 ? TreeUtils.collectIds(h2) : new Set();
+
+                    recorder.emit(childrenRoots, {
+                        statsRoot: deletedRoot,
+                        tree2Ids,
+                        text: 'Removing root...'
+                    });
+
+                    if (childrenRoots.length === 0) {
+                        this.root = null;
+                        recorder.emit([], { statsRoot: null, text: 'Heap is now empty.' });
+                        return minVal;
+                    }
+
+                    if (childrenRoots.length === 1) {
+                        this.root = childrenRoots[0];
+                        recorder.emit([this.root], {
+                            statsRoot: this.root,
+                            tree2Ids,
+                            text: 'Root removed. Single child becomes root.'
+                        });
+                        recorder.emit([this.root], {
+                            statsRoot: this.root,
+                            text: `Deleted Min (${minVal}). Ready.`
+                        });
+                        return minVal;
+                    }
+
+                    this.root = this.mergeWithSteps(h1, h2, recorder, {
+                        tree2Ids,
+                        statsRoot: deletedRoot
+                    });
+
+                    recorder.emit([this.root], {
+                        statsRoot: this.root,
+                        text: `Deleted Min (${minVal}). Ready.`
+                    });
+                    return minVal;
                 }
-            };
 
-            const app = {
-                mainTree: null,
-                history: [],
-                steps: [],
-                currentStep: 0,
-                isPlaying: false,
-                singleStepPlaying: false,
-                transition: 1,
-                holdTimer: 0,
+                minimum(recorder) {
+                    if (!this.root) {
+                        recorder.emit([], { statsRoot: null, pause: true, text: 'Heap is empty.' });
+                        return null;
+                    }
+                    const minVal = this.root.val;
+                    recorder.emit([this.root], {
+                        statsRoot: this.root,
+                        highlights: [[this.root.id, 'MINIMUM']],
+                        pause: true,
+                        text: `Minimum element is ${minVal} (Root, O(1))`
+                    });
+                    recorder.emit([this.root], {
+                        statsRoot: this.root,
+                        text: `Minimum: ${minVal}. Ready.`
+                    });
+                    return minVal;
+                }
+            }
 
-                canvas: null,
-                ctx: null,
-                dpr: 1,
-                viewWidth: 800,
-                viewHeight: 600,
-
-                speedMultiplier: 1.0,
-                baseMorphSpeed: 2.1,
-                autoFit: true,
-                isDark: false,
-                logs: [],
-
-                camera: { scale: 1, x: 0, y: 80, targetScale: 1, targetX: 0, targetY: 80 },
-                isDragging: false,
-                dragMoved: false,
-                pointerDownNode: null,
-                dragStart: { x: 0, y: 0 },
-                initialCamera: { x: 0, y: 0 },
-                initialPinchDist: 0,
-                initialScale: 1,
-                hoveredNode: null,
-                vizNodes: [],
-
-                nodeRadius: 28,
-                levelGap: 76,
-
-                init() {
-                    this.canvas = document.getElementById('treeCanvas');
+            /* =================================================================
+             * 4. FLAT CANVAS VISUALIZER (VIEW ENGINE)
+             * ================================================================= */
+            class Visualizer {
+                constructor(canvas, options = {}) {
+                    this.canvas = canvas;
+                    this.container = canvas.parentElement;
                     this.ctx = this.canvas.getContext('2d');
-                    this.resize();
+                    this.theme = options.theme || THEMES.light;
+                    this.callbacks = options.callbacks || {};
+
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = 800;
+                    this.viewHeight = 600;
+                    this.hasInitializedView = false;
+                    this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
+
+                    this.nodeRadius = 28;
+                    this.levelHeight = 76;
+
+                    this.snapshots = [];
+                    this.currentSnapshotIndex = 0;
+                    this.lastDrawnNodes = [];
+                    this.hoveredNode = null;
+                    this.hoveredSubtreeIds = null;
+
+                    this.state = 'IDLE'; // 'IDLE' | 'CAMERA' | 'MORPH' | 'WAITING'
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 0;
+                    this.baseMorphSpeed = 2.4;
+                    this.speedMultiplier = 1;
+                    this.pauseTimer = 0;
+
+                    this.showNulls = true;
+                    this.autoFit = true;
+                    this.hasDynamicFit = false;
+
+                    // On-demand render loop state
+                    this.rafId = null;
+                    this.lastTime = null;
+                    this.needsRender = false;
+
+                    // Navigation state
+                    this.isDragging = false;
+                    this.dragMoved = false;
+                    this.pointerDownNode = null;
+                    this.dragStart = { x: 0, y: 0 };
+                    this.initialCamera = { x: 0, y: 0 };
+                    this.initialPinchDist = 0;
+                    this.initialScale = 1;
+
                     this.bindEvents();
-                    this.updateTreeStats();
-                    this.updateUI();
-                    this.lastTime = 0;
-                    requestAnimationFrame(t => this.loop(t));
-                },
+                    this.resize();
+                }
 
                 bindEvents() {
-                    window.addEventListener('resize', () => this.resize());
+                    if (typeof ResizeObserver !== 'undefined' && this.container) {
+                        this.resizeObserver = new ResizeObserver(() => this.resize());
+                        this.resizeObserver.observe(this.container);
+                    } else {
+                        window.addEventListener('resize', () => this.resize());
+                    }
 
                     this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
                     this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
@@ -1049,7 +1241,1342 @@
                     this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
                     this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
                     this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
+                }
 
+                setTheme(theme) {
+                    this.theme = theme;
+                    this.requestRender();
+                }
+
+                setShowNulls(show) {
+                    this.showNulls = show;
+                    this.requestRender();
+                }
+
+                setAutoFit(enabled) {
+                    this.autoFit = enabled;
+                }
+
+                setSpeed(mult) {
+                    this.speedMultiplier = mult;
+                }
+
+                isBusy() {
+                    return this.state !== 'IDLE' ||
+                        (this.isPaused && this.currentSnapshotIndex < this.snapshots.length - 1);
+                }
+
+                requestRender() {
+                    this.needsRender = true;
+                    if (!this.rafId) {
+                        this.rafId = requestAnimationFrame(t => this.loop(t));
+                    }
+                }
+
+                notifyState() {
+                    if (this.callbacks.onStateChange) {
+                        this.callbacks.onStateChange({
+                            state: this.state,
+                            isPaused: this.isPaused,
+                            isBusy: this.isBusy(),
+                            index: this.currentSnapshotIndex,
+                            total: this.snapshots.length
+                        });
+                    }
+                }
+
+                notifySnapshot(snap) {
+                    if (this.callbacks.onSnapshotChange) {
+                        this.callbacks.onSnapshotChange(snap ? snap.statsRoot : null);
+                    }
+                }
+
+                setStatus(text) {
+                    if (this.callbacks.onStatus) this.callbacks.onStatus(text);
+                }
+
+                getNodeAtScreenPos(mx, my) {
+                    for (let i = this.lastDrawnNodes.length - 1; i >= 0; i--) {
+                        const n = this.lastDrawnNodes[i];
+                        const sx = n.x * this.camera.scale + this.camera.x;
+                        const sy = n.y * this.camera.scale + this.camera.y;
+                        const r = this.nodeRadius * this.camera.scale;
+                        if (Math.hypot(mx - sx, my - sy) < r) return n;
+                    }
+                    return null;
+                }
+
+                computeSubtreeIdSet(nodeId) {
+                    if (nodeId === null || this.snapshots.length === 0) return null;
+                    const idx = Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
+                    const snap = this.snapshots[idx];
+                    if (!snap || !snap.roots) return null;
+
+                    const findTarget = n => {
+                        if (!n) return null;
+                        if (n.id === nodeId) return n;
+                        return findTarget(n.left) || findTarget(n.right);
+                    };
+
+                    let target = null;
+                    for (const r of snap.roots) {
+                        target = findTarget(r);
+                        if (target) break;
+                    }
+                    if (!target) return null;
+
+                    const set = new Set();
+                    const collect = n => {
+                        if (!n) return;
+                        set.add(n.id);
+                        collect(n.left);
+                        collect(n.right);
+                    };
+                    collect(target);
+                    return set;
+                }
+
+                updateHover(nextHover) {
+                    const prevId = this.hoveredNode ? this.hoveredNode.id : null;
+                    const nextId = nextHover ? nextHover.id : null;
+                    this.hoveredNode = nextHover;
+                    this.canvas.style.cursor = nextHover ? 'pointer' : 'default';
+
+                    if (prevId !== nextId) {
+                        this.hoveredSubtreeIds = nextId !== null ? this.computeSubtreeIdSet(nextId) : null;
+                        this.requestRender();
+                    }
+                }
+
+                onMouseDown(e) {
+                    if (e.button !== 0) return;
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    this.isDragging = true;
+                    this.dragMoved = false;
+                    this.pointerDownNode = this.getNodeAtScreenPos(mx, my);
+                    this.dragStart = { x: mx, y: my };
+                    this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                }
+
+                onMouseMove(e) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    if (this.isDragging) {
+                        const dx = mx - this.dragStart.x;
+                        const dy = my - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
+
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x + dx;
+                            this.camera.targetY = this.initialCamera.y + dy;
+                            this.canvas.style.cursor = 'grabbing';
+                            this.hoveredNode = null;
+                            this.hoveredSubtreeIds = null;
+                            this.requestRender();
+                            return;
+                        }
+                    }
+
+                    this.updateHover(this.getNodeAtScreenPos(mx, my));
+                }
+
+                onMouseUp() {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
+                        if (this.callbacks.onNodeClick) this.callbacks.onNodeClick(this.pointerDownNode);
+                    }
+                    this.isDragging = false;
+                    this.pointerDownNode = null;
+                    this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
+                }
+
+                onMouseLeave() {
+                    this.isDragging = false;
+                    this.pointerDownNode = null;
+                    this.updateHover(null);
+                }
+
+                onWheel(e) {
+                    e.preventDefault();
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+                    const factor = Math.exp(-e.deltaY * 0.0012);
+                    this.zoomAt(this.camera.targetScale * factor, mx, my);
+                }
+
+                zoomAt(newScale, anchorX, anchorY) {
+                    newScale = Math.min(Math.max(0.15, newScale), 4.5);
+                    const worldX = (anchorX - this.camera.targetX) / this.camera.targetScale;
+                    const worldY = (anchorY - this.camera.targetY) / this.camera.targetScale;
+                    this.camera.targetScale = newScale;
+                    this.camera.targetX = anchorX - worldX * newScale;
+                    this.camera.targetY = anchorY - worldY * newScale;
+                    this.requestRender();
+                }
+
+                zoomBy(multiplier) {
+                    this.zoomAt(this.camera.targetScale * multiplier, this.viewWidth / 2, this.viewHeight / 2);
+                }
+
+                getTouchDistance(touches) {
+                    return Math.hypot(
+                        touches[0].clientX - touches[1].clientX,
+                        touches[0].clientY - touches[1].clientY
+                    );
+                }
+
+                onTouchStart(e) {
+                    if (e.touches.length === 1) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mx = t.clientX - rect.left;
+                        const my = t.clientY - rect.top;
+
+                        this.isDragging = true;
+                        this.dragMoved = false;
+                        this.pointerDownNode = this.getNodeAtScreenPos(mx, my);
+                        this.dragStart = { x: mx, y: my };
+                        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                    } else if (e.touches.length === 2) {
+                        this.isDragging = false;
+                        this.pointerDownNode = null;
+                        this.initialPinchDist = this.getTouchDistance(e.touches);
+                        this.initialScale = this.camera.targetScale;
+                    }
+                }
+
+                onTouchMove(e) {
+                    e.preventDefault();
+                    if (e.touches.length === 1 && this.isDragging) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const dx = (t.clientX - rect.left) - this.dragStart.x;
+                        const dy = (t.clientY - rect.top) - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 6) this.dragMoved = true;
+
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x + dx;
+                            this.camera.targetY = this.initialCamera.y + dy;
+                            this.requestRender();
+                        }
+                    } else if (e.touches.length === 2 && this.initialPinchDist > 0) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+                        const midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+                        const scaleFactor = this.getTouchDistance(e.touches) / this.initialPinchDist;
+                        this.zoomAt(this.initialScale * scaleFactor, midX, midY);
+                    }
+                }
+
+                onTouchEnd(e) {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
+                        if (this.callbacks.onNodeClick) this.callbacks.onNodeClick(this.pointerDownNode);
+                    }
+                    if (e.touches.length === 0) {
+                        this.isDragging = false;
+                        this.pointerDownNode = null;
+                        this.initialPinchDist = 0;
+                    }
+                }
+
+                resize() {
+                    const rect = (this.container || this.canvas).getBoundingClientRect();
+                    if (rect.width <= 0 || rect.height <= 0) return;
+
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = rect.width;
+                    this.viewHeight = rect.height;
+                    this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
+                    this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
+
+                    if (!this.hasInitializedView) {
+                        this.camera.targetX = this.camera.x = this.viewWidth / 2;
+                        this.camera.targetY = this.camera.y = 60;
+                        this.hasInitializedView = true;
+                    } else if (this.autoFit && this.snapshots.length > 0) {
+                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                        if (snap && snap.bounds) {
+                            this.fitSnapToScreen(snap, true);
+                        }
+                    }
+
+                    this.requestRender();
+                }
+
+                calculateLayout(roots) {
+                    const layout = new Map();
+                    if (!roots || roots.length === 0) return layout;
+
+                    let counter = 0;
+                    const spacingX = this.nodeRadius * 2.65;
+
+                    const traverse = (node, depth, rootIndex, parentId) => {
+                        if (!node) return;
+                        traverse(node.left, depth + 1, rootIndex, node.id);
+                        layout.set(node.id, {
+                            x: counter * spacingX,
+                            y: 60 + depth * this.levelHeight,
+                            depth,
+                            rootIndex,
+                            parentId,
+                            leftWeight: node.left ? node.left.weight : 0,
+                            rightWeight: node.right ? node.right.weight : 0
+                        });
+                        counter++;
+                        traverse(node.right, depth + 1, rootIndex, node.id);
+                    };
+
+                    roots.forEach((root, idx) => {
+                        traverse(root, 0, idx, null);
+                        counter += 1;
+                    });
+
+                    return layout;
+                }
+
+                getBoundsFromLayout(layout, filterRootIndices = null) {
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    let hasNodes = false;
+                    const filterSet = filterRootIndices ? new Set(filterRootIndices) : null;
+
+                    layout.forEach(pos => {
+                        if (filterSet && !filterSet.has(pos.rootIndex)) return;
+                        hasNodes = true;
+                        minX = Math.min(minX, pos.x - 46);
+                        maxX = Math.max(maxX, pos.x + 46);
+                        minY = Math.min(minY, pos.y - 46);
+                        maxY = Math.max(maxY, pos.y + 72);
+                    });
+
+                    return { minX, maxX, minY, maxY, hasNodes };
+                }
+
+                fitSnapToScreen(snap, useFocus = true) {
+                    if (!snap) {
+                        this.fitBoundsToScreen({ hasNodes: false }, false);
+                        return;
+                    }
+                    const targetBounds = useFocus ? (snap.focusBounds || snap.bounds) : snap.bounds;
+                    const centerVertically = this.hasDynamicFit ||
+                        Boolean(snap.shouldFit) ||
+                        (snap.roots && snap.roots.length > 1) ||
+                        Boolean(useFocus && snap.focusIndices);
+                    this.fitBoundsToScreen(targetBounds, centerVertically);
+                }
+
+                fitCurrentTree() {
+                    if (this.snapshots.length === 0) {
+                        this.fitBoundsToScreen({ hasNodes: false }, false);
+                    } else {
+                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                        this.fitSnapToScreen(snap, false);
+                    }
+                    this.requestRender();
+                }
+
+                fitBoundsToScreen(bounds, centerVertically = false) {
+                    if (!bounds || !bounds.hasNodes) {
+                        this.camera.targetScale = 1;
+                        this.camera.targetX = this.viewWidth / 2;
+                        this.camera.targetY = 60;
+                        return;
+                    }
+
+                    const padX = Math.min(160, this.viewWidth * 0.16);
+                    const padY = 120;
+                    const treeW = (bounds.maxX - bounds.minX) + padX;
+                    const treeH = (bounds.maxY - bounds.minY) + padY;
+                    const scale = Math.min(1.2, Math.max(0.18, Math.min(this.viewWidth / treeW, this.viewHeight / treeH)));
+                    const treeCX = (bounds.minX + bounds.maxX) / 2;
+                    const treeCY = (bounds.minY + bounds.maxY) / 2;
+
+                    this.camera.targetScale = scale;
+                    this.camera.targetX = (this.viewWidth / 2) - (treeCX * scale);
+
+                    if (!centerVertically && treeH * scale < this.viewHeight * 0.7) {
+                        this.camera.targetY = 75 - bounds.minY * scale;
+                    } else {
+                        this.camera.targetY = (this.viewHeight / 2) - (treeCY * scale);
+                    }
+                }
+
+                reset(statusText = 'Ready.') {
+                    this.snapshots = [];
+                    this.currentSnapshotIndex = 0;
+                    this.lastDrawnNodes = [];
+                    this.hoveredNode = null;
+                    this.hoveredSubtreeIds = null;
+                    this.state = 'IDLE';
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.hasDynamicFit = false;
+                    this.camera.targetScale = 1;
+                    this.camera.targetX = this.viewWidth / 2;
+                    this.camera.targetY = 60;
+                    this.setStatus(statusText);
+                    this.notifySnapshot(null);
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                enqueueOperation(opSnapshots, instant = false) {
+                    if (!opSnapshots || opSnapshots.length === 0) return;
+
+                    const prepared = opSnapshots.map(s => {
+                        const layout = this.calculateLayout(s.roots);
+                        const bounds = this.getBoundsFromLayout(layout);
+                        const focusBounds = s.focusIndices
+                            ? this.getBoundsFromLayout(layout, s.focusIndices)
+                            : bounds;
+                        return { ...s, layout, bounds, focusBounds };
+                    });
+
+                    this.hasDynamicFit = prepared.some(s => s.shouldFit);
+
+                    let gMinX = Infinity, gMaxX = -Infinity, gMinY = Infinity, gMaxY = -Infinity;
+                    let hasNodes = false;
+                    prepared.forEach(({ bounds }) => {
+                        if (bounds.hasNodes) {
+                            hasNodes = true;
+                            gMinX = Math.min(gMinX, bounds.minX);
+                            gMaxX = Math.max(gMaxX, bounds.maxX);
+                            gMinY = Math.min(gMinY, bounds.minY);
+                            gMaxY = Math.max(gMaxY, bounds.maxY);
+                        }
+                    });
+
+                    const prevHadNodes = this.snapshots.length > 0 &&
+                        Boolean(this.snapshots[this.currentSnapshotIndex]?.roots?.length);
+                    const startedFromEmpty = !prevHadNodes || !prepared[0].roots?.length;
+
+                    if (this.autoFit || startedFromEmpty) {
+                        if (this.hasDynamicFit) {
+                            this.fitSnapToScreen(prepared[0], true);
+                        } else {
+                            this.fitBoundsToScreen({ minX: gMinX, maxX: gMaxX, minY: gMinY, maxY: gMaxY, hasNodes }, false);
+                        }
+                    }
+
+                    this.snapshots = prepared;
+                    this.currentSnapshotIndex = 0;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.singleStepTarget = null;
+                    this.isPaused = false;
+                    this.hoveredNode = null;
+                    this.hoveredSubtreeIds = null;
+
+                    if (instant || prepared.length === 1) {
+                        this.currentSnapshotIndex = prepared.length - 1;
+                        this.state = 'IDLE';
+                        const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit) this.fitSnapToScreen(last, false);
+                        if (last.text) this.setStatus(last.text);
+                        this.notifySnapshot(last);
+                        this.notifyState();
+                        this.requestRender();
+                        return;
+                    }
+
+                    this.notifySnapshot(this.snapshots[0]);
+                    if (this.snapshots[0].text) {
+                        this.setStatus(this.snapshots[0].text);
+                    }
+
+                    if (this.autoFit || startedFromEmpty) {
+                        this.state = 'CAMERA';
+                    } else {
+                        this.startMorphStep();
+                    }
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                startMorphStep() {
+                    if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        if (this.autoFit && this.snapshots.length > 0) {
+                            this.fitSnapToScreen(this.snapshots[this.snapshots.length - 1], false);
+                        }
+                        this.notifyState();
+                        return;
+                    }
+                    const next = this.snapshots[this.currentSnapshotIndex + 1];
+                    if (next.text) this.setStatus(next.text);
+                    if (this.autoFit && next.shouldFit) {
+                        this.fitSnapToScreen(next, true);
+                    }
+                    this.state = 'MORPH';
+                    this.morphProgress = 0;
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                togglePause() {
+                    if (this.state === 'IDLE' && this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        return this.isPaused;
+                    }
+                    this.isPaused = !this.isPaused;
+                    if (!this.isPaused) {
+                        this.hoveredSubtreeIds = null;
+                        this.singleStepTarget = null;
+                        if (this.state === 'IDLE' && this.currentSnapshotIndex < this.snapshots.length - 1) {
+                            this.startMorphStep();
+                        }
+                    }
+                    this.notifyState();
+                    this.requestRender();
+                    return this.isPaused;
+                }
+
+                stepForward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+
+                    if (this.state === 'CAMERA') {
+                        this.camera.scale = this.camera.targetScale;
+                        this.camera.x = this.camera.targetX;
+                        this.camera.y = this.camera.targetY;
+                        this.state = 'MORPH';
+                        this.morphProgress = 0;
+                    } else if (this.state === 'WAITING' || (this.state === 'MORPH' && this.morphProgress > 0.08)) {
+                        if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                            this.currentSnapshotIndex++;
+                            this.morphProgress = 0;
+                            this.notifySnapshot(this.snapshots[this.currentSnapshotIndex]);
+                        }
+                    }
+
+                    if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit) this.fitSnapToScreen(last, false);
+                        this.setStatus(last.text || 'Ready.');
+                        this.notifySnapshot(last);
+                        this.notifyState();
+                        this.requestRender();
+                        return;
+                    }
+
+                    this.singleStepTarget = this.currentSnapshotIndex + 1;
+                    this.startMorphStep();
+                }
+
+                stepBackward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+                    this.singleStepTarget = null;
+
+                    if (this.state === 'WAITING' || (this.state === 'MORPH' && this.morphProgress > 0.15)) {
+                        this.morphProgress = 0;
+                        this.state = 'IDLE';
+                    } else if (this.currentSnapshotIndex > 0) {
+                        this.currentSnapshotIndex--;
+                        this.morphProgress = 0;
+                        this.state = 'IDLE';
+                    }
+
+                    const cur = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit && (cur.shouldFit || this.currentSnapshotIndex === 0)) {
+                        this.fitSnapToScreen(cur, true);
+                    }
+                    this.setStatus(cur.text || `Step ${this.currentSnapshotIndex + 1}`);
+                    this.notifySnapshot(cur);
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                skipToEnd() {
+                    if (this.snapshots.length === 0) return;
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.currentSnapshotIndex = this.snapshots.length - 1;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.state = 'IDLE';
+                    const last = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit) this.fitSnapToScreen(last, false);
+                    this.setStatus(last.text || 'Ready.');
+                    this.notifySnapshot(last);
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                isCameraSettled() {
+                    return Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY) < 0.25 &&
+                        Math.abs(this.camera.scale - this.camera.targetScale) < 0.0005;
+                }
+
+                loop(timestamp) {
+                    this.rafId = null;
+                    if (this.lastTime === null) this.lastTime = timestamp;
+                    const dt = Math.min(Math.max((timestamp - this.lastTime) / 1000, 0), 0.1);
+                    this.lastTime = timestamp;
+
+                    this.needsRender = false;
+                    this.update(dt);
+                    this.draw();
+
+                    const playingSingleStep = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+                    const animating = this.state !== 'IDLE' && (!this.isPaused || playingSingleStep);
+                    const movingCamera = !this.isCameraSettled();
+
+                    if (animating || movingCamera || this.needsRender) {
+                        this.rafId = requestAnimationFrame(t => this.loop(t));
+                    } else {
+                        this.lastTime = null;
+                    }
+                }
+
+                update(dt) {
+                    const camFactor = 1 - Math.exp(-10.0 * dt);
+                    this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
+                    this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
+                    this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
+
+                    if (this.isCameraSettled()) {
+                        this.camera.scale = this.camera.targetScale;
+                        this.camera.x = this.camera.targetX;
+                        this.camera.y = this.camera.targetY;
+                    }
+
+                    const playingSingleStep = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+                    if (this.isPaused && !playingSingleStep) return;
+
+                    if (this.state === 'CAMERA') {
+                        const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
+                        if (dist < 4 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.01) {
+                            this.startMorphStep();
+                        }
+                    } else if (this.state === 'MORPH') {
+                        this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * dt;
+                        if (this.morphProgress >= 1) {
+                            this.morphProgress = 1;
+                            const nextSnap = this.snapshots[this.currentSnapshotIndex + 1];
+
+                            if (playingSingleStep) {
+                                this.currentSnapshotIndex = this.singleStepTarget;
+                                this.singleStepTarget = null;
+                                this.morphProgress = 0;
+                                this.state = 'IDLE';
+                                const cur = this.snapshots[this.currentSnapshotIndex];
+                                if (this.autoFit && this.currentSnapshotIndex === this.snapshots.length - 1) {
+                                    this.fitSnapToScreen(cur, false);
+                                }
+                                if (cur?.text) this.setStatus(cur.text);
+                                this.notifySnapshot(cur);
+                                this.notifyState();
+                            } else if (nextSnap && nextSnap.pause > 0) {
+                                this.state = 'WAITING';
+                                this.pauseTimer = nextSnap.pause / this.speedMultiplier;
+                                this.notifySnapshot(nextSnap);
+                            } else {
+                                this.finalizeStep();
+                            }
+                        }
+                    } else if (this.state === 'WAITING') {
+                        this.pauseTimer -= dt;
+                        if (this.pauseTimer <= 0) this.finalizeStep();
+                    }
+                }
+
+                finalizeStep() {
+                    this.currentSnapshotIndex++;
+                    this.morphProgress = 0;
+                    const cur = this.snapshots[this.currentSnapshotIndex];
+                    this.notifySnapshot(cur);
+
+                    if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                        this.startMorphStep();
+                    } else {
+                        this.state = 'IDLE';
+                        if (this.autoFit && cur) {
+                            this.fitSnapToScreen(cur, false);
+                        }
+                        this.setStatus(cur?.text || 'Ready.');
+                        this.notifyState();
+                    }
+                }
+
+                buildPathEdgeSet(pathIds) {
+                    const edgeSet = new Set();
+                    if (!pathIds || pathIds.length < 2) return edgeSet;
+                    for (let i = 0; i < pathIds.length - 1; i++) {
+                        edgeSet.add(`${pathIds[i]}->${pathIds[i + 1]}`);
+                    }
+                    return edgeSet;
+                }
+
+                drawDotGrid(ctx) {
+                    let step = 36 * this.camera.scale;
+                    while (step < 16) step *= 2;
+                    while (step > 90) step /= 2;
+
+                    const offsetX = ((this.camera.x % step) + step) % step;
+                    const offsetY = ((this.camera.y % step) + step) % step;
+
+                    ctx.fillStyle = this.theme.BG_DOT;
+                    for (let x = offsetX; x < this.viewWidth; x += step) {
+                        for (let y = offsetY; y < this.viewHeight; y += step) {
+                            ctx.fillRect(x - 0.75, y - 0.75, 1.5, 1.5);
+                        }
+                    }
+                }
+
+                drawLevelGuides(ctx, nodesToDraw) {
+                    if (!nodesToDraw || nodesToDraw.length === 0) return;
+                    let maxDepth = 0;
+                    nodesToDraw.forEach(n => {
+                        if (n.depth > maxDepth) maxDepth = n.depth;
+                    });
+
+                    ctx.save();
+                    ctx.font = '600 10px monospace';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+
+                    for (let d = 0; d <= maxDepth; d++) {
+                        const worldY = d * this.levelHeight + 60;
+                        const screenY = worldY * this.camera.scale + this.camera.y;
+                        if (screenY < -10 || screenY > this.viewHeight + 10) continue;
+
+                        ctx.strokeStyle = this.theme.LEVEL_LINE;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 6]);
+                        ctx.beginPath();
+                        ctx.moveTo(0, screenY);
+                        ctx.lineTo(this.viewWidth - 36, screenY);
+                        ctx.stroke();
+
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = this.theme.LEVEL_TEXT;
+                        ctx.fillText(`L${d}`, this.viewWidth - 12, screenY);
+                    }
+                    ctx.restore();
+                }
+
+                getEdgeSegment(n, pNode) {
+                    const dx = n.x - n.parentX;
+                    const dy = n.y - n.parentY;
+                    const len = Math.hypot(dx, dy);
+                    const rStart = this.nodeRadius * (pNode ? pNode.scale : 1);
+                    const rEnd = this.nodeRadius * n.scale;
+                    if (len <= rStart + rEnd) return null;
+
+                    const ux = dx / len;
+                    const uy = dy / len;
+                    return {
+                        x1: n.parentX + ux * rStart,
+                        y1: n.parentY + uy * rStart,
+                        x2: n.x - ux * rEnd,
+                        y2: n.y - uy * rEnd
+                    };
+                }
+
+                draw() {
+                    const ctx = this.ctx;
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                    // 1. Flat screen-space background dot grid
+                    ctx.save();
+                    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+                    this.drawDotGrid(ctx);
+
+                    if (this.snapshots.length === 0) {
+                        ctx.restore();
+                        return;
+                    }
+
+                    const idx = Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
+                    let nodesToDraw = [];
+                    let violationNull = null;
+                    let pathIds = [];
+                    let swapArrowSpecs = [];
+
+                    if ((this.state === 'MORPH' || this.state === 'WAITING') && idx + 1 < this.snapshots.length) {
+                        const snapA = this.snapshots[idx];
+                        const snapB = this.snapshots[idx + 1];
+                        const t = this.easeInOut(this.morphProgress);
+                        nodesToDraw = this.interpolateForest(snapA, snapB, t);
+                        violationNull = (t > 0.5 ? snapB.violationNull : snapA.violationNull) || null;
+                        pathIds = snapB.pathIds || [];
+
+                        if (this.state === 'MORPH') {
+                            if (snapA.swapNodeIds.size > 0) {
+                                const alpha = Math.max(0, 1 - this.morphProgress * 1.6);
+                                if (alpha > 0) {
+                                    snapA.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha }));
+                                }
+                            } else if (snapB.swapNodeIds.size > 0) {
+                                const alpha = Math.min(1, t * 1.6);
+                                snapB.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha }));
+                            }
+                        } else if (snapB.swapNodeIds.size > 0) {
+                            snapB.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha: 1 }));
+                        }
+                    } else {
+                        const snap = this.snapshots[idx];
+                        nodesToDraw = this.flattenForest(snap);
+                        violationNull = snap.violationNull || null;
+                        pathIds = snap.pathIds || [];
+                        snap.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha: 1 }));
+                    }
+
+                    // 2. Depth level guide lines in screen-space behind forest
+                    this.drawLevelGuides(ctx, nodesToDraw);
+                    ctx.restore();
+
+                    // 3. World-space forest rendering
+                    ctx.save();
+                    ctx.setTransform(
+                        this.dpr * this.camera.scale, 0, 0, this.dpr * this.camera.scale,
+                        this.dpr * this.camera.x, this.dpr * this.camera.y
+                    );
+
+                    this.lastDrawnNodes = nodesToDraw;
+                    const nodeMap = new Map(nodesToDraw.map(n => [n.id, n]));
+                    const pathEdgeSet = this.buildPathEdgeSet(pathIds);
+
+                    const canDimHover = (this.state === 'IDLE' || this.isPaused) &&
+                        this.hoveredNode && this.hoveredSubtreeIds;
+
+                    // 3a. Standard Edges
+                    nodesToDraw.forEach(n => {
+                        if (n.parentX === undefined) return;
+                        if (pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+
+                        const pNode = nodeMap.get(n.parentId);
+                        let edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                        if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
+                            edgeAlpha *= 0.25;
+                        }
+
+                        const seg = this.getEdgeSegment(n, pNode);
+                        if (!seg) return;
+
+                        ctx.save();
+                        ctx.globalAlpha = edgeAlpha;
+                        ctx.beginPath();
+                        ctx.strokeStyle = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.EDGE;
+                        ctx.lineWidth = 2.5;
+                        ctx.moveTo(seg.x1, seg.y1);
+                        ctx.lineTo(seg.x2, seg.y2);
+                        ctx.stroke();
+                        ctx.restore();
+                    });
+
+                    // 3b. Active Right-Spine Path Edges
+                    if (pathEdgeSet.size > 0) {
+                        nodesToDraw.forEach(n => {
+                            if (n.parentX === undefined) return;
+                            if (!pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+
+                            const pNode = nodeMap.get(n.parentId);
+                            const seg = this.getEdgeSegment(n, pNode);
+                            if (!seg) return;
+
+                            ctx.save();
+                            ctx.globalAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                            ctx.beginPath();
+                            ctx.strokeStyle = this.theme.PATH_EDGE;
+                            ctx.lineWidth = 4.5;
+                            ctx.lineCap = 'round';
+                            ctx.moveTo(seg.x1, seg.y1);
+                            ctx.lineTo(seg.x2, seg.y2);
+                            ctx.stroke();
+                            ctx.restore();
+                        });
+                    }
+
+                    // 3c. Null Links (including Leftist Violation Null highlight)
+                    nodesToDraw.forEach(n => {
+                        let baseAlpha = n.alpha;
+                        if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                            baseAlpha *= 0.25;
+                        }
+                        if (!n.hasLeft) {
+                            const isViol = !n.inactive && violationNull &&
+                                violationNull.nodeId === n.id && violationNull.side === 'L';
+                            if (this.showNulls || isViol) {
+                                const col = n.inactive
+                                    ? this.theme.INACTIVE_EDGE
+                                    : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
+                                this.drawNullLink(n.x, n.y, 'L', col, isViol, baseAlpha);
+                            }
+                        }
+                        if (!n.hasRight) {
+                            const isViol = !n.inactive && violationNull &&
+                                violationNull.nodeId === n.id && violationNull.side === 'R';
+                            if (this.showNulls || isViol) {
+                                const col = n.inactive
+                                    ? this.theme.INACTIVE_EDGE
+                                    : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
+                                this.drawNullLink(n.x, n.y, 'R', col, isViol, baseAlpha);
+                            }
+                        }
+                    });
+
+                    // 3d. Nodes
+                    nodesToDraw.forEach(n => {
+                        let nodeAlpha = n.alpha;
+                        const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+                        if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                            nodeAlpha *= 0.35;
+                        }
+                        this.drawNode(n, nodeAlpha, isHovered);
+                    });
+
+                    // 3e. Swap Children Double-Headed Arrows
+                    swapArrowSpecs.forEach(({ id, alpha }) => {
+                        const n = nodeMap.get(id);
+                        if (n && !n.inactive) {
+                            this.drawSwapChildrenArrow(n.x, n.y, alpha);
+                        }
+                    });
+
+                    // 3f. Flat Hover Tooltip
+                    if (this.hoveredNode) {
+                        const drawn = nodeMap.get(this.hoveredNode.id);
+                        if (drawn) {
+                            this.drawNodeTooltip(drawn);
+                        }
+                    }
+
+                    ctx.restore();
+                }
+
+                drawNullLink(x, y, side, color, isViolation = false, baseAlpha = 1) {
+                    const ctx = this.ctx;
+                    const r = this.nodeRadius;
+                    const spread = isViolation ? 10 : 8;
+                    const drop = isViolation ? 16 : 15;
+                    const dir = side === 'L' ? -1 : 1;
+                    const startX = x + r * 0.5 * dir;
+                    const startY = y + r * 0.8;
+                    const endX = x + (r + spread) * dir;
+                    const endY = y + r + drop;
+
+                    ctx.save();
+                    ctx.globalAlpha = baseAlpha;
+                    ctx.beginPath();
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = isViolation ? 3.8 : 2.5;
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    const perpSize = isViolation ? 8.5 : 6;
+                    const angle = Math.atan2(endY - startY, endX - startX) + Math.PI / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(endX - perpSize * Math.cos(angle), endY - perpSize * Math.sin(angle));
+                    ctx.lineTo(endX + perpSize * Math.cos(angle), endY + perpSize * Math.sin(angle));
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                drawSwapChildrenArrow(x, y, alpha = 1) {
+                    const ctx = this.ctx;
+                    const r = this.nodeRadius + 15;
+                    const startX = x - r, startY = y + 10;
+                    const endX = x + r, endY = y + 10;
+                    const cpX = x, cpY = y + 70;
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.beginPath();
+                    ctx.strokeStyle = this.theme.ARROW;
+                    ctx.lineWidth = 3;
+                    ctx.lineCap = 'round';
+                    ctx.moveTo(startX, startY);
+                    ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+                    ctx.stroke();
+
+                    const size = 13;
+                    const drawHead = (hx, hy, ang) => {
+                        ctx.save();
+                        ctx.translate(hx, hy);
+                        ctx.rotate(ang);
+                        ctx.beginPath();
+                        ctx.fillStyle = this.theme.ARROW;
+                        ctx.moveTo(0, 0);
+                        ctx.lineTo(-size, -size / 2.5);
+                        ctx.lineTo(-size, size / 2.5);
+                        ctx.closePath();
+                        ctx.fill();
+                        ctx.restore();
+                    };
+
+                    drawHead(endX, endY, Math.atan2(endY - cpY, endX - cpX));
+                    drawHead(startX, startY, Math.atan2(startY - cpY, startX - cpX));
+                    ctx.restore();
+                }
+
+                drawNode(n, alpha, isHovered) {
+                    if (n.scale <= 0.02 || alpha <= 0.02) return;
+                    const ctx = this.ctx;
+                    const r = this.nodeRadius;
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(n.x, n.y);
+                    ctx.scale(n.scale, n.scale);
+
+                    if (isHovered) {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r + 5, 0, Math.PI * 2);
+                        ctx.strokeStyle = this.theme.RING_FOCUS;
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                    }
+
+                    let fill, stroke, textCol;
+                    if (n.inactive) {
+                        fill = this.theme.INACTIVE_FILL;
+                        stroke = this.theme.INACTIVE_STROKE;
+                        textCol = this.theme.INACTIVE_TEXT;
+                    } else if (n.colorKey === 'DELETE') {
+                        fill = this.theme.DELETE;
+                        stroke = '#FFFFFF';
+                        textCol = '#FFFFFF';
+                    } else if (n.colorKey === 'COMPARE') {
+                        fill = this.theme.COMPARE_FILL;
+                        stroke = this.theme.COMPARE_STROKE;
+                        textCol = this.theme.COMPARE_TEXT;
+                    } else if (n.colorKey === 'MINIMUM') {
+                        fill = this.theme.MINIMUM;
+                        stroke = this.theme.MINIMUM_STROKE;
+                        textCol = this.theme.MINIMUM_TEXT;
+                    } else if (n.isTree2) {
+                        fill = this.theme.FILL2;
+                        stroke = this.theme.STROKE2;
+                        textCol = this.theme.TEXT_VAL2;
+                    } else {
+                        fill = this.theme.FILL1;
+                        stroke = this.theme.STROKE1;
+                        textCol = this.theme.TEXT_VAL1;
+                    }
+                    stroke = fill;
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.fillStyle = fill;
+                    ctx.fill();
+                    ctx.strokeStyle = stroke;
+                    ctx.lineWidth = 2.2;
+                    ctx.stroke();
+
+                    const str = String(n.val);
+                    const fontSize = str.length <= 2 ? 21 : str.length === 3 ? 17 : str.length === 4 ? 14 : 11;
+                    ctx.fillStyle = textCol;
+                    ctx.font = `700 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(str, 0, 1);
+
+                    // Weight badge (top-right)
+                    const bx = r * 0.72, by = -r * 0.72;
+                    ctx.beginPath();
+                    ctx.arc(bx, by, 10, 0, Math.PI * 2);
+
+                    if (n.inactive) {
+                        ctx.fillStyle = this.theme.BADGE_BG;
+                        ctx.fill();
+                        ctx.strokeStyle = this.theme.INACTIVE_WEIGHT_STROKE;
+                    } else {
+                        ctx.fillStyle = n.highlightWeight ? this.theme.WEIGHT_HIGHLIGHT : this.theme.BADGE_BG;
+                        ctx.fill();
+                        ctx.strokeStyle = n.highlightWeight ? this.theme.WEIGHT_HIGHLIGHT : this.theme.WEIGHT_STROKE;
+                    }
+                    ctx.lineWidth = 1.2;
+                    ctx.stroke();
+
+                    ctx.fillStyle = n.inactive
+                        ? this.theme.INACTIVE_TEXT
+                        : (n.highlightWeight ? '#FFFFFF' : this.theme.WEIGHT_TEXT);
+                    ctx.font = 'bold 10px Arial, sans-serif';
+                    ctx.fillText(n.weight, bx, by + 0.5);
+
+                    ctx.restore();
+                }
+
+                drawNodeTooltip(node) {
+                    const ctx = this.ctx;
+                    const ok = node.leftWeight >= node.rightWeight;
+                    const statusTag = ok ? 'Leftist OK' : 'Violation (L < R)';
+                    const labelText = `Weight: ${node.weight} (L: ${node.leftWeight}, R: ${node.rightWeight}) | ${statusTag} | Depth: ${node.depth}`;
+                    const invScale = 1 / this.camera.scale;
+                    const tx = node.x;
+                    const ty = node.y - this.nodeRadius - (11 * invScale);
+
+                    ctx.save();
+                    ctx.translate(tx, ty);
+                    ctx.scale(invScale, invScale);
+
+                    ctx.font = '600 12.5px "Segoe UI", Arial, sans-serif';
+                    const metrics = ctx.measureText(labelText);
+                    const w = metrics.width + 18;
+                    const h = 26;
+
+                    ctx.fillStyle = this.theme.PILL_BG;
+                    ctx.strokeStyle = this.theme.PILL_BORDER;
+                    ctx.lineWidth = 1.25;
+                    ctx.beginPath();
+                    ctx.roundRect(-w / 2, -h, w, h, 5);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -1);
+                    ctx.lineTo(5, -1);
+                    ctx.lineTo(0, 5);
+                    ctx.closePath();
+                    ctx.fillStyle = this.theme.PILL_BG;
+                    ctx.fill();
+
+                    ctx.fillStyle = ok ? this.theme.EDGE : this.theme.DELETE;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(labelText, 0, -h / 2);
+
+                    ctx.restore();
+                }
+
+                indexForest(roots, layout) {
+                    const map = new Map();
+                    const walk = node => {
+                        if (!node) return;
+                        const pos = layout.get(node.id);
+                        if (!pos) return;
+                        map.set(node.id, {
+                            node,
+                            x: pos.x,
+                            y: pos.y,
+                            depth: pos.depth,
+                            rootIndex: pos.rootIndex,
+                            pId: pos.parentId,
+                            leftWeight: pos.leftWeight,
+                            rightWeight: pos.rightWeight
+                        });
+                        walk(node.left);
+                        walk(node.right);
+                    };
+                    (roots || []).forEach(walk);
+                    return map;
+                }
+
+                isInactiveInSnap(snap, rootIndex) {
+                    if (!snap.focusIndices) return false;
+                    return !snap.focusIndices.includes(rootIndex);
+                }
+
+                interpolateForest(snapA, snapB, t) {
+                    const mapA = this.indexForest(snapA.roots, snapA.layout);
+                    const mapB = this.indexForest(snapB.roots, snapB.layout);
+
+                    const result = [];
+                    const allIds = new Set([...mapA.keys(), ...mapB.keys()]);
+
+                    allIds.forEach(id => {
+                        const dA = mapA.get(id);
+                        const dB = mapB.get(id);
+
+                        if (dA && dB) {
+                            const x = dA.x + (dB.x - dA.x) * t;
+                            const y = dA.y + (dB.y - dA.y) * t;
+                            const refSnap = t > 0.5 ? snapB : snapA;
+                            const refEntry = t > 0.5 ? dB : dA;
+                            const refNode = refEntry.node;
+
+                            let pX, pY;
+                            if (dB.pId !== null) {
+                                const pdB = mapB.get(dB.pId);
+                                const pdA = mapA.get(dB.pId);
+                                if (pdA && pdB) {
+                                    pX = pdA.x + (pdB.x - pdA.x) * t;
+                                    pY = pdA.y + (pdB.y - pdA.y) * t;
+                                } else if (pdB) {
+                                    pX = pdB.x;
+                                    pY = pdB.y;
+                                }
+                            }
+
+                            result.push({
+                                id,
+                                x,
+                                y,
+                                val: refNode.val,
+                                weight: refNode.weight,
+                                leftWeight: refEntry.leftWeight,
+                                rightWeight: refEntry.rightWeight,
+                                depth: refEntry.depth,
+                                isTree2: refSnap.tree2Ids.has(id),
+                                colorKey: refSnap.highlights.get(id) || null,
+                                highlightWeight: refSnap.weightHighlights.has(id),
+                                inactive: this.isInactiveInSnap(refSnap, refEntry.rootIndex),
+                                scale: 1,
+                                alpha: 1,
+                                parentId: dB.pId,
+                                parentX: pX,
+                                parentY: pY,
+                                hasLeft: Boolean(refNode.left),
+                                hasRight: Boolean(refNode.right)
+                            });
+                        } else if (dB && !dA) {
+                            const refNode = dB.node;
+                            let pX, pY;
+                            if (dB.pId !== null) {
+                                const pdB = mapB.get(dB.pId);
+                                const pdA = mapA.get(dB.pId);
+                                if (pdA && pdB) {
+                                    pX = pdA.x + (pdB.x - pdA.x) * t;
+                                    pY = pdA.y + (pdB.y - pdA.y) * t;
+                                } else if (pdB) {
+                                    pX = pdB.x;
+                                    pY = pdB.y;
+                                }
+                            }
+
+                            result.push({
+                                id,
+                                x: dB.x,
+                                y: dB.y,
+                                val: refNode.val,
+                                weight: refNode.weight,
+                                leftWeight: dB.leftWeight,
+                                rightWeight: dB.rightWeight,
+                                depth: dB.depth,
+                                isTree2: snapB.tree2Ids.has(id),
+                                colorKey: snapB.highlights.get(id) || null,
+                                highlightWeight: snapB.weightHighlights.has(id),
+                                inactive: this.isInactiveInSnap(snapB, dB.rootIndex),
+                                scale: 0.45 + 0.55 * t,
+                                alpha: Math.min(1, t * 1.4),
+                                parentId: dB.pId,
+                                parentX: pX,
+                                parentY: pY,
+                                hasLeft: Boolean(refNode.left),
+                                hasRight: Boolean(refNode.right)
+                            });
+                        } else if (dA && !dB) {
+                            const refNode = dA.node;
+                            let pX, pY;
+                            if (dA.pId !== null) {
+                                const pdA = mapA.get(dA.pId);
+                                if (pdA) { pX = pdA.x; pY = pdA.y; }
+                            }
+
+                            result.push({
+                                id,
+                                x: dA.x,
+                                y: dA.y,
+                                val: refNode.val,
+                                weight: refNode.weight,
+                                leftWeight: dA.leftWeight,
+                                rightWeight: dA.rightWeight,
+                                depth: dA.depth,
+                                isTree2: snapA.tree2Ids.has(id),
+                                colorKey: 'DELETE',
+                                highlightWeight: false,
+                                inactive: this.isInactiveInSnap(snapA, dA.rootIndex),
+                                scale: Math.max(0, 1 - t * 0.85),
+                                alpha: Math.max(0, 1 - t),
+                                parentId: dA.pId,
+                                parentX: pX,
+                                parentY: pY,
+                                hasLeft: Boolean(refNode.left),
+                                hasRight: Boolean(refNode.right)
+                            });
+                        }
+                    });
+
+                    return result;
+                }
+
+                flattenForest(snap) {
+                    const res = [];
+                    const walk = (n, p) => {
+                        if (!n) return;
+                        const pos = snap.layout.get(n.id);
+                        if (!pos) return;
+                        const pPos = p ? snap.layout.get(p.id) : null;
+
+                        res.push({
+                            id: n.id,
+                            x: pos.x,
+                            y: pos.y,
+                            val: n.val,
+                            weight: n.weight,
+                            leftWeight: pos.leftWeight,
+                            rightWeight: pos.rightWeight,
+                            depth: pos.depth,
+                            isTree2: snap.tree2Ids.has(n.id),
+                            colorKey: snap.highlights.get(n.id) || null,
+                            highlightWeight: snap.weightHighlights.has(n.id),
+                            inactive: this.isInactiveInSnap(snap, pos.rootIndex),
+                            scale: 1,
+                            alpha: 1,
+                            parentId: p ? p.id : null,
+                            parentX: pPos ? pPos.x : undefined,
+                            parentY: pPos ? pPos.y : undefined,
+                            hasLeft: Boolean(n.left),
+                            hasRight: Boolean(n.right)
+                        });
+                        walk(n.left, n);
+                        walk(n.right, n);
+                    };
+                    (snap.roots || []).forEach(r => walk(r, null));
+                    return res;
+                }
+
+                easeInOut(t) {
+                    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                }
+            }
+
+            /* =================================================================
+             * 5. APPLICATION CONTROLLER (UI & ORCHESTRATION)
+             * ================================================================= */
+            const app = {
+                heap: new WBLTHeap(),
+                viz: null,
+                isDark: false,
+                logs: [],
+
+                init() {
+                    const canvas = document.getElementById('treeCanvas');
+                    this.viz = new Visualizer(canvas, {
+                        theme: THEMES.light,
+                        callbacks: {
+                            onStatus: text => {
+                                document.getElementById('status-text').innerText = text;
+                            },
+                            onNodeClick: node => {
+                                document.getElementById('inputValue').value = node.val;
+                                this.viz.setStatus(
+                                    `Selected node ${node.val} (Weight: ${node.weight}, L: ${node.leftWeight}, R: ${node.rightWeight})`
+                                );
+                            },
+                            onStateChange: info => this.syncPlaybackUI(info),
+                            onSnapshotChange: root => this.updateTreeStats(root)
+                        }
+                    });
+
+                    this.bindUIEvents();
+                    this.updateTreeStats(this.heap.root);
+                    this.updateUndoButton();
+                },
+
+                bindUIEvents() {
                     const inp = document.getElementById('inputValue');
                     inp.addEventListener('keydown', e => {
                         if (e.key === 'Enter') this.handleInsert();
@@ -1062,26 +2589,29 @@
                     document.getElementById('btnRandomBuild').addEventListener('click', () => this.handleRandomBuild());
                     document.getElementById('btnBottomUp').addEventListener('click', () => this.handleBottomUpBuild());
                     document.getElementById('btnUndo').addEventListener('click', () => this.handleUndo());
-                    document.getElementById('btnClear').addEventListener('click', () => this.handleClear(true));
+                    document.getElementById('btnClear').addEventListener('click', () => this.handleClear());
 
                     document.getElementById('speedSlider').addEventListener('input', e => {
                         const val = parseFloat(e.target.value);
-                        this.speedMultiplier = val;
                         document.getElementById('speedLabel').innerText = val.toFixed(2).replace(/\.00$/, '.0') + 'x';
+                        this.viz.setSpeed(val);
                     });
 
-                    document.getElementById('btnPause').addEventListener('click', () => this.togglePause());
-                    document.getElementById('btnStepBack').addEventListener('click', () => this.stepBackward());
-                    document.getElementById('btnStepFwd').addEventListener('click', () => this.stepForward());
-                    document.getElementById('btnSkip').addEventListener('click', () => this.skipToEnd());
+                    document.getElementById('btnPause').addEventListener('click', () => this.viz.togglePause());
+                    document.getElementById('btnStepBack').addEventListener('click', () => this.viz.stepBackward());
+                    document.getElementById('btnStepFwd').addEventListener('click', () => this.viz.stepForward());
+                    document.getElementById('btnSkip').addEventListener('click', () => this.viz.skipToEnd());
 
+                    document.getElementById('chkShowNulls').addEventListener('change', e => {
+                        this.viz.setShowNulls(e.target.checked);
+                    });
                     document.getElementById('chkAutoFit').addEventListener('change', e => {
-                        this.autoFit = e.target.checked;
+                        this.viz.setAutoFit(e.target.checked);
                     });
 
-                    document.getElementById('btnZoomIn').addEventListener('click', () => this.zoomBy(1.25));
-                    document.getElementById('btnZoomOut').addEventListener('click', () => this.zoomBy(0.8));
-                    document.getElementById('btnFitView').addEventListener('click', () => this.fitCurrentStep(true));
+                    document.getElementById('btnZoomIn').addEventListener('click', () => this.viz.zoomBy(1.25));
+                    document.getElementById('btnZoomOut').addEventListener('click', () => this.viz.zoomBy(0.8));
+                    document.getElementById('btnFitView').addEventListener('click', () => this.viz.fitCurrentTree());
 
                     document.getElementById('btnToggleLegend').addEventListener('click', () => {
                         const legend = document.getElementById('legend');
@@ -1091,7 +2621,6 @@
 
                     document.getElementById('btnDrawer').addEventListener('click', () => {
                         document.getElementById('info-drawer').classList.toggle('open');
-                        setTimeout(() => this.resize(), 10);
                     });
 
                     document.getElementById('btnClearLog').addEventListener('click', () => {
@@ -1117,12 +2646,14 @@
                         if (document.activeElement === inp || modalOpen) return;
 
                         if (e.code === 'Space') {
-                            e.preventDefault();
-                            if (!document.getElementById('btnPause').disabled) this.togglePause();
+                            if (!document.getElementById('btnPause').disabled) {
+                                e.preventDefault();
+                                this.viz.togglePause();
+                            }
                         } else if (e.key === 'ArrowRight') {
-                            if (!document.getElementById('btnStepFwd').disabled) this.stepForward();
+                            if (!document.getElementById('btnStepFwd').disabled) this.viz.stepForward();
                         } else if (e.key === 'ArrowLeft') {
-                            if (!document.getElementById('btnStepBack').disabled) this.stepBackward();
+                            if (!document.getElementById('btnStepBack').disabled) this.viz.stepBackward();
                         } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
                             e.preventDefault();
                             if (!document.getElementById('btnUndo').disabled) this.handleUndo();
@@ -1130,27 +2661,10 @@
                     });
                 },
 
-                resize() {
-                    const container = document.getElementById('canvas-container');
-                    const rect = container.getBoundingClientRect();
-                    this.dpr = window.devicePixelRatio || 1;
-                    this.viewWidth = Math.max(1, rect.width);
-                    this.viewHeight = Math.max(1, rect.height);
-                    this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
-                    this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
-
-                    if (this.steps.length > 0) {
-                        this.fitCurrentStep(true);
-                        this.camera.scale = this.camera.targetScale;
-                        this.camera.x = this.camera.targetX;
-                        this.camera.y = this.camera.targetY;
-                    }
-                },
-
                 toggleTheme() {
                     this.isDark = !this.isDark;
                     document.body.classList.toggle('dark', this.isDark);
-                    COLORS = this.isDark ? DARK_THEME : LIGHT_THEME;
+                    this.viz.setTheme(this.isDark ? THEMES.dark : THEMES.light);
                     document.getElementById('btnTheme').innerText = this.isDark ? 'Light' : 'Dark';
                 },
 
@@ -1161,7 +2675,9 @@
                 },
 
                 addLog(entry) {
-                    const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+                    const time = new Date().toLocaleTimeString([], {
+                        hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
                     this.logs.unshift(`[${time}] ${entry}`);
                     if (this.logs.length > 40) this.logs.pop();
                     this.renderLog();
@@ -1177,163 +2693,6 @@
                     });
                 },
 
-                setStatus(text) {
-                    document.getElementById('status-text').innerText = text;
-                },
-
-                saveState() {
-                    this.history.push(this.mainTree ? this.mainTree.clone() : null);
-                    if (this.history.length > 25) this.history.shift();
-                },
-
-                // --- INPUT & NAVIGATION ---
-
-                checkNodeHit(mx, my) {
-                    for (let i = this.vizNodes.length - 1; i >= 0; i--) {
-                        const n = this.vizNodes[i];
-                        const sx = this.viewWidth / 2 + (n.x - this.camera.x) * this.camera.scale;
-                        const sy = this.viewHeight / 2 + (n.y - this.camera.y) * this.camera.scale;
-                        const r = this.nodeRadius * this.camera.scale;
-                        if (Math.hypot(mx - sx, my - sy) < r) return n;
-                    }
-                    return null;
-                },
-
-                onMouseDown(e) {
-                    if (e.button !== 0) return;
-                    const rect = this.canvas.getBoundingClientRect();
-                    const mx = e.clientX - rect.left;
-                    const my = e.clientY - rect.top;
-
-                    this.isDragging = true;
-                    this.dragMoved = false;
-                    this.pointerDownNode = this.checkNodeHit(mx, my);
-                    this.dragStart = { x: mx, y: my };
-                    this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
-                },
-
-                onMouseMove(e) {
-                    const rect = this.canvas.getBoundingClientRect();
-                    const mx = e.clientX - rect.left;
-                    const my = e.clientY - rect.top;
-
-                    if (this.isDragging) {
-                        const dx = mx - this.dragStart.x;
-                        const dy = my - this.dragStart.y;
-                        if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
-
-                        if (this.dragMoved) {
-                            this.camera.targetX = this.initialCamera.x - dx / this.camera.scale;
-                            this.camera.targetY = this.initialCamera.y - dy / this.camera.scale;
-                            this.canvas.style.cursor = 'grabbing';
-                            this.hoveredNode = null;
-                            return;
-                        }
-                    }
-
-                    this.hoveredNode = this.checkNodeHit(mx, my);
-                    this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
-                },
-
-                onMouseUp() {
-                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
-                        document.getElementById('inputValue').value = this.pointerDownNode.val;
-                        this.setStatus(`Selected node ${this.pointerDownNode.val} (Weight: ${this.pointerDownNode.weight}, L:${this.pointerDownNode.leftWeight}, R:${this.pointerDownNode.rightWeight})`);
-                    }
-                    this.isDragging = false;
-                    this.pointerDownNode = null;
-                    this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
-                },
-
-                onMouseLeave() {
-                    this.isDragging = false;
-                    this.pointerDownNode = null;
-                    this.hoveredNode = null;
-                    this.canvas.style.cursor = 'default';
-                },
-
-                zoomAt(newScale, anchorX, anchorY) {
-                    newScale = Math.min(Math.max(0.15, newScale), 4.5);
-                    const worldX = this.camera.targetX + (anchorX - this.viewWidth / 2) / this.camera.targetScale;
-                    const worldY = this.camera.targetY + (anchorY - this.viewHeight / 2) / this.camera.targetScale;
-                    this.camera.targetScale = newScale;
-                    this.camera.targetX = worldX - (anchorX - this.viewWidth / 2) / newScale;
-                    this.camera.targetY = worldY - (anchorY - this.viewHeight / 2) / newScale;
-                },
-
-                zoomBy(multiplier) {
-                    this.zoomAt(this.camera.targetScale * multiplier, this.viewWidth / 2, this.viewHeight / 2);
-                },
-
-                onWheel(e) {
-                    e.preventDefault();
-                    const rect = this.canvas.getBoundingClientRect();
-                    const mx = e.clientX - rect.left;
-                    const my = e.clientY - rect.top;
-                    const factor = Math.exp(-e.deltaY * 0.0012);
-                    this.zoomAt(this.camera.targetScale * factor, mx, my);
-                },
-
-                getTouchDist(touches) {
-                    return Math.hypot(touches[0].clientX - touches[1].clientX, touches[0].clientY - touches[1].clientY);
-                },
-
-                onTouchStart(e) {
-                    if (e.touches.length === 1) {
-                        const t = e.touches[0];
-                        const rect = this.canvas.getBoundingClientRect();
-                        const mx = t.clientX - rect.left;
-                        const my = t.clientY - rect.top;
-
-                        this.isDragging = true;
-                        this.dragMoved = false;
-                        this.pointerDownNode = this.checkNodeHit(mx, my);
-                        this.dragStart = { x: mx, y: my };
-                        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
-                    } else if (e.touches.length === 2) {
-                        this.isDragging = false;
-                        this.pointerDownNode = null;
-                        this.initialPinchDist = this.getTouchDist(e.touches);
-                        this.initialScale = this.camera.targetScale;
-                    }
-                },
-
-                onTouchMove(e) {
-                    e.preventDefault();
-                    if (e.touches.length === 1 && this.isDragging) {
-                        const t = e.touches[0];
-                        const rect = this.canvas.getBoundingClientRect();
-                        const dx = (t.clientX - rect.left) - this.dragStart.x;
-                        const dy = (t.clientY - rect.top) - this.dragStart.y;
-                        if (Math.hypot(dx, dy) > 6) this.dragMoved = true;
-
-                        if (this.dragMoved) {
-                            this.camera.targetX = this.initialCamera.x - dx / this.camera.scale;
-                            this.camera.targetY = this.initialCamera.y - dy / this.camera.scale;
-                        }
-                    } else if (e.touches.length === 2 && this.initialPinchDist > 0) {
-                        const rect = this.canvas.getBoundingClientRect();
-                        const midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
-                        const midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
-                        const scaleFactor = this.getTouchDist(e.touches) / this.initialPinchDist;
-                        this.zoomAt(this.initialScale * scaleFactor, midX, midY);
-                    }
-                },
-
-                onTouchEnd(e) {
-                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
-                        document.getElementById('inputValue').value = this.pointerDownNode.val;
-                        this.setStatus(`Selected node ${this.pointerDownNode.val} (Weight: ${this.pointerDownNode.weight})`);
-                    }
-                    if (e.touches.length === 0) {
-                        this.isDragging = false;
-                        this.pointerDownNode = null;
-                        this.initialPinchDist = 0;
-                    }
-                },
-
-                // --- VALIDATION & STATS ---
-
                 parseInputValues() {
                     const inp = document.getElementById('inputValue');
                     const raw = inp.value.trim();
@@ -1341,6 +2700,7 @@
                         this.flashInputError('Please enter an integer first.');
                         return null;
                     }
+
                     const parts = raw.split(/[\s,;]+/).filter(Boolean);
                     const values = [];
                     for (const p of parts) {
@@ -1361,858 +2721,295 @@
                 flashInputError(msg) {
                     const inp = document.getElementById('inputValue');
                     inp.classList.add('input-error');
-                    this.setStatus(msg);
+                    this.viz.setStatus(msg);
                     setTimeout(() => inp.classList.remove('input-error'), 900);
                 },
 
-                updateTreeStats() {
-                    const count = WBLT.getWeight(this.mainTree);
-                    const height = WBLT.getHeight(this.mainTree);
-                    const spine = WBLT.getRightSpineLength(this.mainTree);
-                    const minVal = this.mainTree ? this.mainTree.val : '-';
-                    document.getElementById('tree-stats').innerText = `Nodes: ${count} | Height: ${height} | Spine: ${spine} | Min: ${minVal}`;
+                syncPlaybackUI({ state, isPaused, isBusy, index, total }) {
+                    const mutatingIds = [
+                        'btnInsert', 'btnDelete', 'btnGetMin', 'btnMerge',
+                        'btnRandomBuild', 'btnBottomUp', 'btnClear'
+                    ];
+                    mutatingIds.forEach(id => {
+                        document.getElementById(id).disabled = isBusy;
+                    });
 
-                    const { inorder, preorder, postorder, level } = WBLT.getTraversals(this.mainTree);
+                    document.getElementById('btnUndo').disabled = isBusy || this.heap.history.length === 0;
+
+                    const hasSteps = total > 1;
+                    const atEnd = index >= total - 1 && state === 'IDLE';
+                    document.getElementById('btnPause').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnPause').innerText = isPaused ? 'Resume' : 'Pause';
+                    document.getElementById('btnStepBack').disabled = !hasSteps || (index === 0 && state === 'IDLE');
+                    document.getElementById('btnStepFwd').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnSkip').disabled = !hasSteps || atEnd;
+
+                    document.getElementById('step-counter').innerText =
+                        total > 1 ? `Step: ${Math.min(index + 1, total)}/${total}` : 'Step: -';
+                },
+
+                updateTreeStats(root) {
+                    const count = TreeUtils.getWeight(root);
+                    const height = TreeUtils.getHeight(root);
+                    const spine = TreeUtils.getRightSpineLength(root);
+                    const minVal = root ? root.val : '-';
+                    document.getElementById('tree-stats').innerText =
+                        `Nodes: ${count} | Height: ${height} | Spine: ${spine} | Min: ${minVal}`;
+
+                    const { inorder, preorder, postorder, level } = TreeUtils.getTraversals(root);
                     document.getElementById('trav-level').innerText = level.length ? level.join(', ') : '-';
                     document.getElementById('trav-preorder').innerText = preorder.length ? preorder.join(', ') : '-';
                     document.getElementById('trav-inorder').innerText = inorder.length ? inorder.join(', ') : '-';
                     document.getElementById('trav-postorder').innerText = postorder.length ? postorder.join(', ') : '-';
                 },
 
-                isBusy() {
-                    return this.isPlaying || this.singleStepPlaying ||
-                        (this.steps.length > 1 && this.currentStep < this.steps.length - 1) ||
-                        (this.steps.length > 0 && this.transition < 1);
+                updateUndoButton() {
+                    document.getElementById('btnUndo').disabled =
+                        this.viz.isBusy() || this.heap.history.length === 0;
                 },
 
-                updateUI() {
-                    const stepMsg = this.steps[this.currentStep]?.msg || 'Ready. Wheel/Pinch to Zoom, Drag to Pan.';
-                    this.setStatus(stepMsg);
-
-                    const busy = this.isBusy();
-                    ['btnInsert', 'btnDelete', 'btnGetMin', 'btnMerge', 'btnRandomBuild', 'btnBottomUp'].forEach(id => {
-                        document.getElementById(id).disabled = busy;
-                    });
-
-                    document.getElementById('btnUndo').disabled = busy || this.history.length === 0;
-
-                    const total = this.steps.length;
-                    const hasSteps = total > 1;
-                    const atEnd = this.currentStep >= total - 1 && this.transition >= 1 && !this.isPlaying;
-
-                    const btnPause = document.getElementById('btnPause');
-                    btnPause.disabled = !hasSteps;
-                    btnPause.innerText = atEnd ? 'Restart' : (this.isPlaying ? 'Pause' : 'Resume');
-
-                    document.getElementById('btnStepBack').disabled = !hasSteps || (this.currentStep === 0 && this.transition >= 1);
-                    document.getElementById('btnStepFwd').disabled = !hasSteps || atEnd;
-                    document.getElementById('btnSkip').disabled = !hasSteps || atEnd;
-
-                    document.getElementById('step-counter').innerText =
-                        total > 1 ? `Step: ${Math.min(this.currentStep + 1, total)}/${total}` : 'Step: -';
-                },
-
-                // --- HEAP ACTIONS ---
-
-                appendFinalReadyStep(steps) {
-                    if (this.mainTree) {
-                        const clean = this.mainTree.clone();
-                        WBLT.normalizeOrigin(clean, 1);
-                        steps.push({ msg: 'Ready.', roots: [clean] });
-                    } else {
-                        steps.push({ msg: 'Heap is empty. Ready.', roots: [] });
+                createRandomTree(n) {
+                    const silent = { emit() {} };
+                    const tempHeap = new WBLTHeap();
+                    for (let i = 0; i < n; i++) {
+                        tempHeap.insert(Math.floor(Math.random() * 99) + 1, silent);
                     }
+                    return tempHeap.root;
+                },
+
+                runOp(fn, { instant = false, logText = null, recordHistory = true, resetBefore = false, initialText = null } = {}) {
+                    if (this.viz.isBusy()) return;
+
+                    const prevRoot = this.heap.root;
+                    if (resetBefore) {
+                        this.heap.clear();
+                    }
+
+                    const initialRoots = this.heap.root ? [this.heap.root] : [];
+                    const recorder = new SnapshotRecorder(initialRoots, this.heap.root, initialText);
+                    const result = fn(recorder);
+
+                    if (recordHistory) {
+                        this.heap.pushHistory(prevRoot);
+                    }
+
+                    this.viz.enqueueOperation(recorder.snapshots, instant);
+                    this.updateUndoButton();
+
+                    const msg = typeof logText === 'function' ? logText(result) : logText;
+                    if (msg) this.addLog(msg);
                 },
 
                 handleInsert() {
-                    if (this.isBusy()) return;
                     const values = this.parseInputValues();
                     if (!values) return;
-
                     const instant = document.getElementById('chkInstant').checked;
                     document.getElementById('inputValue').value = '';
-                    this.saveState();
 
-                    let tempTree = this.mainTree ? this.mainTree.clone() : null;
-                    if (tempTree) WBLT.normalizeOrigin(tempTree, 1);
-
-                    const allSteps = [];
-                    if (tempTree) allSteps.push({ msg: 'Start insertion', roots: [tempTree.clone()] });
-
-                    for (const val of values) {
-                        const newNode = new Node(val, 2);
-                        const h1 = tempTree ? tempTree.clone() : null;
-                        const h2 = newNode.clone();
-                        const mergeSteps = WBLT.recordMerge([h1, h2].filter(Boolean), h1, h2);
-                        if (values.length > 1) {
-                            mergeSteps.forEach(s => { s.msg = `Insert ${val}: ${s.msg}`; });
+                    this.runOp(recorder => {
+                        const prefixFn = val => values.length > 1 ? `Insert ${val}: ` : '';
+                        for (const val of values) {
+                            this.heap.insert(val, recorder, prefixFn(val));
                         }
-                        allSteps.push(...mergeSteps);
-                        tempTree = WBLT.performMerge(tempTree, newNode);
-                        WBLT.normalizeOrigin(tempTree, 1);
-                    }
-
-                    this.mainTree = tempTree;
-                    this.appendFinalReadyStep(allSteps);
-
-                    this.steps = allSteps;
-                    this.startAnimation(instant);
-                    this.updateTreeStats();
-                    this.addLog(`Insert: ${values.join(', ')}`);
+                        recorder.emit(this.heap.root ? [this.heap.root] : [], {
+                            statsRoot: this.heap.root,
+                            text: this.heap.root ? `Inserted ${values.join(', ')}. Ready.` : 'Ready.'
+                        });
+                    }, {
+                        instant,
+                        recordHistory: true,
+                        logText: `Insert: ${values.join(', ')}`
+                    });
                 },
 
                 handleDeleteMin() {
-                    if (this.isBusy()) return;
-                    if (!this.mainTree) {
-                        this.setStatus('Heap is empty.');
-                        return;
-                    }
                     const instant = document.getElementById('chkInstant').checked;
-                    this.saveState();
-
-                    const minVal = this.mainTree.val;
-                    const rootToDelete = this.mainTree.clone();
-                    rootToDelete.highlight = 'delete-target';
-
-                    const h1 = this.mainTree.left ? this.mainTree.left.clone() : null;
-                    const h2 = this.mainTree.right ? this.mainTree.right.clone() : null;
-                    if (h1) WBLT.normalizeOrigin(h1, 1);
-                    if (h2) WBLT.normalizeOrigin(h2, 2);
-
-                    const childrenRoots = [h1, h2].filter(Boolean);
-                    let mergeSteps = [];
-                    let finalTree = null;
-
-                    if (childrenRoots.length === 0) {
-                        mergeSteps = [{ msg: 'Heap is now empty.', roots: [] }];
-                        finalTree = null;
-                    } else if (childrenRoots.length === 1) {
-                        mergeSteps = [{ msg: 'Root removed. Single child becomes root.', roots: [childrenRoots[0]] }];
-                        finalTree = childrenRoots[0].clone();
-                    } else {
-                        mergeSteps = WBLT.recordMerge(childrenRoots, h1, h2);
-                        finalTree = WBLT.performMerge(h1.clone(), h2.clone());
-                    }
-
-                    if (finalTree) WBLT.normalizeOrigin(finalTree, 1);
-                    this.mainTree = finalTree;
-
-                    this.steps = [
-                        { msg: `Selected Minimum (${minVal}) for deletion`, roots: [rootToDelete], pause: true },
-                        { msg: 'Removing root...', roots: childrenRoots },
-                        ...mergeSteps
-                    ];
-                    this.appendFinalReadyStep(this.steps);
-
-                    this.startAnimation(instant);
-                    this.updateTreeStats();
-                    this.addLog(`Delete Min (${minVal})`);
+                    this.runOp(recorder => this.heap.deleteMin(recorder), {
+                        instant,
+                        recordHistory: true,
+                        logText: removed => removed !== null ? `Delete Min (${removed})` : null
+                    });
                 },
 
                 handleGetMin() {
-                    if (this.isBusy()) return;
-                    if (!this.mainTree) {
-                        this.setStatus('Heap is empty.');
-                        return;
-                    }
-                    const root = this.mainTree.clone();
-                    root.highlight = 'minimum';
-                    this.steps = [
-                        { msg: `Minimum element is ${root.val} (Root, O(1))`, roots: [root], pause: true },
-                        { msg: `Minimum: ${root.val}. Ready.`, roots: [this.mainTree.clone()] }
-                    ];
-                    this.startAnimation(false);
-                    this.addLog(`Minimum -> ${root.val}`);
+                    const instant = document.getElementById('chkInstant').checked;
+                    this.runOp(recorder => this.heap.minimum(recorder), {
+                        instant,
+                        recordHistory: false,
+                        logText: minVal => minVal !== null ? `Minimum -> ${minVal}` : null
+                    });
                 },
 
                 handleMergeScenario() {
-                    if (this.isBusy()) return;
                     const instant = document.getElementById('chkInstant').checked;
-                    this.saveState();
+                    this.runOp(recorder => {
+                        const h1 = this.heap.root || this.createRandomTree(6);
+                        const h2 = this.createRandomTree(5);
+                        const tree2Ids = TreeUtils.collectIds(h2);
 
-                    let h1, h2;
-                    if (this.mainTree) {
-                        h1 = this.mainTree.clone();
-                        WBLT.normalizeOrigin(h1, 1);
-                        h2 = this.createRandomTree(5, 2);
-                    } else {
-                        h1 = this.createRandomTree(6, 1);
-                        h2 = this.createRandomTree(5, 2);
-                    }
+                        this.heap.root = this.heap.mergeWithSteps(h1, h2, recorder, {
+                            tree2Ids,
+                            statsRoot: this.heap.root
+                        });
 
-                    this.steps = WBLT.recordMerge([h1, h2], h1, h2);
-                    this.mainTree = WBLT.performMerge(h1.clone(), h2.clone());
-                    WBLT.normalizeOrigin(this.mainTree, 1);
-                    this.appendFinalReadyStep(this.steps);
-
-                    this.startAnimation(instant);
-                    this.updateTreeStats();
-                    this.addLog('Merged two heaps');
+                        recorder.emit([this.heap.root], {
+                            statsRoot: this.heap.root,
+                            text: 'Merge complete. Ready.'
+                        });
+                    }, {
+                        instant,
+                        recordHistory: true,
+                        logText: 'Merged two heaps'
+                    });
                 },
 
                 handleRandomBuild() {
-                    if (this.isBusy()) return;
                     const instant = document.getElementById('chkInstant').checked;
-                    if (this.mainTree) this.saveState();
-
                     const vals = Array.from({ length: 9 }, () => Math.floor(Math.random() * 99) + 1);
-                    let tempTree = null;
-                    const allSteps = [{ msg: 'Start Sequential Build O(n log n)', roots: [] }];
 
-                    for (const val of vals) {
-                        const newNode = new Node(val, 2);
-                        const h1 = tempTree ? tempTree.clone() : null;
-                        if (h1) WBLT.normalizeOrigin(h1, 1);
-                        const h2 = newNode.clone();
-                        const mergeSteps = WBLT.recordMerge([h1, h2].filter(Boolean), h1, h2);
-                        mergeSteps.forEach(s => { s.msg = `Insert ${val}: ${s.msg}`; });
-                        allSteps.push(...mergeSteps);
-                        tempTree = WBLT.performMerge(tempTree, newNode);
-                        WBLT.normalizeOrigin(tempTree, 1);
-                    }
-
-                    this.mainTree = tempTree;
-                    this.appendFinalReadyStep(allSteps);
-                    this.steps = allSteps;
-                    this.startAnimation(instant);
-                    this.updateTreeStats();
-                    this.addLog(`Build Random (${vals.join(', ')})`);
+                    this.runOp(recorder => {
+                        for (const val of vals) {
+                            this.heap.insert(val, recorder, `Insert ${val}: `);
+                        }
+                        recorder.emit([this.heap.root], {
+                            statsRoot: this.heap.root,
+                            text: 'Random Heap Ready.'
+                        });
+                    }, {
+                        instant,
+                        recordHistory: true,
+                        resetBefore: true,
+                        initialText: 'Start Sequential Build O(n log n)',
+                        logText: `Build Random (${vals.join(', ')})`
+                    });
                 },
 
                 handleBottomUpBuild() {
-                    if (this.isBusy()) return;
+                    if (this.viz.isBusy()) return;
                     const instant = document.getElementById('chkInstant').checked;
-                    if (this.mainTree) this.saveState();
+                    const prevRoot = this.heap.root;
+                    this.heap.clear();
 
                     const count = 12;
                     const vals = Array.from({ length: count }, () => Math.floor(Math.random() * 99) + 1);
-                    const queue = vals.map((v, i) => new Node(v, (i % 2) + 1));
+                    const queue = vals.map(v => new Node(v));
 
-                    const allSteps = [{
-                        msg: 'Initial Queue of 1-node Heaps (Bottom-Up O(n))',
-                        roots: queue.map(r => r.clone()),
-                        shouldFit: true
-                    }];
+                    const initTree2Ids = new Set();
+                    queue.forEach((n, i) => {
+                        if (i % 2 === 1) initTree2Ids.add(n.id);
+                    });
+
+                    const recorder = new SnapshotRecorder(
+                        queue,
+                        null,
+                        'Initial Queue of 1-node Heaps (Bottom-Up O(n))'
+                    );
+                    recorder.snapshots[0].tree2Ids = initTree2Ids;
+                    recorder.snapshots[0].shouldFit = true;
 
                     while (queue.length > 1) {
                         const h1 = queue.shift();
                         const h2 = queue.shift();
-                        WBLT.normalizeOrigin(h1, 1);
-                        WBLT.normalizeOrigin(h2, 2);
-                        const rest = queue.map(r => r.clone());
+                        const rest = [...queue];
 
-                        allSteps.push({
-                            msg: `Focusing on front pair (${h1.val}, ${h2.val})...`,
-                            roots: [h1, h2, ...rest].map(r => r.clone()),
+                        const pairTree2Ids = TreeUtils.collectIds(h2);
+                        rest.forEach((r, idx) => {
+                            if (idx % 2 === 1) TreeUtils.collectIds(r, pairTree2Ids);
+                        });
+
+                        recorder.emit([h1, h2, ...rest], {
+                            statsRoot: null,
+                            tree2Ids: pairTree2Ids,
                             focusIndices: [0, 1],
-                            shouldFit: true
+                            shouldFit: true,
+                            pause: 0.45,
+                            text: `Focusing on front pair (${h1.val}, ${h2.val})...`
                         });
 
-                        const mergeSteps = WBLT.recordMerge([h1, h2], h1, h2);
-                        mergeSteps.forEach(s => {
-                            s.msg = `Merging Pair: ${s.msg}`;
-                            s.shouldFit = true;
-                        });
-                        allSteps.push(...mergeSteps);
-
-                        const merged = WBLT.performMerge(h1, h2);
-                        WBLT.normalizeOrigin(merged, 1);
-
-                        allSteps.push({
-                            msg: `Pair merged (root ${merged.val}). Enqueuing at back...`,
-                            roots: [merged, ...rest].map(r => r.clone()),
-                            focusIndices: [0],
-                            shouldFit: true
+                        const merged = this.heap.mergeWithSteps(h1, h2, recorder, {
+                            tree2Ids: TreeUtils.collectIds(h2),
+                            shouldFit: true,
+                            msgPrefix: 'Merging Pair: ',
+                            statsRoot: null
                         });
 
-                        allSteps.push({
-                            msg: 'Zooming out to queue...',
-                            roots: [merged, ...rest].map(r => r.clone()),
-                            shouldFit: true
-                        });
+                        if (rest.length > 0) {
+                            const queueTree2Ids = new Set();
+                            rest.forEach((r, idx) => {
+                                if (idx % 2 === 0) TreeUtils.collectIds(r, queueTree2Ids);
+                            });
 
-                        queue.push(merged);
-                        allSteps.push({
-                            msg: 'Moved merged heap to end of queue.',
-                            roots: queue.map(r => r.clone()),
-                            shouldFit: true
-                        });
+                            recorder.emit([merged, ...rest], {
+                                statsRoot: null,
+                                tree2Ids: queueTree2Ids,
+                                focusIndices: [0],
+                                shouldFit: true,
+                                pause: 0.45,
+                                text: `Pair merged (root ${merged.val}). Enqueuing at back...`
+                            });
+
+                            recorder.emit([merged, ...rest], {
+                                statsRoot: null,
+                                tree2Ids: queueTree2Ids,
+                                shouldFit: true,
+                                pause: 0.45,
+                                text: 'Zooming out to queue...'
+                            });
+
+                            queue.push(merged);
+                            recorder.emit(queue, {
+                                statsRoot: null,
+                                tree2Ids: queueTree2Ids,
+                                shouldFit: true,
+                                pause: 0.45,
+                                text: 'Moved merged heap to end of queue.'
+                            });
+                        } else {
+                            queue.push(merged);
+                        }
                     }
 
-                    this.mainTree = queue[0];
-                    WBLT.normalizeOrigin(this.mainTree, 1);
-                    this.appendFinalReadyStep(allSteps);
+                    this.heap.root = queue[0];
+                    recorder.emit([this.heap.root], {
+                        statsRoot: this.heap.root,
+                        shouldFit: true,
+                        text: 'Bottom-Up Build complete. Ready.'
+                    });
 
-                    this.steps = allSteps;
-                    this.startAnimation(instant);
-                    this.updateTreeStats();
+                    this.heap.pushHistory(prevRoot);
+                    this.viz.enqueueOperation(recorder.snapshots, instant);
+                    this.updateUndoButton();
                     this.addLog(`Build Bottom-Up (${vals.join(', ')})`);
                 },
 
                 handleUndo() {
-                    if (this.isBusy() || this.history.length === 0) return;
-                    this.mainTree = this.history.pop();
-                    if (this.mainTree) WBLT.normalizeOrigin(this.mainTree, 1);
+                    if (this.viz.isBusy() || this.heap.history.length === 0) return;
 
-                    this.steps = [{
-                        msg: 'Undo successful.',
-                        roots: this.mainTree ? [this.mainTree.clone()] : []
-                    }];
-                    this.prepareSteps(this.steps);
-                    this.currentStep = 0;
-                    this.transition = 1;
-                    this.isPlaying = false;
-                    this.singleStepPlaying = false;
-                    if (this.autoFit) this.fitCurrentStep(true);
-                    this.updateTreeStats();
-                    this.updateUI();
+                    const prevRoot = this.heap.root;
+                    const restored = this.heap.restoreFromHistory();
+
+                    const recorder = new SnapshotRecorder(prevRoot ? [prevRoot] : [], prevRoot);
+                    recorder.emit(restored ? [restored] : [], {
+                        statsRoot: restored,
+                        text: 'Undo successful.'
+                    });
+
+                    this.viz.enqueueOperation(recorder.snapshots, false);
+                    this.updateUndoButton();
                     this.addLog('Undo');
                 },
 
-                handleClear(saveHistory = true) {
-                    const hadTree = !!this.mainTree;
-                    if (saveHistory && hadTree) this.saveState();
-                    this.mainTree = null;
-                    this.isPlaying = false;
-                    this.singleStepPlaying = false;
-                    this.holdTimer = 0;
-                    this.hoveredNode = null;
-                    this.vizNodes = [];
-                    this.steps = [{ msg: 'Cleared. Ready.', roots: [] }];
-                    this.prepareSteps(this.steps);
-                    this.currentStep = 0;
-                    this.transition = 1;
-                    this.camera.targetScale = 1;
-                    this.camera.targetX = 0;
-                    this.camera.targetY = 80;
-                    this.updateTreeStats();
-                    this.updateUI();
-                    if (saveHistory && hadTree) this.addLog('Cleared heap');
-                },
+                handleClear() {
+                    if (this.viz.isBusy()) return;
 
-                createRandomTree(n, origin) {
-                    let t = null;
-                    for (let i = 0; i < n; i++) {
-                        const val = Math.floor(Math.random() * 99) + 1;
-                        t = WBLT.performMerge(t, new Node(val, origin));
+                    const prevRoot = this.heap.root;
+                    if (prevRoot !== null) {
+                        this.heap.clear();
+                        this.heap.pushHistory(prevRoot);
+                        this.addLog('Cleared heap');
                     }
-                    return t;
-                },
-
-                // --- LAYOUT & CAMERA ---
-
-                prepareSteps(steps) {
-                    steps.forEach(step => {
-                        step.layout = this.layoutInOrder(step.roots || []);
-                    });
-                },
-
-                layoutInOrder(roots) {
-                    const clones = roots.map(r => r.clone());
-                    let counter = 0;
-                    const X_SPACING = 74;
-                    const traverse = (n, depth) => {
-                        if (!n) return;
-                        traverse(n.left, depth + 1);
-                        n.x = counter * X_SPACING;
-                        n.y = 60 + depth * this.levelGap;
-                        n.depth = depth;
-                        counter++;
-                        traverse(n.right, depth + 1);
-                    };
-                    clones.forEach(root => {
-                        traverse(root, 0);
-                        counter += 1;
-                    });
-                    return clones;
-                },
-
-                startAnimation(instant = false) {
-                    this.prepareSteps(this.steps);
-                    this.singleStepPlaying = false;
-                    this.holdTimer = 0;
-
-                    if (instant || this.steps.length <= 1) {
-                        this.currentStep = Math.max(0, this.steps.length - 1);
-                        this.transition = 1;
-                        this.isPlaying = false;
-                        if (this.autoFit) this.fitFinalState();
-                        this.updateUI();
-                        return;
-                    }
-
-                    this.currentStep = 0;
-                    this.transition = 1;
-                    this.holdTimer = 0.45 / this.speedMultiplier;
-                    this.isPlaying = true;
-
-                    if (this.autoFit) {
-                        if (this.steps[0].shouldFit) this.fitCurrentStep(false);
-                        else this.fitToAllSteps();
-                    }
-                    this.updateUI();
-                },
-
-                togglePause() {
-                    if (this.steps.length <= 1) return;
-                    const atEnd = this.currentStep >= this.steps.length - 1 && this.transition >= 1 && !this.isPlaying;
-                    if (atEnd) {
-                        this.startAnimation(false);
-                        return;
-                    }
-                    this.singleStepPlaying = false;
-                    this.isPlaying = !this.isPlaying;
-                    this.updateUI();
-                },
-
-                stepForward() {
-                    if (this.steps.length <= 1) return;
-                    this.isPlaying = false;
-                    this.holdTimer = 0;
-
-                    if (this.transition < 1 && this.transition > 0.08) {
-                        this.transition = 1;
-                    }
-
-                    if (this.currentStep >= this.steps.length - 1) {
-                        this.singleStepPlaying = false;
-                        this.transition = 1;
-                        if (this.autoFit) this.fitFinalState();
-                        this.updateUI();
-                        return;
-                    }
-
-                    this.currentStep++;
-                    this.transition = 0;
-                    this.singleStepPlaying = true;
-                    if (this.autoFit && this.steps[this.currentStep].shouldFit) {
-                        this.fitCurrentStep(false);
-                    }
-                    this.updateUI();
-                },
-
-                stepBackward() {
-                    if (this.steps.length <= 1) return;
-                    this.isPlaying = false;
-                    this.singleStepPlaying = false;
-                    this.holdTimer = 0;
-
-                    if (this.currentStep > 0) {
-                        this.currentStep--;
-                    }
-                    this.transition = 1;
-                    if (this.autoFit && this.steps[this.currentStep].shouldFit) {
-                        this.fitCurrentStep(false);
-                    }
-                    this.updateUI();
-                },
-
-                skipToEnd() {
-                    if (this.steps.length === 0) return;
-                    this.isPlaying = false;
-                    this.singleStepPlaying = false;
-                    this.holdTimer = 0;
-                    this.currentStep = this.steps.length - 1;
-                    this.transition = 1;
-                    if (this.autoFit) this.fitFinalState();
-                    this.updateUI();
-                },
-
-                fitBounds(nodes) {
-                    if (nodes.length === 0) {
-                        this.camera.targetScale = 1;
-                        this.camera.targetX = 0;
-                        this.camera.targetY = 80;
-                        return;
-                    }
-                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-                    nodes.forEach(n => {
-                        minX = Math.min(minX, n.x - 46);
-                        maxX = Math.max(maxX, n.x + 46);
-                        minY = Math.min(minY, n.y - 46);
-                        maxY = Math.max(maxY, n.y + 72);
-                    });
-
-                    const padW = Math.min(160, this.viewWidth * 0.16);
-                    const padH = 120;
-                    const sc = Math.min(
-                        this.viewWidth / (maxX - minX + padW),
-                        this.viewHeight / (maxY - minY + padH),
-                        1.2
-                    );
-                    this.camera.targetScale = Math.max(0.2, sc);
-                    this.camera.targetX = (minX + maxX) / 2;
-                    this.camera.targetY = (minY + maxY) / 2;
-                },
-
-                fitCurrentStep(ignoreFocus = false) {
-                    const step = this.steps[this.currentStep];
-                    if (!step || !step.layout) {
-                        this.fitBounds([]);
-                        return;
-                    }
-                    let targetNodes = [];
-                    if (!ignoreFocus && step.focusIndices && Array.isArray(step.focusIndices)) {
-                        step.focusIndices.forEach(idx => {
-                            if (step.layout[idx]) targetNodes.push(...this.flatten([step.layout[idx]]));
-                        });
-                    } else {
-                        targetNodes = this.flatten(step.layout);
-                    }
-                    this.fitBounds(targetNodes);
-                },
-
-                fitToAllSteps() {
-                    const allNodes = [];
-                    this.steps.forEach(step => {
-                        if (step.layout) allNodes.push(...this.flatten(step.layout));
-                    });
-                    this.fitBounds(allNodes);
-                },
-
-                fitFinalState() {
-                    const lastStep = this.steps[this.steps.length - 1];
-                    if (!lastStep || !lastStep.layout) {
-                        this.fitBounds([]);
-                        return;
-                    }
-                    this.fitBounds(this.flatten(lastStep.layout));
-                },
-
-                // --- LOOP & RENDERING ---
-
-                loop(ts) {
-                    if (!this.lastTime) this.lastTime = ts;
-                    const dt = Math.min((ts - this.lastTime) / 1000, 0.1);
-                    this.lastTime = ts;
-
-                    const camFactor = 1 - Math.exp(-10 * dt);
-                    this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
-                    this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
-                    this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
-
-                    if (this.singleStepPlaying) {
-                        this.transition += dt * this.speedMultiplier * this.baseMorphSpeed;
-                        if (this.transition >= 1) {
-                            this.transition = 1;
-                            this.singleStepPlaying = false;
-                            if (this.autoFit && this.currentStep === this.steps.length - 1) {
-                                this.fitFinalState();
-                            }
-                            this.updateUI();
-                        }
-                    } else if (this.isPlaying) {
-                        if (this.transition < 1) {
-                            this.transition += dt * this.speedMultiplier * this.baseMorphSpeed;
-                            if (this.transition >= 1) {
-                                this.transition = 1;
-                                const step = this.steps[this.currentStep];
-                                this.holdTimer = (step && step.pause ? 0.65 : 0.25) / this.speedMultiplier;
-                            }
-                        } else {
-                            this.holdTimer -= dt;
-                            if (this.holdTimer <= 0) {
-                                if (this.currentStep < this.steps.length - 1) {
-                                    this.currentStep++;
-                                    this.transition = 0;
-                                    if (this.autoFit && this.steps[this.currentStep].shouldFit) {
-                                        this.fitCurrentStep(false);
-                                    }
-                                    this.updateUI();
-                                } else {
-                                    this.isPlaying = false;
-                                    this.transition = 1;
-                                    if (this.autoFit) this.fitFinalState();
-                                    this.updateUI();
-                                }
-                            }
-                        }
-                    }
-
-                    this.draw();
-                    requestAnimationFrame(t => this.loop(t));
-                },
-
-                draw() {
-                    const ctx = this.ctx;
-                    ctx.setTransform(1, 0, 0, 1, 0, 0);
-                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-                    if (this.steps.length === 0) return;
-
-                    const curSnap = this.steps[this.currentStep];
-                    const prevSnap = this.currentStep > 0 ? this.steps[this.currentStep - 1] : curSnap;
-                    const layoutCur = curSnap.layout || [];
-                    const layoutPrev = prevSnap.layout || [];
-
-                    const t = Math.min(Math.max(this.transition, 0), 1);
-                    const easeT = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-                    const prevMap = new Map();
-                    this.flatten(layoutPrev).forEach(n => prevMap.set(n.id, { x: n.x, y: n.y }));
-
-                    ctx.save();
-                    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
-                    ctx.translate(this.viewWidth / 2, this.viewHeight / 2);
-                    ctx.scale(this.camera.scale, this.camera.scale);
-                    ctx.translate(-this.camera.x, -this.camera.y);
-
-                    const getIsInactive = (rootIndex, step) => {
-                        if (!step.focusIndices) return false;
-                        return !step.focusIndices.includes(rootIndex);
-                    };
-
-                    const violationNull = curSnap.violationNull || null;
-                    const swapIds = curSnap.swapNodeIds || [];
-
-                    layoutCur.forEach((r, idx) => {
-                        this.drawLinksRec(r, prevMap, easeT, getIsInactive(idx, curSnap), violationNull);
-                    });
-
-                    this.vizNodes = [];
-                    layoutCur.forEach((r, idx) => {
-                        this.drawNodesRec(r, prevMap, easeT, getIsInactive(idx, curSnap), swapIds);
-                    });
-
-                    if (this.hoveredNode) {
-                        const live = this.vizNodes.find(n => n.id === this.hoveredNode.id);
-                        if (live) this.drawNodeTooltip(live);
-                    }
-
-                    ctx.restore();
-                },
-
-                drawLinksRec(node, prevMap, t, inactive, violationNull) {
-                    if (!node) return;
-                    let cx = node.x, cy = node.y;
-                    const p = prevMap.get(node.id);
-                    if (p) { cx = p.x + (node.x - p.x) * t; cy = p.y + (node.y - p.y) * t; }
-
-                    if (!node.left) {
-                        const isViol = !inactive && violationNull && violationNull.nodeId === node.id && violationNull.side === 'L';
-                        this.drawNull(cx, cy, 'L', inactive, isViol);
-                    }
-                    if (!node.right) {
-                        const isViol = !inactive && violationNull && violationNull.nodeId === node.id && violationNull.side === 'R';
-                        this.drawNull(cx, cy, 'R', inactive, isViol);
-                    }
-
-                    const drawEdge = child => {
-                        let chx = child.x, chy = child.y;
-                        const cp = prevMap.get(child.id);
-                        if (cp) { chx = cp.x + (child.x - cp.x) * t; chy = cp.y + (child.y - cp.y) * t; }
-                        this.ctx.beginPath();
-                        this.ctx.moveTo(cx, cy);
-                        this.ctx.lineTo(chx, chy);
-                        this.ctx.strokeStyle = inactive ? COLORS.INACTIVE_EDGE : COLORS.EDGE;
-                        this.ctx.lineWidth = 3;
-                        this.ctx.stroke();
-                    };
-
-                    if (node.left) { drawEdge(node.left); this.drawLinksRec(node.left, prevMap, t, inactive, violationNull); }
-                    if (node.right) { drawEdge(node.right); this.drawLinksRec(node.right, prevMap, t, inactive, violationNull); }
-                },
-
-                drawNull(x, y, dir, inactive, isViolation = false) {
-                    const dx = dir === 'L' ? -15 : 15;
-                    const dy = 24;
-                    const ctx = this.ctx;
-                    ctx.beginPath();
-                    ctx.moveTo(x, y + this.nodeRadius * 0.5);
-                    ctx.lineTo(x + dx, y + this.nodeRadius + dy);
-                    ctx.strokeStyle = inactive ? COLORS.INACTIVE_EDGE : (isViolation ? COLORS.VIOLATION_NULL : COLORS.EDGE);
-                    ctx.lineWidth = isViolation ? 4 : 2.5;
-                    ctx.stroke();
-
-                    ctx.beginPath();
-                    ctx.moveTo(x + dx - 6, y + this.nodeRadius + dy);
-                    ctx.lineTo(x + dx + 6, y + this.nodeRadius + dy);
-                    ctx.stroke();
-                },
-
-                drawNodesRec(n, prevMap, t, inactive, swapIds) {
-                    if (!n) return;
-                    let cx = n.x, cy = n.y;
-                    const p = prevMap.get(n.id);
-                    if (p) { cx = p.x + (n.x - p.x) * t; cy = p.y + (n.y - p.y) * t; }
-
-                    this.vizNodes.push({
-                        id: n.id,
-                        x: cx,
-                        y: cy,
-                        val: n.val,
-                        weight: n.weight,
-                        leftWeight: WBLT.getWeight(n.left),
-                        rightWeight: WBLT.getWeight(n.right),
-                        depth: n.depth || 0
-                    });
-
-                    const ctx = this.ctx;
-                    let fill, stroke, textCol;
-
-                    if (inactive) {
-                        fill = COLORS.INACTIVE_FILL;
-                        stroke = COLORS.INACTIVE_STROKE;
-                        textCol = COLORS.INACTIVE_TEXT;
-                    } else {
-                        fill = n.origin === 1 ? COLORS.FILL1 : COLORS.FILL2;
-                        stroke = n.origin === 1 ? COLORS.STROKE1 : COLORS.STROKE2;
-                        textCol = COLORS.TEXT_VAL;
-
-                        if (n.highlight === 'compare') {
-                            fill = COLORS.COMPARE_FILL;
-                            stroke = COLORS.COMPARE_STROKE;
-                        } else if (n.highlight === 'minimum') {
-                            fill = COLORS.MINIMUM;
-                            stroke = COLORS.MINIMUM_STROKE;
-                        } else if (n.highlight === 'delete-target') {
-                            fill = COLORS.DELETE;
-                            stroke = COLORS.DELETE;
-                            textCol = '#FFFFFF';
-                        }
-                    }
-
-                    ctx.beginPath();
-                    ctx.arc(cx, cy, this.nodeRadius, 0, 2 * Math.PI);
-                    ctx.fillStyle = fill;
-                    ctx.fill();
-                    ctx.strokeStyle = stroke;
-                    ctx.lineWidth = 2.5;
-                    ctx.stroke();
-
-                    // Dynamic font size
-                    const str = String(n.val);
-                    const fontSize = str.length <= 2 ? 21 : str.length === 3 ? 17 : str.length === 4 ? 14 : 11;
-                    ctx.fillStyle = textCol;
-                    ctx.font = `700 ${fontSize}px "Segoe UI", Arial, sans-serif`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(str, cx, cy + 1);
-
-                    // Weight badge (top-right)
-                    const bx = cx + this.nodeRadius - 6;
-                    const by = cy - this.nodeRadius + 6;
-                    ctx.beginPath();
-                    ctx.arc(bx, by, 10, 0, 2 * Math.PI);
-
-                    if (inactive) {
-                        ctx.fillStyle = COLORS.BADGE_BG;
-                        ctx.fill();
-                        ctx.strokeStyle = COLORS.INACTIVE_WEIGHT_STROKE;
-                    } else {
-                        ctx.fillStyle = n.highlightWeights ? COLORS.WEIGHT_HIGHLIGHT : COLORS.BADGE_BG;
-                        ctx.fill();
-                        ctx.strokeStyle = n.highlightWeights ? COLORS.WEIGHT_HIGHLIGHT : COLORS.WEIGHT_STROKE;
-                    }
-                    ctx.lineWidth = 1.2;
-                    ctx.stroke();
-
-                    ctx.fillStyle = inactive
-                        ? COLORS.INACTIVE_TEXT
-                        : (n.highlightWeights ? '#FFFFFF' : COLORS.WEIGHT_TEXT);
-                    ctx.font = 'bold 10px Arial, sans-serif';
-                    ctx.fillText(n.weight, bx, by + 0.5);
-
-                    this.drawNodesRec(n.left, prevMap, t, inactive, swapIds);
-                    this.drawNodesRec(n.right, prevMap, t, inactive, swapIds);
-
-                    // Draw swap arrow after children so arrowheads stay clearly visible
-                    if (!inactive && swapIds.includes(n.id)) {
-                        this.drawRotationArrow(cx, cy);
-                    }
-                },
-
-                drawRotationArrow(x, y) {
-                    const ctx = this.ctx;
-                    const r = this.nodeRadius + 15;
-                    const startX = x - r, startY = y + 10;
-                    const endX = x + r, endY = y + 10;
-                    const cpX = x, cpY = y + 70;
-
-                    ctx.beginPath();
-                    ctx.strokeStyle = COLORS.ARROW;
-                    ctx.lineWidth = 3;
-                    ctx.moveTo(startX, startY);
-                    ctx.quadraticCurveTo(cpX, cpY, endX, endY);
-                    ctx.stroke();
-
-                    const size = 13;
-                    const drawHead = (hx, hy, ang) => {
-                        ctx.save();
-                        ctx.translate(hx, hy);
-                        ctx.rotate(ang);
-                        ctx.beginPath();
-                        ctx.fillStyle = COLORS.ARROW;
-                        ctx.moveTo(0, 0);
-                        ctx.lineTo(-size, -size / 2.5);
-                        ctx.lineTo(-size, size / 2.5);
-                        ctx.closePath();
-                        ctx.fill();
-                        ctx.restore();
-                    };
-
-                    drawHead(endX, endY, Math.atan2(endY - cpY, endX - cpX));
-                    drawHead(startX, startY, Math.atan2(startY - cpY, startX - cpX));
-                },
-
-                drawNodeTooltip(node) {
-                    const ctx = this.ctx;
-                    const ok = node.leftWeight >= node.rightWeight;
-                    const statusTag = ok ? 'Leftist OK' : 'Violation (L < R)';
-                    const labelText = `Weight: ${node.weight} (L: ${node.leftWeight}, R: ${node.rightWeight}) | ${statusTag} | Depth: ${node.depth}`;
-                    const invScale = 1 / this.camera.scale;
-                    const tx = node.x;
-                    const ty = node.y - this.nodeRadius - (10 * invScale);
-
-                    ctx.save();
-                    ctx.translate(tx, ty);
-                    ctx.scale(invScale, invScale);
-
-                    ctx.font = '600 12.5px "Segoe UI", Arial, sans-serif';
-                    const metrics = ctx.measureText(labelText);
-                    const w = metrics.width + 18;
-                    const h = 26;
-
-                    ctx.shadowColor = 'rgba(0,0,0,0.28)';
-                    ctx.shadowBlur = 6;
-                    ctx.shadowOffsetY = 2;
-
-                    ctx.fillStyle = COLORS.TOOLTIP_BG;
-                    ctx.strokeStyle = COLORS.TOOLTIP_BORDER;
-                    ctx.lineWidth = 1;
-                    ctx.beginPath();
-                    ctx.roundRect(-w / 2, -h, w, h, 5);
-                    ctx.fill();
-                    ctx.stroke();
-
-                    ctx.shadowColor = 'rgba(0,0,0,0)';
-                    ctx.shadowBlur = 0;
-                    ctx.shadowOffsetY = 0;
-
-                    ctx.beginPath();
-                    ctx.moveTo(-6, -1);
-                    ctx.lineTo(6, -1);
-                    ctx.lineTo(0, 5);
-                    ctx.closePath();
-                    ctx.fillStyle = COLORS.TOOLTIP_BG;
-                    ctx.fill();
-
-                    ctx.fillStyle = ok ? COLORS.EDGE : '#D32F2F';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(labelText, 0, -h / 2);
-
-                    ctx.restore();
-                },
-
-                flatten(roots) {
-                    const list = [];
-                    const t = n => {
-                        if (!n) return;
-                        list.push(n);
-                        t(n.left);
-                        t(n.right);
-                    };
-                    roots.forEach(t);
-                    return list;
+                    this.viz.reset('Heap cleared. Ready.');
+                    this.updateUndoButton();
                 }
             };
 
