@@ -292,7 +292,7 @@
             border: 1px solid var(--border-color);
             border-radius: 6px;
             font-size: 0.78rem;
-            max-width: 220px;
+            max-width: 230px;
             z-index: 5;
         }
 
@@ -333,6 +333,131 @@
 
         .legend-item:last-child {
             margin-bottom: 0;
+        }
+
+        /* Mode-specific legend samples */
+        #legend .legend-struct-only {
+            display: none;
+        }
+
+        #legend.struct-mode .legend-circle-only {
+            display: none;
+        }
+
+        #legend.struct-mode .legend-struct-only {
+            display: flex;
+        }
+
+        .struct-sample {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            flex-shrink: 0;
+            font-family: Arial, sans-serif;
+            font-weight: 700;
+            font-size: 8px;
+            line-height: 1;
+        }
+
+        .struct-sample-extval {
+            width: 14px;
+            height: 16px;
+            background: #A8F5A8;
+            color: #C60000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-extval {
+            background: #235334;
+            color: #e6edf3;
+        }
+
+        .struct-sample-arrow {
+            width: 9px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1565C0;
+            font-size: 9px;
+            line-height: 1;
+        }
+
+        body.dark .struct-sample-arrow {
+            color: #58A6FF;
+        }
+
+        .struct-sample-strip {
+            display: inline-flex;
+            align-items: stretch;
+            gap: 1.5px;
+            height: 16px;
+        }
+
+        .struct-sample-elem {
+            width: 8px;
+            background: #D69EFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-elem {
+            background: #7E57C2;
+        }
+
+        .struct-sample-h {
+            width: 12px;
+            background: #FFF95B;
+            color: #C60000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-h {
+            background: #9E8C1C;
+            color: #FFFDE7;
+        }
+
+        .struct-sample-ptr {
+            width: 8px;
+            background: #9BF7FF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-ptr {
+            background: #1D6F8A;
+        }
+
+        .struct-sample-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #1565C0;
+        }
+
+        body.dark .struct-sample-dot {
+            background: #58A6FF;
+        }
+
+        .null-circle-icon {
+            width: 11px;
+            height: 14px;
+            background: #9BF7FF;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin: 0 1.5px;
+        }
+
+        body.dark .null-circle-icon {
+            background: #1D6F8A;
         }
 
         .dot {
@@ -574,7 +699,7 @@
             h1 { font-size: 0.98rem; }
             input[type="text"] { width: 110px; }
             .divider { display: none; }
-            #legend { max-width: 185px; font-size: 0.72rem; top: 8px; left: 8px; }
+            #legend { max-width: 195px; font-size: 0.72rem; top: 8px; left: 8px; }
             .status-meta { display: none; }
         }
     </style>
@@ -641,6 +766,9 @@
                 <label class="toggle-label" title="Automatically zoom &amp; center tree on operations">
                     <input type="checkbox" id="chkAutoFit" checked> Auto-Fit
                 </label>
+                <label class="toggle-label" title="Toggle between circular nodes and internal memory implementation view">
+                    <input type="checkbox" id="chkImplView"> Implementation
+                </label>
             </div>
         </div>
 
@@ -662,13 +790,26 @@
                 <button class="legend-toggle" id="btnToggleLegend" title="Collapse/Expand Legend">−</button>
             </div>
             <div class="legend-body">
-                <div class="legend-item">
+                <div class="legend-item legend-circle-only">
                     <div class="node-sample">
                         <span class="node-badge-l">0</span>
                         <span class="node-val">V</span>
                         <span class="node-badge-r">H</span>
                     </div>
                     <span>BF / Value / Height</span>
+                </div>
+                <div class="legend-item legend-struct-only">
+                    <div class="struct-sample">
+                        <div class="struct-sample-extval">V</div>
+                        <div class="struct-sample-arrow">&#8592;</div>
+                        <div class="struct-sample-strip">
+                            <div class="struct-sample-elem"><span class="struct-sample-dot"></span></div>
+                            <div class="struct-sample-h">H</div>
+                            <div class="struct-sample-ptr"><span class="struct-sample-dot"></span></div>
+                            <div class="struct-sample-ptr"><span class="struct-sample-dot"></span></div>
+                        </div>
+                    </div>
+                    <span>Val / Elem / H / L / R</span>
                 </div>
                 <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:1px solid #66BB6A"></div><span>Balanced Node</span></div>
                 <div class="legend-item"><div class="dot" style="background:#1E88E5;"></div><span>Visiting</span></div>
@@ -682,7 +823,8 @@
                 <div class="legend-item"><div class="line-icon" style="background:#AA00FF; height:4px;"></div><span>Unbalanced Path</span></div>
                 <div class="legend-item"><div class="arrow-icon">&#8635;</div><span>Rotation</span></div>
                 <div class="legend-item"><div class="arrow-icon">&#8594;</div><span>Value Replacement</span></div>
-                <div class="legend-item"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
+                <div class="legend-item legend-circle-only"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
+                <div class="legend-item legend-struct-only"><div class="null-circle-icon"><span class="struct-sample-dot"></span></div><span>Null Pointer</span></div>
             </div>
         </div>
 
@@ -739,6 +881,7 @@
 
             <h3>Tips &amp; Keyboard Shortcuts</h3>
             <ul>
+                <li><strong>Implementation View:</strong> Toggle the <strong>Implementation</strong> checkbox to inspect the internal memory-structure diagram (external green value box referenced by a purple pointer cell, yellow <code>height</code>, light-blue <code>left</code>/<code>right</code> pointer cells, and <code>root</code> reference).</li>
                 <li><strong>Batch Insert / Delete:</strong> Enter comma-separated numbers (e.g., <code>30, 10, 50, 20</code>).</li>
                 <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click/tap a node to copy its value, hover to highlight its subtree and inspect Balance Factor &amp; metrics.</li>
                 <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> Insert, <kbd>Space</kbd> Pause/Resume, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
@@ -784,7 +927,18 @@
                     PILL_BG: '#FFFFFF',
                     PILL_BORDER: '#CBD5E1',
                     PILL_TEXT: '#1E293B',
-                    RING_FOCUS: '#1976D2'
+                    RING_FOCUS: '#1976D2',
+                    /* Implementation memory-structure tokens */
+                    STRUCT_BORDER: '#334155',
+                    STRUCT_ELEM_PTR_BG: '#D69EFF',
+                    STRUCT_HEIGHT_BG: '#FFF95B',
+                    STRUCT_HEIGHT_TEXT: '#C60000',
+                    STRUCT_PTR_BG: '#9BF7FF',
+                    STRUCT_ROOT_BG: '#9BF7FF',
+                    STRUCT_ROOT_TEXT: '#1F2328',
+                    STRUCT_VAL_BG: '#A8F5A8',
+                    STRUCT_VAL_TEXT: '#C60000',
+                    STRUCT_ARROW: '#1565C0'
                 },
                 dark: {
                     BG_DOT: 'rgba(230, 237, 243, 0.09)',
@@ -816,7 +970,18 @@
                     PILL_BG: '#1F2630',
                     PILL_BORDER: '#444C56',
                     PILL_TEXT: '#E6EDF3',
-                    RING_FOCUS: '#58A6FF'
+                    RING_FOCUS: '#58A6FF',
+                    /* Implementation memory-structure tokens */
+                    STRUCT_BORDER: '#6E7681',
+                    STRUCT_ELEM_PTR_BG: '#7E57C2',
+                    STRUCT_HEIGHT_BG: '#9E8C1C',
+                    STRUCT_HEIGHT_TEXT: '#FFFDE7',
+                    STRUCT_PTR_BG: '#1D6F8A',
+                    STRUCT_ROOT_BG: '#1D6F8A',
+                    STRUCT_ROOT_TEXT: '#E6EDF3',
+                    STRUCT_VAL_BG: '#235334',
+                    STRUCT_VAL_TEXT: '#E6EDF3',
+                    STRUCT_ARROW: '#58A6FF'
                 }
             };
 
@@ -1391,8 +1556,21 @@
                     this.hasInitializedView = false;
                     this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
 
+                    // Standard circular node metrics
                     this.nodeRadius = 28;
                     this.levelHeight = 76;
+
+                    // Implementation 4-cell horizontal strip metrics + external value box
+                    this.structView = false;
+                    this.structPtrW = 18;
+                    this.structHeightW = 30;
+                    this.structCellGap = 2.5;
+                    this.structW = this.structPtrW * 3 + this.structHeightW + this.structCellGap * 3; // 91.5
+                    this.structH = 40;
+                    this.structValGap = 22;
+                    this.structValMinW = 34;
+                    this.structValH = 40;
+                    this.structLevelHeight = 104;
 
                     this.snapshots = [];
                     this.currentSnapshotIndex = 0;
@@ -1430,6 +1608,27 @@
                     this.resize();
                 }
 
+                get halfW() {
+                    return this.structView ? this.structW / 2 : this.nodeRadius;
+                }
+
+                get halfH() {
+                    return this.structView ? this.structH / 2 : this.nodeRadius;
+                }
+
+                get currentLevelHeight() {
+                    return this.structView ? this.structLevelHeight : this.levelHeight;
+                }
+
+                get currentTopOffset() {
+                    return this.structView ? 112 : 70;
+                }
+
+                getValBoxWidth(val) {
+                    const str = String(val);
+                    return Math.max(this.structValMinW, str.length * 10 + 14);
+                }
+
                 bindEvents() {
                     if (typeof ResizeObserver !== 'undefined' && this.container) {
                         this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -1465,6 +1664,34 @@
 
                 setAutoFit(enabled) {
                     this.autoFit = enabled;
+                    if (enabled) {
+                        this.fitCurrentTree();
+                    }
+                }
+
+                /**
+                 * Toggle between circular-node view and AVLSet memory-structure view.
+                 * Recalculates layouts and bounds across all active snapshots so switching works smoothly even mid-animation.
+                 */
+                setStructView(enabled) {
+                    this.structView = Boolean(enabled);
+                    if (this.snapshots.length > 0) {
+                        const rootCache = new Map();
+                        this.snapshots.forEach(s => {
+                            if (!rootCache.has(s.root)) {
+                                const layout = this.calculateLayout(s.root);
+                                const bounds = this.getTreeBounds(s.root, layout);
+                                rootCache.set(s.root, { layout, bounds });
+                            }
+                            const cached = rootCache.get(s.root);
+                            s.layout = cached.layout;
+                            s.bounds = cached.bounds;
+                        });
+                    }
+                    if (this.autoFit) {
+                        this.fitCurrentTree();
+                    }
+                    this.requestRender();
                 }
 
                 setSpeed(mult) {
@@ -1510,8 +1737,24 @@
                         const n = this.lastDrawnNodes[i];
                         const sx = n.x * this.camera.scale + this.camera.x;
                         const sy = n.y * this.camera.scale + this.camera.y;
-                        const r = this.nodeRadius * this.camera.scale;
-                        if (Math.hypot(mx - sx, my - sy) < r) return n;
+                        if (this.structView) {
+                            const sc = n.scale * this.camera.scale;
+                            const hw = (this.structW / 2) * sc;
+                            const hh = (this.structH / 2) * sc;
+                            // Hit-test 2x2 node box
+                            if (Math.abs(mx - sx) <= hw && Math.abs(my - sy) <= hh) return n;
+                            // Hit-test external green value box to the left of the top-left cell
+                            const valW = this.getValBoxWidth(n.value) * sc;
+                            const gap = this.structValGap * sc;
+                            const valLeft = sx - hw - gap - valW;
+                            const valRight = sx - hw - gap;
+                            const valTop = sy - hh;
+                            const valBottom = sy - hh + this.structValH * sc;
+                            if (mx >= valLeft && mx <= valRight && my >= valTop && my <= valBottom) return n;
+                        } else {
+                            const r = this.nodeRadius * n.scale * this.camera.scale;
+                            if (Math.hypot(mx - sx, my - sy) < r) return n;
+                        }
                     }
                     return null;
                 }
@@ -1615,7 +1858,7 @@
                 }
 
                 zoomAt(newScale, anchorX, anchorY) {
-                    newScale = Math.min(Math.max(0.15, newScale), 4.5);
+                    newScale = Math.min(Math.max(0.08, newScale), 4.5);
                     const worldX = (anchorX - this.camera.targetX) / this.camera.targetScale;
                     const worldY = (anchorY - this.camera.targetY) / this.camera.targetScale;
                     this.camera.targetScale = newScale;
@@ -1718,13 +1961,16 @@
                     if (!root) return layout;
 
                     let order = 0;
-                    const spacingX = this.nodeRadius * 2.65;
+                    const spacingX = this.structView ? 162 : (this.nodeRadius * 2.65);
+                    const lvlH = this.currentLevelHeight;
+                    const topOff = this.currentTopOffset;
+
                     const traverse = (node, depth) => {
                         if (!node) return;
                         traverse(node.left, depth + 1);
                         layout.set(node.id, {
                             x: order * spacingX,
-                            y: depth * this.levelHeight + 70
+                            y: depth * lvlH + topOff
                         });
                         order++;
                         traverse(node.right, depth + 1);
@@ -1755,25 +2001,58 @@
                 getTreeBounds(root, layout) {
                     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
                     let hasNodes = false;
-                    layout.forEach(pos => {
-                        hasNodes = true;
-                        minX = Math.min(minX, pos.x - this.nodeRadius);
-                        maxX = Math.max(maxX, pos.x + this.nodeRadius);
-                        minY = Math.min(minY, pos.y - this.nodeRadius);
-                        maxY = Math.max(maxY, pos.y + this.nodeRadius);
-                    });
+                    const hw = this.halfW;
+                    const hh = this.halfH;
+
+                    const walk = (node, isRoot) => {
+                        if (!node) return;
+                        const pos = layout.get(node.id);
+                        if (pos) {
+                            hasNodes = true;
+                            const extLeft = this.structView
+                                ? (this.structValGap + this.getValBoxWidth(node.value) + 6)
+                                : 0;
+                            minX = Math.min(minX, pos.x - hw - extLeft);
+                            maxX = Math.max(maxX, pos.x + hw);
+                            minY = Math.min(minY, pos.y - hh);
+                            maxY = Math.max(maxY, pos.y + hh);
+
+                            if (isRoot && this.structView) {
+                                // Account for the "root" label and cyan reference box above the root node
+                                minY = Math.min(minY, pos.y - hh - 88);
+                                minX = Math.min(minX, pos.x - 66);
+                            }
+                        }
+                        walk(node.left, false);
+                        walk(node.right, false);
+                    };
+
+                    walk(root, true);
                     return { minX, maxX, minY, maxY, hasNodes };
+                }
+
+                mergeBounds(b1, b2) {
+                    if (!b1 || !b1.hasNodes) return b2 || { hasNodes: false };
+                    if (!b2 || !b2.hasNodes) return b1;
+                    return {
+                        minX: Math.min(b1.minX, b2.minX),
+                        maxX: Math.max(b1.maxX, b2.maxX),
+                        minY: Math.min(b1.minY, b2.minY),
+                        maxY: Math.max(b1.maxY, b2.maxY),
+                        hasNodes: true
+                    };
                 }
 
                 getFloatingPos(snap, floating) {
                     if (!floating || !snap || !snap.layout) return null;
                     const targetPos = snap.layout.get(floating.targetId);
                     if (!targetPos) return null;
+                    const hh = this.halfH;
 
                     if (floating.pillOnly) {
                         return {
                             x: targetPos.x,
-                            y: targetPos.y - this.nodeRadius - 18,
+                            y: targetPos.y - hh - 18,
                             targetX: targetPos.x,
                             targetY: targetPos.y
                         };
@@ -1782,8 +2061,8 @@
                     if (floating.isNullTarget) {
                         const dir = floating.side === 'L' ? -1 : 1;
                         return {
-                            x: targetPos.x + dir * 44,
-                            y: targetPos.y + 88,
+                            x: targetPos.x + dir * (this.structView ? 64 : 44),
+                            y: targetPos.y + (this.structView ? 92 : 88),
                             targetX: targetPos.x,
                             targetY: targetPos.y
                         };
@@ -1791,7 +2070,7 @@
 
                     return {
                         x: targetPos.x,
-                        y: targetPos.y - this.nodeRadius * 2.15,
+                        y: targetPos.y - (this.structView ? hh + 46 : this.nodeRadius * 2.15),
                         targetX: targetPos.x,
                         targetY: targetPos.y
                     };
@@ -1814,18 +2093,18 @@
                         this.camera.targetY = 60;
                         return;
                     }
-                    const padX = Math.min(180, this.viewWidth * 0.18);
-                    const padY = 140;
-                    const treeW = (bounds.maxX - bounds.minX) + padX;
-                    const treeH = (bounds.maxY - bounds.minY) + padY;
-                    const scale = Math.min(1.25, Math.max(0.2, Math.min(this.viewWidth / treeW, this.viewHeight / treeH)));
+                    const padX = Math.min(120, this.viewWidth * 0.12);
+                    const padY = 90;
+                    const treeW = Math.max(1, (bounds.maxX - bounds.minX) + padX);
+                    const treeH = Math.max(1, (bounds.maxY - bounds.minY) + padY);
+                    const scale = Math.min(1.25, Math.max(0.08, Math.min(this.viewWidth / treeW, this.viewHeight / treeH)));
                     const treeCX = (bounds.minX + bounds.maxX) / 2;
                     const treeCY = (bounds.minY + bounds.maxY) / 2;
 
                     this.camera.targetScale = scale;
                     this.camera.targetX = (this.viewWidth / 2) - (treeCX * scale);
                     if (treeH * scale < this.viewHeight * 0.72) {
-                        this.camera.targetY = 75;
+                        this.camera.targetY = 48 - (bounds.minY * scale);
                     } else {
                         this.camera.targetY = (this.viewHeight / 2) - (treeCY * scale);
                     }
@@ -1881,10 +2160,6 @@
                         Boolean(this.snapshots[this.currentSnapshotIndex]?.root);
                     const startedFromEmpty = !prevHadNodes || !prepared[0].root;
 
-                    if (this.autoFit || startedFromEmpty) {
-                        this.fitBoundsToScreen({ minX: gMinX, maxX: gMaxX, minY: gMinY, maxY: gMaxY, hasNodes });
-                    }
-
                     this.snapshots = prepared;
                     this.currentSnapshotIndex = 0;
                     this.morphProgress = 0;
@@ -1898,11 +2173,22 @@
                         this.currentSnapshotIndex = prepared.length - 1;
                         this.state = 'IDLE';
                         const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit || startedFromEmpty) {
+                            this.fitBoundsToScreen(last.bounds);
+                        }
                         if (last.text) this.setStatus(last.text);
                         this.notifySnapshot(last);
                         this.notifyState();
                         this.requestRender();
                         return;
+                    }
+
+                    if (this.autoFit || startedFromEmpty) {
+                        const firstActive = prepared.find(s => s.bounds && s.bounds.hasNodes);
+                        const initialBounds = firstActive
+                            ? this.mergeBounds(prepared[0].bounds, firstActive.bounds)
+                            : { minX: gMinX, maxX: gMaxX, minY: gMinY, maxY: gMaxY, hasNodes };
+                        this.fitBoundsToScreen(initialBounds);
                     }
 
                     this.notifySnapshot(this.snapshots[0]);
@@ -1926,7 +2212,11 @@
                         this.notifyState();
                         return;
                     }
+                    const cur = this.snapshots[this.currentSnapshotIndex];
                     const next = this.snapshots[this.currentSnapshotIndex + 1];
+                    if (this.autoFit) {
+                        this.fitBoundsToScreen(this.mergeBounds(cur.bounds, next.bounds));
+                    }
                     if (next.text) this.setStatus(next.text);
                     this.state = 'MORPH';
                     this.morphProgress = 0;
@@ -1973,6 +2263,9 @@
                         this.state = 'IDLE';
                         this.singleStepTarget = null;
                         const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit && last) {
+                            this.fitBoundsToScreen(last.bounds);
+                        }
                         this.setStatus(last.text || 'Ready.');
                         this.notifySnapshot(last);
                         this.notifyState();
@@ -1999,6 +2292,9 @@
                     }
 
                     const cur = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit && cur) {
+                        this.fitBoundsToScreen(cur.bounds);
+                    }
                     this.setStatus(cur.text || `Step ${this.currentSnapshotIndex + 1}`);
                     this.notifySnapshot(cur);
                     this.notifyState();
@@ -2014,6 +2310,9 @@
                     this.pauseTimer = 0;
                     this.state = 'IDLE';
                     const last = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit && last) {
+                        this.fitBoundsToScreen(last.bounds);
+                    }
                     this.setStatus(last.text || 'Ready.');
                     this.notifySnapshot(last);
                     this.notifyState();
@@ -2105,6 +2404,9 @@
                         this.startMorphStep();
                     } else {
                         this.state = 'IDLE';
+                        if (this.autoFit && cur) {
+                            this.fitBoundsToScreen(cur.bounds);
+                        }
                         this.setStatus(cur?.text || 'Ready.');
                         this.notifyState();
                     }
@@ -2142,13 +2444,16 @@
                         if (n.depth > maxDepth) maxDepth = n.depth;
                     });
 
+                    const lvlH = this.currentLevelHeight;
+                    const topOff = this.currentTopOffset;
+
                     ctx.save();
                     ctx.font = '600 10px monospace';
                     ctx.textAlign = 'right';
                     ctx.textBaseline = 'middle';
 
                     for (let d = 0; d <= maxDepth; d++) {
-                        const worldY = d * this.levelHeight + 70;
+                        const worldY = d * lvlH + topOff;
                         const screenY = worldY * this.camera.scale + this.camera.y;
                         if (screenY < -10 || screenY > this.viewHeight + 10) continue;
 
@@ -2185,6 +2490,350 @@
                     };
                 }
 
+                /**
+                 * Draw a sleek curved arrowhead at (x, y) oriented along `angle`.
+                 */
+                drawCurvedArrowHead(x, y, angle, col = this.theme.STRUCT_ARROW, head = 13) {
+                    const c = this.ctx;
+                    c.save();
+                    c.fillStyle = col;
+                    c.translate(x, y);
+                    c.rotate(angle);
+                    c.beginPath();
+                    c.moveTo(0, 0);
+                    c.lineTo(-head * 1.4, -head / 2);
+                    c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2);
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                }
+
+                /**
+                 * Draw a straight arrow with the sleek curved arrowhead style.
+                 */
+                arrow(x1, y1, x2, y2, col = this.theme.STRUCT_ARROW, alpha = 1, lineWidth = 2.6, head = 13) {
+                    if (Math.hypot(x2 - x1, y2 - y1) < 3) return;
+                    const c = this.ctx;
+                    c.save();
+                    c.globalAlpha *= alpha;
+                    c.strokeStyle = col;
+                    c.fillStyle = col;
+                    c.lineWidth = lineWidth;
+                    const a = Math.atan2(y2 - y1, x2 - x1);
+                    const shorten = head * 0.8;
+                    c.beginPath();
+                    c.moveTo(x1, y1);
+                    c.lineTo(x2 - shorten * Math.cos(a), y2 - shorten * Math.sin(a));
+                    c.stroke();
+                    c.translate(x2, y2);
+                    c.rotate(a);
+                    c.beginPath();
+                    c.moveTo(0, 0);
+                    c.lineTo(-head * 1.4, -head / 2);
+                    c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2);
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                }
+
+                /**
+                 * Draw a pointer arrow from a parent's left/right cyan pointer cell
+                 * to the top-center of the child's 4-cell strip.
+                 * Exits vertically downward out of the cyan cell before turning toward the child
+                 * so links never cross over the yellow height cell.
+                 */
+                drawStructPointerEdge(n, pNode, strokeColor, lineWidth, edgeAlpha) {
+                    const ctx = this.ctx;
+                    const pScale = pNode ? pNode.scale : 1;
+                    const halfW = this.structW / 2;
+                    const halfH = (this.structH / 2) * pScale;
+                    const gap = this.structCellGap;
+                    const ptrW = this.structPtrW;
+                    const hW = this.structHeightW;
+
+                    // Cell 3 (left ptr) and Cell 4 (right ptr) horizontal centers relative to parent center
+                    const leftCellCenterX = -halfW + ptrW + gap + hW + gap + ptrW / 2;
+                    const rightCellCenterX = leftCellCenterX + ptrW + gap;
+                    const cellXOffset = (n.side === 'L' ? leftCellCenterX : rightCellCenterX) * pScale;
+
+                    const x1 = n.parentX + cellXOffset;
+                    const y1 = n.parentY;
+                    const x2 = n.x;
+                    const y2 = n.y - (this.structH / 2) * n.scale - 3;
+
+                    const dxTotal = x2 - x1;
+                    const dyTotal = y2 - y1;
+                    if (Math.hypot(dxTotal, dyTotal) < 3) return;
+
+                    const exitY = y1 + halfH + 8 * pScale;
+                    const useVerticalExit = y2 > exitY + 12;
+
+                    const angle = useVerticalExit
+                        ? Math.atan2(y2 - exitY, x2 - x1)
+                        : Math.atan2(dyTotal, dxTotal);
+                    const head = Math.min(15, Math.max(11, lineWidth * 4.8));
+                    const shorten = head * 0.8;
+                    const lineEndX = x2 - Math.cos(angle) * shorten;
+                    const lineEndY = y2 - Math.sin(angle) * shorten;
+
+                    ctx.save();
+                    ctx.globalAlpha = edgeAlpha;
+
+                    // Arrow shaft: vertical drop past the bottom edge of the cyan cell + smooth bend
+                    ctx.beginPath();
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = lineWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.moveTo(x1, y1);
+
+                    if (useVerticalExit) {
+                        const dxOut = lineEndX - x1;
+                        const dyOut = lineEndY - exitY;
+                        const lenOut = Math.hypot(dxOut, dyOut) || 1;
+                        const bend = Math.min(8 * pScale, lenOut * 0.35);
+                        const p1Y = exitY - bend; // >= y1 + halfH, so the bend starts strictly below the node
+                        const p2X = x1 + (dxOut / lenOut) * bend;
+                        const p2Y = exitY + (dyOut / lenOut) * bend;
+
+                        ctx.lineTo(x1, p1Y);
+                        ctx.quadraticCurveTo(x1, exitY, p2X, p2Y);
+                        ctx.lineTo(lineEndX, lineEndY);
+                    } else {
+                        ctx.lineTo(lineEndX, lineEndY);
+                    }
+                    ctx.stroke();
+
+                    // Sleek curved arrowhead at top-center of child strip
+                    this.drawCurvedArrowHead(x2, y2, angle, strokeColor, head);
+
+                    // Pointer origin dot inside parent's cyan cell (always solid link blue)
+                    ctx.beginPath();
+                    ctx.fillStyle = this.theme.STRUCT_ARROW;
+                    ctx.arc(x1, y1, 4.2 * pScale, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+
+                /**
+                 * Draw the tall narrow cyan `root` reference box above the root node
+                 * with a solid blue dot (and downward arrow when non-empty).
+                 */
+                drawRootPointer(rootNode, canDimHover) {
+                    const ctx = this.ctx;
+                    const boxW = this.structPtrW;
+                    const boxH = this.structH;
+                    let rx = 0;
+                    let ry = 70;
+                    let alpha = 1;
+
+                    if (rootNode) {
+                        rx = rootNode.x;
+                        ry = rootNode.y - (this.structH / 2) * rootNode.scale - 58;
+                        alpha = rootNode.alpha;
+                        if (canDimHover && !this.hoveredSubtreeIds.has(rootNode.id)) {
+                            alpha *= 0.35;
+                        }
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+
+                    // Monospace "root" label to the left of the cyan box
+                    ctx.font = '600 15px Consolas, "Courier New", monospace';
+                    ctx.fillStyle = this.theme.STRUCT_ROOT_TEXT;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('root', rx - boxW / 2 - 7, ry + 0.5);
+
+                    // Flat cyan reference box (no border)
+                    ctx.fillStyle = this.theme.STRUCT_ROOT_BG;
+                    ctx.fillRect(rx - boxW / 2, ry - boxH / 2, boxW, boxH);
+
+                    if (rootNode) {
+                        const targetX = rootNode.x;
+                        const targetY = rootNode.y - (this.structH / 2) * rootNode.scale - 3;
+                        this.arrow(rx, ry, targetX, targetY, this.theme.STRUCT_ARROW, 1, 2.5, 13);
+                    }
+
+                    // Solid blue dot in center of root box (both when non-empty and when null)
+                    ctx.beginPath();
+                    ctx.fillStyle = this.theme.STRUCT_ARROW;
+                    ctx.arc(rx, ry, 4.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+
+                /**
+                 * Draw an AVL node in Implementation memory-structure view:
+                 * External green value box <- arrow <- [purple elem ptr | yellow height | cyan left ptr | cyan right ptr]
+                 */
+                drawStructNode(x, y, val, colorKey, scale = 1, alpha = 1, isFloating = false, height = null, bf = null, isHovered = false, hasLeft = false, hasRight = false, activeNull = null) {
+                    if (scale <= 0.02 || alpha <= 0.02) return;
+                    const ctx = this.ctx;
+                    const w = this.structW;
+                    const h = this.structH;
+                    const halfW = w / 2;
+                    const halfH = h / 2;
+                    const ptrW = this.structPtrW;
+                    const hW = this.structHeightW;
+                    const gap = this.structCellGap;
+
+                    const valW = this.getValBoxWidth(val);
+                    const valH = this.structValH;
+                    const valLeft = -halfW - this.structValGap - valW;
+                    const valTop = -halfH;
+
+                    const xElem = -halfW;
+                    const xHeight = xElem + ptrW + gap;
+                    const xLeft = xHeight + hW + gap;
+                    const xRight = xLeft + ptrW + gap;
+
+                    const isHighlighted = colorKey !== 'DEFAULT';
+                    let valFill = this.theme.STRUCT_VAL_BG;
+                    let valTextCol = this.theme.STRUCT_VAL_TEXT;
+
+                    if (isHighlighted) {
+                        valFill = this.theme[colorKey] || this.theme.DEFAULT;
+                        if (colorKey === 'CHECK') {
+                            valTextCol = this.theme.CHECK_TEXT;
+                        } else if (colorKey === 'CHILD') {
+                            valTextCol = this.theme.CHILD_TEXT;
+                        } else if (colorKey === 'FOUND') {
+                            valTextCol = this.theme.FOUND_TEXT;
+                        } else {
+                            valTextCol = '#FFFFFF';
+                        }
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(x, y);
+                    ctx.scale(scale, scale);
+
+                    // Hover focus ring around the 4-cell strip
+                    if (isHovered) {
+                        ctx.strokeStyle = this.theme.RING_FOCUS;
+                        ctx.lineWidth = 2.5;
+                        ctx.strokeRect(-halfW - 4, -halfH - 4, w + 8, h + 8);
+                    }
+
+                    // Subtle highlight outline around strip during active animation states
+                    if (isHighlighted && !isFloating) {
+                        ctx.strokeStyle = valFill;
+                        ctx.lineWidth = 2.5;
+                        ctx.strokeRect(-halfW - 2.5, -halfH - 2.5, w + 5, h + 5);
+                    }
+
+                    // 1. External green value box
+                    ctx.fillStyle = valFill;
+                    ctx.fillRect(valLeft, valTop, valW, valH);
+
+                    const str = String(val);
+                    const valFontSize = str.length <= 2 ? 20 : str.length === 3 ? 16 : str.length === 4 ? 13 : 11;
+                    ctx.fillStyle = valTextCol;
+                    ctx.font = `600 ${valFontSize}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(str, valLeft + valW / 2, 1);
+
+                    // 2. Cell 1: Purple element pointer
+                    ctx.fillStyle = this.theme.STRUCT_ELEM_PTR_BG;
+                    ctx.fillRect(xElem, -halfH, ptrW, h);
+
+                    // Blue pointer dot in purple cell + horizontal blue arrow to external value box
+                    const dotX = xElem + ptrW / 2;
+                    const dotY = 0;
+                    const arrowTipX = valLeft + valW + 2;
+
+                    this.arrow(dotX, dotY, arrowTipX, dotY, this.theme.STRUCT_ARROW, 1, 2.2, 10);
+
+                    ctx.beginPath();
+                    ctx.fillStyle = this.theme.STRUCT_ARROW;
+                    ctx.arc(dotX, dotY, 4.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 3. Cell 2: Yellow height cell
+                    ctx.fillStyle = this.theme.STRUCT_HEIGHT_BG;
+                    ctx.fillRect(xHeight, -halfH, hW, h);
+                    if (height !== null && height !== undefined) {
+                        ctx.fillStyle = this.theme.STRUCT_HEIGHT_TEXT;
+                        ctx.font = '600 20px "Segoe UI", Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(String(height), xHeight + hW / 2, 1);
+                    }
+
+                    // 4. Cell 3 & Cell 4: Cyan left and right pointer cells
+                    ctx.fillStyle = this.theme.STRUCT_PTR_BG;
+                    ctx.fillRect(xLeft, -halfH, ptrW, h);
+                    ctx.fillRect(xRight, -halfH, ptrW, h);
+
+                    // Draw solid blue dots for null pointers (non-null dots are drawn on top of edge origins)
+                    const drawPtrDot = (cx, side, hasChild) => {
+                        const isActiveNull = Boolean(!hasChild && activeNull && activeNull.side === side);
+                        if (!hasChild && (this.showNulls || isActiveNull)) {
+                            const dotCol = isActiveNull ? this.theme[activeNull.colorKey] : this.theme.STRUCT_ARROW;
+                            ctx.beginPath();
+                            ctx.fillStyle = dotCol;
+                            ctx.arc(cx, 0, isActiveNull ? 5.2 : 4.2, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            if (isActiveNull) {
+                                ctx.font = '700 9.5px monospace';
+                                const label = 'null';
+                                const lw = ctx.measureText(label).width + 10;
+                                const lh = 15;
+                                const lx = cx - lw / 2;
+                                const ly = halfH + 5;
+
+                                ctx.fillStyle = this.theme.PILL_BG;
+                                ctx.strokeStyle = dotCol;
+                                ctx.lineWidth = 1.4;
+                                ctx.beginPath();
+                                ctx.roundRect(lx, ly, lw, lh, 4);
+                                ctx.fill();
+                                ctx.stroke();
+
+                                ctx.fillStyle = dotCol;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(label, cx, ly + lh / 2);
+                            }
+                        }
+                    };
+
+                    drawPtrDot(xLeft + ptrW / 2, 'L', hasLeft);
+                    drawPtrDot(xRight + ptrW / 2, 'R', hasRight);
+
+                    // Optional Balance Factor badge (top-right corner of strip)
+                    if (this.showBalanceFactor && bf !== null && bf !== undefined) {
+                        const br = 10;
+                        const bbx = halfW + 2;
+                        const bby = -halfH - 2;
+                        const bfColor = Math.abs(bf) > 1
+                            ? this.theme.BF_UNBALANCED
+                            : bf === 0 ? this.theme.BF_BALANCED : this.theme.BF_TILT;
+                        const bfText = bf > 0 ? `+${bf}` : `${bf}`;
+                        ctx.beginPath();
+                        ctx.arc(bbx, bby, br, 0, Math.PI * 2);
+                        ctx.fillStyle = this.theme.BADGE_BG;
+                        ctx.fill();
+                        ctx.strokeStyle = bfColor;
+                        ctx.lineWidth = 1.3;
+                        ctx.stroke();
+                        ctx.fillStyle = bfColor;
+                        ctx.font = 'bold 9.5px Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(bfText, bbx, bby + 0.5);
+                    }
+
+                    ctx.restore();
+                }
+
                 draw() {
                     const ctx = this.ctx;
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -2197,6 +2846,15 @@
 
                     if (this.snapshots.length === 0) {
                         ctx.restore();
+                        if (this.structView) {
+                            ctx.save();
+                            ctx.setTransform(
+                                this.dpr * this.camera.scale, 0, 0, this.dpr * this.camera.scale,
+                                this.dpr * this.camera.x, this.dpr * this.camera.y
+                            );
+                            this.drawRootPointer(null, false);
+                            ctx.restore();
+                        }
                         return;
                     }
 
@@ -2221,7 +2879,7 @@
                             if (posB) {
                                 const isPillOnly = Boolean(snapB.floating.pillOnly);
                                 let startX = posB.x;
-                                let startY = isPillOnly ? posB.y - 14 : posB.targetY - this.nodeRadius * 3.5;
+                                let startY = isPillOnly ? posB.y - 14 : posB.targetY - this.halfH * 3.5;
                                 let alpha = Math.min(1, t * 1.4);
 
                                 if (snapA.floating) {
@@ -2343,115 +3001,173 @@
                     const canDimHover = (this.state === 'IDLE' || this.isPaused) &&
                         this.hoveredNode && this.hoveredSubtreeIds;
 
-                    // 3a. Standard edges (with fade & hover subtree dimming)
-                    nodesToDraw.forEach(n => {
-                        if (n.parentX === undefined) return;
-                        const edgeKey = `${n.parentId}->${n.id}`;
-                        if (pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+                    if (this.structView) {
+                        // In Implementation view, draw nodes first, then pointer arrows on top so dots sit cleanly inside cyan cells
+                        const rootNode = nodesToDraw.find(n => n.parentId === null) || null;
+                        this.drawRootPointer(rootNode, canDimHover);
 
-                        const pNode = nodeMap.get(n.parentId);
-                        let edgeAlpha = n.edgeAlpha !== undefined
-                            ? n.edgeAlpha
-                            : (pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha);
-                        if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
-                            edgeAlpha *= 0.25;
-                        }
+                        nodesToDraw.forEach(n => {
+                            let nodeAlpha = n.alpha;
+                            const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                nodeAlpha *= 0.35;
+                            }
+                            const nodeActiveNull = activeNull && activeNull.nodeId === n.id ? activeNull : null;
+                            this.drawStructNode(
+                                n.x, n.y, n.value, n.colorKey,
+                                n.scale, nodeAlpha, false, n.height, n.bf, isHovered,
+                                n.hasLeft, n.hasRight, nodeActiveNull
+                            );
+                        });
 
-                        const seg = this.getEdgeSegment(n, pNode);
-                        if (!seg) return;
-
-                        ctx.save();
-                        ctx.globalAlpha = edgeAlpha;
-                        ctx.beginPath();
-                        ctx.strokeStyle = this.theme.EDGE;
-                        ctx.lineWidth = 2.5;
-                        ctx.moveTo(seg.x1, seg.y1);
-                        ctx.lineTo(seg.x2, seg.y2);
-                        ctx.stroke();
-                        ctx.restore();
-                    });
-
-                    // 3b. Active traversed path edges
-                    if (pathEdgeSet.size > 0) {
+                        // Standard pointer edges
                         nodesToDraw.forEach(n => {
                             if (n.parentX === undefined) return;
                             const edgeKey = `${n.parentId}->${n.id}`;
-                            if (!pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+                            if (pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
 
                             const pNode = nodeMap.get(n.parentId);
+                            let edgeAlpha = n.edgeAlpha !== undefined
+                                ? n.edgeAlpha
+                                : (pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha);
+                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
+                                edgeAlpha *= 0.25;
+                            }
+                            this.drawStructPointerEdge(n, pNode, this.theme.STRUCT_ARROW, 2.5, edgeAlpha);
+                        });
+
+                        // Active traversed path pointer edges
+                        if (pathEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                const edgeKey = `${n.parentId}->${n.id}`;
+                                if (!pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+                                const pNode = nodeMap.get(n.parentId);
+                                const edgeAlpha = n.edgeAlpha !== undefined ? n.edgeAlpha : n.alpha;
+                                this.drawStructPointerEdge(n, pNode, this.theme.PATH_EDGE, 3.6, edgeAlpha);
+                            });
+                        }
+
+                        // Unbalanced 3-node path pointer edges
+                        if (unbalancedEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                if (!unbalancedEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+                                const pNode = nodeMap.get(n.parentId);
+                                this.drawStructPointerEdge(n, pNode, this.theme.UNBALANCED_EDGE, 4.2, 1);
+                            });
+                        }
+                    } else {
+                        // 3a. Standard edges (with fade & hover subtree dimming)
+                        nodesToDraw.forEach(n => {
+                            if (n.parentX === undefined) return;
+                            const edgeKey = `${n.parentId}->${n.id}`;
+                            if (pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+
+                            const pNode = nodeMap.get(n.parentId);
+                            let edgeAlpha = n.edgeAlpha !== undefined
+                                ? n.edgeAlpha
+                                : (pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha);
+                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
+                                edgeAlpha *= 0.25;
+                            }
+
                             const seg = this.getEdgeSegment(n, pNode);
                             if (!seg) return;
 
-                            const edgeAlpha = n.edgeAlpha !== undefined ? n.edgeAlpha : n.alpha;
                             ctx.save();
                             ctx.globalAlpha = edgeAlpha;
                             ctx.beginPath();
-                            ctx.strokeStyle = this.theme.PATH_EDGE;
-                            ctx.lineWidth = 4.5;
-                            ctx.lineCap = 'round';
+                            ctx.strokeStyle = this.theme.EDGE;
+                            ctx.lineWidth = 2.5;
                             ctx.moveTo(seg.x1, seg.y1);
                             ctx.lineTo(seg.x2, seg.y2);
                             ctx.stroke();
                             ctx.restore();
                         });
-                    }
 
-                    // 3c. Unbalanced 3-node path highlight (purple)
-                    if (unbalancedEdgeSet.size > 0) {
+                        // 3b. Active traversed path edges
+                        if (pathEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                const edgeKey = `${n.parentId}->${n.id}`;
+                                if (!pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+
+                                const pNode = nodeMap.get(n.parentId);
+                                const seg = this.getEdgeSegment(n, pNode);
+                                if (!seg) return;
+
+                                const edgeAlpha = n.edgeAlpha !== undefined ? n.edgeAlpha : n.alpha;
+                                ctx.save();
+                                ctx.globalAlpha = edgeAlpha;
+                                ctx.beginPath();
+                                ctx.strokeStyle = this.theme.PATH_EDGE;
+                                ctx.lineWidth = 4.5;
+                                ctx.lineCap = 'round';
+                                ctx.moveTo(seg.x1, seg.y1);
+                                ctx.lineTo(seg.x2, seg.y2);
+                                ctx.stroke();
+                                ctx.restore();
+                            });
+                        }
+
+                        // 3c. Unbalanced 3-node path highlight (purple)
+                        if (unbalancedEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                if (!unbalancedEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+
+                                const pNode = nodeMap.get(n.parentId);
+                                const seg = this.getEdgeSegment(n, pNode);
+                                if (!seg) return;
+
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.strokeStyle = this.theme.UNBALANCED_EDGE;
+                                ctx.lineWidth = 5.5;
+                                ctx.lineCap = 'round';
+                                ctx.moveTo(seg.x1, seg.y1);
+                                ctx.lineTo(seg.x2, seg.y2);
+                                ctx.stroke();
+                                ctx.restore();
+                            });
+                        }
+
+                        // 3d. Null Links
                         nodesToDraw.forEach(n => {
-                            if (n.parentX === undefined) return;
-                            if (!unbalancedEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+                            let baseAlpha = n.alpha;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                baseAlpha *= 0.25;
+                            }
+                            if (!n.hasLeft) {
+                                const isActive = Boolean(activeNull && activeNull.nodeId === n.id && activeNull.side === 'L');
+                                if (this.showNulls || isActive) {
+                                    const col = isActive ? this.theme[activeNull.colorKey] : this.theme.NULL_LINK;
+                                    this.drawNullLink(n.x, n.y, 'L', col, isActive, baseAlpha);
+                                }
+                            }
+                            if (!n.hasRight) {
+                                const isActive = Boolean(activeNull && activeNull.nodeId === n.id && activeNull.side === 'R');
+                                if (this.showNulls || isActive) {
+                                    const col = isActive ? this.theme[activeNull.colorKey] : this.theme.NULL_LINK;
+                                    this.drawNullLink(n.x, n.y, 'R', col, isActive, baseAlpha);
+                                }
+                            }
+                        });
 
-                            const pNode = nodeMap.get(n.parentId);
-                            const seg = this.getEdgeSegment(n, pNode);
-                            if (!seg) return;
-
-                            ctx.save();
-                            ctx.beginPath();
-                            ctx.strokeStyle = this.theme.UNBALANCED_EDGE;
-                            ctx.lineWidth = 5.5;
-                            ctx.lineCap = 'round';
-                            ctx.moveTo(seg.x1, seg.y1);
-                            ctx.lineTo(seg.x2, seg.y2);
-                            ctx.stroke();
-                            ctx.restore();
+                        // 3e. Nodes (flat circles with Height badge and optional BF badge)
+                        nodesToDraw.forEach(n => {
+                            let nodeAlpha = n.alpha;
+                            const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                nodeAlpha *= 0.35;
+                            }
+                            this.drawNodeCircle(
+                                n.x, n.y, n.value, n.colorKey,
+                                n.scale, nodeAlpha, false, n.height, n.bf, isHovered
+                            );
                         });
                     }
-
-                    // 3d. Null Links
-                    nodesToDraw.forEach(n => {
-                        let baseAlpha = n.alpha;
-                        if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
-                            baseAlpha *= 0.25;
-                        }
-                        if (!n.hasLeft) {
-                            const isActive = Boolean(activeNull && activeNull.nodeId === n.id && activeNull.side === 'L');
-                            if (this.showNulls || isActive) {
-                                const col = isActive ? this.theme[activeNull.colorKey] : this.theme.NULL_LINK;
-                                this.drawNullLink(n.x, n.y, 'L', col, isActive, baseAlpha);
-                            }
-                        }
-                        if (!n.hasRight) {
-                            const isActive = Boolean(activeNull && activeNull.nodeId === n.id && activeNull.side === 'R');
-                            if (this.showNulls || isActive) {
-                                const col = isActive ? this.theme[activeNull.colorKey] : this.theme.NULL_LINK;
-                                this.drawNullLink(n.x, n.y, 'R', col, isActive, baseAlpha);
-                            }
-                        }
-                    });
-
-                    // 3e. Nodes (flat circles with Height badge and optional BF badge)
-                    nodesToDraw.forEach(n => {
-                        let nodeAlpha = n.alpha;
-                        const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
-                        if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
-                            nodeAlpha *= 0.35;
-                        }
-                        this.drawNodeCircle(
-                            n.x, n.y, n.value, n.colorKey,
-                            n.scale, nodeAlpha, false, n.height, n.bf, isHovered
-                        );
-                    });
 
                     // 3f. Curved Rotation Arrows
                     if (rotationSpec && rotationSpec.layout && rotationSpec.alpha > 0) {
@@ -2501,9 +3217,10 @@
 
                 drawRotationArrow(x1, y1, x2, y2, dir) {
                     const ctx = this.ctx;
-                    const r = this.nodeRadius;
+                    const rx = this.halfW;
+                    const ry = this.halfH;
                     const startX = x1;
-                    const startY = y1 - r;
+                    const startY = y1 - ry;
                     const endY = y2;
                     let endX, endX2, cp1X, cp1Y, cp2X, cp2Y;
                     const arcHeight = 58;
@@ -2511,13 +3228,13 @@
                     const startBulge = 28;
 
                     if (dir === 'CW') {
-                        endX = x2 - r;
-                        endX2 = x2 - r * 1.2;
+                        endX = x2 - rx;
+                        endX2 = x2 - rx * 1.2;
                         cp1X = startX - startBulge; cp1Y = startY - arcHeight;
                         cp2X = endX - sideOffset; cp2Y = endY;
                     } else {
-                        endX = x2 + r;
-                        endX2 = x2 + r * 1.2;
+                        endX = x2 + rx;
+                        endX2 = x2 + rx * 1.2;
                         cp1X = startX + startBulge; cp1Y = startY - arcHeight;
                         cp2X = endX + sideOffset; cp2Y = endY;
                     }
@@ -2535,19 +3252,7 @@
                 }
 
                 drawArrowHead(x, y, angle) {
-                    const ctx = this.ctx;
-                    const size = 14;
-                    ctx.save();
-                    ctx.translate(x, y);
-                    ctx.rotate(angle);
-                    ctx.beginPath();
-                    ctx.fillStyle = this.theme.ARROW;
-                    ctx.moveTo(0, 0);
-                    ctx.lineTo(-size, -size / 2.5);
-                    ctx.lineTo(-size, size / 2.5);
-                    ctx.closePath();
-                    ctx.fill();
-                    ctx.restore();
+                    this.drawCurvedArrowHead(x, y, angle, this.theme.ARROW, 15);
                 }
 
                 getLineGeometry(fromX, fromY, toX, toY) {
@@ -2556,7 +3261,7 @@
                     const len = Math.hypot(dx, dy) || 1;
                     const ux = dx / len;
                     const uy = dy / len;
-                    const r = this.nodeRadius + 5;
+                    const r = (this.structView ? this.halfH : this.nodeRadius) + 5;
 
                     return {
                         startX: fromX + ux * r,
@@ -2569,30 +3274,23 @@
 
                 drawStraightArrow(fromX, fromY, toX, toY, showHead = true) {
                     const ctx = this.ctx;
-                    const { startX, startY, endX, endY, angle } = this.getLineGeometry(fromX, fromY, toX, toY);
+                    const { startX, startY, endX, endY } = this.getLineGeometry(fromX, fromY, toX, toY);
+
+                    if (showHead) {
+                        this.arrow(startX, startY, endX, endY, this.theme.ARROW, 1, 3, 15);
+                        return;
+                    }
 
                     ctx.save();
                     ctx.strokeStyle = this.theme.ARROW;
-                    ctx.fillStyle = this.theme.ARROW;
                     ctx.lineWidth = 3;
-                    ctx.setLineDash(showHead ? [] : [5, 5]);
-                    if (!showHead) ctx.globalAlpha = 0.55;
+                    ctx.setLineDash([5, 5]);
+                    ctx.globalAlpha = 0.55;
 
                     ctx.beginPath();
                     ctx.moveTo(startX, startY);
                     ctx.lineTo(endX, endY);
                     ctx.stroke();
-
-                    if (showHead) {
-                        ctx.setLineDash([]);
-                        const headlen = 13;
-                        ctx.beginPath();
-                        ctx.moveTo(endX, endY);
-                        ctx.lineTo(endX - headlen * Math.cos(angle - Math.PI / 6), endY - headlen * Math.sin(angle - Math.PI / 6));
-                        ctx.lineTo(endX - headlen * Math.cos(angle + Math.PI / 6), endY - headlen * Math.sin(angle + Math.PI / 6));
-                        ctx.closePath();
-                        ctx.fill();
-                    }
                     ctx.restore();
                 }
 
@@ -2628,18 +3326,19 @@
                 drawFloatingComparison(info) {
                     const ctx = this.ctx;
                     const { x, y, scale, alpha, value, targetX, targetY, targetVal, isNullTarget, pillOnly, showDecision } = info;
+                    const hh = this.halfH;
 
                     ctx.save();
                     ctx.globalAlpha = alpha;
 
                     if (!pillOnly) {
-                        if (!isNullTarget && y < targetY - this.nodeRadius) {
+                        if (!isNullTarget && y < targetY - hh) {
                             ctx.strokeStyle = this.theme.NEW;
                             ctx.lineWidth = 2;
                             ctx.setLineDash([4, 4]);
                             ctx.beginPath();
                             ctx.moveTo(x, y + this.nodeRadius * scale);
-                            ctx.lineTo(targetX, targetY - this.nodeRadius);
+                            ctx.lineTo(targetX, targetY - hh);
                             ctx.stroke();
                             ctx.setLineDash([]);
                         }
@@ -2706,7 +3405,7 @@
                     const labelText = `${bfText} | H: ${node.height} | D: ${node.depth} | Subtree: ${node.size}`;
                     const invScale = 1 / this.camera.scale;
                     const tx = node.x;
-                    const ty = node.y - this.nodeRadius - (11 * invScale);
+                    const ty = node.y - this.halfH - (11 * invScale);
 
                     ctx.save();
                     ctx.translate(tx, ty);
@@ -2885,7 +3584,7 @@
 
                 indexTree(root, layout) {
                     const map = new Map();
-                    const walk = (node, parent) => {
+                    const walk = (node, parent, side) => {
                         if (!node) return;
                         const pos = layout.get(node.id);
                         const pPos = parent ? layout.get(parent.id) : null;
@@ -2895,12 +3594,13 @@
                             y: pos.y,
                             pId: parent ? parent.id : null,
                             pX: pPos ? pPos.x : undefined,
-                            pY: pPos ? pPos.y : undefined
+                            pY: pPos ? pPos.y : undefined,
+                            side
                         });
-                        walk(node.left, node);
-                        walk(node.right, node);
+                        walk(node.left, node, 'L');
+                        walk(node.right, node, 'R');
                     };
-                    walk(root, null);
+                    walk(root, null, null);
                     return map;
                 }
 
@@ -2942,6 +3642,7 @@
                                 alpha: 1,
                                 parentId: dB.pId,
                                 parentX: pX, parentY: pY,
+                                side: dB.side,
                                 hasLeft: Boolean(refNode.left), hasRight: Boolean(refNode.right),
                                 depth: refMetrics.depth, height: refMetrics.height, bf: refMetrics.bf, size: refMetrics.size
                             });
@@ -2988,6 +3689,7 @@
                                 edgeAlpha: fromFloating ? t : Math.min(1, t * 1.3),
                                 parentId: dB.pId,
                                 parentX: pX, parentY: pY,
+                                side: dB.side,
                                 hasLeft: Boolean(dB.node.left), hasRight: Boolean(dB.node.right),
                                 depth: mB.depth, height: mB.height, bf: mB.bf, size: mB.size
                             });
@@ -3000,6 +3702,7 @@
                                 alpha: Math.max(0, 1 - t),
                                 parentId: dA.pId,
                                 parentX: dA.pX, parentY: dA.pY,
+                                side: dA.side,
                                 hasLeft: Boolean(dA.node.left), hasRight: Boolean(dA.node.right),
                                 depth: mA.depth, height: mA.height, bf: mA.bf, size: mA.size
                             });
@@ -3010,7 +3713,7 @@
 
                 flattenTree(snap) {
                     const res = [];
-                    const trav = (n, p, pPos) => {
+                    const trav = (n, p, pPos, side) => {
                         if (!n) return;
                         const pos = snap.layout.get(n.id);
                         const m = snap.metrics.get(n.id) || { depth: 0, height: 1, bf: 0, size: 1 };
@@ -3025,6 +3728,7 @@
                             parentId: p ? p.id : null,
                             parentX: pPos ? pPos.x : undefined,
                             parentY: pPos ? pPos.y : undefined,
+                            side,
                             hasLeft: Boolean(n.left),
                             hasRight: Boolean(n.right),
                             depth: m.depth,
@@ -3032,10 +3736,10 @@
                             bf: m.bf,
                             size: m.size
                         });
-                        trav(n.left, n, pos);
-                        trav(n.right, n, pos);
+                        trav(n.left, n, pos, 'L');
+                        trav(n.right, n, pos, 'R');
                     };
-                    trav(snap.root, null, null);
+                    trav(snap.root, null, null, null);
                     return res;
                 }
 
@@ -3117,6 +3821,11 @@
                     });
                     document.getElementById('chkAutoFit').addEventListener('change', e => {
                         this.viz.setAutoFit(e.target.checked);
+                    });
+                    document.getElementById('chkImplView').addEventListener('change', e => {
+                        const enabled = e.target.checked;
+                        document.getElementById('legend').classList.toggle('struct-mode', enabled);
+                        this.viz.setStructView(enabled);
                     });
 
                     document.getElementById('btnZoomIn').addEventListener('click', () => this.viz.zoomBy(1.25));

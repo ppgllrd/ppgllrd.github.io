@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 
@@ -295,7 +294,7 @@
             border: 1px solid var(--border-color);
             border-radius: 6px;
             font-size: 0.78rem;
-            max-width: 225px;
+            max-width: 230px;
             z-index: 5;
         }
 
@@ -336,6 +335,131 @@
 
         .legend-item:last-child {
             margin-bottom: 0;
+        }
+
+        /* Mode-specific legend samples */
+        #legend .legend-struct-only {
+            display: none;
+        }
+
+        #legend.struct-mode .legend-circle-only {
+            display: none;
+        }
+
+        #legend.struct-mode .legend-struct-only {
+            display: flex;
+        }
+
+        .struct-sample {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            flex-shrink: 0;
+            font-family: Arial, sans-serif;
+            font-weight: 700;
+            font-size: 8px;
+            line-height: 1;
+        }
+
+        .struct-sample-extval {
+            width: 14px;
+            height: 16px;
+            background: #A8F5A8;
+            color: #C60000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-extval {
+            background: #235334;
+            color: #e6edf3;
+        }
+
+        .struct-sample-arrow {
+            width: 9px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1565C0;
+            font-size: 9px;
+            line-height: 1;
+        }
+
+        body.dark .struct-sample-arrow {
+            color: #58A6FF;
+        }
+
+        .struct-sample-strip {
+            display: inline-flex;
+            align-items: stretch;
+            gap: 1.5px;
+            height: 16px;
+        }
+
+        .struct-sample-elem {
+            width: 8px;
+            background: #D69EFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-elem {
+            background: #7E57C2;
+        }
+
+        .struct-sample-w {
+            width: 12px;
+            background: #FFF95B;
+            color: #C60000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-w {
+            background: #9E8C1C;
+            color: #FFFDE7;
+        }
+
+        .struct-sample-ptr {
+            width: 8px;
+            background: #9BF7FF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-ptr {
+            background: #1D6F8A;
+        }
+
+        .struct-sample-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #1565C0;
+        }
+
+        body.dark .struct-sample-dot {
+            background: #58A6FF;
+        }
+
+        .null-circle-icon {
+            width: 11px;
+            height: 14px;
+            background: #9BF7FF;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin: 0 1.5px;
+        }
+
+        body.dark .null-circle-icon {
+            background: #1D6F8A;
         }
 
         .dot {
@@ -562,7 +686,7 @@
             h1 { font-size: 0.98rem; }
             input[type="text"] { width: 110px; }
             .divider { display: none; }
-            #legend { max-width: 185px; font-size: 0.72rem; top: 8px; left: 8px; }
+            #legend { max-width: 195px; font-size: 0.72rem; top: 8px; left: 8px; }
             .status-meta { display: none; }
         }
     </style>
@@ -623,6 +747,9 @@
                 <label class="toggle-label" title="Automatically zoom &amp; center heap on operations">
                     <input type="checkbox" id="chkAutoFit" checked> Auto-Fit
                 </label>
+                <label class="toggle-label" title="Toggle between circular nodes and internal memory implementation view">
+                    <input type="checkbox" id="chkImplView"> Implementation
+                </label>
             </div>
         </div>
 
@@ -644,9 +771,22 @@
                 <button class="legend-toggle" id="btnToggleLegend" title="Collapse/Expand Legend">−</button>
             </div>
             <div class="legend-body">
-                <div class="legend-item">
+                <div class="legend-item legend-circle-only">
                     <div class="node-sample"><span class="node-val">V</span><span class="node-badge-r">w</span></div>
                     <span>Value / Weight</span>
+                </div>
+                <div class="legend-item legend-struct-only">
+                    <div class="struct-sample">
+                        <div class="struct-sample-extval">V</div>
+                        <div class="struct-sample-arrow">&#8592;</div>
+                        <div class="struct-sample-strip">
+                            <div class="struct-sample-elem"><span class="struct-sample-dot"></span></div>
+                            <div class="struct-sample-w">W</div>
+                            <div class="struct-sample-ptr"><span class="struct-sample-dot"></span></div>
+                            <div class="struct-sample-ptr"><span class="struct-sample-dot"></span></div>
+                        </div>
+                    </div>
+                    <span>Val / Elem / W / L / R</span>
                 </div>
                 <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:1px solid #66BB6A"></div><span>Tree 1 (Main)</span></div>
                 <div class="legend-item"><div class="dot" style="background:#80DEEA; border:1px solid #0097A7"></div><span>Tree 2 (Merging)</span></div>
@@ -656,7 +796,8 @@
                 <div class="legend-item"><div class="line-icon" style="background:#FF8F00;"></div><span>Right Spine Path</span></div>
                 <div class="legend-item"><div class="arrow-icon">&#8644;</div><span>Swap Children</span></div>
                 <div class="legend-item"><div class="dot" style="background:#E2E8F0; border:1px solid #94A3B8"></div><span>Queued (Inactive)</span></div>
-                <div class="legend-item"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
+                <div class="legend-item legend-circle-only"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
+                <div class="legend-item legend-struct-only"><div class="null-circle-icon"><span class="struct-sample-dot"></span></div><span>Null Pointer</span></div>
             </div>
         </div>
 
@@ -715,6 +856,7 @@
 
             <h3>Tips &amp; Keyboard Shortcuts</h3>
             <ul>
+                <li><strong>Implementation View:</strong> Toggle the <strong>Implementation</strong> checkbox to inspect the internal memory-structure diagram (external value box referenced by a purple pointer cell, yellow <code>weight</code>, light-blue <code>left</code>/<code>right</code> pointer cells, and <code>root</code> reference).</li>
                 <li><strong>Batch Insert:</strong> Enter comma-separated numbers (e.g., <code>40, 15, 30, 5, 22</code>).</li>
                 <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click/tap a node to copy its value, hover to highlight its subtree and inspect weights and leftist invariant.</li>
                 <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> Insert, <kbd>Space</kbd> Pause/Resume, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
@@ -763,7 +905,18 @@
                     INACTIVE_WEIGHT_STROKE: '#94A3B8',
                     PILL_BG: '#FFFFFF',
                     PILL_BORDER: '#CBD5E1',
-                    RING_FOCUS: '#1976D2'
+                    RING_FOCUS: '#1976D2',
+                    /* Implementation memory-structure tokens */
+                    STRUCT_BORDER: '#334155',
+                    STRUCT_ELEM_PTR_BG: '#D69EFF',
+                    STRUCT_WEIGHT_BG: '#FFF95B',
+                    STRUCT_WEIGHT_TEXT: '#C60000',
+                    STRUCT_PTR_BG: '#9BF7FF',
+                    STRUCT_ROOT_BG: '#9BF7FF',
+                    STRUCT_ROOT_TEXT: '#1F2328',
+                    STRUCT_VAL_BG: '#A8F5A8',
+                    STRUCT_VAL_TEXT: '#C60000',
+                    STRUCT_ARROW: '#1565C0'
                 },
                 dark: {
                     BG_DOT: 'rgba(230, 237, 243, 0.09)',
@@ -798,7 +951,18 @@
                     INACTIVE_WEIGHT_STROKE: '#444C56',
                     PILL_BG: '#1F2630',
                     PILL_BORDER: '#444C56',
-                    RING_FOCUS: '#58A6FF'
+                    RING_FOCUS: '#58A6FF',
+                    /* Implementation memory-structure tokens */
+                    STRUCT_BORDER: '#6E7681',
+                    STRUCT_ELEM_PTR_BG: '#7E57C2',
+                    STRUCT_WEIGHT_BG: '#9E8C1C',
+                    STRUCT_WEIGHT_TEXT: '#FFFDE7',
+                    STRUCT_PTR_BG: '#1D6F8A',
+                    STRUCT_ROOT_BG: '#1D6F8A',
+                    STRUCT_ROOT_TEXT: '#E6EDF3',
+                    STRUCT_VAL_BG: '#235334',
+                    STRUCT_VAL_TEXT: '#E6EDF3',
+                    STRUCT_ARROW: '#58A6FF'
                 }
             };
 
@@ -1186,8 +1350,21 @@
                     this.hasInitializedView = false;
                     this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
 
+                    // Standard circular node metrics
                     this.nodeRadius = 28;
                     this.levelHeight = 76;
+
+                    // Implementation 4-cell horizontal strip metrics + external value box
+                    this.structView = false;
+                    this.structPtrW = 18;
+                    this.structWeightW = 30;
+                    this.structCellGap = 2.5;
+                    this.structW = this.structPtrW * 3 + this.structWeightW + this.structCellGap * 3; // 91.5
+                    this.structH = 40;
+                    this.structValGap = 22;
+                    this.structValMinW = 34;
+                    this.structValH = 40;
+                    this.structLevelHeight = 104;
 
                     this.snapshots = [];
                     this.currentSnapshotIndex = 0;
@@ -1225,6 +1402,27 @@
                     this.resize();
                 }
 
+                get halfW() {
+                    return this.structView ? this.structW / 2 : this.nodeRadius;
+                }
+
+                get halfH() {
+                    return this.structView ? this.structH / 2 : this.nodeRadius;
+                }
+
+                get currentLevelHeight() {
+                    return this.structView ? this.structLevelHeight : this.levelHeight;
+                }
+
+                get currentTopOffset() {
+                    return this.structView ? 112 : 60;
+                }
+
+                getValBoxWidth(val) {
+                    const str = String(val);
+                    return Math.max(this.structValMinW, str.length * 10 + 14);
+                }
+
                 bindEvents() {
                     if (typeof ResizeObserver !== 'undefined' && this.container) {
                         this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -1255,6 +1453,33 @@
 
                 setAutoFit(enabled) {
                     this.autoFit = enabled;
+                    if (enabled) {
+                        this.fitCurrentTree();
+                    }
+                }
+
+                /**
+                 * Toggle between circular-node view and internal memory-structure view.
+                 * Recalculates layouts and bounds across all active snapshots so switching works smoothly even mid-animation.
+                 */
+                setStructView(enabled) {
+                    this.structView = Boolean(enabled);
+                    if (this.snapshots.length > 0) {
+                        this.snapshots.forEach(s => {
+                            const layout = this.calculateLayout(s.roots);
+                            const bounds = this.getBoundsFromLayout(layout);
+                            const focusBounds = s.focusIndices
+                                ? this.getBoundsFromLayout(layout, s.focusIndices)
+                                : bounds;
+                            s.layout = layout;
+                            s.bounds = bounds;
+                            s.focusBounds = focusBounds;
+                        });
+                    }
+                    if (this.autoFit) {
+                        this.fitCurrentTree();
+                    }
+                    this.requestRender();
                 }
 
                 setSpeed(mult) {
@@ -1300,8 +1525,24 @@
                         const n = this.lastDrawnNodes[i];
                         const sx = n.x * this.camera.scale + this.camera.x;
                         const sy = n.y * this.camera.scale + this.camera.y;
-                        const r = this.nodeRadius * this.camera.scale;
-                        if (Math.hypot(mx - sx, my - sy) < r) return n;
+                        if (this.structView) {
+                            const sc = n.scale * this.camera.scale;
+                            const hw = (this.structW / 2) * sc;
+                            const hh = (this.structH / 2) * sc;
+                            // Hit-test 4-cell strip
+                            if (Math.abs(mx - sx) <= hw && Math.abs(my - sy) <= hh) return n;
+                            // Hit-test external value box
+                            const valW = this.getValBoxWidth(n.val) * sc;
+                            const gap = this.structValGap * sc;
+                            const valLeft = sx - hw - gap - valW;
+                            const valRight = sx - hw - gap;
+                            const valTop = sy - hh;
+                            const valBottom = sy - hh + this.structValH * sc;
+                            if (mx >= valLeft && mx <= valRight && my >= valTop && my <= valBottom) return n;
+                        } else {
+                            const r = this.nodeRadius * n.scale * this.camera.scale;
+                            if (Math.hypot(mx - sx, my - sy) < r) return n;
+                        }
                     }
                     return null;
                 }
@@ -1410,7 +1651,7 @@
                 }
 
                 zoomAt(newScale, anchorX, anchorY) {
-                    newScale = Math.min(Math.max(0.15, newScale), 4.5);
+                    newScale = Math.min(Math.max(0.08, newScale), 4.5);
                     const worldX = (anchorX - this.camera.targetX) / this.camera.targetScale;
                     const worldY = (anchorY - this.camera.targetY) / this.camera.targetScale;
                     this.camera.targetScale = newScale;
@@ -1513,26 +1754,30 @@
                     if (!roots || roots.length === 0) return layout;
 
                     let counter = 0;
-                    const spacingX = this.nodeRadius * 2.65;
+                    const spacingX = this.structView ? 162 : (this.nodeRadius * 2.65);
+                    const lvlH = this.currentLevelHeight;
+                    const topOff = this.currentTopOffset;
 
-                    const traverse = (node, depth, rootIndex, parentId) => {
+                    const traverse = (node, depth, rootIndex, parentId, side) => {
                         if (!node) return;
-                        traverse(node.left, depth + 1, rootIndex, node.id);
+                        traverse(node.left, depth + 1, rootIndex, node.id, 'L');
                         layout.set(node.id, {
                             x: counter * spacingX,
-                            y: 60 + depth * this.levelHeight,
+                            y: topOff + depth * lvlH,
                             depth,
                             rootIndex,
                             parentId,
+                            side,
+                            val: node.val,
                             leftWeight: node.left ? node.left.weight : 0,
                             rightWeight: node.right ? node.right.weight : 0
                         });
                         counter++;
-                        traverse(node.right, depth + 1, rootIndex, node.id);
+                        traverse(node.right, depth + 1, rootIndex, node.id, 'R');
                     };
 
                     roots.forEach((root, idx) => {
-                        traverse(root, 0, idx, null);
+                        traverse(root, 0, idx, null, null);
                         counter += 1;
                     });
 
@@ -1543,14 +1788,28 @@
                     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
                     let hasNodes = false;
                     const filterSet = filterRootIndices ? new Set(filterRootIndices) : null;
+                    const hw = this.halfW;
+                    const hh = this.halfH;
 
                     layout.forEach(pos => {
                         if (filterSet && !filterSet.has(pos.rootIndex)) return;
                         hasNodes = true;
-                        minX = Math.min(minX, pos.x - 46);
-                        maxX = Math.max(maxX, pos.x + 46);
-                        minY = Math.min(minY, pos.y - 46);
-                        maxY = Math.max(maxY, pos.y + 72);
+                        if (this.structView) {
+                            const extLeft = this.structValGap + this.getValBoxWidth(pos.val) + 6;
+                            minX = Math.min(minX, pos.x - hw - extLeft);
+                            maxX = Math.max(maxX, pos.x + hw);
+                            minY = Math.min(minY, pos.y - hh);
+                            maxY = Math.max(maxY, pos.y + hh + 24);
+                            if (pos.depth === 0) {
+                                minY = Math.min(minY, pos.y - hh - 88);
+                                minX = Math.min(minX, pos.x - 66);
+                            }
+                        } else {
+                            minX = Math.min(minX, pos.x - 46);
+                            maxX = Math.max(maxX, pos.x + 46);
+                            minY = Math.min(minY, pos.y - 46);
+                            maxY = Math.max(maxY, pos.y + 72);
+                        }
                     });
 
                     return { minX, maxX, minY, maxY, hasNodes };
@@ -1588,18 +1847,18 @@
                     }
 
                     const padX = Math.min(160, this.viewWidth * 0.16);
-                    const padY = 120;
-                    const treeW = (bounds.maxX - bounds.minX) + padX;
-                    const treeH = (bounds.maxY - bounds.minY) + padY;
-                    const scale = Math.min(1.2, Math.max(0.18, Math.min(this.viewWidth / treeW, this.viewHeight / treeH)));
+                    const padY = this.structView ? 95 : 120;
+                    const treeW = Math.max(1, (bounds.maxX - bounds.minX) + padX);
+                    const treeH = Math.max(1, (bounds.maxY - bounds.minY) + padY);
+                    const scale = Math.min(1.2, Math.max(0.08, Math.min(this.viewWidth / treeW, this.viewHeight / treeH)));
                     const treeCX = (bounds.minX + bounds.maxX) / 2;
                     const treeCY = (bounds.minY + bounds.maxY) / 2;
 
                     this.camera.targetScale = scale;
                     this.camera.targetX = (this.viewWidth / 2) - (treeCX * scale);
 
-                    if (!centerVertically && treeH * scale < this.viewHeight * 0.7) {
-                        this.camera.targetY = 75 - bounds.minY * scale;
+                    if (!centerVertically && treeH * scale < this.viewHeight * 0.72) {
+                        this.camera.targetY = (this.structView ? 48 : 75) - bounds.minY * scale;
                     } else {
                         this.camera.targetY = (this.viewHeight / 2) - (treeCY * scale);
                     }
@@ -1939,13 +2198,16 @@
                         if (n.depth > maxDepth) maxDepth = n.depth;
                     });
 
+                    const lvlH = this.currentLevelHeight;
+                    const topOff = this.currentTopOffset;
+
                     ctx.save();
                     ctx.font = '600 10px monospace';
                     ctx.textAlign = 'right';
                     ctx.textBaseline = 'middle';
 
                     for (let d = 0; d <= maxDepth; d++) {
-                        const worldY = d * this.levelHeight + 60;
+                        const worldY = d * lvlH + topOff;
                         const screenY = worldY * this.camera.scale + this.camera.y;
                         if (screenY < -10 || screenY > this.viewHeight + 10) continue;
 
@@ -1982,6 +2244,349 @@
                     };
                 }
 
+                /**
+                 * Draw a sleek curved arrowhead at (x, y) oriented along `angle`.
+                 */
+                drawCurvedArrowHead(x, y, angle, col = this.theme.STRUCT_ARROW, head = 13) {
+                    const c = this.ctx;
+                    c.save();
+                    c.fillStyle = col;
+                    c.translate(x, y);
+                    c.rotate(angle);
+                    c.beginPath();
+                    c.moveTo(0, 0);
+                    c.lineTo(-head * 1.4, -head / 2);
+                    c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2);
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                }
+
+                /**
+                 * Draw a straight arrow with the sleek curved arrowhead style.
+                 */
+                arrow(x1, y1, x2, y2, col = this.theme.STRUCT_ARROW, alpha = 1, lineWidth = 2.6, head = 13) {
+                    if (Math.hypot(x2 - x1, y2 - y1) < 3) return;
+                    const c = this.ctx;
+                    c.save();
+                    c.globalAlpha *= alpha;
+                    c.strokeStyle = col;
+                    c.fillStyle = col;
+                    c.lineWidth = lineWidth;
+                    const a = Math.atan2(y2 - y1, x2 - x1);
+                    const shorten = head * 0.8;
+                    c.beginPath();
+                    c.moveTo(x1, y1);
+                    c.lineTo(x2 - shorten * Math.cos(a), y2 - shorten * Math.sin(a));
+                    c.stroke();
+                    c.translate(x2, y2);
+                    c.rotate(a);
+                    c.beginPath();
+                    c.moveTo(0, 0);
+                    c.lineTo(-head * 1.4, -head / 2);
+                    c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2);
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                }
+
+                /**
+                 * Draw a pointer arrow from a parent's left/right cyan pointer cell
+                 * to the top-center of the child's 4-cell strip.
+                 */
+                drawStructPointerEdge(n, pNode, strokeColor, lineWidth, edgeAlpha) {
+                    const ctx = this.ctx;
+                    const pScale = pNode ? pNode.scale : 1;
+                    const halfW = this.structW / 2;
+                    const halfH = (this.structH / 2) * pScale;
+                    const gap = this.structCellGap;
+                    const ptrW = this.structPtrW;
+                    const wW = this.structWeightW;
+
+                    const leftCellCenterX = -halfW + ptrW + gap + wW + gap + ptrW / 2;
+                    const rightCellCenterX = leftCellCenterX + ptrW + gap;
+                    const cellXOffset = (n.side === 'L' ? leftCellCenterX : rightCellCenterX) * pScale;
+
+                    const x1 = n.parentX + cellXOffset;
+                    const y1 = n.parentY;
+                    const x2 = n.x;
+                    const y2 = n.y - (this.structH / 2) * n.scale - 3;
+
+                    const dxTotal = x2 - x1;
+                    const dyTotal = y2 - y1;
+                    if (Math.hypot(dxTotal, dyTotal) < 3) return;
+
+                    const exitY = y1 + halfH + 8 * pScale;
+                    const useVerticalExit = y2 > exitY + 12;
+
+                    const angle = useVerticalExit
+                        ? Math.atan2(y2 - exitY, x2 - x1)
+                        : Math.atan2(dyTotal, dxTotal);
+                    const head = Math.min(15, Math.max(11, lineWidth * 4.8));
+                    const shorten = head * 0.8;
+                    const lineEndX = x2 - Math.cos(angle) * shorten;
+                    const lineEndY = y2 - Math.sin(angle) * shorten;
+
+                    ctx.save();
+                    ctx.globalAlpha = edgeAlpha;
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = lineWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.moveTo(x1, y1);
+
+                    if (useVerticalExit) {
+                        const dxOut = lineEndX - x1;
+                        const dyOut = lineEndY - exitY;
+                        const lenOut = Math.hypot(dxOut, dyOut) || 1;
+                        const bend = Math.min(8 * pScale, lenOut * 0.35);
+                        const p1Y = exitY - bend;
+                        const p2X = x1 + (dxOut / lenOut) * bend;
+                        const p2Y = exitY + (dyOut / lenOut) * bend;
+
+                        ctx.lineTo(x1, p1Y);
+                        ctx.quadraticCurveTo(x1, exitY, p2X, p2Y);
+                        ctx.lineTo(lineEndX, lineEndY);
+                    } else {
+                        ctx.lineTo(lineEndX, lineEndY);
+                    }
+                    ctx.stroke();
+
+                    this.drawCurvedArrowHead(x2, y2, angle, strokeColor, head);
+
+                    // Pointer origin dot inside parent's cyan cell
+                    const dotColor = n.inactive ? this.theme.INACTIVE_TEXT : this.theme.STRUCT_ARROW;
+                    ctx.beginPath();
+                    ctx.fillStyle = dotColor;
+                    ctx.arc(x1, y1, 4.2 * pScale, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+
+                /**
+                 * Draw the tall narrow cyan reference box above a root node (`root` or `h1`, `h2`, ...).
+                 */
+                drawRootPointer(rootNode, label = 'root', canDimHover = false) {
+                    const ctx = this.ctx;
+                    const boxW = this.structPtrW;
+                    const boxH = this.structH;
+                    let rx = 0;
+                    let ry = 70;
+                    let alpha = 1;
+                    const inactive = Boolean(rootNode && rootNode.inactive);
+
+                    if (rootNode) {
+                        rx = rootNode.x;
+                        ry = rootNode.y - (this.structH / 2) * rootNode.scale - 58;
+                        alpha = rootNode.alpha;
+                        if (canDimHover && !this.hoveredSubtreeIds.has(rootNode.id)) {
+                            alpha *= 0.35;
+                        }
+                    }
+
+                    const boxFill = inactive ? this.theme.INACTIVE_FILL : this.theme.STRUCT_ROOT_BG;
+                    const arrowCol = inactive ? this.theme.INACTIVE_EDGE : this.theme.STRUCT_ARROW;
+                    const dotCol = inactive ? this.theme.INACTIVE_TEXT : this.theme.STRUCT_ARROW;
+                    const labelCol = inactive ? this.theme.INACTIVE_TEXT : this.theme.STRUCT_ROOT_TEXT;
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+
+                    ctx.font = '600 15px Consolas, "Courier New", monospace';
+                    ctx.fillStyle = labelCol;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, rx - boxW / 2 - 7, ry + 0.5);
+
+                    ctx.fillStyle = boxFill;
+                    ctx.fillRect(rx - boxW / 2, ry - boxH / 2, boxW, boxH);
+
+                    if (rootNode) {
+                        const targetX = rootNode.x;
+                        const targetY = rootNode.y - (this.structH / 2) * rootNode.scale - 3;
+                        this.arrow(rx, ry, targetX, targetY, arrowCol, 1, 2.5, 13);
+                    }
+
+                    ctx.beginPath();
+                    ctx.fillStyle = dotCol;
+                    ctx.arc(rx, ry, 4.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+
+                /**
+                 * Draw a heap node in Implementation memory-structure view:
+                 * External value box <- arrow <- [purple elem ptr | yellow weight | cyan left ptr | cyan right ptr]
+                 */
+                drawStructNode(n, alpha, isHovered, violationNull = null) {
+                    if (n.scale <= 0.02 || alpha <= 0.02) return;
+                    const ctx = this.ctx;
+                    const w = this.structW;
+                    const h = this.structH;
+                    const halfW = w / 2;
+                    const halfH = h / 2;
+                    const ptrW = this.structPtrW;
+                    const wW = this.structWeightW;
+                    const gap = this.structCellGap;
+
+                    const valW = this.getValBoxWidth(n.val);
+                    const valH = this.structValH;
+                    const valLeft = -halfW - this.structValGap - valW;
+                    const valTop = -halfH;
+
+                    const xElem = -halfW;
+                    const xWeight = xElem + ptrW + gap;
+                    const xLeft = xWeight + wW + gap;
+                    const xRight = xLeft + ptrW + gap;
+
+                    let valFill, valTextCol;
+                    let isHighlighted = false;
+
+                    if (n.inactive) {
+                        valFill = this.theme.INACTIVE_FILL;
+                        valTextCol = this.theme.INACTIVE_TEXT;
+                    } else if (n.colorKey === 'DELETE') {
+                        valFill = this.theme.DELETE;
+                        valTextCol = '#FFFFFF';
+                        isHighlighted = true;
+                    } else if (n.colorKey === 'COMPARE') {
+                        valFill = this.theme.COMPARE_FILL;
+                        valTextCol = this.theme.COMPARE_TEXT;
+                        isHighlighted = true;
+                    } else if (n.colorKey === 'MINIMUM') {
+                        valFill = this.theme.MINIMUM;
+                        valTextCol = this.theme.MINIMUM_TEXT;
+                        isHighlighted = true;
+                    } else if (n.isTree2) {
+                        valFill = this.theme.FILL2;
+                        valTextCol = this.theme.TEXT_VAL2;
+                    } else {
+                        valFill = this.theme.STRUCT_VAL_BG;
+                        valTextCol = this.theme.STRUCT_VAL_TEXT;
+                    }
+
+                    const elemCellFill = n.inactive ? this.theme.INACTIVE_FILL : this.theme.STRUCT_ELEM_PTR_BG;
+                    const ptrCellFill = n.inactive ? this.theme.INACTIVE_FILL : this.theme.STRUCT_PTR_BG;
+                    const arrowCol = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.STRUCT_ARROW;
+                    const dotCol = n.inactive ? this.theme.INACTIVE_TEXT : this.theme.STRUCT_ARROW;
+
+                    let weightCellFill = this.theme.STRUCT_WEIGHT_BG;
+                    let weightTextCol = this.theme.STRUCT_WEIGHT_TEXT;
+                    if (n.inactive) {
+                        weightCellFill = this.theme.INACTIVE_FILL;
+                        weightTextCol = this.theme.INACTIVE_TEXT;
+                    } else if (n.highlightWeight) {
+                        weightCellFill = this.theme.WEIGHT_HIGHLIGHT;
+                        weightTextCol = '#FFFFFF';
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(n.x, n.y);
+                    ctx.scale(n.scale, n.scale);
+
+                    // Hover focus ring around the 4-cell strip
+                    if (isHovered) {
+                        ctx.strokeStyle = this.theme.RING_FOCUS;
+                        ctx.lineWidth = 2.5;
+                        ctx.strokeRect(-halfW - 4, -halfH - 4, w + 8, h + 8);
+                    }
+
+                    // Highlight outline around strip during active animation states
+                    if (isHighlighted) {
+                        ctx.strokeStyle = valFill;
+                        ctx.lineWidth = 2.5;
+                        ctx.strokeRect(-halfW - 2.5, -halfH - 2.5, w + 5, h + 5);
+                    }
+
+                    // 1. External value box
+                    ctx.fillStyle = valFill;
+                    ctx.fillRect(valLeft, valTop, valW, valH);
+
+                    const str = String(n.val);
+                    const valFontSize = str.length <= 2 ? 20 : str.length === 3 ? 16 : str.length === 4 ? 13 : 11;
+                    ctx.fillStyle = valTextCol;
+                    ctx.font = `600 ${valFontSize}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(str, valLeft + valW / 2, 1);
+
+                    // 2. Cell 1: Purple element pointer
+                    ctx.fillStyle = elemCellFill;
+                    ctx.fillRect(xElem, -halfH, ptrW, h);
+
+                    const dotX = xElem + ptrW / 2;
+                    const dotY = 0;
+                    const arrowTipX = valLeft + valW + 2;
+
+                    this.arrow(dotX, dotY, arrowTipX, dotY, arrowCol, 1, 2.2, 10);
+
+                    ctx.beginPath();
+                    ctx.fillStyle = dotCol;
+                    ctx.arc(dotX, dotY, 4.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 3. Cell 2: Yellow weight cell (turns red when highlighted during leftist violation)
+                    ctx.fillStyle = weightCellFill;
+                    ctx.fillRect(xWeight, -halfH, wW, h);
+                    ctx.fillStyle = weightTextCol;
+                    const wStr = String(n.weight);
+                    const wFontSize = wStr.length <= 2 ? 20 : 15;
+                    ctx.font = `600 ${wFontSize}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(wStr, xWeight + wW / 2, 1);
+
+                    // 4. Cell 3 & Cell 4: Cyan left and right pointer cells
+                    ctx.fillStyle = ptrCellFill;
+                    ctx.fillRect(xLeft, -halfH, ptrW, h);
+                    ctx.fillRect(xRight, -halfH, ptrW, h);
+
+                    // Draw solid dots for null pointers (non-null dots are drawn on top of edge origins)
+                    const drawPtrDot = (cx, side, hasChild) => {
+                        const isViol = Boolean(!hasChild && !n.inactive && violationNull &&
+                            violationNull.nodeId === n.id && violationNull.side === side);
+                        if (!hasChild && (this.showNulls || isViol)) {
+                            const cDot = isViol ? this.theme.VIOLATION_NULL : dotCol;
+                            ctx.beginPath();
+                            ctx.fillStyle = cDot;
+                            ctx.arc(cx, 0, isViol ? 5.2 : 4.2, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            if (isViol) {
+                                ctx.font = '700 9.5px monospace';
+                                const label = 'null';
+                                const lw = ctx.measureText(label).width + 10;
+                                const lh = 15;
+                                const lx = cx - lw / 2;
+                                const ly = halfH + 5;
+
+                                ctx.fillStyle = this.theme.PILL_BG;
+                                ctx.strokeStyle = cDot;
+                                ctx.lineWidth = 1.4;
+                                ctx.beginPath();
+                                ctx.roundRect(lx, ly, lw, lh, 4);
+                                ctx.fill();
+                                ctx.stroke();
+
+                                ctx.fillStyle = cDot;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(label, cx, ly + lh / 2);
+                            }
+                        }
+                    };
+
+                    drawPtrDot(xLeft + ptrW / 2, 'L', n.hasLeft);
+                    drawPtrDot(xRight + ptrW / 2, 'R', n.hasRight);
+
+                    ctx.restore();
+                }
+
                 draw() {
                     const ctx = this.ctx;
                     ctx.setTransform(1, 0, 0, 1, 0, 0);
@@ -1994,6 +2599,15 @@
 
                     if (this.snapshots.length === 0) {
                         ctx.restore();
+                        if (this.structView) {
+                            ctx.save();
+                            ctx.setTransform(
+                                this.dpr * this.camera.scale, 0, 0, this.dpr * this.camera.scale,
+                                this.dpr * this.camera.x, this.dpr * this.camera.y
+                            );
+                            this.drawRootPointer(null, 'root', false);
+                            ctx.restore();
+                        }
                         return;
                     }
 
@@ -2050,91 +2664,143 @@
                     const canDimHover = (this.state === 'IDLE' || this.isPaused) &&
                         this.hoveredNode && this.hoveredSubtreeIds;
 
-                    // 3a. Standard Edges
-                    nodesToDraw.forEach(n => {
-                        if (n.parentX === undefined) return;
-                        if (pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+                    if (this.structView) {
+                        // Draw root pointer boxes above each root in the forest (or null root when empty)
+                        const rootNodes = nodesToDraw
+                            .filter(n => n.parentId === null)
+                            .sort((a, b) => a.x - b.x);
 
-                        const pNode = nodeMap.get(n.parentId);
-                        let edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
-                        if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
-                            edgeAlpha *= 0.25;
+                        if (rootNodes.length === 0) {
+                            this.drawRootPointer(null, 'root', false);
+                        } else if (rootNodes.length === 1) {
+                            this.drawRootPointer(rootNodes[0], 'root', canDimHover);
+                        } else {
+                            rootNodes.forEach((rn, i) => {
+                                this.drawRootPointer(rn, `h${i + 1}`, canDimHover);
+                            });
                         }
 
-                        const seg = this.getEdgeSegment(n, pNode);
-                        if (!seg) return;
+                        // Draw memory-structure nodes
+                        nodesToDraw.forEach(n => {
+                            let nodeAlpha = n.alpha;
+                            const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                nodeAlpha *= 0.35;
+                            }
+                            this.drawStructNode(n, nodeAlpha, isHovered, violationNull);
+                        });
 
-                        ctx.save();
-                        ctx.globalAlpha = edgeAlpha;
-                        ctx.beginPath();
-                        ctx.strokeStyle = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.EDGE;
-                        ctx.lineWidth = 2.5;
-                        ctx.moveTo(seg.x1, seg.y1);
-                        ctx.lineTo(seg.x2, seg.y2);
-                        ctx.stroke();
-                        ctx.restore();
-                    });
-
-                    // 3b. Active Right-Spine Path Edges
-                    if (pathEdgeSet.size > 0) {
+                        // Standard pointer edges
                         nodesToDraw.forEach(n => {
                             if (n.parentX === undefined) return;
-                            if (!pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+                            if (pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
 
                             const pNode = nodeMap.get(n.parentId);
+                            let edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
+                                edgeAlpha *= 0.25;
+                            }
+                            const col = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.STRUCT_ARROW;
+                            this.drawStructPointerEdge(n, pNode, col, 2.5, edgeAlpha);
+                        });
+
+                        // Active right-spine path pointer edges
+                        if (pathEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                if (!pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+                                const pNode = nodeMap.get(n.parentId);
+                                const edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                                this.drawStructPointerEdge(n, pNode, this.theme.PATH_EDGE, 3.6, edgeAlpha);
+                            });
+                        }
+                    } else {
+                        // 3a. Standard Edges
+                        nodesToDraw.forEach(n => {
+                            if (n.parentX === undefined) return;
+                            if (pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+
+                            const pNode = nodeMap.get(n.parentId);
+                            let edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
+                                edgeAlpha *= 0.25;
+                            }
+
                             const seg = this.getEdgeSegment(n, pNode);
                             if (!seg) return;
 
                             ctx.save();
-                            ctx.globalAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                            ctx.globalAlpha = edgeAlpha;
                             ctx.beginPath();
-                            ctx.strokeStyle = this.theme.PATH_EDGE;
-                            ctx.lineWidth = 4.5;
-                            ctx.lineCap = 'round';
+                            ctx.strokeStyle = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.EDGE;
+                            ctx.lineWidth = 2.5;
                             ctx.moveTo(seg.x1, seg.y1);
                             ctx.lineTo(seg.x2, seg.y2);
                             ctx.stroke();
                             ctx.restore();
                         });
+
+                        // 3b. Active Right-Spine Path Edges
+                        if (pathEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                if (!pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+
+                                const pNode = nodeMap.get(n.parentId);
+                                const seg = this.getEdgeSegment(n, pNode);
+                                if (!seg) return;
+
+                                ctx.save();
+                                ctx.globalAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                                ctx.beginPath();
+                                ctx.strokeStyle = this.theme.PATH_EDGE;
+                                ctx.lineWidth = 4.5;
+                                ctx.lineCap = 'round';
+                                ctx.moveTo(seg.x1, seg.y1);
+                                ctx.lineTo(seg.x2, seg.y2);
+                                ctx.stroke();
+                                ctx.restore();
+                            });
+                        }
+
+                        // 3c. Null Links (including Leftist Violation Null highlight)
+                        nodesToDraw.forEach(n => {
+                            let baseAlpha = n.alpha;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                baseAlpha *= 0.25;
+                            }
+                            if (!n.hasLeft) {
+                                const isViol = !n.inactive && violationNull &&
+                                    violationNull.nodeId === n.id && violationNull.side === 'L';
+                                if (this.showNulls || isViol) {
+                                    const col = n.inactive
+                                        ? this.theme.INACTIVE_EDGE
+                                        : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
+                                    this.drawNullLink(n.x, n.y, 'L', col, isViol, baseAlpha);
+                                }
+                            }
+                            if (!n.hasRight) {
+                                const isViol = !n.inactive && violationNull &&
+                                    violationNull.nodeId === n.id && violationNull.side === 'R';
+                                if (this.showNulls || isViol) {
+                                    const col = n.inactive
+                                        ? this.theme.INACTIVE_EDGE
+                                        : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
+                                    this.drawNullLink(n.x, n.y, 'R', col, isViol, baseAlpha);
+                                }
+                            }
+                        });
+
+                        // 3d. Nodes
+                        nodesToDraw.forEach(n => {
+                            let nodeAlpha = n.alpha;
+                            const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                nodeAlpha *= 0.35;
+                            }
+                            this.drawNode(n, nodeAlpha, isHovered);
+                        });
                     }
-
-                    // 3c. Null Links (including Leftist Violation Null highlight)
-                    nodesToDraw.forEach(n => {
-                        let baseAlpha = n.alpha;
-                        if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
-                            baseAlpha *= 0.25;
-                        }
-                        if (!n.hasLeft) {
-                            const isViol = !n.inactive && violationNull &&
-                                violationNull.nodeId === n.id && violationNull.side === 'L';
-                            if (this.showNulls || isViol) {
-                                const col = n.inactive
-                                    ? this.theme.INACTIVE_EDGE
-                                    : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
-                                this.drawNullLink(n.x, n.y, 'L', col, isViol, baseAlpha);
-                            }
-                        }
-                        if (!n.hasRight) {
-                            const isViol = !n.inactive && violationNull &&
-                                violationNull.nodeId === n.id && violationNull.side === 'R';
-                            if (this.showNulls || isViol) {
-                                const col = n.inactive
-                                    ? this.theme.INACTIVE_EDGE
-                                    : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
-                                this.drawNullLink(n.x, n.y, 'R', col, isViol, baseAlpha);
-                            }
-                        }
-                    });
-
-                    // 3d. Nodes
-                    nodesToDraw.forEach(n => {
-                        let nodeAlpha = n.alpha;
-                        const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
-                        if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
-                            nodeAlpha *= 0.35;
-                        }
-                        this.drawNode(n, nodeAlpha, isHovered);
-                    });
 
                     // 3e. Swap Children Double-Headed Arrows
                     swapArrowSpecs.forEach(({ id, alpha }) => {
@@ -2186,10 +2852,13 @@
 
                 drawSwapChildrenArrow(x, y, alpha = 1) {
                     const ctx = this.ctx;
-                    const r = this.nodeRadius + 15;
-                    const startX = x - r, startY = y + 10;
-                    const endX = x + r, endY = y + 10;
-                    const cpX = x, cpY = y + 70;
+                    const r = this.structView ? (this.halfW + 10) : (this.nodeRadius + 15);
+                    const startY = this.structView ? (y + this.halfH + 8) : (y + 10);
+                    const startX = x - r;
+                    const endX = x + r;
+                    const endY = startY;
+                    const cpX = x;
+                    const cpY = this.structView ? (y + this.halfH + 56) : (y + 70);
 
                     ctx.save();
                     ctx.globalAlpha = alpha;
@@ -2316,7 +2985,7 @@
                     const labelText = `Weight: ${node.weight} (L: ${node.leftWeight}, R: ${node.rightWeight}) | ${statusTag} | Depth: ${node.depth}`;
                     const invScale = 1 / this.camera.scale;
                     const tx = node.x;
-                    const ty = node.y - this.nodeRadius - (11 * invScale);
+                    const ty = node.y - this.halfH - (11 * invScale);
 
                     ctx.save();
                     ctx.translate(tx, ty);
@@ -2364,6 +3033,7 @@
                             depth: pos.depth,
                             rootIndex: pos.rootIndex,
                             pId: pos.parentId,
+                            side: pos.side,
                             leftWeight: pos.leftWeight,
                             rightWeight: pos.rightWeight
                         });
@@ -2428,6 +3098,7 @@
                                 parentId: dB.pId,
                                 parentX: pX,
                                 parentY: pY,
+                                side: dB.side,
                                 hasLeft: Boolean(refNode.left),
                                 hasRight: Boolean(refNode.right)
                             });
@@ -2464,6 +3135,7 @@
                                 parentId: dB.pId,
                                 parentX: pX,
                                 parentY: pY,
+                                side: dB.side,
                                 hasLeft: Boolean(refNode.left),
                                 hasRight: Boolean(refNode.right)
                             });
@@ -2493,6 +3165,7 @@
                                 parentId: dA.pId,
                                 parentX: pX,
                                 parentY: pY,
+                                side: dA.side,
                                 hasLeft: Boolean(refNode.left),
                                 hasRight: Boolean(refNode.right)
                             });
@@ -2504,7 +3177,7 @@
 
                 flattenForest(snap) {
                     const res = [];
-                    const walk = (n, p) => {
+                    const walk = (n, p, side) => {
                         if (!n) return;
                         const pos = snap.layout.get(n.id);
                         if (!pos) return;
@@ -2528,13 +3201,14 @@
                             parentId: p ? p.id : null,
                             parentX: pPos ? pPos.x : undefined,
                             parentY: pPos ? pPos.y : undefined,
+                            side,
                             hasLeft: Boolean(n.left),
                             hasRight: Boolean(n.right)
                         });
-                        walk(n.left, n);
-                        walk(n.right, n);
+                        walk(n.left, n, 'L');
+                        walk(n.right, n, 'R');
                     };
-                    (snap.roots || []).forEach(r => walk(r, null));
+                    (snap.roots || []).forEach(r => walk(r, null, null));
                     return res;
                 }
 
@@ -2607,6 +3281,11 @@
                     });
                     document.getElementById('chkAutoFit').addEventListener('change', e => {
                         this.viz.setAutoFit(e.target.checked);
+                    });
+                    document.getElementById('chkImplView').addEventListener('change', e => {
+                        const enabled = e.target.checked;
+                        document.getElementById('legend').classList.toggle('struct-mode', enabled);
+                        this.viz.setStructView(enabled);
                     });
 
                     document.getElementById('btnZoomIn').addEventListener('click', () => this.viz.zoomBy(1.25));
