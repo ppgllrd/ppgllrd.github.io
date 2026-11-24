@@ -1454,7 +1454,7 @@
                 setAutoFit(enabled) {
                     this.autoFit = enabled;
                     if (enabled) {
-                        this.fitCurrentTree();
+                        this.fitActiveView();
                     }
                 }
 
@@ -1477,7 +1477,7 @@
                         });
                     }
                     if (this.autoFit) {
-                        this.fitCurrentTree();
+                        this.fitActiveView();
                     }
                     this.requestRender();
                 }
@@ -1740,10 +1740,7 @@
                         this.camera.targetY = this.camera.y = 60;
                         this.hasInitializedView = true;
                     } else if (this.autoFit && this.snapshots.length > 0) {
-                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
-                        if (snap && snap.bounds) {
-                            this.fitSnapToScreen(snap, true);
-                        }
+                        this.fitActiveView();
                     }
 
                     this.requestRender();
@@ -1828,6 +1825,36 @@
                     this.fitBoundsToScreen(targetBounds, centerVertically);
                 }
 
+                getGlobalBounds(snaps = this.snapshots) {
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    let hasNodes = false;
+                    snaps.forEach(({ bounds }) => {
+                        if (bounds && bounds.hasNodes) {
+                            hasNodes = true;
+                            minX = Math.min(minX, bounds.minX);
+                            maxX = Math.max(maxX, bounds.maxX);
+                            minY = Math.min(minY, bounds.minY);
+                            maxY = Math.max(maxY, bounds.maxY);
+                        }
+                    });
+                    return { minX, maxX, minY, maxY, hasNodes };
+                }
+
+                fitActiveView() {
+                    if (this.snapshots.length === 0) {
+                        this.fitBoundsToScreen({ hasNodes: false }, false);
+                    } else if (this.isBusy() && !this.hasDynamicFit) {
+                        this.fitBoundsToScreen(this.getGlobalBounds(), false);
+                    } else {
+                        const targetIdx = (this.state === 'MORPH' || this.state === 'WAITING')
+                            ? Math.min(this.currentSnapshotIndex + 1, this.snapshots.length - 1)
+                            : Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
+                        const snap = this.snapshots[targetIdx];
+                        this.fitSnapToScreen(snap, this.isBusy());
+                    }
+                    this.requestRender();
+                }
+
                 fitCurrentTree() {
                     if (this.snapshots.length === 0) {
                         this.fitBoundsToScreen({ hasNodes: false }, false);
@@ -1899,17 +1926,7 @@
 
                     this.hasDynamicFit = prepared.some(s => s.shouldFit);
 
-                    let gMinX = Infinity, gMaxX = -Infinity, gMinY = Infinity, gMaxY = -Infinity;
-                    let hasNodes = false;
-                    prepared.forEach(({ bounds }) => {
-                        if (bounds.hasNodes) {
-                            hasNodes = true;
-                            gMinX = Math.min(gMinX, bounds.minX);
-                            gMaxX = Math.max(gMaxX, bounds.maxX);
-                            gMinY = Math.min(gMinY, bounds.minY);
-                            gMaxY = Math.max(gMaxY, bounds.maxY);
-                        }
-                    });
+                    const globalBounds = this.getGlobalBounds(prepared);
 
                     const prevHadNodes = this.snapshots.length > 0 &&
                         Boolean(this.snapshots[this.currentSnapshotIndex]?.roots?.length);
@@ -1919,7 +1936,7 @@
                         if (this.hasDynamicFit) {
                             this.fitSnapToScreen(prepared[0], true);
                         } else {
-                            this.fitBoundsToScreen({ minX: gMinX, maxX: gMaxX, minY: gMinY, maxY: gMaxY, hasNodes }, false);
+                            this.fitBoundsToScreen(globalBounds, false);
                         }
                     }
 
