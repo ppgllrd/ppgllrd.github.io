@@ -469,13 +469,38 @@
             flex-shrink: 0;
         }
 
-        .dot-empty {
+        .null-t-icon {
             width: 14px;
             height: 14px;
-            border-radius: 50%;
-            background: #FFF3E0;
-            border: 2px dashed #FB8C00;
+            position: relative;
             flex-shrink: 0;
+        }
+
+        .null-t-icon::before {
+            content: '';
+            position: absolute;
+            left: 6px;
+            top: 1px;
+            width: 2.5px;
+            height: 10px;
+            background: #1976D2;
+            border-radius: 1px;
+        }
+
+        .null-t-icon::after {
+            content: '';
+            position: absolute;
+            left: 1px;
+            top: 10px;
+            width: 12.5px;
+            height: 2.5px;
+            background: #1976D2;
+            border-radius: 1px;
+        }
+
+        body.dark .null-t-icon::before,
+        body.dark .null-t-icon::after {
+            background: #58A6FF;
         }
 
         .line-icon {
@@ -813,13 +838,12 @@
                 <div class="legend-item"><div class="dot" style="background:#80DEEA; border:1px solid #0097A7"></div><span>Tree 2 (Merging)</span></div>
                 <div class="legend-item"><div class="dot" style="background:#CE93D8; border:1px solid #8E24AA"></div><span>Comparing / Min</span></div>
                 <div class="legend-item"><div class="dot" style="background:#E53935;"></div><span>Deleting Root</span></div>
-                <div class="legend-item legend-circle-only"><div class="dot-empty"></div><span>Empty Subheap (∅, w=0)</span></div>
+                <div class="legend-item legend-circle-only"><div class="null-t-icon"></div><span>Null / Empty Subheap (∅, w=0)</span></div>
                 <div class="legend-item"><div class="dot" style="width:10px; height:10px; background:#E53935; margin-left:2px;"></div><span>Heavier Right (Swap)</span></div>
                 <div class="legend-item"><div class="line-icon" style="background:#FF8F00;"></div><span>Right Spine Path</span></div>
                 <div class="legend-item"><div class="arrow-icon">&#8644;</div><span>Swap Children</span></div>
                 <div class="legend-item"><div class="dot" style="background:#E2E8F0; border:1px solid #94A3B8"></div><span>Outside Call / Queued</span></div>
                 <div class="legend-item"><div class="dashed-line-icon"></div><span>Unassigned Child</span></div>
-                <div class="legend-item legend-circle-only"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
                 <div class="legend-item legend-struct-only"><div class="null-circle-icon"><span class="struct-sample-dot"></span></div><span>Null Pointer / Empty</span></div>
             </div>
         </div>
@@ -1730,7 +1754,15 @@
                             if (mx >= valLeft && mx <= valRight && my >= valTop && my <= valBottom) return n;
                         } else {
                             const sy = n.y * this.camera.scale + this.camera.y;
-                            const r = this.nodeRadius * n.scale * this.camera.scale;
+                            const sc = n.scale * this.camera.scale;
+                            if (n.isEmptySlot) {
+                                const hw = 32 * sc;
+                                const topPad = (n.slotLabel ? 38 : 18) * sc;
+                                const botPad = 23 * sc;
+                                if (Math.abs(mx - sx) <= hw && my >= sy - topPad && my <= sy + botPad) return n;
+                                continue;
+                            }
+                            const r = this.nodeRadius * sc;
                             if (Math.hypot(mx - sx, my - sy) < r) return n;
                         }
                     }
@@ -1771,7 +1803,9 @@
                     const prevId = this.hoveredNode ? this.hoveredNode.id : null;
                     const nextId = nextHover ? nextHover.id : null;
                     this.hoveredNode = nextHover;
-                    this.canvas.style.cursor = nextHover ? 'pointer' : 'default';
+                    this.canvas.style.cursor = nextHover
+                        ? (nextHover.isEmptySlot ? 'help' : 'pointer')
+                        : 'default';
 
                     if (prevId !== nextId) {
                         this.hoveredSubtreeIds = nextId !== null ? this.computeSubtreeIdSet(nextId) : null;
@@ -1822,7 +1856,9 @@
                     }
                     this.isDragging = false;
                     this.pointerDownNode = null;
-                    this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
+                    this.canvas.style.cursor = this.hoveredNode
+                        ? (this.hoveredNode.isEmptySlot ? 'help' : 'pointer')
+                        : 'default';
                 }
 
                 onMouseLeave() {
@@ -2440,11 +2476,13 @@
                 }
 
                 getEdgeSegment(n, pNode) {
-                    const dx = n.x - n.parentX;
-                    const dy = n.y - n.parentY;
+                    const targetX = n.x;
+                    const targetY = n.isEmptySlot ? (n.y - 2 * n.scale) : n.y;
+                    const dx = targetX - n.parentX;
+                    const dy = targetY - n.parentY;
                     const len = Math.hypot(dx, dy);
                     const rStart = this.nodeRadius * (pNode ? pNode.scale : 1);
-                    const rEnd = this.nodeRadius * n.scale;
+                    const rEnd = n.isEmptySlot ? 0 : (this.nodeRadius * n.scale);
                     if (len <= rStart + rEnd) return null;
 
                     const ux = dx / len;
@@ -2452,8 +2490,8 @@
                     return {
                         x1: n.parentX + ux * rStart,
                         y1: n.parentY + uy * rStart,
-                        x2: n.x - ux * rEnd,
-                        y2: n.y - uy * rEnd
+                        x2: targetX - ux * rEnd,
+                        y2: targetY - uy * rEnd
                     };
                 }
 
@@ -3198,7 +3236,7 @@
                     ctx.quadraticCurveTo(x, cpY, endX, arrowY);
                     ctx.stroke();
 
-                    const headLen = 8;
+                    const headLen = 12;
                     const drawHead = (tipX, tipY, ang) => {
                         ctx.beginPath();
                         ctx.fillStyle = this.theme.ARROW;
@@ -3255,32 +3293,40 @@
                     }
 
                     if (n.isEmptySlot) {
-                        ctx.beginPath();
-                        ctx.arc(0, 0, r, 0, Math.PI * 2);
-                        ctx.fillStyle = this.theme.EMPTY_FILL;
-                        ctx.fill();
-                        ctx.setLineDash([5, 4]);
-                        ctx.strokeStyle = this.theme.EMPTY_STROKE;
-                        ctx.lineWidth = 2.4;
-                        ctx.stroke();
-                        ctx.setLineDash([]);
+                        const symCol = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.EMPTY_STROKE;
 
-                        ctx.fillStyle = this.theme.EMPTY_TEXT;
-                        ctx.font = '700 22px "Segoe UI", Arial, sans-serif';
+                        // Same null symbol (┴) used by leaf null links
+                        ctx.strokeStyle = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.EDGE;
+                        ctx.lineWidth = 2.5;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(0, -16);
+                        ctx.lineTo(0, 4);
+                        ctx.moveTo(-5, 4);
+                        ctx.lineTo(5, 4);
+                        ctx.stroke();
+
+                        // Compact pill: ∅ (w=0)
+                        const pillText = '∅ (w=0)';
+                        ctx.font = 'bold 10.5px "Segoe UI", Arial, sans-serif';
+                        const pillW = ctx.measureText(pillText).width + 12;
+                        const pillH = 18;
+                        const pillY = 10;
+
+                        ctx.fillStyle = n.inactive ? this.theme.INACTIVE_FILL : this.theme.EMPTY_FILL;
+                        ctx.strokeStyle = isHovered ? this.theme.RING_FOCUS : symCol;
+                        ctx.lineWidth = isHovered ? 2 : 1.4;
+                        ctx.beginPath();
+                        ctx.roundRect(-pillW / 2, pillY, pillW, pillH, 9);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = n.inactive ? this.theme.INACTIVE_TEXT : this.theme.EMPTY_TEXT;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText('∅', 0, 1);
+                        ctx.fillText(pillText, 0, pillY + pillH / 2 + 0.5);
 
-                        const bx = r * 0.72, by = -r * 0.72;
-                        ctx.beginPath();
-                        ctx.arc(bx, by, 10, 0, Math.PI * 2);
-                        ctx.fillStyle = this.theme.EMPTY_STROKE;
-                        ctx.fill();
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.font = 'bold 10px Arial, sans-serif';
-                        ctx.fillText('0', bx, by + 0.5);
-
-                        if (n.slotLabel) this.drawSlotTag(n.slotLabel, true);
+                        if (n.slotLabel) this.drawSlotTag(n.slotLabel, true, 16);
                         ctx.restore();
                         return;
                     }
@@ -3363,14 +3409,20 @@
                     const ctx = this.ctx;
                     const ok = node.leftWeight >= node.rightWeight;
                     const statusTag = ok ? 'Leftist OK' : 'Violation (L < R)';
+                    const cleanSlot = node.slotLabel
+                        ? (node.slotLabel.replace(/\s*\((?:∅|empty)\)\s*/gi, '').trim() || '∅')
+                        : '∅';
                     const labelText = node.isEmptySlot
-                        ? `Empty Subheap (${node.slotLabel || '∅'}) | Weight: 0`
+                        ? `Empty Subheap (${cleanSlot}) | Weight: 0`
                         : `Weight: ${node.weight} (L: ${node.leftWeight}, R: ${node.rightWeight}) | ${statusTag} | Depth: ${node.depth}`;
                     const invScale = 1 / this.camera.scale;
                     const tx = node.x;
                     let ty;
                     if (this.structView && node.isEmptySlot) {
                         ty = this.getEmptySlotPointerY(node) - (this.structH / 2) * node.scale - (11 * invScale);
+                    } else if (node.isEmptySlot) {
+                        const topExtent = node.slotLabel ? 36 : 16;
+                        ty = node.y - topExtent * node.scale - (10 * invScale);
                     } else {
                         const hasVisibleTag = node.slotLabel && !this.structView;
                         const extraTop = hasVisibleTag ? 22 : 0;
@@ -3402,8 +3454,8 @@
                     ctx.fillStyle = this.theme.PILL_BG;
                     ctx.fill();
 
-                    ctx.fillStyle = (node.isEmptySlot && !this.structView)
-                        ? this.theme.EMPTY_TEXT
+                    ctx.fillStyle = node.isEmptySlot
+                        ? this.theme.NULL_LINK
                         : (ok ? this.theme.EDGE : this.theme.DELETE);
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';

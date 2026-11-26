@@ -469,13 +469,50 @@
             flex-shrink: 0;
         }
 
-        .dot-empty {
-            width: 14px;
-            height: 14px;
-            border-radius: 50%;
-            background: #FFF3E0;
-            border: 2px dashed #FB8C00;
+        .null-empty-sample {
+            display: inline-flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
             flex-shrink: 0;
+            color: #FB8C00;
+        }
+
+        body.dark .null-empty-sample {
+            color: #FFA726;
+        }
+
+        .null-empty-stem {
+            width: 2px;
+            height: 7px;
+            background: currentColor;
+            border-radius: 1px;
+        }
+
+        .null-empty-bar {
+            width: 12px;
+            height: 2px;
+            background: currentColor;
+            border-radius: 1px;
+        }
+
+        .null-empty-pill {
+            margin-top: 2px;
+            padding: 0 3px;
+            font-size: 8px;
+            font-weight: 700;
+            line-height: 1.1;
+            border-radius: 3px;
+            background: #FFF3E0;
+            border: 1px solid #FB8C00;
+            color: #E65100;
+        }
+
+        body.dark .null-empty-pill {
+            background: #332211;
+            border-color: #FFA726;
+            color: #FFB74D;
         }
 
         .line-icon {
@@ -803,7 +840,14 @@
                 <div class="legend-item"><div class="dot" style="background:#80DEEA; border:1px solid #0097A7"></div><span>Tree 2 (Merging)</span></div>
                 <div class="legend-item"><div class="dot" style="background:#CE93D8; border:1px solid #8E24AA"></div><span>Comparing / Min</span></div>
                 <div class="legend-item"><div class="dot" style="background:#E53935;"></div><span>Deleting Root</span></div>
-                <div class="legend-item legend-circle-only"><div class="dot-empty"></div><span>Empty Subheap (∅, w=0)</span></div>
+                <div class="legend-item legend-circle-only">
+                    <div class="null-empty-sample">
+                        <span class="null-empty-stem"></span>
+                        <span class="null-empty-bar"></span>
+                        <span class="null-empty-pill">∅</span>
+                    </div>
+                    <span>Empty Subheap (∅, w=0)</span>
+                </div>
                 <div class="legend-item"><div class="dot" style="width:10px; height:10px; background:#E53935; margin-left:2px;"></div><span>Max Weight (Winner)</span></div>
                 <div class="legend-item"><div class="dot" style="background:#E2E8F0; border:1px solid #94A3B8"></div><span>Outside Call / Queued</span></div>
                 <div class="legend-item"><div class="dashed-line-icon"></div><span>Unassigned Child</span></div>
@@ -1566,7 +1610,7 @@
 
                     // Standard circular node metrics
                     this.nodeRadius = 28;
-                    this.levelHeight = 78;
+                    this.levelHeight = 76;
 
                     // Implementation 4-cell horizontal strip metrics + external value box
                     this.structView = false;
@@ -1766,7 +1810,14 @@
                             if (mx >= valLeft && mx <= valRight && my >= valTop && my <= valBottom) return n;
                         } else {
                             const sy = n.y * this.camera.scale + this.camera.y;
-                            const r = this.nodeRadius * n.scale * this.camera.scale;
+                            const sc = n.scale * this.camera.scale;
+                            if (n.isEmptySlot) {
+                                if (Math.abs(mx - sx) <= 26 * sc && my >= sy - 20 * sc && my <= sy + 28 * sc) {
+                                    return n;
+                                }
+                                continue;
+                            }
+                            const r = this.nodeRadius * sc;
                             if (Math.hypot(mx - sx, my - sy) < r) return n;
                         }
                     }
@@ -1807,7 +1858,9 @@
                     const prevId = this.hoveredNode ? this.hoveredNode.id : null;
                     const nextId = nextHover ? nextHover.id : null;
                     this.hoveredNode = nextHover;
-                    this.canvas.style.cursor = nextHover ? 'pointer' : 'default';
+                    this.canvas.style.cursor = nextHover
+                        ? (nextHover.isEmptySlot ? 'help' : 'pointer')
+                        : 'default';
 
                     if (prevId !== nextId) {
                         this.hoveredSubtreeIds = nextId !== null ? this.computeSubtreeIdSet(nextId) : null;
@@ -1858,7 +1911,9 @@
                     }
                     this.isDragging = false;
                     this.pointerDownNode = null;
-                    this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
+                    this.canvas.style.cursor = this.hoveredNode
+                        ? (this.hoveredNode.isEmptySlot ? 'help' : 'pointer')
+                        : 'default';
                 }
 
                 onMouseLeave() {
@@ -1977,7 +2032,7 @@
                     if (!roots || roots.length === 0) return layout;
 
                     let counter = 0;
-                    const spacingX = this.structView ? 162 : (this.nodeRadius * 2.7);
+                    const spacingX = this.structView ? 162 : (this.nodeRadius * 2.65);
                     const lvlH = this.currentLevelHeight;
                     const topOff = this.currentTopOffset;
 
@@ -2559,7 +2614,7 @@
                     const dyTotal = y2 - y1;
                     if (Math.hypot(dxTotal, dyTotal) < 3) return;
 
-                    const exitY = y1 + 2*halfH/3 + 8 * pScale;
+                    const exitY = y1 + 2 * halfH / 3 + 8 * pScale;
                     const useVerticalExit = y2 > exitY + 12;
 
                     const angle = useVerticalExit
@@ -2644,8 +2699,6 @@
                     ctx.textBaseline = 'middle';
                     ctx.fillText(label, rx - boxW / 2 - 7, ry + 0.5);
 
-                    ctx.fillStyle = boxFill;
-                    //ctx.fillRect(rx - boxW / 2, ry - boxH / 2, boxW, boxH);
                     this.rect(rx - boxW / 2, ry - boxH / 2, boxW, boxH, boxFill);
 
                     if (rootNode) {
@@ -2662,12 +2715,21 @@
                     ctx.restore();
                 }
 
-
                 rect(x, y, w, h, fill, alpha = 1, stroke = null, lineWidth = 0, r = 4) {
                     const c = this.ctx;
-                    c.save(); c.globalAlpha *= alpha; c.beginPath(); c.roundRect(x, y, w, h, r);
-                    if (fill && fill !== 'transparent') { c.fillStyle = fill; c.fill(); }
-                    if (stroke && lineWidth > 0) { c.strokeStyle = stroke; c.lineWidth = lineWidth; c.stroke(); }
+                    c.save();
+                    c.globalAlpha *= alpha;
+                    c.beginPath();
+                    c.roundRect(x, y, w, h, r);
+                    if (fill && fill !== 'transparent') {
+                        c.fillStyle = fill;
+                        c.fill();
+                    }
+                    if (stroke && lineWidth > 0) {
+                        c.strokeStyle = stroke;
+                        c.lineWidth = lineWidth;
+                        c.stroke();
+                    }
                     c.restore();
                 }
 
@@ -2707,8 +2769,6 @@
                         ctx.textBaseline = 'middle';
                         ctx.fillText(label, -boxW / 2 - 7, 0.5);
 
-                        ctx.fillStyle = boxFill;
-                        // ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
                         this.rect(-boxW / 2, -boxH / 2, boxW, boxH, boxFill);
 
                         ctx.beginPath();
@@ -2799,8 +2859,6 @@
                     }
 
                     // 1. External value box
-                    ctx.fillStyle = valFill;
-                    //ctx.fillRect(valLeft, valTop, valW, valH);
                     this.rect(valLeft, valTop, valW, valH, valFill);
 
                     const str = String(n.val);
@@ -2812,8 +2870,6 @@
                     ctx.fillText(str, valLeft + valW / 2, 1);
 
                     // 2. Cell 1: Purple element pointer
-                    ctx.fillStyle = elemCellFill;
-                    //ctx.fillRect(xElem, -halfH, ptrW, h);
                     this.rect(xElem, -halfH, ptrW, h, elemCellFill);
 
                     const dotX = xElem + ptrW / 2;
@@ -2828,8 +2884,6 @@
                     ctx.fill();
 
                     // 3. Cell 2: Yellow weight cell (turns red when highlighted as max weight winner)
-                    ctx.fillStyle = weightCellFill;
-                    //ctx.fillRect(xWeight, -halfH, wW, h);
                     this.rect(xWeight, -halfH, wW, h, weightCellFill);
 
                     ctx.fillStyle = weightTextCol;
@@ -2841,10 +2895,7 @@
                     ctx.fillText(wStr, xWeight + wW / 2, 1);
 
                     // 4. Cell 3 & Cell 4: Cyan left and right pointer cells
-                    ctx.fillStyle = ptrCellFill;
-                    // ctx.fillRect(xLeft, -halfH, ptrW, h);
                     this.rect(xLeft, -halfH, ptrW, h, ptrCellFill);
-                    //ctx.fillRect(xRight, -halfH, ptrW, h);
                     this.rect(xRight, -halfH, ptrW, h, ptrCellFill);
 
                     // Left pointer: unassigned dashed line vs null dot
@@ -3146,32 +3197,40 @@
                     }
 
                     if (n.isEmptySlot) {
-                        ctx.beginPath();
-                        ctx.arc(0, 0, r, 0, Math.PI * 2);
-                        ctx.fillStyle = this.theme.EMPTY_FILL;
-                        ctx.fill();
-                        ctx.setLineDash([5, 4]);
-                        ctx.strokeStyle = this.theme.EMPTY_STROKE;
-                        ctx.lineWidth = 2.4;
-                        ctx.stroke();
-                        ctx.setLineDash([]);
+                        const symCol = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.EMPTY_STROKE;
 
-                        ctx.fillStyle = this.theme.EMPTY_TEXT;
-                        ctx.font = '700 22px "Segoe UI", Arial, sans-serif';
+                        // Same null symbol (┴) used by leaf null links
+                        ctx.strokeStyle = this.theme.EDGE;
+                        ctx.lineWidth = 2.5;
+                        ctx.lineCap = 'round';
+                        ctx.beginPath();
+                        ctx.moveTo(0, -16);
+                        ctx.lineTo(0, 4);
+                        ctx.moveTo(-5, 4);
+                        ctx.lineTo(5, 4);
+                        ctx.stroke();
+
+                        // Compact pill: ∅ (w=0)
+                        const pillText = '∅ (w=0)';
+                        ctx.font = 'bold 10.5px "Segoe UI", Arial, sans-serif';
+                        const pillW = ctx.measureText(pillText).width + 12;
+                        const pillH = 18;
+                        const pillY = 10;
+
+                        ctx.fillStyle = n.inactive ? this.theme.INACTIVE_FILL : this.theme.EMPTY_FILL;
+                        ctx.strokeStyle = symCol;
+                        ctx.lineWidth = 1.4;
+                        ctx.beginPath();
+                        ctx.roundRect(-pillW / 2, pillY, pillW, pillH, 9);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = n.inactive ? this.theme.INACTIVE_TEXT : this.theme.EMPTY_TEXT;
                         ctx.textAlign = 'center';
                         ctx.textBaseline = 'middle';
-                        ctx.fillText('∅', 0, 1);
+                        ctx.fillText(pillText, 0, pillY + pillH / 2 + 0.5);
 
-                        const bx = r * 0.72, by = -r * 0.72;
-                        ctx.beginPath();
-                        ctx.arc(bx, by, 10, 0, Math.PI * 2);
-                        ctx.fillStyle = this.theme.EMPTY_STROKE;
-                        ctx.fill();
-                        ctx.fillStyle = '#FFFFFF';
-                        ctx.font = 'bold 10px Arial, sans-serif';
-                        ctx.fillText('0', bx, by + 0.5);
-
-                        if (n.slotLabel) this.drawSlotTag(n.slotLabel, true);
+                        if (n.slotLabel) this.drawSlotTag(n.slotLabel, true, 16);
                         ctx.restore();
                         return;
                     }
@@ -3263,7 +3322,8 @@
                     } else {
                         const hasVisibleTag = node.slotLabel && !this.structView;
                         const extraTop = hasVisibleTag ? 22 : 0;
-                        ty = node.y - this.halfH - ((11 + extraTop) * invScale);
+                        const topH = (!this.structView && node.isEmptySlot) ? 16 : this.halfH;
+                        ty = node.y - topH - ((11 + extraTop) * invScale);
                     }
 
                     ctx.save();
