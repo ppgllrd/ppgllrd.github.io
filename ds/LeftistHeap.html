@@ -294,7 +294,7 @@
             border: 1px solid var(--border-color);
             border-radius: 6px;
             font-size: 0.78rem;
-            max-width: 230px;
+            max-width: 245px;
             z-index: 5;
         }
 
@@ -469,6 +469,15 @@
             flex-shrink: 0;
         }
 
+        .dot-empty {
+            width: 14px;
+            height: 14px;
+            border-radius: 50%;
+            background: #FFF3E0;
+            border: 2px dashed #FB8C00;
+            flex-shrink: 0;
+        }
+
         .line-icon {
             width: 14px;
             height: 3px;
@@ -476,13 +485,25 @@
             flex-shrink: 0;
         }
 
-        .arrow-icon {
-            font-size: 14px;
-            font-weight: bold;
-            color: #D50000;
+        .dashed-line-icon {
             width: 14px;
+            height: 0;
+            border-top: 2.5px dashed #1976D2;
+            flex-shrink: 0;
+        }
+
+        body.dark .dashed-line-icon {
+            border-top-color: #58A6FF;
+        }
+
+        .arrow-icon {
+            width: 16px;
             text-align: center;
+            color: #D50000;
+            font-weight: 900;
+            font-size: 13px;
             line-height: 1;
+            flex-shrink: 0;
         }
 
         .node-sample {
@@ -686,7 +707,7 @@
             h1 { font-size: 0.98rem; }
             input[type="text"] { width: 110px; }
             .divider { display: none; }
-            #legend { max-width: 195px; font-size: 0.72rem; top: 8px; left: 8px; }
+            #legend { max-width: 200px; font-size: 0.72rem; top: 8px; left: 8px; }
             .status-meta { display: none; }
         }
     </style>
@@ -714,7 +735,7 @@
 
                 <div class="divider"></div>
 
-                <button class="btn-merge" id="btnMerge" title="Merge current heap with a random heap (or two random heaps if empty)">Merge</button>
+                <button class="btn-merge" id="btnMerge" title="Generate two new random heaps and merge them">Merge</button>
 
                 <div class="divider"></div>
 
@@ -757,7 +778,7 @@
             <span id="status-text">Ready. Wheel/Pinch to Zoom, Drag to Pan, Hover node for Weights.</span>
             <div class="status-meta">
                 <span id="step-counter">Step: -</span>
-                <span id="tree-stats">Nodes: 0 | Height: 0 | Spine: 0 | Min: -</span>
+                <span id="tree-stats">Nodes: 0 | Height: 0 | Min: -</span>
             </div>
         </div>
     </header>
@@ -792,12 +813,14 @@
                 <div class="legend-item"><div class="dot" style="background:#80DEEA; border:1px solid #0097A7"></div><span>Tree 2 (Merging)</span></div>
                 <div class="legend-item"><div class="dot" style="background:#CE93D8; border:1px solid #8E24AA"></div><span>Comparing / Min</span></div>
                 <div class="legend-item"><div class="dot" style="background:#E53935;"></div><span>Deleting Root</span></div>
+                <div class="legend-item legend-circle-only"><div class="dot-empty"></div><span>Empty Subheap (∅, w=0)</span></div>
                 <div class="legend-item"><div class="dot" style="width:10px; height:10px; background:#E53935; margin-left:2px;"></div><span>Heavier Right (Swap)</span></div>
                 <div class="legend-item"><div class="line-icon" style="background:#FF8F00;"></div><span>Right Spine Path</span></div>
                 <div class="legend-item"><div class="arrow-icon">&#8644;</div><span>Swap Children</span></div>
-                <div class="legend-item"><div class="dot" style="background:#E2E8F0; border:1px solid #94A3B8"></div><span>Queued (Inactive)</span></div>
+                <div class="legend-item"><div class="dot" style="background:#E2E8F0; border:1px solid #94A3B8"></div><span>Outside Call / Queued</span></div>
+                <div class="legend-item"><div class="dashed-line-icon"></div><span>Unassigned Child</span></div>
                 <div class="legend-item legend-circle-only"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
-                <div class="legend-item legend-struct-only"><div class="null-circle-icon"><span class="struct-sample-dot"></span></div><span>Null Pointer</span></div>
+                <div class="legend-item legend-struct-only"><div class="null-circle-icon"><span class="struct-sample-dot"></span></div><span>Null Pointer / Empty</span></div>
             </div>
         </div>
 
@@ -831,19 +854,17 @@
     <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
             <span class="close" id="btnCloseModal">&times;</span>
-            <h2 id="modalTitle">Weight-Biased Leftist Min-Heap (WBLH)</h2>
+            <h2 id="modalTitle">Weight-Biased Leftist Min-Heap Algorithms</h2>
 
-            <h3>Properties</h3>
-            <p>A binary tree where every node satisfies:</p>
-            <ul>
-                <li><strong>Min-Heap Property:</strong> Each parent's key is &le; its children's keys.</li>
-                <li><strong>Weight-Biased Leftist Property:</strong> <code>weight(left) &ge; weight(right)</code>, where <strong>weight</strong> is the number of nodes in the subtree. Consequently, the right spine has length &le; log<sub>2</sub>(n + 1).</li>
-            </ul>
+            <h3>Weight-Biased Leftist Property</h3>
+            <p>A <strong>Weight-Biased Leftist Heap (WBLT)</strong> is a mergeable min-heap where every node stores its <strong>weight</strong> (total number of nodes in its subtree, with <code>weight(null) = 0</code>). For every node, the left subtree is at least as heavy as the right subtree:</p>
+            <p><span class="complexity">weight(left) &ge; weight(right)</span></p>
+            <p>Consequently, the rightmost path from any node of size <em>n</em> has length at most <span class="complexity">&lfloor;log<sub>2</sub>(n + 1)&rfloor;</span>.</p>
 
             <h3>Operations</h3>
             <ul>
                 <li><strong>Minimum:</strong> <span class="complexity">O(1)</span> — Always at the root.</li>
-                <li><strong>Merge(H<sub>1</sub>, H<sub>2</sub>):</strong> <span class="complexity">O(log n)</span> — Traverses down the <strong>rightmost spine</strong> choosing the smaller root. While unwinding recursion, updates weights and swaps left/right children whenever <code>weight(left) &lt; weight(right)</code>.</li>
+                <li><strong>Merge(H<sub>1</sub>, H<sub>2</sub>):</strong> <span class="complexity">O(log n)</span> — Traverses down the <strong>rightmost spine</strong> choosing the smaller root (leaving its right child unassigned as a dashed line while recursing). While unwinding recursion, updates weights and swaps left/right children whenever <code>weight(left) &lt; weight(right)</code>.</li>
                 <li><strong>Insert:</strong> <span class="complexity">O(log n)</span> — Merges a 1-node heap with the existing heap.</li>
                 <li><strong>Delete Min:</strong> <span class="complexity">O(log n)</span> — Removes the root and merges its left and right subtrees.</li>
             </ul>
@@ -851,14 +872,14 @@
             <h3>Build Algorithms</h3>
             <ul>
                 <li><strong>Build Random (Sequential):</strong> <span class="complexity">O(n log n)</span> — Inserts elements one by one.</li>
-                <li><strong>Build Bottom-Up (Pairwise):</strong> <span class="complexity">O(n)</span> — Places 1-node heaps in a queue, repeatedly merges the front pair, and enqueues the result.</li>
+                <li><strong>Build Bottom-Up (Pairwise):</strong> <span class="complexity">O(n)</span> — Places single-node heaps in a queue, repeatedly merges the front two, and enqueues the result.</li>
             </ul>
 
             <h3>Tips &amp; Keyboard Shortcuts</h3>
             <ul>
                 <li><strong>Implementation View:</strong> Toggle the <strong>Implementation</strong> checkbox to inspect the internal memory-structure diagram (external value box referenced by a purple pointer cell, yellow <code>weight</code>, light-blue <code>left</code>/<code>right</code> pointer cells, and <code>root</code> reference).</li>
                 <li><strong>Batch Insert:</strong> Enter comma-separated numbers (e.g., <code>40, 15, 30, 5, 22</code>).</li>
-                <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click/tap a node to copy its value, hover to highlight its subtree and inspect weights and leftist invariant.</li>
+                <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click/tap a node to copy its value, hover to highlight its subtree and inspect weights and leftist balance status.</li>
                 <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> Insert, <kbd>Space</kbd> Pause/Resume, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
             </ul>
         </div>
@@ -892,11 +913,17 @@
                     EDGE: '#1976D2',
                     PATH_EDGE: '#FF8F00',
                     NULL_LINK: '#1976D2',
+                    UNASSIGNED_LINK: '#1976D2',
                     VIOLATION_NULL: '#E53935',
                     ARROW: '#D50000',
                     WEIGHT_TEXT: '#1976D2',
                     WEIGHT_STROKE: '#1976D2',
                     WEIGHT_HIGHLIGHT: '#E53935',
+                    EMPTY_FILL: '#FFF3E0',
+                    EMPTY_STROKE: '#FB8C00',
+                    EMPTY_TEXT: '#E65100',
+                    SLOT_TAG_BG: '#37474F',
+                    SLOT_TAG_TEXT: '#FFFFFF',
                     BADGE_BG: '#FFFFFF',
                     INACTIVE_FILL: '#E2E8F0',
                     INACTIVE_STROKE: '#94A3B8',
@@ -938,11 +965,17 @@
                     EDGE: '#58A6FF',
                     PATH_EDGE: '#FFB300',
                     NULL_LINK: '#58A6FF',
+                    UNASSIGNED_LINK: '#58A6FF',
                     VIOLATION_NULL: '#FF5252',
                     ARROW: '#FF5252',
                     WEIGHT_TEXT: '#58A6FF',
                     WEIGHT_STROKE: '#58A6FF',
                     WEIGHT_HIGHLIGHT: '#EF5350',
+                    EMPTY_FILL: '#332211',
+                    EMPTY_STROKE: '#FFA726',
+                    EMPTY_TEXT: '#FFB74D',
+                    SLOT_TAG_BG: '#455A64',
+                    SLOT_TAG_TEXT: '#FFFFFF',
                     BADGE_BG: '#161B22',
                     INACTIVE_FILL: '#1F2630',
                     INACTIVE_STROKE: '#444C56',
@@ -970,12 +1003,17 @@
              * 2. PURE DATA MODEL & UNIFIED SNAPSHOT CONTRACT
              * ================================================================= */
             class Node {
-                constructor(val, left = null, right = null, id = Node.nextId++) {
+                constructor(val, left = null, right = null, id = Node.nextId++, weightOverride = null, flags = {}) {
                     this.val = val;
                     this.left = left;
                     this.right = right;
-                    this.weight = 1 + (left ? left.weight : 0) + (right ? right.weight : 0);
+                    this.weight = weightOverride !== null
+                        ? weightOverride
+                        : 1 + (left ? left.weight : 0) + (right ? right.weight : 0);
                     this.id = id;
+                    this.isEmptySlot = false;
+                    this.unassignedLeft = Boolean(flags.unassignedLeft);
+                    this.unassignedRight = Boolean(flags.unassignedRight);
                     Object.freeze(this);
                 }
             }
@@ -1009,6 +1047,19 @@
                     return set;
                 },
 
+                createEmptySlot(id) {
+                    return Object.freeze({
+                        id,
+                        val: '∅',
+                        weight: 0,
+                        left: null,
+                        right: null,
+                        isEmptySlot: true,
+                        unassignedLeft: false,
+                        unassignedRight: false
+                    });
+                },
+
                 getTraversals(root) {
                     const inorder = [], preorder = [], postorder = [], level = [];
                     const inFn = n => { if (!n) return; inFn(n.left); inorder.push(n.val); inFn(n.right); };
@@ -1033,21 +1084,25 @@
 
             /**
              * Standardized snapshot contract:
-             * { roots, statsRoot, highlights, tree2Ids, weightHighlights, swapNodeIds, violationNull, pathIds, focusIndices, shouldFit, text, pause }
+             * { roots, rootDepths, statsRoot, highlights, tree2Ids, weightHighlights, slotLabels, swapNodeIds, violationNull, pathIds, focusIndices, activeIds, shouldFit, speedScale, text, pause }
              */
             class SnapshotRecorder {
                 constructor(initialRoots = [], initialStatsRoot = null, initialText = null) {
                     this.snapshots = [{
                         roots: initialRoots ? [...initialRoots] : [],
+                        rootDepths: (initialRoots || []).map(() => 0),
                         statsRoot: initialStatsRoot || null,
                         highlights: new Map(),
                         tree2Ids: new Set(),
                         weightHighlights: new Set(),
+                        slotLabels: new Map(),
                         swapNodeIds: new Set(),
                         violationNull: null,
                         pathIds: [],
                         focusIndices: null,
+                        activeIds: null,
                         shouldFit: false,
+                        speedScale: 1,
                         text: initialText,
                         pause: 0
                     }];
@@ -1059,21 +1114,41 @@
                         ? new Map(rawH)
                         : new Map(Array.isArray(rawH) ? rawH : []);
 
+                    const rawSL = options.slotLabels;
+                    const slotLabels = rawSL instanceof Map
+                        ? new Map(rawSL)
+                        : new Map(Array.isArray(rawSL) ? rawSL : []);
+
                     const pause = typeof options.pause === 'number'
                         ? options.pause
                         : (options.pause ? 0.72 : 0);
 
+                    const filteredRoots = [];
+                    const filteredDepths = [];
+                    const rawRoots = roots || [];
+                    const rawDepths = options.rootDepths || [];
+                    for (let i = 0; i < rawRoots.length; i++) {
+                        if (rawRoots[i]) {
+                            filteredRoots.push(rawRoots[i]);
+                            filteredDepths.push(rawDepths[i] !== undefined ? rawDepths[i] : 0);
+                        }
+                    }
+
                     this.snapshots.push({
-                        roots: roots ? roots.filter(Boolean) : [],
+                        roots: filteredRoots,
+                        rootDepths: filteredDepths,
                         statsRoot: options.statsRoot !== undefined ? options.statsRoot : null,
                         highlights,
                         tree2Ids: options.tree2Ids ? new Set(options.tree2Ids) : new Set(),
                         weightHighlights: options.weightHighlights ? new Set(options.weightHighlights) : new Set(),
+                        slotLabels,
                         swapNodeIds: options.swapNodeIds ? new Set(options.swapNodeIds) : new Set(),
                         violationNull: options.violationNull || null,
                         pathIds: options.pathIds ? [...options.pathIds] : [],
                         focusIndices: options.focusIndices ? [...options.focusIndices] : null,
+                        activeIds: options.activeIds ? new Set(options.activeIds) : null,
                         shouldFit: Boolean(options.shouldFit),
+                        speedScale: options.speedScale || 1,
                         text: options.text ?? null,
                         pause
                     });
@@ -1112,82 +1187,171 @@
                     const tree2Ids = options.tree2Ids || new Set();
                     const focusIndices = options.focusIndices || null;
                     const shouldFit = Boolean(options.shouldFit);
+                    const speedScale = options.speedScale || 1;
                     const msgPrefix = options.msgPrefix || '';
                     const statsRoot = options.statsRoot !== undefined ? options.statsRoot : null;
 
-                    if (!h1 && !h2) return null;
-
-                    if (!h1 || !h2) {
-                        const survivor = h1 || h2;
-                        recorder.emit([survivor, ...unrelatedQueue], {
-                            statsRoot,
-                            tree2Ids,
-                            focusIndices,
-                            shouldFit,
-                            text: `${msgPrefix}Other heap is empty (∅). ${survivor.val} remains root.`
-                        });
-                        return survivor;
-                    }
+                    let mergeStepGroup = 0;
 
                     const takeSnapshot = (mainTree, floating = [], opts = {}) => {
                         const highlights = (opts.highlightIds || []).map(id => [id, 'COMPARE']);
-                        recorder.emit([mainTree, ...floating, ...unrelatedQueue], {
+                        const floatingDepths = opts.floatingDepths || floating.map(() => 0);
+                        const allRoots = [mainTree, ...floating, ...unrelatedQueue];
+                        const allDepths = [
+                            0,
+                            ...floatingDepths,
+                            ...unrelatedQueue.map(() => 0)
+                        ];
+                        recorder.emit(allRoots, {
+                            rootDepths: allDepths,
                             statsRoot,
                             highlights,
                             tree2Ids,
                             weightHighlights: opts.weightHighlightIds || [],
+                            slotLabels: opts.slotLabels || new Map(),
                             swapNodeIds: opts.swapNodeIds || [],
                             violationNull: opts.violationNull || null,
                             pathIds: opts.pathIds || [],
                             focusIndices,
+                            activeIds: opts.activeIds !== undefined ? opts.activeIds : null,
                             shouldFit,
+                            speedScale,
                             text: `${msgPrefix}${opts.msg}`,
                             pause: opts.pause || false
                         });
                     };
 
-                    takeSnapshot(h1, [h2], { msg: `Merge Start: ${h1.val} and ${h2.val}` });
+                    const mergeRec = (a, b, parentVal, parentId, wrap, pathIds, depth = 0, passedEmptyA = null, passedEmptyB = null) => {
+                        const grp = mergeStepGroup++;
+                        const callIds = new Set();
+                        TreeUtils.collectIds(a, callIds);
+                        TreeUtils.collectIds(b, callIds);
 
-                    const mergeRec = (a, b, parentVal, parentId, wrap, pathIds) => {
-                        if (!a) {
-                            if (parentId !== null) {
-                                takeSnapshot(wrap(b), [], {
-                                    msg: `Right child was empty (∅) -> attached ${b.val} to Right of ${parentVal}`,
-                                    highlightIds: [b.id, parentId],
-                                    pathIds: [...pathIds, b.id],
+                        // Base case 1: Both trees are empty -> explicit recursive call step aligned at depth
+                        if (!a && !b) {
+                            const emptyA = passedEmptyA || TreeUtils.createEmptySlot(`recEmptyA_${depth}_${grp}`);
+                            const emptyB = passedEmptyB || TreeUtils.createEmptySlot(`recEmptyB_${depth}_${grp}`);
+                            const activeSet = new Set([emptyA.id, emptyB.id]);
+
+                            takeSnapshot(wrap(emptyA), [emptyB], {
+                                msg: `Recursive call (depth ${depth}): merge(∅, ∅)`,
+                                floatingDepths: [depth],
+                                slotLabels: new Map([
+                                    [emptyA.id, 'H1 (∅)'],
+                                    [emptyB.id, 'H2 (∅)']
+                                ]),
+                                pathIds,
+                                activeIds: activeSet,
+                                pause: true
+                            });
+
+                            takeSnapshot(wrap(null), [], {
+                                msg: `Base case (depth ${depth}): both trees are empty (∅) -> returns ∅.`,
+                                pathIds,
+                                activeIds: new Set(),
+                                pause: true
+                            });
+                            return null;
+                        }
+
+                        // Base case 2: One tree is empty -> explicit recursive call step aligned at depth
+                        if (!a || !b) {
+                            const survivor = a || b;
+                            const emptySlot = (!a ? passedEmptyA : passedEmptyB) ||
+                                TreeUtils.createEmptySlot(`recEmpty_${depth}_${grp}`);
+                            const activeSet = new Set([...callIds, emptySlot.id]);
+
+                            if (!a) {
+                                takeSnapshot(wrap(emptySlot), [b], {
+                                    msg: `Recursive call (depth ${depth}): merge(∅, ${b.val})`,
+                                    floatingDepths: [depth],
+                                    highlightIds: [b.id],
+                                    slotLabels: new Map([
+                                        [emptySlot.id, 'H1 (∅)'],
+                                        [b.id, 'H2']
+                                    ]),
+                                    pathIds,
+                                    activeIds: activeSet,
+                                    pause: true
+                                });
+                            } else {
+                                takeSnapshot(wrap(a), [emptySlot], {
+                                    msg: `Recursive call (depth ${depth}): merge(${a.val}, ∅)`,
+                                    floatingDepths: [depth],
+                                    highlightIds: [a.id],
+                                    slotLabels: new Map([
+                                        [a.id, 'H1'],
+                                        [emptySlot.id, 'H2 (∅)']
+                                    ]),
+                                    pathIds,
+                                    activeIds: activeSet,
                                     pause: true
                                 });
                             }
-                            return b;
-                        }
-                        if (!b) return a;
 
+                            const nextPath = parentId !== null ? [...pathIds, survivor.id] : pathIds;
+                            takeSnapshot(wrap(survivor), [], {
+                                msg: parentId !== null
+                                    ? `Base case (depth ${depth}): other tree is empty (∅) -> attached ${survivor.val} to Right of ${parentVal}`
+                                    : `Base case (depth ${depth}): other tree is empty (∅) -> returns ${survivor.val}.`,
+                                highlightIds: parentId !== null ? [survivor.id, parentId] : [survivor.id],
+                                pathIds: nextPath,
+                                activeIds: new Set(callIds),
+                                pause: true
+                            });
+                            return survivor;
+                        }
+
+                        // General case: Explicit recursive call aligned at `depth`
                         takeSnapshot(wrap(a), [b], {
-                            msg: `Comparing roots: ${a.val} vs ${b.val}`,
+                            msg: `Recursive call (depth ${depth}): merge(${a.val}, ${b.val})`,
+                            floatingDepths: [depth],
                             highlightIds: [a.id, b.id],
+                            slotLabels: new Map([
+                                [a.id, 'H1'],
+                                [b.id, 'H2']
+                            ]),
                             pathIds,
+                            activeIds: new Set(callIds),
                             pause: true
                         });
 
-                        let cur = a;
-                        let other = b;
+                        const winnerNode = a.val <= b.val ? a : b;
+                        const floaterNode = a.val <= b.val ? b : a;
 
-                        if (a.val > b.val) {
-                            cur = b;
-                            other = a;
-                            takeSnapshot(wrap(cur), [other], {
-                                msg: `Swap: ${cur.val} < ${other.val} -> ${cur.val} stays`,
-                                highlightIds: [cur.id, other.id],
-                                pathIds,
-                                pause: true
-                            });
-                        }
+                        takeSnapshot(wrap(winnerNode), [floaterNode], {
+                            msg: `Comparing roots (depth ${depth}): ${a.val} vs ${b.val} -> ${winnerNode.val} stays`,
+                            floatingDepths: [depth],
+                            highlightIds: [a.id, b.id],
+                            pathIds,
+                            activeIds: new Set(callIds),
+                            pause: true
+                        });
 
+                        const cur = winnerNode;
+                        const other = floaterNode;
+                        const totalWeight = cur.weight + other.weight;
                         const nextPath = [...pathIds, cur.id];
-                        takeSnapshot(wrap(cur), [other], {
-                            msg: `Descending right spine of ${cur.val}`,
+
+                        // Right child of `cur` becomes unassigned (dashed line) while recursively merging cur.right and other
+                        const curUnassignedRight = new Node(cur.val, cur.left, null, cur.id, totalWeight, {
+                            unassignedRight: true
+                        });
+                        const emptyRight = cur.right ? null : TreeUtils.createEmptySlot(`emptyR_${cur.id}_${grp}`);
+                        const rightCand = cur.right || emptyRight;
+                        const descActiveIds = new Set([...callIds, rightCand.id]);
+
+                        takeSnapshot(wrap(curUnassignedRight), [rightCand, other], {
+                            msg: `Descending right spine of ${cur.val}: prepare merge(${cur.right ? cur.right.val : '∅'}, ${other.val}) at depth ${depth + 1}`,
+                            floatingDepths: [depth + 1, depth + 1],
                             highlightIds: [cur.id],
-                            pathIds: nextPath
+                            slotLabels: new Map([
+                                [rightCand.id, cur.right ? 'R' : 'R (empty)'],
+                                [other.id, 'Other']
+                            ]),
+                            pathIds: nextPath,
+                            activeIds: descActiveIds,
+                            pause: true
                         });
 
                         const mergedRight = mergeRec(
@@ -1195,18 +1359,30 @@
                             other,
                             cur.val,
                             cur.id,
-                            sub => wrap(new Node(cur.val, cur.left, sub, cur.id)),
-                            nextPath
+                            sub => wrap(new Node(
+                                cur.val,
+                                cur.left,
+                                sub,
+                                cur.id,
+                                sub ? null : totalWeight,
+                                { unassignedRight: !sub }
+                            )),
+                            nextPath,
+                            depth + 1,
+                            emptyRight,
+                            null
                         );
 
                         const updatedCur = new Node(cur.val, cur.left, mergedRight, cur.id);
                         const wL = TreeUtils.getWeight(updatedCur.left);
                         const wR = TreeUtils.getWeight(updatedCur.right);
+                        const unwindIds = TreeUtils.collectIds(updatedCur);
 
                         takeSnapshot(wrap(updatedCur), [], {
-                            msg: `Back at ${updatedCur.val}. Weight: ${updatedCur.weight} (L:${wL}, R:${wR})`,
+                            msg: `Back at ${updatedCur.val} (depth ${depth}). Weight: ${updatedCur.weight} (L:${wL}, R:${wR})`,
                             highlightIds: [updatedCur.id],
-                            pathIds: nextPath
+                            pathIds: nextPath,
+                            activeIds: unwindIds
                         });
 
                         if (wL < wR) {
@@ -1220,6 +1396,7 @@
                                 swapNodeIds: [updatedCur.id],
                                 violationNull,
                                 pathIds: nextPath,
+                                activeIds: unwindIds,
                                 pause: true
                             });
 
@@ -1229,6 +1406,7 @@
                                 highlightIds: [swappedCur.id],
                                 weightHighlightIds: highlightWeights,
                                 pathIds,
+                                activeIds: unwindIds,
                                 pause: true
                             });
                             return swappedCur;
@@ -1237,8 +1415,8 @@
                         return updatedCur;
                     };
 
-                    const mergedResult = mergeRec(h1, h2, null, null, sub => sub, []);
-                    takeSnapshot(mergedResult, [], { msg: 'Merge Complete.' });
+                    const mergedResult = mergeRec(h1, h2, null, null, sub => sub, [], 0);
+                    takeSnapshot(mergedResult, [], { msg: 'Merge Complete.', activeIds: null });
                     return mergedResult;
                 }
 
@@ -1415,12 +1593,16 @@
                 }
 
                 get currentTopOffset() {
-                    return this.structView ? 112 : 60;
+                    return this.structView ? 112 : 65;
                 }
 
                 getValBoxWidth(val) {
                     const str = String(val);
                     return Math.max(this.structValMinW, str.length * 10 + 14);
+                }
+
+                getEmptySlotPointerY(node) {
+                    return node.y - (this.structH / 2) * node.scale - 58;
                 }
 
                 bindEvents() {
@@ -1466,7 +1648,7 @@
                     this.structView = Boolean(enabled);
                     if (this.snapshots.length > 0) {
                         this.snapshots.forEach(s => {
-                            const layout = this.calculateLayout(s.roots);
+                            const layout = this.calculateLayout(s.roots, s.rootDepths);
                             const bounds = this.getBoundsFromLayout(layout);
                             const focusBounds = s.focusIndices
                                 ? this.getBoundsFromLayout(layout, s.focusIndices)
@@ -1524,9 +1706,16 @@
                     for (let i = this.lastDrawnNodes.length - 1; i >= 0; i--) {
                         const n = this.lastDrawnNodes[i];
                         const sx = n.x * this.camera.scale + this.camera.x;
-                        const sy = n.y * this.camera.scale + this.camera.y;
                         if (this.structView) {
                             const sc = n.scale * this.camera.scale;
+                            if (n.isEmptySlot) {
+                                const syPtr = this.getEmptySlotPointerY(n) * this.camera.scale + this.camera.y;
+                                const hwPtr = (this.structPtrW / 2 + 6) * sc;
+                                const hhPtr = (this.structH / 2 + 4) * sc;
+                                if (Math.abs(mx - sx) <= hwPtr && Math.abs(my - syPtr) <= hhPtr) return n;
+                                continue;
+                            }
+                            const sy = n.y * this.camera.scale + this.camera.y;
                             const hw = (this.structW / 2) * sc;
                             const hh = (this.structH / 2) * sc;
                             // Hit-test 4-cell strip
@@ -1540,6 +1729,7 @@
                             const valBottom = sy - hh + this.structValH * sc;
                             if (mx >= valLeft && mx <= valRight && my >= valTop && my <= valBottom) return n;
                         } else {
+                            const sy = n.y * this.camera.scale + this.camera.y;
                             const r = this.nodeRadius * n.scale * this.camera.scale;
                             if (Math.hypot(mx - sx, my - sy) < r) return n;
                         }
@@ -1564,7 +1754,7 @@
                         target = findTarget(r);
                         if (target) break;
                     }
-                    if (!target) return null;
+                    if (!target || target.isEmptySlot) return null;
 
                     const set = new Set();
                     const collect = n => {
@@ -1627,7 +1817,7 @@
                 }
 
                 onMouseUp() {
-                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownNode && !this.pointerDownNode.isEmptySlot) {
                         if (this.callbacks.onNodeClick) this.callbacks.onNodeClick(this.pointerDownNode);
                     }
                     this.isDragging = false;
@@ -1715,7 +1905,7 @@
                 }
 
                 onTouchEnd(e) {
-                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownNode && !this.pointerDownNode.isEmptySlot) {
                         if (this.callbacks.onNodeClick) this.callbacks.onNodeClick(this.pointerDownNode);
                     }
                     if (e.touches.length === 0) {
@@ -1737,7 +1927,7 @@
 
                     if (!this.hasInitializedView) {
                         this.camera.targetX = this.camera.x = this.viewWidth / 2;
-                        this.camera.targetY = this.camera.y = 60;
+                        this.camera.targetY = this.camera.y = 65;
                         this.hasInitializedView = true;
                     } else if (this.autoFit && this.snapshots.length > 0) {
                         this.fitActiveView();
@@ -1746,7 +1936,7 @@
                     this.requestRender();
                 }
 
-                calculateLayout(roots) {
+                calculateLayout(roots, rootDepths = []) {
                     const layout = new Map();
                     if (!roots || roots.length === 0) return layout;
 
@@ -1766,6 +1956,7 @@
                             parentId,
                             side,
                             val: node.val,
+                            isEmptySlot: Boolean(node.isEmptySlot),
                             leftWeight: node.left ? node.left.weight : 0,
                             rightWeight: node.right ? node.right.weight : 0
                         });
@@ -1774,7 +1965,8 @@
                     };
 
                     roots.forEach((root, idx) => {
-                        traverse(root, 0, idx, null, null);
+                        const baseDepth = rootDepths[idx] !== undefined ? rootDepths[idx] : 0;
+                        traverse(root, baseDepth, idx, null, null);
                         counter += 1;
                     });
 
@@ -1792,19 +1984,26 @@
                         if (filterSet && !filterSet.has(pos.rootIndex)) return;
                         hasNodes = true;
                         if (this.structView) {
-                            const extLeft = this.structValGap + this.getValBoxWidth(pos.val) + 6;
-                            minX = Math.min(minX, pos.x - hw - extLeft);
-                            maxX = Math.max(maxX, pos.x + hw);
-                            minY = Math.min(minY, pos.y - hh);
-                            maxY = Math.max(maxY, pos.y + hh + 24);
-                            if (pos.depth === 0) {
-                                minY = Math.min(minY, pos.y - hh - 88);
+                            if (pos.isEmptySlot) {
                                 minX = Math.min(minX, pos.x - 66);
+                                maxX = Math.max(maxX, pos.x + this.structPtrW / 2 + 10);
+                                minY = Math.min(minY, pos.y - hh - 88);
+                                maxY = Math.max(maxY, pos.y - hh - 20);
+                            } else {
+                                const extLeft = this.structValGap + this.getValBoxWidth(pos.val) + 6;
+                                minX = Math.min(minX, pos.x - hw - extLeft);
+                                maxX = Math.max(maxX, pos.x + hw);
+                                minY = Math.min(minY, pos.y - hh);
+                                maxY = Math.max(maxY, pos.y + hh + 24);
+                                if (pos.parentId === null) {
+                                    minY = Math.min(minY, pos.y - hh - 88);
+                                    minX = Math.min(minX, pos.x - 66);
+                                }
                             }
                         } else {
                             minX = Math.min(minX, pos.x - 46);
                             maxX = Math.max(maxX, pos.x + 46);
-                            minY = Math.min(minY, pos.y - 46);
+                            minY = Math.min(minY, pos.y - 52);
                             maxY = Math.max(maxY, pos.y + 72);
                         }
                     });
@@ -1846,10 +2045,7 @@
                     } else if (this.isBusy() && !this.hasDynamicFit) {
                         this.fitBoundsToScreen(this.getGlobalBounds(), false);
                     } else {
-                        const targetIdx = (this.state === 'MORPH' || this.state === 'WAITING')
-                            ? Math.min(this.currentSnapshotIndex + 1, this.snapshots.length - 1)
-                            : Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
-                        const snap = this.snapshots[targetIdx];
+                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
                         this.fitSnapToScreen(snap, this.isBusy());
                     }
                     this.requestRender();
@@ -1869,7 +2065,7 @@
                     if (!bounds || !bounds.hasNodes) {
                         this.camera.targetScale = 1;
                         this.camera.targetX = this.viewWidth / 2;
-                        this.camera.targetY = 60;
+                        this.camera.targetY = 65;
                         return;
                     }
 
@@ -1905,7 +2101,7 @@
                     this.hasDynamicFit = false;
                     this.camera.targetScale = 1;
                     this.camera.targetX = this.viewWidth / 2;
-                    this.camera.targetY = 60;
+                    this.camera.targetY = 65;
                     this.setStatus(statusText);
                     this.notifySnapshot(null);
                     this.notifyState();
@@ -1916,7 +2112,7 @@
                     if (!opSnapshots || opSnapshots.length === 0) return;
 
                     const prepared = opSnapshots.map(s => {
-                        const layout = this.calculateLayout(s.roots);
+                        const layout = this.calculateLayout(s.roots, s.rootDepths);
                         const bounds = this.getBoundsFromLayout(layout);
                         const focusBounds = s.focusIndices
                             ? this.getBoundsFromLayout(layout, s.focusIndices)
@@ -2134,10 +2330,11 @@
                             this.startMorphStep();
                         }
                     } else if (this.state === 'MORPH') {
-                        this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * dt;
+                        const nextSnap = this.snapshots[this.currentSnapshotIndex + 1];
+                        const stepSpeedScale = nextSnap?.speedScale || 1;
+                        this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * stepSpeedScale * dt;
                         if (this.morphProgress >= 1) {
                             this.morphProgress = 1;
-                            const nextSnap = this.snapshots[this.currentSnapshotIndex + 1];
 
                             if (playingSingleStep) {
                                 this.currentSnapshotIndex = this.singleStepTarget;
@@ -2153,7 +2350,7 @@
                                 this.notifyState();
                             } else if (nextSnap && nextSnap.pause > 0) {
                                 this.state = 'WAITING';
-                                this.pauseTimer = nextSnap.pause / this.speedMultiplier;
+                                this.pauseTimer = nextSnap.pause / (this.speedMultiplier * stepSpeedScale);
                                 this.notifySnapshot(nextSnap);
                             } else {
                                 this.finalizeStep();
@@ -2181,15 +2378,6 @@
                         this.setStatus(cur?.text || 'Ready.');
                         this.notifyState();
                     }
-                }
-
-                buildPathEdgeSet(pathIds) {
-                    const edgeSet = new Set();
-                    if (!pathIds || pathIds.length < 2) return edgeSet;
-                    for (let i = 0; i < pathIds.length - 1; i++) {
-                        edgeSet.add(`${pathIds[i]}->${pathIds[i + 1]}`);
-                    }
-                    return edgeSet;
                 }
 
                 drawDotGrid(ctx) {
@@ -2309,7 +2497,7 @@
 
                 /**
                  * Draw a pointer arrow from a parent's left/right cyan pointer cell
-                 * to the top-center of the child's 4-cell strip.
+                 * to the top-center of the child's 4-cell strip (or empty slot pointer box).
                  */
                 drawStructPointerEdge(n, pNode, strokeColor, lineWidth, edgeAlpha) {
                     const ctx = this.ctx;
@@ -2327,7 +2515,9 @@
                     const x1 = n.parentX + cellXOffset;
                     const y1 = n.parentY;
                     const x2 = n.x;
-                    const y2 = n.y - (this.structH / 2) * n.scale - 3;
+                    const y2 = n.isEmptySlot
+                        ? this.getEmptySlotPointerY(n) - (this.structH / 2) * n.scale - 3
+                        : n.y - (this.structH / 2) * n.scale - 3;
 
                     const dxTotal = x2 - x1;
                     const dyTotal = y2 - y1;
@@ -2384,7 +2574,7 @@
                 }
 
                 /**
-                 * Draw the tall narrow cyan reference box above a root node (`root` or `h1`, `h2`, ...).
+                 * Draw the tall narrow cyan reference box above a root node (`root`, `h1`, `h2`, or candidate label).
                  */
                 drawRootPointer(rootNode, label = 'root', canDimHover = false) {
                     const ctx = this.ctx;
@@ -2398,7 +2588,7 @@
                     if (rootNode) {
                         rx = rootNode.x;
                         ry = rootNode.y - (this.structH / 2) * rootNode.scale - 58;
-                        alpha = rootNode.alpha;
+                        alpha = rootNode.alpha * (rootNode.outsideCall ? 0.25 : 1);
                         if (canDimHover && !this.hoveredSubtreeIds.has(rootNode.id)) {
                             alpha *= 0.35;
                         }
@@ -2438,10 +2628,51 @@
                 /**
                  * Draw a heap node in Implementation memory-structure view:
                  * External value box <- arrow <- [purple elem ptr | yellow weight | cyan left ptr | cyan right ptr]
+                 * Unassigned child pointers are drawn as dashed lines instead of null boxes/dots.
                  */
                 drawStructNode(n, alpha, isHovered, violationNull = null) {
                     if (n.scale <= 0.02 || alpha <= 0.02) return;
                     const ctx = this.ctx;
+
+                    if (n.isEmptySlot) {
+                        const boxW = this.structPtrW;
+                        const boxH = this.structH;
+                        const rx = n.x;
+                        const ry = this.getEmptySlotPointerY(n);
+                        const label = (n.slotLabel || 'null').replace(' (empty)', '');
+                        const boxFill = n.inactive ? this.theme.INACTIVE_FILL : this.theme.STRUCT_ROOT_BG;
+                        const dotCol = n.inactive ? this.theme.INACTIVE_TEXT : this.theme.STRUCT_ARROW;
+                        const labelCol = n.inactive ? this.theme.INACTIVE_TEXT : this.theme.STRUCT_ROOT_TEXT;
+
+                        ctx.save();
+                        ctx.globalAlpha = alpha;
+                        ctx.translate(rx, ry);
+                        ctx.scale(n.scale, n.scale);
+
+                        if (isHovered) {
+                            ctx.strokeStyle = this.theme.RING_FOCUS;
+                            ctx.lineWidth = 2.5;
+                            ctx.strokeRect(-boxW / 2 - 4, -boxH / 2 - 4, boxW + 8, boxH + 8);
+                        }
+
+                        ctx.font = '600 15px Consolas, "Courier New", monospace';
+                        ctx.fillStyle = labelCol;
+                        ctx.textAlign = 'right';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(label, -boxW / 2 - 7, 0.5);
+
+                        ctx.fillStyle = boxFill;
+                        ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
+
+                        ctx.beginPath();
+                        ctx.fillStyle = dotCol;
+                        ctx.arc(0, 0, 4.2, 0, Math.PI * 2);
+                        ctx.fill();
+
+                        ctx.restore();
+                        return;
+                    }
+
                     const w = this.structW;
                     const h = this.structH;
                     const halfW = w / 2;
@@ -2547,7 +2778,7 @@
                     ctx.arc(dotX, dotY, 4.2, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // 3. Cell 2: Yellow weight cell (turns red when highlighted during leftist violation)
+                    // 3. Cell 2: Yellow weight cell (turns red when highlighted as heavier right child)
                     ctx.fillStyle = weightCellFill;
                     ctx.fillRect(xWeight, -halfH, wW, h);
                     ctx.fillStyle = weightTextCol;
@@ -2563,11 +2794,25 @@
                     ctx.fillRect(xLeft, -halfH, ptrW, h);
                     ctx.fillRect(xRight, -halfH, ptrW, h);
 
-                    // Draw solid dots for null pointers (non-null dots are drawn on top of edge origins)
-                    const drawPtrDot = (cx, side, hasChild) => {
-                        const isViol = Boolean(!hasChild && !n.inactive && violationNull &&
+                    // Draw dashed line if unassigned, or solid dot for null pointers
+                    const drawPtrDot = (cx, side, hasChild, isUnassigned) => {
+                        if (hasChild) return;
+                        if (isUnassigned) {
+                            const dir = side === 'L' ? -1 : 1;
+                            ctx.save();
+                            ctx.strokeStyle = arrowCol;
+                            ctx.lineWidth = 2.4;
+                            ctx.setLineDash([5, 4]);
+                            ctx.beginPath();
+                            ctx.moveTo(cx, 0);
+                            ctx.lineTo(cx + 14 * dir, halfH + 24);
+                            ctx.stroke();
+                            ctx.restore();
+                            return;
+                        }
+                        const isViol = Boolean(!n.inactive && violationNull &&
                             violationNull.nodeId === n.id && violationNull.side === side);
-                        if (!hasChild && (this.showNulls || isViol)) {
+                        if (this.showNulls || isViol) {
                             const cDot = isViol ? this.theme.VIOLATION_NULL : dotCol;
                             ctx.beginPath();
                             ctx.fillStyle = cDot;
@@ -2598,8 +2843,8 @@
                         }
                     };
 
-                    drawPtrDot(xLeft + ptrW / 2, 'L', n.hasLeft);
-                    drawPtrDot(xRight + ptrW / 2, 'R', n.hasRight);
+                    drawPtrDot(xLeft + ptrW / 2, 'L', n.hasLeft, n.unassignedLeft);
+                    drawPtrDot(xRight + ptrW / 2, 'R', n.hasRight, n.unassignedRight);
 
                     ctx.restore();
                 }
@@ -2630,37 +2875,17 @@
 
                     const idx = Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
                     let nodesToDraw = [];
-                    let violationNull = null;
-                    let pathIds = [];
-                    let swapArrowSpecs = [];
+                    let activeSnap;
 
                     if ((this.state === 'MORPH' || this.state === 'WAITING') && idx + 1 < this.snapshots.length) {
                         const snapA = this.snapshots[idx];
                         const snapB = this.snapshots[idx + 1];
                         const t = this.easeInOut(this.morphProgress);
                         nodesToDraw = this.interpolateForest(snapA, snapB, t);
-                        violationNull = (t > 0.5 ? snapB.violationNull : snapA.violationNull) || null;
-                        pathIds = snapB.pathIds || [];
-
-                        if (this.state === 'MORPH') {
-                            if (snapA.swapNodeIds.size > 0) {
-                                const alpha = Math.max(0, 1 - this.morphProgress * 1.6);
-                                if (alpha > 0) {
-                                    snapA.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha }));
-                                }
-                            } else if (snapB.swapNodeIds.size > 0) {
-                                const alpha = Math.min(1, t * 1.6);
-                                snapB.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha }));
-                            }
-                        } else if (snapB.swapNodeIds.size > 0) {
-                            snapB.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha: 1 }));
-                        }
+                        activeSnap = t > 0.5 ? snapB : snapA;
                     } else {
-                        const snap = this.snapshots[idx];
-                        nodesToDraw = this.flattenForest(snap);
-                        violationNull = snap.violationNull || null;
-                        pathIds = snap.pathIds || [];
-                        snap.swapNodeIds.forEach(id => swapArrowSpecs.push({ id, alpha: 1 }));
+                        activeSnap = this.snapshots[idx];
+                        nodesToDraw = this.flattenForest(activeSnap);
                     }
 
                     // 2. Depth level guide lines in screen-space behind forest
@@ -2676,47 +2901,60 @@
 
                     this.lastDrawnNodes = nodesToDraw;
                     const nodeMap = new Map(nodesToDraw.map(n => [n.id, n]));
-                    const pathEdgeSet = this.buildPathEdgeSet(pathIds);
+                    const swapSet = activeSnap ? activeSnap.swapNodeIds : new Set();
+                    const violationNull = activeSnap ? activeSnap.violationNull : null;
+
+                    // Build active right-spine path edge pairs
+                    const pathEdgeSet = new Set();
+                    const pathIds = activeSnap ? activeSnap.pathIds : [];
+                    for (let i = 0; i < pathIds.length - 1; i++) {
+                        pathEdgeSet.add(`${pathIds[i]}->${pathIds[i + 1]}`);
+                    }
 
                     const canDimHover = (this.state === 'IDLE' || this.isPaused) &&
                         this.hoveredNode && this.hoveredSubtreeIds;
 
+                    const getEffectiveNodeAlpha = n => {
+                        let a = n.alpha * (n.outsideCall ? 0.25 : 1);
+                        if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                            a *= 0.35;
+                        }
+                        return a;
+                    };
+
                     if (this.structView) {
-                        // Draw root pointer boxes above each root in the forest (or null root when empty)
+                        // Draw root pointer boxes above each real root in the forest (or null root when empty)
                         const rootNodes = nodesToDraw
-                            .filter(n => n.parentId === null)
+                            .filter(n => n.parentId === null && !n.isEmptySlot)
                             .sort((a, b) => a.x - b.x);
 
-                        if (rootNodes.length === 0) {
+                        if (rootNodes.length === 0 && nodesToDraw.length === 0) {
                             this.drawRootPointer(null, 'root', false);
                         } else if (rootNodes.length === 1) {
-                            this.drawRootPointer(rootNodes[0], 'root', canDimHover);
+                            this.drawRootPointer(rootNodes[0], rootNodes[0].slotLabel || 'root', canDimHover);
                         } else {
                             rootNodes.forEach((rn, i) => {
-                                this.drawRootPointer(rn, `h${i + 1}`, canDimHover);
+                                const label = rn.slotLabel || `h${i + 1}`;
+                                this.drawRootPointer(rn, label, canDimHover);
                             });
                         }
 
-                        // Draw memory-structure nodes
+                        // Draw memory-structure nodes (and empty slots as null pointer boxes)
                         nodesToDraw.forEach(n => {
-                            let nodeAlpha = n.alpha;
+                            const nodeAlpha = getEffectiveNodeAlpha(n);
                             const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
-                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
-                                nodeAlpha *= 0.35;
-                            }
                             this.drawStructNode(n, nodeAlpha, isHovered, violationNull);
                         });
 
-                        // Standard pointer edges
+                        // Standard pointer edges (including edges pointing to empty slots)
                         nodesToDraw.forEach(n => {
                             if (n.parentX === undefined) return;
                             if (pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
 
                             const pNode = nodeMap.get(n.parentId);
-                            let edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
-                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
-                                edgeAlpha *= 0.25;
-                            }
+                            const edgeAlpha = pNode
+                                ? Math.min(getEffectiveNodeAlpha(n), getEffectiveNodeAlpha(pNode))
+                                : getEffectiveNodeAlpha(n);
                             const col = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.STRUCT_ARROW;
                             this.drawStructPointerEdge(n, pNode, col, 2.5, edgeAlpha);
                         });
@@ -2727,7 +2965,9 @@
                                 if (n.parentX === undefined) return;
                                 if (!pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
                                 const pNode = nodeMap.get(n.parentId);
-                                const edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                                const edgeAlpha = pNode
+                                    ? Math.min(getEffectiveNodeAlpha(n), getEffectiveNodeAlpha(pNode))
+                                    : getEffectiveNodeAlpha(n);
                                 this.drawStructPointerEdge(n, pNode, this.theme.PATH_EDGE, 3.6, edgeAlpha);
                             });
                         }
@@ -2738,10 +2978,9 @@
                             if (pathEdgeSet.has(`${n.parentId}->${n.id}`)) return;
 
                             const pNode = nodeMap.get(n.parentId);
-                            let edgeAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
-                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
-                                edgeAlpha *= 0.25;
-                            }
+                            const edgeAlpha = pNode
+                                ? Math.min(getEffectiveNodeAlpha(n), getEffectiveNodeAlpha(pNode))
+                                : getEffectiveNodeAlpha(n);
 
                             const seg = this.getEdgeSegment(n, pNode);
                             if (!seg) return;
@@ -2768,7 +3007,9 @@
                                 if (!seg) return;
 
                                 ctx.save();
-                                ctx.globalAlpha = pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha;
+                                ctx.globalAlpha = pNode
+                                    ? Math.min(getEffectiveNodeAlpha(n), getEffectiveNodeAlpha(pNode))
+                                    : getEffectiveNodeAlpha(n);
                                 ctx.beginPath();
                                 ctx.strokeStyle = this.theme.PATH_EDGE;
                                 ctx.lineWidth = 4.5;
@@ -2780,52 +3021,58 @@
                             });
                         }
 
-                        // 3c. Null Links (including Leftist Violation Null highlight)
+                        // 3c. Unassigned Dashed Links & Null Links (including Leftist Violation Null highlight)
                         nodesToDraw.forEach(n => {
-                            let baseAlpha = n.alpha;
-                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
-                                baseAlpha *= 0.25;
-                            }
+                            if (n.isEmptySlot) return;
+                            const baseAlpha = getEffectiveNodeAlpha(n);
                             if (!n.hasLeft) {
-                                const isViol = !n.inactive && violationNull &&
-                                    violationNull.nodeId === n.id && violationNull.side === 'L';
-                                if (this.showNulls || isViol) {
-                                    const col = n.inactive
-                                        ? this.theme.INACTIVE_EDGE
-                                        : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
-                                    this.drawNullLink(n.x, n.y, 'L', col, isViol, baseAlpha);
+                                if (n.unassignedLeft) {
+                                    const col = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.UNASSIGNED_LINK;
+                                    this.drawUnassignedLink(n.x, n.y, 'L', col, baseAlpha);
+                                } else {
+                                    const isViol = !n.inactive && violationNull &&
+                                        violationNull.nodeId === n.id && violationNull.side === 'L';
+                                    if (this.showNulls || isViol) {
+                                        const col = n.inactive
+                                            ? this.theme.INACTIVE_EDGE
+                                            : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
+                                        this.drawNullLink(n.x, n.y, 'L', col, isViol, baseAlpha);
+                                    }
                                 }
                             }
                             if (!n.hasRight) {
-                                const isViol = !n.inactive && violationNull &&
-                                    violationNull.nodeId === n.id && violationNull.side === 'R';
-                                if (this.showNulls || isViol) {
-                                    const col = n.inactive
-                                        ? this.theme.INACTIVE_EDGE
-                                        : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
-                                    this.drawNullLink(n.x, n.y, 'R', col, isViol, baseAlpha);
+                                if (n.unassignedRight) {
+                                    const col = n.inactive ? this.theme.INACTIVE_EDGE : this.theme.UNASSIGNED_LINK;
+                                    this.drawUnassignedLink(n.x, n.y, 'R', col, baseAlpha);
+                                } else {
+                                    const isViol = !n.inactive && violationNull &&
+                                        violationNull.nodeId === n.id && violationNull.side === 'R';
+                                    if (this.showNulls || isViol) {
+                                        const col = n.inactive
+                                            ? this.theme.INACTIVE_EDGE
+                                            : (isViol ? this.theme.VIOLATION_NULL : this.theme.NULL_LINK);
+                                        this.drawNullLink(n.x, n.y, 'R', col, isViol, baseAlpha);
+                                    }
                                 }
                             }
                         });
 
-                        // 3d. Nodes
+                        // 3d. Nodes (and Empty Slots ∅)
                         nodesToDraw.forEach(n => {
-                            let nodeAlpha = n.alpha;
+                            const nodeAlpha = getEffectiveNodeAlpha(n);
                             const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
-                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
-                                nodeAlpha *= 0.35;
-                            }
                             this.drawNode(n, nodeAlpha, isHovered);
                         });
                     }
 
                     // 3e. Swap Children Double-Headed Arrows
-                    swapArrowSpecs.forEach(({ id, alpha }) => {
-                        const n = nodeMap.get(id);
-                        if (n && !n.inactive) {
-                            this.drawSwapChildrenArrow(n.x, n.y, alpha);
-                        }
-                    });
+                    if (swapSet.size > 0) {
+                        nodesToDraw.forEach(n => {
+                            if (swapSet.has(n.id) && !n.inactive && !n.isEmptySlot) {
+                                this.drawSwapArrow(n.x, n.y, n.scale, n.alpha);
+                            }
+                        });
+                    }
 
                     // 3f. Flat Hover Tooltip
                     if (this.hoveredNode) {
@@ -2838,11 +3085,11 @@
                     ctx.restore();
                 }
 
-                drawNullLink(x, y, side, color, isViolation = false, baseAlpha = 1) {
+                drawUnassignedLink(x, y, side, color, baseAlpha = 1) {
                     const ctx = this.ctx;
                     const r = this.nodeRadius;
-                    const spread = isViolation ? 10 : 8;
-                    const drop = isViolation ? 16 : 15;
+                    const spread = 12;
+                    const drop = 20;
                     const dir = side === 'L' ? -1 : 1;
                     const startX = x + r * 0.5 * dir;
                     const startY = y + r * 0.8;
@@ -2853,57 +3100,123 @@
                     ctx.globalAlpha = baseAlpha;
                     ctx.beginPath();
                     ctx.strokeStyle = color;
-                    ctx.lineWidth = isViolation ? 3.8 : 2.5;
+                    ctx.lineWidth = 2.5;
+                    ctx.setLineDash([5, 4]);
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                drawNullLink(x, y, side, color, isViolation = false, baseAlpha = 1) {
+                    const ctx = this.ctx;
+                    const r = this.nodeRadius;
+                    const spread = isViolation ? 12 : 8;
+                    const drop = isViolation ? 21 : 15;
+                    const dir = side === 'L' ? -1 : 1;
+                    const startX = x + r * 0.5 * dir;
+                    const startY = y + r * 0.8;
+                    const endX = x + (r + spread) * dir;
+                    const endY = y + r + drop;
+
+                    ctx.save();
+                    ctx.globalAlpha = baseAlpha;
+                    ctx.beginPath();
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = isViolation ? 3.2 : 2.5;
                     ctx.moveTo(startX, startY);
                     ctx.lineTo(endX, endY);
                     ctx.stroke();
 
-                    const perpSize = isViolation ? 8.5 : 6;
+                    const perpSize = isViolation ? 8 : 6;
                     const angle = Math.atan2(endY - startY, endX - startX) + Math.PI / 2;
                     ctx.beginPath();
                     ctx.moveTo(endX - perpSize * Math.cos(angle), endY - perpSize * Math.sin(angle));
                     ctx.lineTo(endX + perpSize * Math.cos(angle), endY + perpSize * Math.sin(angle));
                     ctx.stroke();
+
+                    if (isViolation) {
+                        ctx.font = 'bold 10px monospace';
+                        const label = 'null (w=0)';
+                        const lw = ctx.measureText(label).width + 10;
+                        const lh = 16;
+                        const lx = endX - lw / 2;
+                        const ly = endY + 5;
+
+                        ctx.fillStyle = this.theme.PILL_BG;
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1.4;
+                        ctx.beginPath();
+                        ctx.roundRect(lx, ly, lw, lh, 4);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(label, endX, ly + lh / 2);
+                    }
+
                     ctx.restore();
                 }
 
-                drawSwapChildrenArrow(x, y, alpha = 1) {
+                drawSwapArrow(x, y, scale, alpha) {
                     const ctx = this.ctx;
-                    const r = this.structView ? (this.halfW + 10) : (this.nodeRadius + 15);
-                    const startY = this.structView ? (y + this.halfH + 8) : (y + 10);
-                    const startX = x - r;
-                    const endX = x + r;
-                    const endY = startY;
-                    const cpX = x;
-                    const cpY = this.structView ? (y + this.halfH + 56) : (y + 70);
+                    const arrowY = y + this.halfH + (this.structView ? 22 : 20);
+                    const span = this.structView ? 38 : 30;
+                    const startX = x - span;
+                    const endX = x + span;
+                    const cpY = arrowY + 13;
 
                     ctx.save();
                     ctx.globalAlpha = alpha;
+                    ctx.translate(x, y);
+                    ctx.scale(scale, scale);
+                    ctx.translate(-x, -y);
+
                     ctx.beginPath();
                     ctx.strokeStyle = this.theme.ARROW;
-                    ctx.lineWidth = 3;
+                    ctx.lineWidth = 2.8;
                     ctx.lineCap = 'round';
-                    ctx.moveTo(startX, startY);
-                    ctx.quadraticCurveTo(cpX, cpY, endX, endY);
+                    ctx.moveTo(startX, arrowY);
+                    ctx.quadraticCurveTo(x, cpY, endX, arrowY);
                     ctx.stroke();
 
-                    const size = 13;
-                    const drawHead = (hx, hy, ang) => {
-                        ctx.save();
-                        ctx.translate(hx, hy);
-                        ctx.rotate(ang);
+                    const headLen = 8;
+                    const drawHead = (tipX, tipY, ang) => {
                         ctx.beginPath();
                         ctx.fillStyle = this.theme.ARROW;
-                        ctx.moveTo(0, 0);
-                        ctx.lineTo(-size, -size / 2.5);
-                        ctx.lineTo(-size, size / 2.5);
+                        ctx.moveTo(tipX, tipY);
+                        ctx.lineTo(tipX - headLen * Math.cos(ang - 0.45), tipY - headLen * Math.sin(ang - 0.45));
+                        ctx.lineTo(tipX - headLen * Math.cos(ang + 0.45), tipY - headLen * Math.sin(ang + 0.45));
                         ctx.closePath();
                         ctx.fill();
-                        ctx.restore();
                     };
 
-                    drawHead(endX, endY, Math.atan2(endY - cpY, endX - cpX));
-                    drawHead(startX, startY, Math.atan2(startY - cpY, startX - cpX));
+                    drawHead(endX, arrowY, Math.atan2(arrowY - cpY, endX - x));
+                    drawHead(startX, arrowY, Math.atan2(arrowY - cpY, startX - x));
+                    ctx.restore();
+                }
+
+                drawSlotTag(label, isEmpty, topOffset = this.nodeRadius) {
+                    const ctx = this.ctx;
+                    ctx.save();
+                    ctx.font = 'bold 10.5px "Segoe UI", Arial, sans-serif';
+                    const textW = ctx.measureText(label).width;
+                    const w = textW + 12;
+                    const h = 17;
+                    const x = -w / 2;
+                    const y = -topOffset - 24;
+
+                    ctx.fillStyle = this.theme.SLOT_TAG_BG;
+                    ctx.beginPath();
+                    ctx.roundRect(x, y, w, h, 4);
+                    ctx.fill();
+
+                    ctx.fillStyle = this.theme.SLOT_TAG_TEXT;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, 0, y + h / 2 + 0.5);
                     ctx.restore();
                 }
 
@@ -2917,12 +3230,43 @@
                     ctx.translate(n.x, n.y);
                     ctx.scale(n.scale, n.scale);
 
-                    if (isHovered) {
+                    if (isHovered && !n.isEmptySlot) {
                         ctx.beginPath();
                         ctx.arc(0, 0, r + 5, 0, Math.PI * 2);
                         ctx.strokeStyle = this.theme.RING_FOCUS;
                         ctx.lineWidth = 2.5;
                         ctx.stroke();
+                    }
+
+                    if (n.isEmptySlot) {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r, 0, Math.PI * 2);
+                        ctx.fillStyle = this.theme.EMPTY_FILL;
+                        ctx.fill();
+                        ctx.setLineDash([5, 4]);
+                        ctx.strokeStyle = this.theme.EMPTY_STROKE;
+                        ctx.lineWidth = 2.4;
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+
+                        ctx.fillStyle = this.theme.EMPTY_TEXT;
+                        ctx.font = '700 22px "Segoe UI", Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText('∅', 0, 1);
+
+                        const bx = r * 0.72, by = -r * 0.72;
+                        ctx.beginPath();
+                        ctx.arc(bx, by, 10, 0, Math.PI * 2);
+                        ctx.fillStyle = this.theme.EMPTY_STROKE;
+                        ctx.fill();
+                        ctx.fillStyle = '#FFFFFF';
+                        ctx.font = 'bold 10px Arial, sans-serif';
+                        ctx.fillText('0', bx, by + 0.5);
+
+                        if (n.slotLabel) this.drawSlotTag(n.slotLabel, true);
+                        ctx.restore();
+                        return;
                     }
 
                     let fill, stroke, textCol;
@@ -2992,6 +3336,10 @@
                     ctx.font = 'bold 10px Arial, sans-serif';
                     ctx.fillText(n.weight, bx, by + 0.5);
 
+                    if (n.slotLabel && !n.inactive) {
+                        this.drawSlotTag(n.slotLabel, false);
+                    }
+
                     ctx.restore();
                 }
 
@@ -2999,10 +3347,19 @@
                     const ctx = this.ctx;
                     const ok = node.leftWeight >= node.rightWeight;
                     const statusTag = ok ? 'Leftist OK' : 'Violation (L < R)';
-                    const labelText = `Weight: ${node.weight} (L: ${node.leftWeight}, R: ${node.rightWeight}) | ${statusTag} | Depth: ${node.depth}`;
+                    const labelText = node.isEmptySlot
+                        ? `Empty Subheap (${node.slotLabel || '∅'}) | Weight: 0`
+                        : `Weight: ${node.weight} (L: ${node.leftWeight}, R: ${node.rightWeight}) | ${statusTag} | Depth: ${node.depth}`;
                     const invScale = 1 / this.camera.scale;
                     const tx = node.x;
-                    const ty = node.y - this.halfH - (11 * invScale);
+                    let ty;
+                    if (this.structView && node.isEmptySlot) {
+                        ty = this.getEmptySlotPointerY(node) - (this.structH / 2) * node.scale - (11 * invScale);
+                    } else {
+                        const hasVisibleTag = node.slotLabel && !this.structView;
+                        const extraTop = hasVisibleTag ? 22 : 0;
+                        ty = node.y - this.halfH - ((11 + extraTop) * invScale);
+                    }
 
                     ctx.save();
                     ctx.translate(tx, ty);
@@ -3029,7 +3386,9 @@
                     ctx.fillStyle = this.theme.PILL_BG;
                     ctx.fill();
 
-                    ctx.fillStyle = ok ? this.theme.EDGE : this.theme.DELETE;
+                    ctx.fillStyle = (node.isEmptySlot && !this.structView)
+                        ? this.theme.EMPTY_TEXT
+                        : (ok ? this.theme.EDGE : this.theme.DELETE);
                     ctx.textAlign = 'center';
                     ctx.textBaseline = 'middle';
                     ctx.fillText(labelText, 0, -h / 2);
@@ -3064,6 +3423,11 @@
                 isInactiveInSnap(snap, rootIndex) {
                     if (!snap.focusIndices) return false;
                     return !snap.focusIndices.includes(rootIndex);
+                }
+
+                isOutsideCallInSnap(snap, nodeId) {
+                    if (!snap.activeIds) return false;
+                    return !snap.activeIds.has(nodeId);
                 }
 
                 interpolateForest(snapA, snapB, t) {
@@ -3106,10 +3470,13 @@
                                 leftWeight: refEntry.leftWeight,
                                 rightWeight: refEntry.rightWeight,
                                 depth: refEntry.depth,
+                                isEmptySlot: refNode.isEmptySlot,
                                 isTree2: refSnap.tree2Ids.has(id),
                                 colorKey: refSnap.highlights.get(id) || null,
                                 highlightWeight: refSnap.weightHighlights.has(id),
+                                slotLabel: refSnap.slotLabels.get(id) || null,
                                 inactive: this.isInactiveInSnap(refSnap, refEntry.rootIndex),
+                                outsideCall: this.isOutsideCallInSnap(refSnap, id),
                                 scale: 1,
                                 alpha: 1,
                                 parentId: dB.pId,
@@ -3117,7 +3484,9 @@
                                 parentY: pY,
                                 side: dB.side,
                                 hasLeft: Boolean(refNode.left),
-                                hasRight: Boolean(refNode.right)
+                                hasRight: Boolean(refNode.right),
+                                unassignedLeft: Boolean(refNode.unassignedLeft),
+                                unassignedRight: Boolean(refNode.unassignedRight)
                             });
                         } else if (dB && !dA) {
                             const refNode = dB.node;
@@ -3143,10 +3512,13 @@
                                 leftWeight: dB.leftWeight,
                                 rightWeight: dB.rightWeight,
                                 depth: dB.depth,
+                                isEmptySlot: refNode.isEmptySlot,
                                 isTree2: snapB.tree2Ids.has(id),
                                 colorKey: snapB.highlights.get(id) || null,
                                 highlightWeight: snapB.weightHighlights.has(id),
+                                slotLabel: snapB.slotLabels.get(id) || null,
                                 inactive: this.isInactiveInSnap(snapB, dB.rootIndex),
+                                outsideCall: this.isOutsideCallInSnap(snapB, id),
                                 scale: 0.45 + 0.55 * t,
                                 alpha: Math.min(1, t * 1.4),
                                 parentId: dB.pId,
@@ -3154,7 +3526,9 @@
                                 parentY: pY,
                                 side: dB.side,
                                 hasLeft: Boolean(refNode.left),
-                                hasRight: Boolean(refNode.right)
+                                hasRight: Boolean(refNode.right),
+                                unassignedLeft: Boolean(refNode.unassignedLeft),
+                                unassignedRight: Boolean(refNode.unassignedRight)
                             });
                         } else if (dA && !dB) {
                             const refNode = dA.node;
@@ -3163,6 +3537,7 @@
                                 const pdA = mapA.get(dA.pId);
                                 if (pdA) { pX = pdA.x; pY = pdA.y; }
                             }
+                            const isEmpty = refNode.isEmptySlot;
 
                             result.push({
                                 id,
@@ -3173,18 +3548,23 @@
                                 leftWeight: dA.leftWeight,
                                 rightWeight: dA.rightWeight,
                                 depth: dA.depth,
+                                isEmptySlot: isEmpty,
                                 isTree2: snapA.tree2Ids.has(id),
-                                colorKey: 'DELETE',
+                                colorKey: isEmpty ? null : 'DELETE',
                                 highlightWeight: false,
+                                slotLabel: snapA.slotLabels.get(id) || null,
                                 inactive: this.isInactiveInSnap(snapA, dA.rootIndex),
-                                scale: Math.max(0, 1 - t * 0.85),
-                                alpha: Math.max(0, 1 - t),
+                                outsideCall: this.isOutsideCallInSnap(snapA, id),
+                                scale: isEmpty ? Math.max(0.4, 1 - t * 0.5) : Math.max(0, 1 - t * 0.85),
+                                alpha: Math.max(0, 1 - t * (isEmpty ? 1.4 : 1)),
                                 parentId: dA.pId,
                                 parentX: pX,
                                 parentY: pY,
                                 side: dA.side,
                                 hasLeft: Boolean(refNode.left),
-                                hasRight: Boolean(refNode.right)
+                                hasRight: Boolean(refNode.right),
+                                unassignedLeft: Boolean(refNode.unassignedLeft),
+                                unassignedRight: Boolean(refNode.unassignedRight)
                             });
                         }
                     });
@@ -3209,10 +3589,13 @@
                             leftWeight: pos.leftWeight,
                             rightWeight: pos.rightWeight,
                             depth: pos.depth,
+                            isEmptySlot: n.isEmptySlot,
                             isTree2: snap.tree2Ids.has(n.id),
                             colorKey: snap.highlights.get(n.id) || null,
                             highlightWeight: snap.weightHighlights.has(n.id),
+                            slotLabel: snap.slotLabels.get(n.id) || null,
                             inactive: this.isInactiveInSnap(snap, pos.rootIndex),
+                            outsideCall: this.isOutsideCallInSnap(snap, n.id),
                             scale: 1,
                             alpha: 1,
                             parentId: p ? p.id : null,
@@ -3220,7 +3603,9 @@
                             parentY: pPos ? pPos.y : undefined,
                             side,
                             hasLeft: Boolean(n.left),
-                            hasRight: Boolean(n.right)
+                            hasRight: Boolean(n.right),
+                            unassignedLeft: Boolean(n.unassignedLeft),
+                            unassignedRight: Boolean(n.unassignedRight)
                         });
                         walk(n.left, n, 'L');
                         walk(n.right, n, 'R');
@@ -3253,8 +3638,9 @@
                             },
                             onNodeClick: node => {
                                 document.getElementById('inputValue').value = node.val;
+                                const ok = node.leftWeight >= node.rightWeight ? 'Leftist OK' : 'Violation';
                                 this.viz.setStatus(
-                                    `Selected node ${node.val} (Weight: ${node.weight}, L: ${node.leftWeight}, R: ${node.rightWeight})`
+                                    `Selected node ${node.val} (Weight: ${node.weight}, L: ${node.leftWeight}, R: ${node.rightWeight} | ${ok})`
                                 );
                             },
                             onStateChange: info => this.syncPlaybackUI(info),
@@ -3447,10 +3833,8 @@
                 updateTreeStats(root) {
                     const count = TreeUtils.getWeight(root);
                     const height = TreeUtils.getHeight(root);
-                    const spine = TreeUtils.getRightSpineLength(root);
                     const minVal = root ? root.val : '-';
-                    document.getElementById('tree-stats').innerText =
-                        `Nodes: ${count} | Height: ${height} | Spine: ${spine} | Min: ${minVal}`;
+                    document.getElementById('tree-stats').innerText = `Nodes: ${count} | Height: ${height} | Min: ${minVal}`;
 
                     const { inorder, preorder, postorder, level } = TreeUtils.getTraversals(root);
                     document.getElementById('trav-level').innerText = level.length ? level.join(', ') : '-';
@@ -3539,13 +3923,14 @@
                 handleMergeScenario() {
                     const instant = document.getElementById('chkInstant').checked;
                     this.runOp(recorder => {
-                        const h1 = this.heap.root || this.createRandomTree(6);
+                        // Always generate two brand new random heaps on every Merge click
+                        const h1 = this.createRandomTree(6);
                         const h2 = this.createRandomTree(5);
                         const tree2Ids = TreeUtils.collectIds(h2);
 
                         this.heap.root = this.heap.mergeWithSteps(h1, h2, recorder, {
                             tree2Ids,
-                            statsRoot: this.heap.root
+                            statsRoot: null
                         });
 
                         recorder.emit([this.heap.root], {
@@ -3555,7 +3940,9 @@
                     }, {
                         instant,
                         recordHistory: true,
-                        logText: 'Merged two heaps'
+                        resetBefore: true,
+                        initialText: 'Generated two new random heaps to merge.',
+                        logText: 'Merged two new random heaps'
                     });
                 },
 
@@ -3625,6 +4012,7 @@
                         const merged = this.heap.mergeWithSteps(h1, h2, recorder, {
                             tree2Ids: TreeUtils.collectIds(h2),
                             shouldFit: true,
+                            speedScale: 2.6,
                             msgPrefix: 'Merging Pair: ',
                             statsRoot: null
                         });
