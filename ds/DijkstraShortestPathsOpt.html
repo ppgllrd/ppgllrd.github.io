@@ -4,699 +4,1092 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dijkstra's Shortest Paths Visualizer</title>
+    <!-- Inter Font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'SFMono-Regular', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
     <style>
-        :root {
-            --primary: #0056b3;
-            --node-bg: #99FFFF;     
-            --node-opt: #98fb98;    
-            --highlight: #FFFF00;   
-            --node-text: #ff0000;   
-            --weight-text: #7b008b; 
-            --edge-active: #FF8C00; 
-            --bg-color: #f8f9fa;
-            --card-bg: #ffffff;
-            --border: #dee2e6;
+        /* Custom transitions, scrollbars, and semantic highlights */
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background-color: #f8fafc;
+            color: #0f172a;
         }
 
-        html, body {
-            height: 100%;
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: var(--bg-color);
-            color: #333;
-            display: flex;
-            flex-direction: column;
+        .v-txt {
+            color: #0f172a;
+            font-weight: 700;
+            background-color: #e2e8f0;
+            padding: 1px 6px;
+            border-radius: 5px;
+            font-size: 0.875rem;
+            display: inline-block;
         }
-
-        .v-txt { color: var(--node-text); font-size: 1.15rem; }
-        .c-txt { color: var(--weight-text); font-size: 1.15rem; }
-        .arrow { color: #555; font-weight: bold; margin: 0 2px; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;}
-
-        header {
-            padding: 12px 20px;
-            background: white;
-            border-bottom: 1px solid var(--border);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-shrink: 0;
-        }
-
-        h1 { margin: 0; color: var(--primary); font-size: 1.5rem; }
-
-        .main-container {
-            display: flex;
-            flex: 1;
-            padding: 15px;
-            gap: 15px;
-            overflow: hidden;
-        }
-
-        /* Graph Panel */
-        .graph-panel {
-            flex: 2;
-            background: var(--card-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            min-width: 500px;
-        }
-
-        canvas {
-            flex: 1;
-            width: 100%;
-            height: 100%;
-            display: block;
-            cursor: crosshair;
-        }
-
-        /* Tooltip Styling */
-        #tooltip {
-            position: absolute;
-            background: rgba(30, 30, 30, 0.9);
-            color: #fff;
-            padding: 8px 12px;
-            border-radius: 4px;
+        .c-txt {
+            color: #6d28d9;
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
             font-size: 0.9rem;
-            pointer-events: none;
-            display: none;
-            z-index: 1000;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
-            white-space: nowrap;
+        }
+        .arrow {
+            color: #64748b;
+            font-weight: 700;
+            margin: 0 3px;
         }
 
-        .legend {
-            position: absolute;
-            top: 15px; left: 15px;
-            background: rgba(255,255,255,0.95);
-            padding: 10px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-            font-size: 0.95rem;
-            pointer-events: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-        .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
-        .dot { width: 14px; height: 14px; border-radius: 50%; border: 1px solid #999; }
-        .line-legend { width: 25px; height: 5px; background-color: var(--edge-active); border: none; border-radius: 0; }
+        /* PQ Table Row States */
+        tr.pq-row { transition: background-color 0.2s ease, transform 0.2s ease; }
+        .row-popped { background-color: #fef3c7 !important; box-shadow: inset 4px 0 0 #d97706; }
+        .row-stale { background-color: #fee2e2 !important; color: #991b1b; text-decoration: line-through; opacity: 0.85; box-shadow: inset 4px 0 0 #dc2626; }
+        .row-new { background-color: #dcfce7 !important; box-shadow: inset 4px 0 0 #16a34a; }
+        .sorting-row { background-color: #fef08a !important; box-shadow: inset 4px 0 0 #ea580c; font-weight: 600; }
 
-        /* Data Panel */
-        .data-panel {
-            flex: 1;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            min-width: 420px;
-            max-width: 550px;
+        /* Cost Table Hover Path Highlight */
+        .cost-row { cursor: pointer; transition: background-color 0.15s ease; }
+        .cost-row:hover { background-color: #eef2ff !important; box-shadow: inset 4px 0 0 #6366f1; }
+
+        /* Custom subtle scrollbars */
+        ::-webkit-scrollbar { width: 7px; height: 7px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        /* Range inputs */
+        input[type="range"] {
+            accent-color: #2563eb;
         }
 
-        .data-card {
-            background: var(--card-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border);
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
-            flex: 1;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
-        }
-
-        .card-header {
-            background: #f1f3f5;
-            padding: 10px 15px;
-            font-weight: bold;
-            border-bottom: 1px solid var(--border);
-            color: #495057;
-            font-size: 1rem;
-        }
-
-        .table-container {
-            flex: 1;
-            overflow-y: auto;
-        }
-
-        table { width: 100%; border-collapse: collapse; font-size: 0.95rem; }
-        th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid #eee; }
-        th { background-color: #f8f9fa; position: sticky; top: 0; z-index: 2; color: #555; }
-        
-        tr { transition: background-color 0.2s; }
-        .row-popped { background-color: #ffeeba !important; border-left: 5px solid #ffc107; } 
-        .row-stale { background-color: #ffcdd2 !important; color: #b71c1c; text-decoration: line-through; opacity: 0.8; } 
-        .row-new { background-color: #d1e7dd !important; border-left: 5px solid #198754; } 
-        
-        /* New class for the bubble animation */
-        .sorting-row { 
-            background-color: #fff3cd !important; 
-            border-left: 5px solid #ffc107; 
-            font-weight: bold;
-            transition: all 0.2s ease-in-out;
-        } 
-
-        /* Controls */
-        .controls-bar {
-            background: white;
-            padding: 12px 20px;
-            border-top: 1px solid var(--border);
-            display: flex;
-            align-items: center;
-            gap: 15px;
-            flex-shrink: 0;
-            flex-wrap: wrap;
-        }
-
-        select { padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 1rem; }
-
-        .btn-group { display: flex; gap: 8px; }
-
-        button {
-            padding: 10px 16px; border: none; border-radius: 4px;
-            cursor: pointer; font-weight: 600; font-size: 0.95rem;
-            transition: all 0.2s; color: white;
-            min-width: 80px;
-            display: flex; justify-content: center; align-items: center;
-        }
-        button:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
-        button:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.1); }
-        
-        .btn-success { background-color: #28a745; }
-        .btn-primary { background-color: #007bff; }
-        .btn-secondary { background-color: #6c757d; }
-        .btn-warn { background-color: #ffc107; color: #333; }
-        .btn-danger { background-color: #dc3545; }
-
-        .log-box {
-            flex: 1;
-            background: #ffffff; 
-            color: #333;
-            border: 1px solid #ccc;
-            padding: 10px 15px;
-            border-radius: 4px;
-            font-family: 'Consolas', monospace;
-            font-size: 1rem;
-            height: 42px;
-            display: flex;
-            align-items: center;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            min-width: 250px;
-        }
-        .log-prefix { color: var(--primary); font-weight: bold; margin-right: 10px; }
-
-        footer {
-            width: 100%; background: #f4f7f6; 
-            font-size: 0.8em; color: #777; text-align: center; line-height: 2.5;
-            border-top: 1px solid #ddd; flex-shrink: 0;
+        /* Editor mode active button */
+        .mode-btn.active {
+            background-color: #0f172a;
+            color: #ffffff;
+            border-color: #0f172a;
+            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.2);
         }
     </style>
 </head>
-<body>
+<body class="min-h-screen lg:h-screen flex flex-col overflow-x-hidden lg:overflow-hidden text-slate-900">
 
-    <header>
-        <h1>Dijkstra's Shortest Paths Visualizer</h1>
+    <!-- Header -->
+    <header class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-wrap items-center justify-between gap-3 shrink-0 shadow-xs z-20">
+        <div class="flex items-center gap-3">
+            <div class="w-9 h-9 rounded-xl bg-blue-600 text-white flex items-center justify-center shadow-sm shrink-0">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.2" viewBox="0 0 24 24" aria-hidden="true">
+                    <circle cx="5" cy="18" r="2.5"></circle>
+                    <circle cx="19" cy="6" r="2.5"></circle>
+                    <circle cx="19" cy="18" r="2.5"></circle>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M7.2 16.5L16.8 7.5M7.5 18h9M19 8.5v7"></path>
+                </svg>
+            </div>
+            <div>
+                <h1 class="text-lg sm:text-xl font-bold text-slate-900 leading-tight tracking-tight">Dijkstra's Shortest Paths Visualizer</h1>
+                <p class="text-xs text-slate-500 hidden sm:block">Interactive graph editor &amp; step-by-step priority queue trace</p>
+            </div>
+        </div>
+
+        <!-- Keyboard Shortcut Hints -->
+        <div class="hidden xl:flex items-center gap-2 text-xs text-slate-500 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5" aria-label="Keyboard shortcuts">
+            <span class="font-medium text-slate-600">Shortcuts:</span>
+            <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono text-slate-700">←</kbd> Prev
+            <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono text-slate-700 ml-1">→</kbd> Next
+            <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono text-slate-700 ml-1">Space</kbd> Auto/Pause
+            <kbd class="px-1.5 py-0.5 bg-white border border-slate-300 rounded text-[11px] font-mono text-slate-700 ml-1">R</kbd> Reset
+        </div>
     </header>
 
-    <div class="controls-bar">
-        <label>Graph: 
-            <select id="graphSelect" onchange="loadGraph(this.value)">
-                <option value="sample">Sample (Trace)</option>
-                <option value="dense">Dense (Octagon)</option>
-                <option value="sparse">Sparse (Chain)</option>
-                <option value="diamond">Equal Costs (Diamond)</option>
-            </select>
-        </label>
+    <!-- Top Controls & Playback Bar -->
+    <section class="bg-white border-b border-slate-200 px-4 sm:px-6 py-3 flex flex-col gap-3 shrink-0 z-10">
+        <!-- Row 1: Graph Selector, Directed Toggle, Source, Playback Buttons, Speed -->
+        <div class="flex flex-wrap items-center gap-2.5 sm:gap-3">
+            <!-- Graph Preset -->
+            <div class="flex items-center gap-1.5">
+                <label for="graphSelect" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Graph</label>
+                <select id="graphSelect" onchange="loadGraph(this.value)" class="px-2.5 py-1.5 text-sm font-medium bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed">
+                    <option value="sample">Sample (Trace)</option>
+                    <option value="dense">Dense (Octagon)</option>
+                    <option value="sparse">Sparse (Chain)</option>
+                    <option value="diamond">Equal Costs (Diamond)</option>
+                    <option value="disconnected">Disconnected (2 Components)</option>
+                </select>
+                <button id="btnRandom" onclick="generateRandomGraph()" title="Generate a random weighted graph" class="px-2.5 py-1.5 text-sm font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200 rounded-lg transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>
+                    Random
+                </button>
+            </div>
 
-        <label>Source: 
-            <select id="sourceNode" class="v-txt"></select>
-        </label>
+            <!-- Directed / Undirected Toggle -->
+            <div class="flex items-center gap-2 bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1">
+                <span class="text-xs font-semibold text-slate-600">Undirected</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="directedToggle" class="sr-only peer" onchange="toggleDirected(this.checked)">
+                    <div class="w-9 h-5 bg-slate-300 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-400 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600 peer-disabled:opacity-50 peer-disabled:cursor-not-allowed"></div>
+                </label>
+                <span class="text-xs font-semibold text-slate-600">Directed</span>
+            </div>
 
-        <div class="log-box" id="logDisplay"><span class="log-prefix">></span> Ready.</div>
+            <!-- Source Node -->
+            <div class="flex items-center gap-1.5">
+                <label for="sourceNode" class="text-xs font-semibold uppercase tracking-wide text-slate-500">Source</label>
+                <select id="sourceNode" class="px-2.5 py-1.5 text-sm font-bold text-slate-800 bg-slate-50 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed min-w-[68px]"></select>
+            </div>
 
-        <div class="btn-group">
-            <button class="btn-success" onclick="init()">Start</button>
-            <button class="btn-primary" id="btnNext" onclick="nextStep()" disabled>Next</button>
-            <button class="btn-warn" id="btnAuto" onclick="toggleAuto()" disabled>Auto</button>
-            <button class="btn-secondary" id="btnUndo" onclick="undo()" disabled>Undo</button>
-            <button class="btn-danger" onclick="reset()">Reset</button>
-        </div>
-    </div>
+            <div class="h-6 w-px bg-slate-200 hidden sm:block"></div>
 
-    <div class="main-container">
-        <!-- Visualization -->
-        <div class="graph-panel" id="canvasContainer">
-            <canvas id="graphCanvas"></canvas>
-            <div id="tooltip"></div>
-            <div class="legend">
-                <div class="legend-item"><div class="dot" style="background:var(--node-bg); border-color:var(--node-bg)"></div> Unoptimized</div>
-                <div class="legend-item"><div class="dot" style="background:var(--node-opt); border-color:var(--node-opt)"></div> Optimized (verticesOpt)</div>
-                <div class="legend-item"><div class="dot" style="background:var(--highlight); border:1px solid #f00"></div> Processing Node</div>
-                <div class="legend-item"><div class="line-legend"></div> Active Edge</div>
+            <!-- Playback Controls -->
+            <div class="flex flex-wrap items-center gap-1.5">
+                <button id="btnStart" onclick="init()" title="Initialize and run Dijkstra from Source" class="px-3.5 py-1.5 text-sm font-semibold rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white shadow-xs transition disabled:opacity-45 disabled:cursor-not-allowed flex items-center gap-1.5">
+                    <svg class="w-4 h-4" fill="currentColor" viewBox="0 0 20 20"><path d="M6.3 2.841A1.5 1.5 0 004 4.11V15.89a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z"/></svg>
+                    Start
+                </button>
+                <button id="btnUndo" onclick="undo()" disabled title="Previous Step (Left Arrow)" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-slate-600 hover:bg-slate-700 text-white shadow-xs transition disabled:opacity-45 disabled:cursor-not-allowed">
+                    Prev
+                </button>
+                <button id="btnNext" onclick="nextStep()" disabled title="Next Step (Right Arrow)" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition disabled:opacity-45 disabled:cursor-not-allowed">
+                    Next
+                </button>
+                <button id="btnAuto" onclick="toggleAuto()" disabled title="Auto Play / Pause (Space)" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-amber-400 hover:bg-amber-500 text-slate-900 shadow-xs transition disabled:opacity-45 disabled:cursor-not-allowed min-w-[74px]">
+                    Auto
+                </button>
+                <button id="btnReset" onclick="reset()" title="Reset Algorithm & Unlock Editor (R)" class="px-3 py-1.5 text-sm font-semibold rounded-lg bg-rose-600 hover:bg-rose-700 text-white shadow-xs transition disabled:opacity-45 disabled:cursor-not-allowed">
+                    Reset
+                </button>
+            </div>
+
+            <!-- Speed Control -->
+            <div class="flex items-center gap-2 ml-auto bg-slate-50 border border-slate-200 rounded-lg px-3 py-1">
+                <label for="speedSlider" class="text-xs font-semibold text-slate-600 whitespace-nowrap">Speed</label>
+                <input id="speedSlider" type="range" min="0.5" max="3" step="0.25" value="1" oninput="updateSpeed(this.value)" class="w-20 sm:w-24 cursor-pointer">
+                <span id="speedValue" class="text-xs font-mono font-bold text-blue-700 w-9 text-right">1.0x</span>
             </div>
         </div>
 
-        <!-- Data Tables -->
-        <div class="data-panel">
-            <!-- PQ -->
-            <div class="data-card" style="flex: 3;">
-                <div class="card-header">Priority Queue (Extensions)</div>
-                <div class="table-container">
-                    <table id="pqTable">
-                        <thead><tr><th>Source</th><th>Dest</th><th>Total Cost</th><th>State</th></tr></thead>
-                        <tbody></tbody>
+        <!-- Row 2: Scrubber + Readable Log Bar with History Toggle -->
+        <div class="flex flex-col md:flex-row items-stretch md:items-center gap-2.5">
+            <!-- Timeline Scrubber -->
+            <div class="flex items-center gap-2.5 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 md:w-72 shrink-0">
+                <span id="stepCounter" class="text-xs font-mono font-semibold text-slate-700 whitespace-nowrap min-w-[82px]">Step 0 / 0</span>
+                <input id="timelineScrubber" type="range" min="0" max="0" value="0" disabled oninput="jumpToStep(parseInt(this.value, 10))" class="w-full cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed" aria-label="Algorithm timeline scrubber">
+            </div>
+
+            <!-- Non-truncating Log Display & History Button -->
+            <div class="flex-1 flex items-start sm:items-center justify-between gap-2 bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 min-h-[38px]">
+                <div id="logDisplay" class="text-sm text-slate-800 leading-snug break-words flex-1">
+                    <span class="font-mono font-bold text-blue-600 mr-1.5">&gt;</span>Ready. Edit the graph or press <strong>Start</strong> to trace Dijkstra's algorithm.
+                </div>
+                <button id="btnHistory" onclick="toggleHistoryDrawer()" class="shrink-0 px-2.5 py-1 text-xs font-semibold text-slate-600 hover:text-slate-900 bg-white hover:bg-slate-100 border border-slate-300 rounded-md transition flex items-center gap-1" title="Toggle Step History">
+                    <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    History
+                </button>
+            </div>
+        </div>
+
+        <!-- Expandable Step History Drawer -->
+        <div id="historyDrawer" class="hidden bg-slate-50 border border-slate-200 rounded-lg p-2.5 max-h-40 overflow-y-auto shadow-inner">
+            <div class="flex items-center justify-between mb-1.5 pb-1 border-b border-slate-200">
+                <span class="text-xs font-bold uppercase tracking-wide text-slate-500">Step History (click any entry to jump)</span>
+                <button onclick="toggleHistoryDrawer()" class="text-xs text-slate-500 hover:text-slate-800 font-medium">Close</button>
+            </div>
+            <ol id="historyList" class="space-y-1 text-xs text-slate-700"></ol>
+        </div>
+    </section>
+
+    <!-- Main Workspace -->
+    <main class="flex-1 flex flex-col lg:flex-row gap-4 p-4 lg:overflow-hidden min-h-0">
+        <!-- Left: Graph Visualization & Editor Card -->
+        <section class="flex-[2] flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[420px] lg:min-h-0">
+            <!-- Graph Editor Toolbar -->
+            <div class="bg-slate-50 border-b border-slate-200 px-3 py-2 flex flex-wrap items-center justify-between gap-2 shrink-0">
+                <div class="flex flex-wrap items-center gap-1.5" role="toolbar" aria-label="Graph Editor Tools">
+                    <button id="modeSelect" onclick="setEditorMode('select')" class="mode-btn active px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition disabled:opacity-45 disabled:cursor-not-allowed" title="Drag nodes or click an edge to edit its weight">
+                        Select / Drag
+                    </button>
+                    <button id="modeAddNode" onclick="setEditorMode('addNode')" class="mode-btn px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition disabled:opacity-45 disabled:cursor-not-allowed" title="Click empty canvas area to add a new vertex">
+                        + Add Node
+                    </button>
+                    <button id="modeAddEdge" onclick="setEditorMode('addEdge')" class="mode-btn px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-slate-700 hover:bg-slate-100 transition disabled:opacity-45 disabled:cursor-not-allowed" title="Click source node then target node to connect, or click an existing edge">
+                        + Add / Edit Edge
+                    </button>
+                    <button id="modeDelete" onclick="setEditorMode('delete')" class="mode-btn px-2.5 py-1 text-xs font-semibold rounded-lg border border-slate-300 bg-white text-rose-700 hover:bg-rose-50 transition disabled:opacity-45 disabled:cursor-not-allowed" title="Click any node or edge to delete it">
+                        Delete
+                    </button>
+                </div>
+                <span id="editorHint" class="text-xs text-slate-500 font-medium">
+                    Drag nodes to reposition • Click an edge to edit weight
+                </span>
+            </div>
+
+            <!-- Canvas Area -->
+            <div id="canvasContainer" class="relative flex-1 w-full bg-white overflow-hidden select-none min-h-[300px]">
+                <canvas id="graphCanvas" class="w-full h-full block"></canvas>
+
+                <!-- Clamped Node/Edge Tooltip -->
+                <div id="tooltip" class="hidden absolute pointer-events-none z-30 bg-slate-900/95 text-white text-xs rounded-lg px-3 py-2 shadow-lg border border-slate-700 whitespace-nowrap leading-relaxed"></div>
+
+                <!-- Inline Edge Weight Modal -->
+                <div id="weightModal" class="hidden absolute inset-0 z-40 bg-slate-900/30 backdrop-blur-[1px] flex items-center justify-center p-4">
+                    <div class="bg-white rounded-xl border border-slate-200 shadow-xl w-full max-w-xs p-4">
+                        <h3 id="weightModalTitle" class="text-sm font-bold text-slate-900 mb-1">Set Edge Weight</h3>
+                        <p id="weightModalSubtitle" class="text-xs text-slate-500 mb-3">Enter a positive integer weight (Dijkstra requires non-negative weights).</p>
+                        <form id="weightForm" onsubmit="submitWeightModal(event)" class="space-y-3">
+                            <div>
+                                <label for="weightInput" class="block text-xs font-semibold text-slate-700 mb-1">Weight</label>
+                                <input id="weightInput" type="number" min="1" max="999" step="1" required class="w-full px-3 py-2 text-sm font-mono font-bold border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <p id="weightError" class="hidden text-xs text-rose-600 mt-1 font-medium"></p>
+                            </div>
+                            <div class="flex items-center justify-end gap-2 pt-1">
+                                <button type="button" onclick="closeWeightModal()" class="px-3 py-1.5 text-xs font-semibold text-slate-600 hover:bg-slate-100 rounded-lg transition">Cancel</button>
+                                <button type="submit" class="px-3.5 py-1.5 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg shadow-xs transition">Save Weight</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Dedicated Non-Overlapping Legend Strip -->
+            <div class="bg-slate-50 border-t border-slate-200 px-3.5 py-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs text-slate-700 shrink-0" aria-label="Graph Legend">
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#99FFFF] border-2 border-[#99FFFF] inline-block"></span>
+                    <span>Unoptimized</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#B0F9B0] border-2 border-[#B0F9B0] inline-block"></span>
+                    <span>Optimized (<code class="font-mono text-[11px]">verticesOpt</code>)</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-3.5 h-3.5 rounded-full bg-[#fef08a] border-2 border-[#ea580c] inline-block"></span>
+                    <span>Processing Node</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-5 h-1.5 rounded-full bg-[#f97316] inline-block"></span>
+                    <span>Active Edge</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="w-5 h-1.5 rounded-full bg-[#e11d48] inline-block"></span>
+                    <span>Optimal Tree Edge</span>
+                </div>
+                <div class="flex items-center gap-1.5">
+                    <span class="px-1.5 py-0.2 rounded-full bg-slate-800 text-white font-mono text-[10px] font-bold">5</span>
+                    <span>Cost Badge (<code class="font-mono text-[11px]">costOpt</code>)</span>
+                </div>
+            </div>
+        </section>
+
+        <!-- Right: Data Tables Panel -->
+        <aside class="flex-1 flex flex-col gap-4 lg:min-w-[380px] lg:max-w-[520px] lg:overflow-hidden min-h-0">
+            <!-- Priority Queue Card -->
+            <div class="flex-[3] flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[220px]">
+                <div class="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0">
+                    <h2 class="text-sm font-bold text-slate-800">Priority Queue (Extensions)</h2>
+                    <span id="pqCountBadge" class="text-xs font-mono font-semibold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">0 items</span>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <table id="pqTable" class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-slate-50/95 sticky top-0 z-10 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                            <tr>
+                                <th class="py-2 px-3 font-semibold">Source</th>
+                                <th class="py-2 px-3 font-semibold">Dest</th>
+                                <th class="py-2 px-3 font-semibold">Total Cost</th>
+                                <th class="py-2 px-3 font-semibold">State</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
-            <!-- Dictionary -->
-            <div class="data-card" style="flex: 2;">
-                <div class="card-header">costOpt (Optimal Paths)</div>
-                <div class="table-container">
-                    <table id="costTable">
-                        <thead><tr><th>Vertex</th><th>Cost</th><th>Full Path</th></tr></thead>
-                        <tbody></tbody>
+
+            <!-- costOpt Dictionary Card -->
+            <div class="flex-[2] flex flex-col bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden min-h-[190px]">
+                <div class="bg-slate-50 border-b border-slate-200 px-4 py-2.5 flex items-center justify-between shrink-0">
+                    <h2 class="text-sm font-bold text-slate-800">costOpt (Optimal Paths)</h2>
+                    <span class="text-[11px] text-indigo-600 font-medium">Hover a row to highlight path</span>
+                </div>
+                <div class="flex-1 overflow-y-auto">
+                    <table id="costTable" class="w-full text-left border-collapse text-sm">
+                        <thead class="bg-slate-50/95 sticky top-0 z-10 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                            <tr>
+                                <th class="py-2 px-3 font-semibold">Vertex</th>
+                                <th class="py-2 px-3 font-semibold">Cost</th>
+                                <th class="py-2 px-3 font-semibold">Full Path</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-slate-100"></tbody>
                     </table>
                 </div>
             </div>
-        </div>
-    </div>
+        </aside>
+    </main>
 
-    <footer>
+    <!-- Preserved Academic Footer -->
+    <footer class="w-full bg-slate-100 text-xs text-slate-500 text-center py-2 px-4 border-t border-slate-200 shrink-0">
         Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. University of Málaga
     </footer>
 
 <script>
-    // --- HELPERS ---
-    const sp = "&nbsp;";
-    const fmtV = (v) => `<span class="v-txt">${v}</span>`;
-    const fmtC = (c) => `<span class="c-txt">${c}</span>`;
-    const arrow = `${sp}<span class="arrow">&rarr;</span>${sp}`;
+    // =========================================================================
+    // 1. CONSTANTS, PALETTE & HTML FORMATTERS
+    // =========================================================================
+    const PALETTE = {
+        nodeUnoptBg: '#99FFFF',
+        nodeUnoptBorder: '#99FFFF',
+        nodeOptBg: '#B0F9B0',
+        nodeOptBorder: '#B0F9B0',
+        nodeActiveBg: '#fef08a',
+        nodeActiveBorder: '#f97316',
+        nodeText: '#8E0000',
+        nodePendingBorder: '#6366f1',
+        edgeDefault: '#64748b',
+        edgeActive: '#f97316',
+        edgeOptTree: '#e11d48',
+        edgeHoverPath: '#6366f1',
+        weightText: '#4c1d95',
+        badgeBg: '#1e293b',
+        badgeText: '#ffffff'
+    };
 
-    // --- GRAPH DATASETS ---
+    const NODE_RADIUS = 26;
+    const sp = "&nbsp;";
+    const fmtV = (v) => `<span class="v-txt">${escapeHtml(String(v))}</span>`;
+    const fmtC = (c) => `<span class="c-txt">${escapeHtml(String(c))}</span>`;
+    const arrow = `<span class="arrow">&rarr;</span>`;
+
+    function escapeHtml(str) {
+        return str.replace(/[&<>"']/g, m => ({
+            '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+        }[m]));
+    }
+
+    // =========================================================================
+    // 2. PRESET GRAPH DATASETS
+    // =========================================================================
     const graphData = {
         'sample': {
             nodes: {
-                'a': { x: 150, y: 70 }, 'b': { x: 400, y: 70 }, 'c': { x: 650, y: 70 },
-                'd': { x: 400, y: 320 }, 'e': { x: 650, y: 320 }
+                'a': { x: 150, y: 80 }, 'b': { x: 400, y: 80 }, 'c': { x: 650, y: 80 },
+                'd': { x: 400, y: 310 }, 'e': { x: 650, y: 310 }
             },
             edges: [
                 { u: 'a', v: 'b', w: 3 }, { u: 'a', v: 'd', w: 7 },
                 { u: 'b', v: 'c', w: 4 }, { u: 'b', v: 'd', w: 2 },
                 { u: 'd', v: 'c', w: 5 }, { u: 'd', v: 'e', w: 4 },
                 { u: 'c', v: 'e', w: 6 }
-            ],
-            w: 800, h: 400 
+            ]
         },
         'dense': {
             nodes: {
-                '1': {x:250, y:60}, '2': {x:500, y:60}, 
-                '3': {x:700, y:190}, '4': {x:500, y:320}, 
-                '5': {x:250, y:320}, '6': {x:60, y:190}, 'center': {x:375, y:190}
+                '1': { x: 250, y: 65 }, '2': { x: 500, y: 65 },
+                '3': { x: 700, y: 195 }, '4': { x: 500, y: 325 },
+                '5': { x: 250, y: 325 }, '6': { x: 65, y: 195 },
+                'center': { x: 375, y: 195 }
             },
             edges: [
-                {u:'1', v:'2', w:2}, {u:'2', v:'3', w:3}, {u:'3', v:'4', w:1},
-                {u:'4', v:'5', w:2}, {u:'5', v:'6', w:3}, {u:'6', v:'1', w:1},
-                {u:'center', v:'1', w:4}, {u:'center', v:'2', w:3},
-                {u:'center', v:'3', w:5}, {u:'center', v:'4', w:2},
-                {u:'center', v:'5', w:4}, {u:'center', v:'6', w:3}
-            ],
-            w: 800, h: 400
+                { u: '1', v: '2', w: 2 }, { u: '2', v: '3', w: 3 }, { u: '3', v: '4', w: 1 },
+                { u: '4', v: '5', w: 2 }, { u: '5', v: '6', w: 3 }, { u: '6', v: '1', w: 1 },
+                { u: 'center', v: '1', w: 4 }, { u: 'center', v: '2', w: 3 },
+                { u: 'center', v: '3', w: 5 }, { u: 'center', v: '4', w: 2 },
+                { u: 'center', v: '5', w: 4 }, { u: 'center', v: '6', w: 3 }
+            ]
         },
         'sparse': {
             nodes: {
-                's': {x:50, y:190}, 'a': {x:180, y:100}, 'b': {x:180, y:280},
-                'c': {x:350, y:100}, 'd': {x:350, y:280}, 'e': {x:500, y:190},
-                't': {x:650, y:190}
+                's': { x: 60, y: 195 }, 'a': { x: 190, y: 100 }, 'b': { x: 190, y: 290 },
+                'c': { x: 360, y: 100 }, 'd': { x: 360, y: 290 }, 'e': { x: 520, y: 195 },
+                't': { x: 670, y: 195 }
             },
             edges: [
-                {u:'s', v:'a', w:2}, {u:'s', v:'b', w:4},
-                {u:'a', v:'c', w:3}, {u:'b', v:'d', w:1},
-                {u:'c', v:'e', w:2}, {u:'d', v:'e', w:5},
-                {u:'e', v:'t', w:1}, {u:'b', v:'a', w:1}
-            ],
-            w: 750, h: 400
+                { u: 's', v: 'a', w: 2 }, { u: 's', v: 'b', w: 4 },
+                { u: 'a', v: 'c', w: 3 }, { u: 'b', v: 'd', w: 1 },
+                { u: 'c', v: 'e', w: 2 }, { u: 'd', v: 'e', w: 5 },
+                { u: 'e', v: 't', w: 1 }, { u: 'b', v: 'a', w: 1 }
+            ]
         },
         'diamond': {
             nodes: {
-                'start': {x:60, y:190}, 'u1': {x:240, y:60}, 'd1': {x:240, y:320},
-                'mid': {x:370, y:190}, 'u2': {x:500, y:60}, 'd2': {x:500, y:320},
-                'end': {x:680, y:190}
+                'start': { x: 70, y: 195 }, 'u1': { x: 240, y: 70 }, 'd1': { x: 240, y: 320 },
+                'mid': { x: 375, y: 195 }, 'u2': { x: 510, y: 70 }, 'd2': { x: 510, y: 320 },
+                'end': { x: 680, y: 195 }
             },
             edges: [
-                {u:'start', v:'u1', w:5}, {u:'start', v:'d1', w:5},
-                {u:'u1', v:'mid', w:5}, {u:'d1', v:'mid', w:5},
-                {u:'mid', v:'u2', w:5}, {u:'mid', v:'d2', w:5},
-                {u:'u2', v:'end', w:5}, {u:'d2', v:'end', w:5}
-            ],
-            w: 750, h: 400
+                { u: 'start', v: 'u1', w: 5 }, { u: 'start', v: 'd1', w: 5 },
+                { u: 'u1', v: 'mid', w: 5 }, { u: 'd1', v: 'mid', w: 5 },
+                { u: 'mid', v: 'u2', w: 5 }, { u: 'mid', v: 'd2', w: 5 },
+                { u: 'u2', v: 'end', w: 5 }, { u: 'd2', v: 'end', w: 5 }
+            ]
+        },
+        'disconnected': {
+            nodes: {
+                'a': { x: 100, y: 110 }, 'b': { x: 280, y: 75 },
+                'c': { x: 280, y: 295 }, 'd': { x: 100, y: 265 },
+                'x': { x: 510, y: 110 }, 'y': { x: 670, y: 195 },
+                'z': { x: 510, y: 285 }
+            },
+            edges: [
+                { u: 'a', v: 'b', w: 4 }, { u: 'a', v: 'd', w: 2 },
+                { u: 'd', v: 'c', w: 3 }, { u: 'b', v: 'c', w: 5 },
+                { u: 'b', v: 'd', w: 1 },
+                { u: 'x', v: 'y', w: 3 }, { u: 'y', v: 'z', w: 2 },
+                { u: 'x', v: 'z', w: 6 }
+            ]
         }
     };
 
-    // --- APP STATE ---
+    // =========================================================================
+    // 3. APPLICATION STATE
+    // =========================================================================
     let currGraph = null;
-    let timeline = []; 
+    let isDirected = false;
+    let isRunning = false;        // True once Start is clicked until Reset
+    let timeline = [];
     let currentStepIndex = -1;
-    let autoTimer = null;
-    let isAuto = false;
-    let isAnimating = false; // Blocks interaction during sort
 
-    // --- SETUP ---
+    // Timers & Playback
+    let autoTimer = null;
+    let sortTimer = null;
+    let isAuto = false;
+    let isAnimating = false;
+    let speedMultiplier = 1.0;
+
+    // Interactive Hover & Editor State
+    let hoveredCostVertex = null; // Highlighted path from costOpt table
+    let editorMode = 'select';    // 'select' | 'addNode' | 'addEdge' | 'delete'
+    let pendingEdgeSource = null; // First clicked node in addEdge mode
+    let draggingNodeId = null;
+    let dragStartOffset = { x: 0, y: 0 };
+    let modalContext = null;      // { type: 'create'|'edit', u, v, edgeIndex }
+
+    // Canvas & Viewport Transform State (HiDPI + Auto-Fit)
     const canvas = document.getElementById('graphCanvas');
     const ctx = canvas.getContext('2d');
     const container = document.getElementById('canvasContainer');
     const tooltip = document.getElementById('tooltip');
 
-    function resize() {
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
-        
-        if (currGraph) {
-            if (currentStepIndex >= 0 && currentStepIndex < timeline.length) {
-                const step = timeline[currentStepIndex];
-                draw(currGraph, step.verticesOpt, step.costOpt, step.activeNode, step.highlightEdge);
-            } else {
-                draw(currGraph, new Set(), {}, null, null);
-            }
+    let canvasCssWidth = 800;
+    let canvasCssHeight = 400;
+    let viewTransform = { scale: 1, offsetX: 0, offsetY: 0 };
+
+    // =========================================================================
+    // 4. TIMER MANAGEMENT (NO ORPHAN TIMERS)
+    // =========================================================================
+    function clearAllTimers() {
+        if (autoTimer !== null) {
+            clearTimeout(autoTimer);
+            autoTimer = null;
         }
+        if (sortTimer !== null) {
+            clearTimeout(sortTimer);
+            sortTimer = null;
+        }
+        isAnimating = false;
     }
-    
-    window.addEventListener('resize', resize);
-    setTimeout(resize, 50); 
 
-    // --- TOOLTIP LOGIC ---
-    canvas.addEventListener('mousemove', (e) => {
-        if (!currGraph) return;
+    // =========================================================================
+    // 5. CANVAS HIDPI RESIZING & AUTO-FIT VIEWPORT TRANSFORM
+    // =========================================================================
+    function resizeCanvas() {
+        const rect = container.getBoundingClientRect();
+        canvasCssWidth = Math.max(200, rect.width);
+        canvasCssHeight = Math.max(200, rect.height);
+        const dpr = window.devicePixelRatio || 1;
 
-        const rect = canvas.getBoundingClientRect();
-        const mx = e.clientX - rect.left;
-        const mouseY = e.clientY - rect.top;
-        const offX = (canvas.width - currGraph.w)/2;
-        const offY = (canvas.height - currGraph.h)/2;
+        canvas.width = Math.round(canvasCssWidth * dpr);
+        canvas.height = Math.round(canvasCssHeight * dpr);
+        ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-        let costOpt = {};
-        if (currentStepIndex >= 0 && currentStepIndex < timeline.length) {
-            costOpt = timeline[currentStepIndex].costOpt;
+        if (!draggingNodeId) {
+            computeViewTransform();
+        }
+        redrawCurrentState();
+    }
+
+    function computeViewTransform() {
+        if (!currGraph || Object.keys(currGraph.nodes).length === 0) {
+            viewTransform = { scale: 1, offsetX: canvasCssWidth / 2, offsetY: canvasCssHeight / 2 };
+            return;
         }
 
-        let found = false;
-        for (let id in currGraph.nodes) {
+        const ids = Object.keys(currGraph.nodes);
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        for (const id of ids) {
             const n = currGraph.nodes[id];
-            const cx = n.x + offX;
-            const cy = n.y + offY;
-            const dist = Math.sqrt((mx-cx)**2 + (mouseY-cy)**2);
-            
-            if (dist < 28) { 
-                found = true;
-                tooltip.style.display = 'block';
-                tooltip.style.left = (mx + 12) + 'px';
-                tooltip.style.top = (mouseY + 12) + 'px';
-                
-                if (costOpt[id]) {
-                    tooltip.innerHTML = `<strong>Node ${id}</strong><br>
-                                         Cost: ${costOpt[id].cost}<br>
-                                         Parent: ${costOpt[id].parent || 'None'}`;
-                } else {
-                    tooltip.innerHTML = `<strong>Node ${id}</strong><br>
-                                         Cost: &infin;<br>
-                                         Status: Unreached`;
-                }
-                break;
-            }
+            if (n.x < minX) minX = n.x;
+            if (n.x > maxX) maxX = n.x;
+            if (n.y < minY) minY = n.y;
+            if (n.y > maxY) maxY = n.y;
         }
-        if (!found) tooltip.style.display = 'none';
-    });
-    canvas.addEventListener('mouseleave', () => { tooltip.style.display = 'none'; });
 
-    // --- LOADING ---
+        // Generous padding so node circles, cost badges, and curved edges never clip
+        const padX = 72;
+        const padY = 78;
+        const graphW = Math.max(maxX - minX, 120);
+        const graphH = Math.max(maxY - minY, 120);
+
+        const availW = Math.max(canvasCssWidth - padX * 2, 100);
+        const availH = Math.max(canvasCssHeight - padY * 2, 100);
+
+        const scale = Math.min(availW / graphW, availH / graphH, 1.35);
+        const cx = (minX + maxX) / 2;
+        const cy = (minY + maxY) / 2;
+
+        viewTransform = {
+            scale,
+            offsetX: canvasCssWidth / 2 - cx * scale,
+            offsetY: canvasCssHeight / 2 - cy * scale + 6
+        };
+    }
+
+    function graphToScreen(gx, gy) {
+        return {
+            x: gx * viewTransform.scale + viewTransform.offsetX,
+            y: gy * viewTransform.scale + viewTransform.offsetY
+        };
+    }
+
+    function screenToGraph(sx, sy) {
+        return {
+            x: (sx - viewTransform.offsetX) / viewTransform.scale,
+            y: (sy - viewTransform.offsetY) / viewTransform.scale
+        };
+    }
+
+    window.addEventListener('resize', resizeCanvas);
+
+    // =========================================================================
+    // 6. GRAPH LOADING, RANDOM GENERATION & DIRECTED TOGGLE
+    // =========================================================================
     function loadGraph(key) {
-        resetUI();
+        clearAllTimers();
         const data = graphData[key];
         currGraph = {
             nodes: JSON.parse(JSON.stringify(data.nodes)),
-            edges: JSON.parse(JSON.stringify(data.edges)),
-            w: data.w || 600, h: data.h || 350
+            edges: JSON.parse(JSON.stringify(data.edges))
         };
-        
-        const sel = document.getElementById('sourceNode');
-        sel.innerHTML = '';
-        Object.keys(currGraph.nodes).forEach(k => {
-            let opt = document.createElement('option');
-            opt.value = k; opt.innerText = k;
-            sel.appendChild(opt);
-        });
-        
-        draw(currGraph, new Set(), {}, null, null);
+        pendingEdgeSource = null;
+        hoveredCostVertex = null;
+        populateSourceDropdown();
+        reset();
+        computeViewTransform();
+        redrawCurrentState();
     }
 
-    // --- TIMELINE GENERATOR ---
+    function generateRandomGraph() {
+        if (isRunning) return;
+        clearAllTimers();
+
+        const count = Math.floor(Math.random() * 3) + 6; // 6 to 8 nodes
+        const labels = 'abcdefgh'.split('').slice(0, count);
+        const nodes = {};
+        const cx = 380, cy = 200;
+        const rx = 260, ry = 135;
+
+        labels.forEach((lbl, idx) => {
+            const angle = (idx / count) * Math.PI * 2 - Math.PI / 2;
+            const jitterX = (Math.random() - 0.5) * 45;
+            const jitterY = (Math.random() - 0.5) * 35;
+            nodes[lbl] = {
+                x: Math.round(cx + Math.cos(angle) * rx + jitterX),
+                y: Math.round(cy + Math.sin(angle) * ry + jitterY)
+            };
+        });
+
+        const edges = [];
+        const edgeExists = (u, v) => edges.some(e =>
+            isDirected ? (e.u === u && e.v === v) : ((e.u === u && e.v === v) || (e.u === v && e.v === u))
+        );
+
+        // Ensure connected backbone
+        for (let i = 0; i < count; i++) {
+            const u = labels[i];
+            const v = labels[(i + 1) % count];
+            edges.push({ u, v, w: Math.floor(Math.random() * 9) + 1 });
+        }
+
+        // Add random chords
+        const extraEdges = Math.floor(count * 0.9);
+        let attempts = 0;
+        while (edges.length < count + extraEdges && attempts < 100) {
+            attempts++;
+            const u = labels[Math.floor(Math.random() * count)];
+            const v = labels[Math.floor(Math.random() * count)];
+            if (u === v || edgeExists(u, v)) continue;
+            edges.push({ u, v, w: Math.floor(Math.random() * 12) + 1 });
+        }
+
+        currGraph = { nodes, edges };
+        pendingEdgeSource = null;
+        hoveredCostVertex = null;
+        populateSourceDropdown();
+        reset();
+        computeViewTransform();
+        redrawCurrentState();
+        setLogMessage('Generated a random weighted graph. Press <strong>Start</strong> to run Dijkstra.');
+    }
+
+    function toggleDirected(checked) {
+        if (isRunning) return;
+        isDirected = checked;
+
+        // If switching to Undirected, remove duplicate opposing edges cleanly
+        if (!isDirected && currGraph) {
+            const seen = new Set();
+            currGraph.edges = currGraph.edges.filter(e => {
+                const key = [e.u, e.v].sort().join('||');
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+        }
+        pendingEdgeSource = null;
+        redrawCurrentState();
+    }
+
+    function populateSourceDropdown(preferredValue = null) {
+        const sel = document.getElementById('sourceNode');
+        const prev = preferredValue || sel.value;
+        sel.innerHTML = '';
+        const keys = Object.keys(currGraph.nodes);
+        keys.forEach(k => {
+            const opt = document.createElement('option');
+            opt.value = k;
+            opt.textContent = k;
+            sel.appendChild(opt);
+        });
+        if (prev && currGraph.nodes[prev]) {
+            sel.value = prev;
+        }
+    }
+
+    // =========================================================================
+    // 7. DIJKSTRA TIMELINE GENERATOR (PRE-SORT & POST-SORT SNAPSHOTS)
+    // =========================================================================
+    function getOutgoingEdges(nodeId) {
+        if (isDirected) {
+            return currGraph.edges.filter(e => e.u === nodeId);
+        }
+        return currGraph.edges.filter(e => e.u === nodeId || e.v === nodeId);
+    }
+
     function generateTimeline(startV) {
         timeline = [];
-        
-        // Helper to record state
-        const snap = (msg, activeN, highE, procExt, actionType, sortSteps=null, pqSnapshot=null) => {
+
+        const verticesOpt = new Set();
+        const costOpt = {};
+        let pq = [];
+
+        const recordStep = (msg, activeN, highE, procExt, actionType, sortSteps = null, preSortPQ = null) => {
+            const postPQCopy = JSON.parse(JSON.stringify(pq));
+            const prePQCopy = preSortPQ ? JSON.parse(JSON.stringify(preSortPQ)) : postPQCopy;
             timeline.push({
-                pq: pqSnapshot ? JSON.parse(JSON.stringify(pqSnapshot)) : JSON.parse(JSON.stringify(pq)),
+                preSortPQ: prePQCopy,
+                postSortPQ: postPQCopy,
                 verticesOpt: new Set(verticesOpt),
                 costOpt: JSON.parse(JSON.stringify(costOpt)),
                 log: msg,
                 activeNode: activeN,
-                highlightEdge: highE,
-                processingExt: procExt,
+                highlightEdge: highE ? { ...highE } : null,
+                processingExt: procExt ? { ...procExt } : null,
                 action: actionType,
-                sortData: sortSteps
+                sortData: sortSteps ? [...sortSteps] : null
             });
         };
 
-        let verticesOpt = new Set();
-        let costOpt = {}; 
-        let pq = []; 
-
-        // Init
+        // Step 0: Initialize source
         verticesOpt.add(startV);
         costOpt[startV] = { cost: 0, parent: null };
-        snap(`Optimized${sp}${fmtV(startV)}${sp}with cost${sp}${fmtC(0)}`, null, null, null);
+        recordStep(`Optimized${sp}${fmtV(startV)}${sp}with cost${sp}${fmtC(0)}`, startV, null, null, 'OPTIMIZED');
 
-        // Logic to push and calculate bubble-up moves
+        // Helper: append to PQ, compute bubble-up swaps, store BOTH preSortPQ and postSortPQ
         const pushWithAnimationData = (ext, u, e) => {
             pq.push(ext);
-            let preSortPQ = JSON.parse(JSON.stringify(pq)); // Snapshot state BEFORE sort
-            
-            // Calculate moves needed to sort this specific insertion
-            let swaps = [];
-            let tempPQ = [...pq];
-            let k = tempPQ.length - 1;
-            
-            // Simulate bubble up
-            while(k > 0 && tempPQ[k].cost < tempPQ[k-1].cost) {
-                // Swap local
-                let t = tempPQ[k]; tempPQ[k] = tempPQ[k-1]; tempPQ[k-1] = t;
-                swaps.push(k); // Record index bubbling up
+            const preSortSnapshot = JSON.parse(JSON.stringify(pq));
+
+            const swaps = [];
+            let k = pq.length - 1;
+            while (k > 0 && pq[k].cost < pq[k - 1].cost) {
+                const tmp = pq[k];
+                pq[k] = pq[k - 1];
+                pq[k - 1] = tmp;
+                swaps.push(k);
                 k--;
             }
-            
-            // Record step. Note: we pass 'preSortPQ' so render shows item at bottom initially
-            snap(`Adding extension${sp}${fmtV(u)}${arrow}${fmtV(ext.dst)}${sp}(${fmtC(ext.cost)})`, u, e, null, 'ADD', swaps, preSortPQ);
-            
-            // Actually sort the main PQ for next steps
-            pq.sort((a,b) => a.cost - b.cost);
+
+            recordStep(
+                `Adding extension${sp}${fmtV(u)}${arrow}${fmtV(ext.dst)}${sp}(cost${sp}${fmtC(ext.cost)})`,
+                u, e, null, 'ADD', swaps, preSortSnapshot
+            );
         };
 
-        // Initial Extensions
-        let edges = getEdges(startV);
-        for(let e of edges) {
-            let n = (e.u === startV) ? e.v : e.u;
-            let total = 0 + e.w;
-            let ext = { src: startV, dst: n, cost: total };
-            pushWithAnimationData(ext, startV, e);
+        // Initial outgoing extensions from source
+        for (const e of getOutgoingEdges(startV)) {
+            const n = isDirected ? e.v : (e.u === startV ? e.v : e.u);
+            if (!verticesOpt.has(n)) {
+                pushWithAnimationData({ src: startV, dst: n, cost: e.w }, startV, e);
+            }
         }
 
         const totalNodes = Object.keys(currGraph.nodes).length;
-        while(verticesOpt.size < totalNodes) {
-            if (pq.length === 0) break;
-
-            let minExt = pq.shift();
-            snap(`Selected min extension:${sp}${fmtV(minExt.src)}${arrow}${fmtV(minExt.dst)}${sp}(${fmtC(minExt.cost)})`, null, null, minExt, 'POP');
+        while (verticesOpt.size < totalNodes && pq.length > 0) {
+            const minExt = pq.shift();
+            recordStep(
+                `Selected min extension:${sp}${fmtV(minExt.src)}${arrow}${fmtV(minExt.dst)}${sp}(cost${sp}${fmtC(minExt.cost)})`,
+                minExt.dst, null, minExt, 'POP'
+            );
 
             if (verticesOpt.has(minExt.dst)) {
-                snap(`Stale path to${sp}${fmtV(minExt.dst)}${sp}skipped (already optimized).`, null, null, minExt, 'DISCARD');
+                recordStep(
+                    `Stale path to${sp}${fmtV(minExt.dst)}${sp}skipped (already optimized).`,
+                    null, null, minExt, 'DISCARD'
+                );
                 continue;
             }
 
-            let v = minExt.dst;
-            let c = minExt.cost;
-            let p = minExt.src;
-            
+            const v = minExt.dst;
+            const c = minExt.cost;
+            const p = minExt.src;
+
             verticesOpt.add(v);
             costOpt[v] = { cost: c, parent: p };
-            snap(`Optimized${sp}${fmtV(v)}${sp}with cost${sp}${fmtC(c)}`, null, null, null, 'OPTIMIZED');
+            recordStep(`Optimized${sp}${fmtV(v)}${sp}with cost${sp}${fmtC(c)}`, v, null, null, 'OPTIMIZED');
 
-            let neighbors = getEdges(v);
-            for(let e of neighbors) {
-                let n = (e.u === v) ? e.v : e.u;
+            for (const e of getOutgoingEdges(v)) {
+                const n = isDirected ? e.v : (e.u === v ? e.v : e.u);
                 if (!verticesOpt.has(n)) {
-                    let newCost = c + e.w;
-                    let newExt = { src: v, dst: n, cost: newCost };
-                    pushWithAnimationData(newExt, v, e);
+                    pushWithAnimationData({ src: v, dst: n, cost: c + e.w }, v, e);
                 }
             }
         }
-        snap("All vertices optimized. Algorithm finished.", null, null, null);
-    }
 
-    function getEdges(nodeId) {
-        return currGraph.edges.filter(e => e.u === nodeId || e.v === nodeId);
-    }
-
-    // --- CONTROLLER ---
-    function init() {
-        resetUI();
-        const src = document.getElementById('sourceNode').value;
-        if(!src) return;
-        
-        generateTimeline(src);
-        currentStepIndex = -1;
-        
-        document.getElementById('btnNext').disabled = false;
-        document.getElementById('btnUndo').disabled = true;
-        document.getElementById('btnAuto').disabled = false;
-        document.getElementById('graphSelect').disabled = true;
-        document.getElementById('sourceNode').disabled = true;
-
-        nextStep(); 
-    }
-
-    function nextStep() {
-        if (isAnimating) return; // Prevent clicks during animation
-        if (currentStepIndex >= timeline.length - 1) return;
-        
-        currentStepIndex++;
-        const step = timeline[currentStepIndex];
-        
-        // Render base state
-        renderFrame(step, step.action === 'ADD'); 
-        updateButtons();
-
-        // Check for sort animation
-        if (step.action === 'ADD' && step.sortData && step.sortData.length > 0) {
-            runSortAnimation(step.pq, step.sortData);
-        } else if (isAuto) {
-            // Normal auto step delay
-            let delay = (step.action === 'POP') ? 1200 : 900;
-            autoTimer = setTimeout(nextStep, delay);
+        // Accurate completion message for connected vs disconnected graphs
+        const unreachable = totalNodes - verticesOpt.size;
+        if (unreachable === 0) {
+            recordStep('All vertices optimized. Algorithm finished.', null, null, null, 'DONE');
+        } else {
+            const noun = unreachable === 1 ? 'vertex' : 'vertices';
+            recordStep(
+                `Algorithm finished. <strong>${unreachable}</strong> ${noun} unreachable from${sp}${fmtV(startV)}.`,
+                null, null, null, 'DONE'
+            );
         }
     }
 
-    // Logic to animate the sort automatically without user clicks
+    // =========================================================================
+    // 8. PLAYBACK CONTROLLER (START, NEXT, PREV, AUTO, SCRUBBER, SPEED)
+    // =========================================================================
+    function init() {
+        const src = document.getElementById('sourceNode').value;
+        if (!currGraph || !src || !currGraph.nodes[src]) {
+            setLogMessage('Please add at least one vertex before starting.');
+            return;
+        }
+
+        clearAllTimers();
+        stopAuto(false);
+        pendingEdgeSource = null;
+        hoveredCostVertex = null;
+        isRunning = true;
+
+        generateTimeline(src);
+        currentStepIndex = -1;
+
+        const scrubber = document.getElementById('timelineScrubber');
+        scrubber.min = 0;
+        scrubber.max = Math.max(0, timeline.length - 1);
+        scrubber.value = 0;
+        scrubber.disabled = false;
+
+        lockEditingControls(true);
+        nextStep();
+    }
+
+    function nextStep() {
+        if (!isRunning || isAnimating) return;
+
+        if (currentStepIndex >= timeline.length - 1) {
+            if (isAuto) stopAuto();
+            updateControlsState();
+            return;
+        }
+
+        currentStepIndex++;
+        const step = timeline[currentStepIndex];
+        const hasBubbleSort = (step.action === 'ADD' && step.sortData && step.sortData.length > 0);
+
+        // Render preSortPQ if we're about to animate bubble-up; otherwise postSortPQ
+        renderFrame(step, hasBubbleSort);
+        syncScrubberAndHistory();
+        updateControlsState();
+
+        if (hasBubbleSort) {
+            runSortAnimation(step.preSortPQ, step.sortData);
+        } else if (isAuto) {
+            if (currentStepIndex >= timeline.length - 1) {
+                stopAuto();
+            } else {
+                const baseDelay = (step.action === 'POP') ? 1150 : 850;
+                autoTimer = setTimeout(nextStep, Math.round(baseDelay / speedMultiplier));
+            }
+        }
+    }
+
     function runSortAnimation(initialPQ, swapIndices) {
         isAnimating = true;
-        setControls(false); // Disable buttons
-        
-        // Local copy for animation
-        let animPQ = JSON.parse(JSON.stringify(initialPQ));
-        let swapQueue = [...swapIndices]; 
+        updateControlsState();
+
+        const animPQ = JSON.parse(JSON.stringify(initialPQ));
+        const swapQueue = [...swapIndices];
+        const stepDelay = Math.max(80, Math.round(340 / speedMultiplier));
 
         function tick() {
+            sortTimer = null;
+            if (!isRunning || !isAnimating) return;
+
             if (swapQueue.length === 0) {
-                // Animation Done
                 isAnimating = false;
-                setControls(true);
-                updateButtons(); // Restore logic state
-                // If Auto was active, continue to next step
+                // Render final sorted PQ cleanly
+                const step = timeline[currentStepIndex];
+                if (step) renderPQTable(step.postSortPQ, -1, null, -1, step.action);
+                updateControlsState();
+
                 if (isAuto) {
-                    autoTimer = setTimeout(nextStep, 800);
+                    if (currentStepIndex >= timeline.length - 1) {
+                        stopAuto();
+                    } else {
+                        autoTimer = setTimeout(nextStep, Math.round(750 / speedMultiplier));
+                    }
                 }
                 return;
             }
 
-            // Perform one swap visual
-            let idx = swapQueue.shift();
-            // Logic swap in local array
-            let temp = animPQ[idx]; animPQ[idx] = animPQ[idx-1]; animPQ[idx-1] = temp;
-            
-            // Re-render table only
-            renderPQTable(animPQ, -1, null, idx-1); // Highlight the destination index
-            
-            // Next frame
-            setTimeout(tick, 350); 
+            const idx = swapQueue.shift();
+            const temp = animPQ[idx];
+            animPQ[idx] = animPQ[idx - 1];
+            animPQ[idx - 1] = temp;
+
+            renderPQTable(animPQ, -1, null, idx - 1, 'SORT');
+            sortTimer = setTimeout(tick, stepDelay);
         }
 
-        // Start animation delay
-        setTimeout(tick, 350);
+        sortTimer = setTimeout(tick, stepDelay);
     }
 
     function undo() {
-        if (isAnimating) return;
-        if (currentStepIndex <= 0) return;
-        stopAuto();
+        if (!isRunning || currentStepIndex <= 0) return;
+        clearAllTimers();
+        stopAuto(false);
         currentStepIndex--;
-        renderFrame(timeline[currentStepIndex]);
-        updateButtons();
+        // Instant render always uses postSortPQ so PQ is never shown unsorted
+        renderFrame(timeline[currentStepIndex], false);
+        syncScrubberAndHistory();
+        updateControlsState();
     }
 
-    function setControls(enabled) {
-        // If animation is running, everything disabled regardless of logic state
-        const state = enabled;
-        document.getElementById('btnNext').disabled = !state;
-        document.getElementById('btnUndo').disabled = !state;
-        // Keep Auto button available to stop, but functionality changes? 
-        // Actually, if animating, better not to allow Auto toggle to prevent race conditions
-        if (!isAuto) document.getElementById('btnAuto').disabled = !state;
+    function jumpToStep(index) {
+        if (!isRunning || timeline.length === 0) return;
+        const clamped = Math.max(0, Math.min(timeline.length - 1, index));
+        clearAllTimers();
+        stopAuto(false);
+        currentStepIndex = clamped;
+        renderFrame(timeline[currentStepIndex], false);
+        syncScrubberAndHistory();
+        updateControlsState();
     }
 
-    function updateButtons() {
-        if (isAnimating) return; // Managed by animation loop
-        document.getElementById('btnUndo').disabled = (currentStepIndex <= 0);
-        document.getElementById('btnNext').disabled = (currentStepIndex >= timeline.length - 1);
-        if (!isAuto) document.getElementById('btnAuto').disabled = false;
+    function toggleAuto() {
+        if (!isRunning || isAnimating) return;
+        if (isAuto) {
+            stopAuto();
+        } else {
+            if (currentStepIndex >= timeline.length - 1) {
+                // Restart from step 0 if user presses Auto at the end
+                currentStepIndex = -1;
+            }
+            isAuto = true;
+            const btn = document.getElementById('btnAuto');
+            btn.textContent = 'Pause';
+            btn.className = 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-blue-600 hover:bg-blue-700 text-white shadow-xs transition disabled:opacity-45 disabled:cursor-not-allowed min-w-[74px]';
+            updateControlsState();
+            nextStep();
+        }
     }
 
-    // --- RENDERER ---
-    function renderFrame(step, animateAdd = false) {
-        const { pq, verticesOpt, costOpt, log, activeNode, highlightEdge, processingExt, action } = step;
+    function stopAuto(shouldUpdateControls = true) {
+        isAuto = false;
+        if (autoTimer !== null) {
+            clearTimeout(autoTimer);
+            autoTimer = null;
+        }
+        const btn = document.getElementById('btnAuto');
+        btn.textContent = 'Auto';
+        btn.className = 'px-3 py-1.5 text-sm font-semibold rounded-lg bg-amber-400 hover:bg-amber-500 text-slate-900 shadow-xs transition disabled:opacity-45 disabled:cursor-not-allowed min-w-[74px]';
+        if (shouldUpdateControls) updateControlsState();
+    }
 
-        document.getElementById('logDisplay').innerHTML = `<span class="log-prefix">></span> ${log}`;
-        draw(currGraph, verticesOpt, costOpt, activeNode, highlightEdge);
-        
-        // Initial render of PQ (unsorted if ADD)
-        // If animateAdd is true, we highlight the last element as 'New'
-        let highlightIdx = -1;
-        if (animateAdd) highlightIdx = pq.length - 1;
-        
-        renderPQTable(pq, highlightIdx, processingExt, -1, action);
-        renderCostTable(costOpt);
+    function updateSpeed(val) {
+        speedMultiplier = parseFloat(val);
+        document.getElementById('speedValue').textContent = speedMultiplier.toFixed(2).replace(/\.00$/, '.0') + 'x';
+    }
+
+    function reset() {
+        clearAllTimers();
+        stopAuto(false);
+        isRunning = false;
+        currentStepIndex = -1;
+        timeline = [];
+        hoveredCostVertex = null;
+        pendingEdgeSource = null;
+
+        document.querySelector('#pqTable tbody').innerHTML = '';
+        document.querySelector('#costTable tbody').innerHTML = '';
+        document.getElementById('pqCountBadge').textContent = '0 items';
+        document.getElementById('historyList').innerHTML = '';
+
+        const scrubber = document.getElementById('timelineScrubber');
+        scrubber.min = 0;
+        scrubber.max = 0;
+        scrubber.value = 0;
+        scrubber.disabled = true;
+        document.getElementById('stepCounter').textContent = 'Step 0 / 0';
+
+        setLogMessage('Ready. Edit the graph or press <strong>Start</strong> to trace Dijkstra\'s algorithm.');
+        lockEditingControls(false);
+        updateControlsState();
+        redrawCurrentState();
+    }
+
+    function lockEditingControls(locked) {
+        document.getElementById('graphSelect').disabled = locked;
+        document.getElementById('btnRandom').disabled = locked;
+        document.getElementById('directedToggle').disabled = locked;
+        document.getElementById('sourceNode').disabled = locked;
+        document.getElementById('btnStart').disabled = locked;
+
+        ['modeSelect', 'modeAddNode', 'modeAddEdge', 'modeDelete'].forEach(id => {
+            document.getElementById(id).disabled = locked;
+        });
+
+        const hint = document.getElementById('editorHint');
+        if (locked) {
+            hint.textContent = 'Editing locked while running • Press Reset to edit graph';
+        } else {
+            updateEditorHint();
+        }
+    }
+
+    function updateControlsState() {
+        const atStart = currentStepIndex <= 0;
+        const atEnd = currentStepIndex >= timeline.length - 1;
+
+        document.getElementById('btnUndo').disabled = !isRunning || isAnimating || isAuto || atStart;
+        document.getElementById('btnNext').disabled = !isRunning || isAnimating || isAuto || atEnd;
+        document.getElementById('btnAuto').disabled = !isRunning || isAnimating;
+        document.getElementById('timelineScrubber').disabled = !isRunning || timeline.length === 0;
+    }
+
+    // =========================================================================
+    // 9. UI & TABLE RENDERERS + LOG HISTORY
+    // =========================================================================
+    function setLogMessage(htmlMsg) {
+        document.getElementById('logDisplay').innerHTML = `<span class="font-mono font-bold text-blue-600 mr-1.5">&gt;</span>${htmlMsg}`;
+    }
+
+    function syncScrubberAndHistory() {
+        const total = timeline.length;
+        const displayStep = currentStepIndex + 1;
+        document.getElementById('stepCounter').textContent = `Step ${displayStep} / ${total}`;
+        document.getElementById('timelineScrubber').value = currentStepIndex;
+
+        const list = document.getElementById('historyList');
+        list.innerHTML = '';
+        for (let i = 0; i <= currentStepIndex; i++) {
+            const li = document.createElement('li');
+            li.className = `px-2 py-1 rounded cursor-pointer transition flex items-start gap-2 ${
+                i === currentStepIndex ? 'bg-blue-100/80 text-slate-900 font-medium' : 'hover:bg-slate-200/60 text-slate-600'
+            }`;
+            li.innerHTML = `<span class="font-mono text-[11px] text-slate-400 shrink-0">#${i + 1}</span><span>${timeline[i].log}</span>`;
+            li.onclick = () => jumpToStep(i);
+            list.appendChild(li);
+        }
+        // Keep latest entry visible
+        const drawer = document.getElementById('historyDrawer');
+        if (!drawer.classList.contains('hidden')) {
+            drawer.scrollTop = drawer.scrollHeight;
+        }
+    }
+
+    function toggleHistoryDrawer() {
+        const drawer = document.getElementById('historyDrawer');
+        drawer.classList.toggle('hidden');
+        if (!drawer.classList.contains('hidden')) {
+            drawer.scrollTop = drawer.scrollHeight;
+        }
+    }
+
+    function renderFrame(step, usePreSort = false) {
+        const pqToShow = usePreSort ? step.preSortPQ : step.postSortPQ;
+        setLogMessage(step.log);
+
+        drawGraph(currGraph, step.verticesOpt, step.costOpt, step.activeNode, step.highlightEdge);
+
+        const newIdx = (step.action === 'ADD' && (usePreSort || !step.sortData || step.sortData.length === 0))
+            ? pqToShow.length - 1
+            : -1;
+
+        renderPQTable(pqToShow, newIdx, step.processingExt, -1, step.action);
+        renderCostTable(step.costOpt);
     }
 
     function renderPQTable(pqItems, newIdx, processingExt, sortIdx, actionType) {
         const pqBody = document.querySelector('#pqTable tbody');
         pqBody.innerHTML = '';
+        document.getElementById('pqCountBadge').textContent = `${pqItems.length} ${pqItems.length === 1 ? 'item' : 'items'}`;
 
-        // Draw processing/skipped item if exists
         if (processingExt) {
-            let cls = (actionType === 'DISCARD') ? 'row-stale' : 'row-popped';
-            let txt = (actionType === 'DISCARD') ? 'Skipped' : 'Processing...';
-            pqBody.innerHTML += `<tr class="${cls}">
-                <td>${fmtV(processingExt.src)}</td><td>${fmtV(processingExt.dst)}</td>
-                <td>${fmtC(processingExt.cost)}</td><td>${txt}</td>
+            const cls = (actionType === 'DISCARD') ? 'row-stale' : 'row-popped';
+            const badge = (actionType === 'DISCARD')
+                ? '<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-rose-200 text-rose-900">Skipped</span>'
+                : '<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-amber-200 text-amber-900">Processing...</span>';
+            pqBody.innerHTML += `<tr class="pq-row ${cls}">
+                <td class="py-2 px-3">${fmtV(processingExt.src)}</td>
+                <td class="py-2 px-3">${fmtV(processingExt.dst)}</td>
+                <td class="py-2 px-3">${fmtC(processingExt.cost)}</td>
+                <td class="py-2 px-3">${badge}</td>
             </tr>`;
+        }
+
+        if (pqItems.length === 0 && !processingExt) {
+            pqBody.innerHTML = `<tr><td colspan="4" class="py-6 text-center text-xs text-slate-400 italic">Queue is empty</td></tr>`;
+            return;
         }
 
         pqItems.forEach((item, idx) => {
             let cls = '';
-            let stateTxt = 'Queued';
-            
+            let badge = '<span class="text-xs text-slate-500 font-medium">Queued</span>';
+
             if (idx === sortIdx) {
                 cls = 'sorting-row';
-                stateTxt = 'Sorting...';
+                badge = '<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-orange-200 text-orange-900">Sorting...</span>';
             } else if (idx === newIdx) {
                 cls = 'row-new';
-                stateTxt = 'New';
+                badge = '<span class="px-2 py-0.5 text-xs font-semibold rounded-full bg-emerald-200 text-emerald-900">New</span>';
             }
 
-            pqBody.innerHTML += `<tr class="${cls}">
-                <td>${fmtV(item.src)}</td><td>${fmtV(item.dst)}</td>
-                <td>${fmtC(item.cost)}</td><td>${stateTxt}</td>
+            pqBody.innerHTML += `<tr class="pq-row ${cls}">
+                <td class="py-2 px-3">${fmtV(item.src)}</td>
+                <td class="py-2 px-3">${fmtV(item.dst)}</td>
+                <td class="py-2 px-3">${fmtC(item.cost)}</td>
+                <td class="py-2 px-3">${badge}</td>
             </tr>`;
         });
     }
@@ -704,157 +1097,687 @@
     function renderCostTable(costOpt) {
         const costBody = document.querySelector('#costTable tbody');
         costBody.innerHTML = '';
-        for (let v in costOpt) {
-            let pathStr = reconstructPath(v, costOpt).map(fmtV).join(arrow);
-            costBody.innerHTML += `<tr>
-                <td>${fmtV(v)}</td>
-                <td>${fmtC(costOpt[v].cost)}</td>
-                <td>${pathStr}</td>
-            </tr>`;
+        const vertices = Object.keys(costOpt);
+
+        if (vertices.length === 0) {
+            costBody.innerHTML = `<tr><td colspan="3" class="py-6 text-center text-xs text-slate-400 italic">No vertices optimized yet</td></tr>`;
+            return;
+        }
+
+        vertices.forEach(v => {
+            const pathArr = reconstructPath(v, costOpt);
+            const pathHtml = pathArr.map(fmtV).join(arrow);
+            const tr = document.createElement('tr');
+            tr.className = 'cost-row';
+            tr.innerHTML = `
+                <td class="py-2 px-3">${fmtV(v)}</td>
+                <td class="py-2 px-3">${fmtC(costOpt[v].cost)}</td>
+                <td class="py-2 px-3 leading-relaxed">${pathHtml}</td>
+            `;
+            tr.addEventListener('mouseenter', () => {
+                hoveredCostVertex = v;
+                redrawCurrentState();
+            });
+            tr.addEventListener('mouseleave', () => {
+                hoveredCostVertex = null;
+                redrawCurrentState();
+            });
+            costBody.appendChild(tr);
+        });
+    }
+
+    // =========================================================================
+    // 10. CANVAS RENDERING (HIDPI, CURVED PARALLEL EDGES, ARROWS, PATH GLOW)
+    // =========================================================================
+    function redrawCurrentState() {
+        if (!currGraph) return;
+        if (isRunning && currentStepIndex >= 0 && currentStepIndex < timeline.length) {
+            const step = timeline[currentStepIndex];
+            drawGraph(currGraph, step.verticesOpt, step.costOpt, step.activeNode, step.highlightEdge);
+        } else {
+            drawGraph(currGraph, new Set(), {}, null, null);
         }
     }
 
-    function draw(graph, vOpt, cOpt, activeN, highEdge) {
-        ctx.clearRect(0,0, canvas.width, canvas.height);
-        if(!graph) return;
+    function hasOppositeEdge(graph, edge) {
+        if (!isDirected) return false;
+        return graph.edges.some(other => other.u === edge.v && other.v === edge.u);
+    }
 
-        const offX = (canvas.width - graph.w)/2;
-        const offY = (canvas.height - graph.h)/2;
+    function getEdgeGeometry(uPos, vPos, isCurved) {
+        const dx = vPos.x - uPos.x;
+        const dy = vPos.y - uPos.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dist;
+        const ny = dx / dist;
 
-        ctx.lineWidth = 2;
-        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        const curveOffset = isCurved ? 26 * Math.min(viewTransform.scale, 1.15) : 0;
+        const cpx = (uPos.x + vPos.x) / 2 + nx * curveOffset;
+        const cpy = (uPos.y + vPos.y) / 2 + ny * curveOffset;
 
+        // Midpoint of quadratic Bezier at t = 0.5
+        const midX = 0.25 * uPos.x + 0.5 * cpx + 0.25 * vPos.x;
+        const midY = 0.25 * uPos.y + 0.5 * cpy + 0.25 * vPos.y;
+
+        return { cpx, cpy, midX, midY, dist };
+    }
+
+    function drawArrowhead(tipX, tipY, angle, size, color) {
+        ctx.save();
+        ctx.translate(tipX, tipY);
+        ctx.rotate(angle);
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(-size, -size * 0.55);
+        ctx.lineTo(-size * 0.78, 0);
+        ctx.lineTo(-size, size * 0.55);
+        ctx.closePath();
+        ctx.fillStyle = color;
+        ctx.fill();
+        ctx.restore();
+    }
+
+    function drawRoundedRect(x, y, w, h, r) {
+        ctx.beginPath();
+        ctx.moveTo(x + r, y);
+        ctx.lineTo(x + w - r, y);
+        ctx.quadraticCurveTo(x + w, y, x + w, y + r);
+        ctx.lineTo(x + w, y + h - r);
+        ctx.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+        ctx.lineTo(x + r, y + h);
+        ctx.quadraticCurveTo(x, y + h, x, y + h - r);
+        ctx.lineTo(x, y + r);
+        ctx.quadraticCurveTo(x, y, x + r, y);
+        ctx.closePath();
+    }
+
+    function drawGraph(graph, vOpt, cOpt, activeN, highEdge) {
+        ctx.clearRect(0, 0, canvasCssWidth, canvasCssHeight);
+        if (!graph) return;
+
+        const r = Math.max(18, Math.min(30, NODE_RADIUS * Math.sqrt(viewTransform.scale)));
+
+        // Compute hovered path sets if user is hovering a row in costOpt
+        const hoverNodes = new Set();
+        const hoverEdges = [];
+        if (hoveredCostVertex && cOpt[hoveredCostVertex]) {
+            const p = reconstructPath(hoveredCostVertex, cOpt);
+            p.forEach(id => hoverNodes.add(id));
+            for (let i = 0; i < p.length - 1; i++) {
+                hoverEdges.push([p[i], p[i + 1]]);
+            }
+        }
+
+        const isEdgeInHoverPath = (e) => hoverEdges.some(([a, b]) =>
+            isDirected ? (e.u === a && e.v === b) : ((e.u === a && e.v === b) || (e.u === b && e.v === a))
+        );
+
+        const isEdgeHighlighted = (e) => {
+            if (!highEdge) return false;
+            return isDirected
+                ? (highEdge.u === e.u && highEdge.v === e.v)
+                : ((highEdge.u === e.u && highEdge.v === e.v) || (highEdge.u === e.v && highEdge.v === e.u));
+        };
+
+        // 1. Draw Edges
         graph.edges.forEach(e => {
-            const u = graph.nodes[e.u];
-            const v = graph.nodes[e.v];
-            const ux = u.x + offX, uy = u.y + offY;
-            const vx = v.x + offX, vy = v.y + offY;
+            const uNode = graph.nodes[e.u];
+            const vNode = graph.nodes[e.v];
+            if (!uNode || !vNode) return;
 
-            ctx.beginPath();
-            ctx.moveTo(ux, uy); ctx.lineTo(vx, vy);
-            
-            let color = "#0056b3"; 
-            let width = 4;
+            const uPos = graphToScreen(uNode.x, uNode.y);
+            const vPos = graphToScreen(vNode.x, vNode.y);
+            const curved = hasOppositeEdge(graph, e);
+            const geom = getEdgeGeometry(uPos, vPos, curved);
 
-            if (highEdge && ((highEdge.u===e.u && highEdge.v===e.v) || (highEdge.u===e.v && highEdge.v===e.u))) {
-                color = "#FF8C00"; width = 8; 
-            } else if (isInPath(e, cOpt)) {
-                color = "#FF0000"; width = 5; 
+            const inHover = isEdgeInHoverPath(e);
+            const isHigh = isEdgeHighlighted(e);
+            const inTree = isInPath(e, cOpt);
+
+            let strokeColor = PALETTE.edgeDefault;
+            let lineWidth = 2.6;
+
+            if (inHover) {
+                strokeColor = PALETTE.edgeHoverPath;
+                lineWidth = 6.5;
+            } else if (isHigh) {
+                strokeColor = PALETTE.edgeActive;
+                lineWidth = 6;
+            } else if (inTree) {
+                strokeColor = PALETTE.edgeOptTree;
+                lineWidth = 4.2;
             }
 
-            ctx.strokeStyle = color; ctx.lineWidth = width;
+            // Shorten endpoint to stop cleanly at target node's border for directed arrows
+            const endDx = vPos.x - geom.cpx;
+            const endDy = vPos.y - geom.cpy;
+            const endDist = Math.hypot(endDx, endDy) || 1;
+            const endAngle = Math.atan2(endDy, endDx);
+
+            const stopMargin = isDirected ? (r + 3) : 0;
+            const targetX = vPos.x - (endDx / endDist) * stopMargin;
+            const targetY = vPos.y - (endDy / endDist) * stopMargin;
+
+            ctx.save();
+            if (inHover) {
+                ctx.shadowColor = 'rgba(99, 102, 241, 0.55)';
+                ctx.shadowBlur = 10;
+            }
+
+            ctx.beginPath();
+            ctx.moveTo(uPos.x, uPos.y);
+            if (curved) {
+                ctx.quadraticCurveTo(geom.cpx, geom.cpy, targetX, targetY);
+            } else {
+                ctx.lineTo(targetX, targetY);
+            }
+            ctx.strokeStyle = strokeColor;
+            ctx.lineWidth = lineWidth;
+            ctx.lineCap = 'round';
             ctx.stroke();
 
-            const mx = (ux+vx)/2, my = (uy+vy)/2;
-            ctx.fillStyle = "white"; ctx.fillRect(mx-12, my-12, 24, 24);
-            ctx.fillStyle = "#7b008b"; 
-            ctx.font = "20px Arial"; 
-            ctx.fillText(e.w, mx, my);
+            if (isDirected) {
+                const arrowSize = inHover || isHigh ? 13 : 11;
+                drawArrowhead(targetX, targetY, endAngle, arrowSize, strokeColor);
+            }
+            ctx.restore();
+
+            // Weight pill label
+            const wText = String(e.w);
+            ctx.font = '700 14px "JetBrains Mono", monospace';
+            const textW = ctx.measureText(wText).width;
+            const pillW = Math.max(24, textW + 12);
+            const pillH = 22;
+
+            ctx.save();
+            drawRoundedRect(geom.midX - pillW / 2, geom.midY - pillH / 2, pillW, pillH, 6);
+            ctx.fillStyle = inHover ? '#eef2ff' : '#ffffff';
+            ctx.fill();
+            ctx.strokeStyle = inHover ? PALETTE.edgeHoverPath : (isHigh ? PALETTE.edgeActive : '#cbd5e1');
+            ctx.lineWidth = inHover || isHigh ? 2 : 0.5;
+            ctx.stroke();
+
+            ctx.fillStyle = inHover ? '#4338ca' : PALETTE.weightText;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(wText, geom.midX, geom.midY + 0.5);
+            ctx.restore();
         });
 
-        for (let id in graph.nodes) {
+        // 2. Draw Nodes
+        for (const id of Object.keys(graph.nodes)) {
             const n = graph.nodes[id];
-            const x = n.x + offX, y = n.y + offY;
+            const pos = graphToScreen(n.x, n.y);
+            const isActive = (id === activeN);
+            const isOpt = vOpt.has(id);
+            const isHoverNode = hoverNodes.has(id);
+            const isPendingSrc = (!isRunning && editorMode === 'addEdge' && pendingEdgeSource === id);
+
+            let fill = PALETTE.nodeUnoptBg;
+            let border = PALETTE.nodeUnoptBorder;
+            let borderW = 2.5;
+
+            if (isActive) {
+                fill = PALETTE.nodeActiveBg;
+                border = PALETTE.nodeActiveBorder;
+                borderW = 4.5;
+            } else if (isOpt) {
+                fill = PALETTE.nodeOptBg;
+                border = PALETTE.nodeOptBorder;
+                borderW = 3;
+            }
+
+            if (isHoverNode) {
+                border = PALETTE.edgeHoverPath;
+                borderW = 4.5;
+            } else if (isPendingSrc) {
+                border = PALETTE.nodePendingBorder;
+                borderW = 4.5;
+            }
+
+            ctx.save();
+            if (isHoverNode) {
+                ctx.shadowColor = 'rgba(99, 102, 241, 0.55)';
+                ctx.shadowBlur = 12;
+            } else if (isActive) {
+                ctx.shadowColor = 'rgba(234, 88, 12, 0.4)';
+                ctx.shadowBlur = 10;
+            }
 
             ctx.beginPath();
-            ctx.arc(x, y, 28, 0, Math.PI*2); 
-            
-            // Fill logic
-            if (id === activeN) ctx.fillStyle = "#FFFF00"; 
-            else if (vOpt.has(id)) ctx.fillStyle = "#98fb98"; 
-            else ctx.fillStyle = "#99FFFF"; 
-
+            ctx.arc(pos.x, pos.y, r, 0, Math.PI * 2);
+            ctx.fillStyle = fill;
             ctx.fill();
-
-            // Stroke logic: Match fill unless active
-            if (id === activeN) {
-                ctx.strokeStyle = "#FF8C00";
-                ctx.lineWidth = 5;
-            } else {
-                ctx.strokeStyle = ctx.fillStyle; // Same color as fill
-                ctx.lineWidth = 2;
-            }
-            
+            ctx.strokeStyle = border;
+            ctx.lineWidth = borderW;
             ctx.stroke();
+            ctx.restore();
 
-            ctx.fillStyle = "#ff0000"; 
-            ctx.font = "21px Arial"; 
-            ctx.fillText(id, x, y);
+            // Dynamic font size so multi-character labels (e.g., "center", "start") never overflow
+            const label = String(id);
+            let fontSize = Math.round(r * 0.9);
+            ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+            const maxLabelW = r * 1.68;
+            while (ctx.measureText(label).width > maxLabelW && fontSize > 9) {
+                fontSize--;
+                ctx.font = `700 ${fontSize}px Inter, sans-serif`;
+            }
 
-            if (cOpt[id]) {
-                ctx.fillStyle = "#000";
-                ctx.font = "16px Arial";
-                ctx.fillText(cOpt[id].cost, x - 12, y - 37);
+            ctx.fillStyle = PALETTE.nodeText;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(label, pos.x, pos.y + 0.5);
+
+            // Crisp pill badge above node showing optimal cost (costOpt)
+            if (cOpt[id] !== undefined) {
+                const costStr = String(cOpt[id].cost);
+                ctx.font = '700 13px "JetBrains Mono", monospace';
+                const cw = ctx.measureText(costStr).width;
+                const bw = Math.max(22, cw + 12);
+                const bh = 19;
+                const bx = pos.x - bw / 2;
+                const by = pos.y - r - bh - 5;
+
+                ctx.save();
+                drawRoundedRect(bx, by, bw, bh, 9);
+                ctx.fillStyle = isHoverNode ? PALETTE.edgeHoverPath : PALETTE.badgeBg;
+                ctx.fill();
+                ctx.fillStyle = PALETTE.badgeText;
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText(costStr, pos.x, by + bh / 2 + 0.5);
+                ctx.restore();
             }
         }
     }
 
     function isInPath(edge, cOpt) {
-        if (cOpt[edge.u] && cOpt[edge.u].parent === edge.v) return true;
-        if (cOpt[edge.v] && cOpt[edge.v].parent === edge.u) return true;
-        return false;
+        if (isDirected) {
+            return Boolean(cOpt[edge.v] && cOpt[edge.v].parent === edge.u);
+        }
+        return Boolean(
+            (cOpt[edge.u] && cOpt[edge.u].parent === edge.v) ||
+            (cOpt[edge.v] && cOpt[edge.v].parent === edge.u)
+        );
     }
 
     function reconstructPath(v, cOpt) {
-        let path = [v];
+        const path = [v];
         let curr = v;
-        while(cOpt[curr] && cOpt[curr].parent) {
+        const guard = new Set([v]);
+        while (cOpt[curr] && cOpt[curr].parent) {
             curr = cOpt[curr].parent;
+            if (guard.has(curr)) break;
+            guard.add(curr);
             path.unshift(curr);
         }
         return path;
     }
 
-    // --- GLOBAL ACTIONS ---
-    function toggleAuto() {
-        if (isAnimating) return; 
-        isAuto = !isAuto;
-        const btn = document.getElementById('btnAuto');
-        if(isAuto) {
-            btn.innerText = "Pause";
-            btn.className = "btn-primary"; 
-            document.getElementById('btnNext').disabled = true;
-            document.getElementById('btnUndo').disabled = true;
-            if(currentStepIndex < timeline.length - 1) nextStep();
-        } else {
-            stopAuto();
+    // =========================================================================
+    // 11. INTERACTIVE GRAPH EDITOR, HIT TESTING & CLAMPED TOOLTIP
+    // =========================================================================
+    function setEditorMode(mode) {
+        if (isRunning) return;
+        editorMode = mode;
+        pendingEdgeSource = null;
+
+        ['modeSelect', 'modeAddNode', 'modeAddEdge', 'modeDelete'].forEach(id => {
+            document.getElementById(id).classList.remove('active');
+        });
+        const map = { select: 'modeSelect', addNode: 'modeAddNode', addEdge: 'modeAddEdge', delete: 'modeDelete' };
+        document.getElementById(map[mode]).classList.add('active');
+
+        updateEditorHint();
+        redrawCurrentState();
+    }
+
+    function updateEditorHint() {
+        const hint = document.getElementById('editorHint');
+        const hints = {
+            select: 'Drag nodes to reposition • Click an edge to edit weight',
+            addNode: 'Click any empty space on the canvas to add a vertex',
+            addEdge: pendingEdgeSource
+                ? `Select target vertex to connect from "${pendingEdgeSource}" (or click same to cancel)`
+                : 'Click source vertex then target vertex (or click an edge to edit weight)',
+            delete: 'Click any vertex or edge to delete it'
+        };
+        hint.textContent = hints[editorMode];
+        canvas.style.cursor = editorMode === 'addNode' ? 'crosshair' : (editorMode === 'delete' ? 'pointer' : 'default');
+    }
+
+    function findNodeAt(sx, sy) {
+        if (!currGraph) return null;
+        const r = Math.max(18, Math.min(30, NODE_RADIUS * Math.sqrt(viewTransform.scale))) + 4;
+        const ids = Object.keys(currGraph.nodes);
+        for (let i = ids.length - 1; i >= 0; i--) {
+            const id = ids[i];
+            const pos = graphToScreen(currGraph.nodes[id].x, currGraph.nodes[id].y);
+            if (Math.hypot(sx - pos.x, sy - pos.y) <= r) return id;
+        }
+        return null;
+    }
+
+    function pointToSegmentDist(px, py, x1, y1, x2, y2) {
+        const dx = x2 - x1, dy = y2 - y1;
+        const lenSq = dx * dx + dy * dy;
+        if (lenSq === 0) return Math.hypot(px - x1, py - y1);
+        let t = ((px - x1) * dx + (py - y1) * dy) / lenSq;
+        t = Math.max(0, Math.min(1, t));
+        return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+
+    function findEdgeAt(sx, sy) {
+        if (!currGraph) return -1;
+        const hitThreshold = 13;
+
+        for (let i = currGraph.edges.length - 1; i >= 0; i--) {
+            const e = currGraph.edges[i];
+            const uPos = graphToScreen(currGraph.nodes[e.u].x, currGraph.nodes[e.u].y);
+            const vPos = graphToScreen(currGraph.nodes[e.v].x, currGraph.nodes[e.v].y);
+            const curved = hasOppositeEdge(currGraph, e);
+            const geom = getEdgeGeometry(uPos, vPos, curved);
+
+            // Check weight badge first
+            if (Math.hypot(sx - geom.midX, sy - geom.midY) <= 16) return i;
+
+            if (!curved) {
+                if (pointToSegmentDist(sx, sy, uPos.x, uPos.y, vPos.x, vPos.y) <= hitThreshold) return i;
+            } else {
+                // Sample quadratic curve into 10 segments for accurate hit-testing
+                let prevX = uPos.x, prevY = uPos.y;
+                for (let step = 1; step <= 10; step++) {
+                    const t = step / 10;
+                    const mt = 1 - t;
+                    const curX = mt * mt * uPos.x + 2 * mt * t * geom.cpx + t * t * vPos.x;
+                    const curY = mt * mt * uPos.y + 2 * mt * t * geom.cpy + t * t * vPos.y;
+                    if (pointToSegmentDist(sx, sy, prevX, prevY, curX, curY) <= hitThreshold) return i;
+                    prevX = curX;
+                    prevY = curY;
+                }
+            }
+        }
+        return -1;
+    }
+
+    function generateNextNodeLabel() {
+        const alphabet = 'abcdefghijklmnopqrstuvwxyz';
+        for (const ch of alphabet) {
+            if (!currGraph.nodes[ch]) return ch;
+        }
+        let n = 1;
+        while (currGraph.nodes[`v${n}`]) n++;
+        return `v${n}`;
+    }
+
+    function getCanvasCoords(evt) {
+        const rect = canvas.getBoundingClientRect();
+        const clientX = evt.touches ? evt.touches[0].clientX : evt.clientX;
+        const clientY = evt.touches ? evt.touches[0].clientY : evt.clientY;
+        return {
+            x: clientX - rect.left,
+            y: clientY - rect.top
+        };
+    }
+
+    // Mouse / Touch Down
+    function handlePointerDown(evt) {
+        if (!currGraph || isRunning) return;
+        const { x, y } = getCanvasCoords(evt);
+        const hitNode = findNodeAt(x, y);
+
+        if (editorMode === 'select') {
+            if (hitNode) {
+                draggingNodeId = hitNode;
+                const gPos = screenToGraph(x, y);
+                dragStartOffset.x = currGraph.nodes[hitNode].x - gPos.x;
+                dragStartOffset.y = currGraph.nodes[hitNode].y - gPos.y;
+                canvas.style.cursor = 'grabbing';
+                tooltip.classList.add('hidden');
+                if (evt.cancelable) evt.preventDefault();
+            } else {
+                const hitEdgeIdx = findEdgeAt(x, y);
+                if (hitEdgeIdx !== -1) {
+                    const e = currGraph.edges[hitEdgeIdx];
+                    openWeightModal({ type: 'edit', u: e.u, v: e.v, edgeIndex: hitEdgeIdx }, e.w);
+                }
+            }
+            return;
+        }
+
+        if (editorMode === 'addNode') {
+            if (hitNode) return; // Don't overlap existing node
+            const gPos = screenToGraph(x, y);
+            const label = generateNextNodeLabel();
+            currGraph.nodes[label] = { x: Math.round(gPos.x), y: Math.round(gPos.y) };
+            populateSourceDropdown();
+            redrawCurrentState();
+            return;
+        }
+
+        if (editorMode === 'addEdge') {
+            if (hitNode) {
+                if (!pendingEdgeSource) {
+                    pendingEdgeSource = hitNode;
+                    updateEditorHint();
+                    redrawCurrentState();
+                } else if (pendingEdgeSource === hitNode) {
+                    pendingEdgeSource = null;
+                    updateEditorHint();
+                    redrawCurrentState();
+                } else {
+                    const u = pendingEdgeSource;
+                    const v = hitNode;
+                    pendingEdgeSource = null;
+                    updateEditorHint();
+
+                    // Check if edge already exists
+                    const existingIdx = currGraph.edges.findIndex(e =>
+                        isDirected ? (e.u === u && e.v === v) : ((e.u === u && e.v === v) || (e.u === v && e.v === u))
+                    );
+                    if (existingIdx !== -1) {
+                        openWeightModal({ type: 'edit', u, v, edgeIndex: existingIdx }, currGraph.edges[existingIdx].w);
+                    } else {
+                        openWeightModal({ type: 'create', u, v, edgeIndex: -1 }, 4);
+                    }
+                }
+            } else {
+                const hitEdgeIdx = findEdgeAt(x, y);
+                if (hitEdgeIdx !== -1) {
+                    const e = currGraph.edges[hitEdgeIdx];
+                    openWeightModal({ type: 'edit', u: e.u, v: e.v, edgeIndex: hitEdgeIdx }, e.w);
+                }
+            }
+            return;
+        }
+
+        if (editorMode === 'delete') {
+            if (hitNode) {
+                delete currGraph.nodes[hitNode];
+                currGraph.edges = currGraph.edges.filter(e => e.u !== hitNode && e.v !== hitNode);
+                populateSourceDropdown();
+                redrawCurrentState();
+            } else {
+                const hitEdgeIdx = findEdgeAt(x, y);
+                if (hitEdgeIdx !== -1) {
+                    currGraph.edges.splice(hitEdgeIdx, 1);
+                    redrawCurrentState();
+                }
+            }
         }
     }
 
-    function stopAuto() {
-        isAuto = false; 
-        clearTimeout(autoTimer);
-        const btn = document.getElementById('btnAuto');
-        btn.innerText = "Auto";
-        btn.className = "btn-warn"; 
-        updateButtons();
+    // Mouse / Touch Move
+    function handlePointerMove(evt) {
+        if (!currGraph) return;
+        const { x, y } = getCanvasCoords(evt);
+
+        if (draggingNodeId && !isRunning) {
+            if (evt.cancelable) evt.preventDefault();
+            const gPos = screenToGraph(x, y);
+            currGraph.nodes[draggingNodeId].x = gPos.x + dragStartOffset.x;
+            currGraph.nodes[draggingNodeId].y = gPos.y + dragStartOffset.y;
+            redrawCurrentState();
+            return;
+        }
+
+        // Update cursor & clamped tooltip (desktop hover)
+        const hitNode = findNodeAt(x, y);
+        if (!isRunning && editorMode === 'select') {
+            const hitEdge = hitNode ? -1 : findEdgeAt(x, y);
+            canvas.style.cursor = hitNode ? 'grab' : (hitEdge !== -1 ? 'pointer' : 'default');
+        }
+
+        if (hitNode) {
+            let costOpt = {};
+            if (isRunning && currentStepIndex >= 0 && currentStepIndex < timeline.length) {
+                costOpt = timeline[currentStepIndex].costOpt;
+            }
+
+            if (costOpt[hitNode]) {
+                tooltip.innerHTML = `<div class="font-bold text-sky-300">Vertex ${escapeHtml(hitNode)}</div>
+                    <div>Optimal Cost: <span class="font-mono font-bold text-emerald-300">${costOpt[hitNode].cost}</span></div>
+                    <div>Parent: <span class="font-semibold">${escapeHtml(costOpt[hitNode].parent || 'None (Source)')}</span></div>`;
+            } else {
+                tooltip.innerHTML = `<div class="font-bold text-sky-300">Vertex ${escapeHtml(hitNode)}</div>
+                    <div>Optimal Cost: <span class="font-mono">&infin;</span></div>
+                    <div class="text-slate-300">Status: Unoptimized</div>`;
+            }
+
+            tooltip.classList.remove('hidden');
+
+            // Clamp tooltip position inside canvasContainer bounds
+            const margin = 10;
+            const ttW = tooltip.offsetWidth;
+            const ttH = tooltip.offsetHeight;
+            let left = x + 14;
+            let top = y + 14;
+
+            if (left + ttW + margin > canvasCssWidth) {
+                left = Math.max(margin, x - ttW - 14);
+            }
+            if (top + ttH + margin > canvasCssHeight) {
+                top = Math.max(margin, y - ttH - 14);
+            }
+            tooltip.style.left = `${left}px`;
+            tooltip.style.top = `${top}px`;
+        } else {
+            tooltip.classList.add('hidden');
+        }
     }
 
-    function resetUI() {
-        currentStepIndex = -1;
-        timeline = [];
-        stopAuto();
-        isAnimating = false;
-        document.querySelector('#pqTable tbody').innerHTML = '';
-        document.querySelector('#costTable tbody').innerHTML = '';
-        document.getElementById('logDisplay').innerHTML = `<span class="log-prefix">></span> Ready.`;
+    function handlePointerUp() {
+        if (draggingNodeId) {
+            draggingNodeId = null;
+            canvas.style.cursor = 'default';
+            computeViewTransform();
+            redrawCurrentState();
+        }
     }
 
-    function reset() {
-        resetUI();
-        document.getElementById('btnNext').disabled = true;
-        document.getElementById('btnUndo').disabled = true;
-        document.getElementById('btnAuto').disabled = true;
-        document.getElementById('graphSelect').disabled = false;
-        document.getElementById('sourceNode').disabled = false;
-        if(currGraph) draw(currGraph, new Set(), {}, null, null);
+    canvas.addEventListener('mousedown', handlePointerDown);
+    window.addEventListener('mousemove', handlePointerMove);
+    window.addEventListener('mouseup', handlePointerUp);
+    canvas.addEventListener('mouseleave', () => tooltip.classList.add('hidden'));
+
+    // Touch Support
+    canvas.addEventListener('touchstart', handlePointerDown, { passive: false });
+    canvas.addEventListener('touchmove', handlePointerMove, { passive: false });
+    window.addEventListener('touchend', handlePointerUp);
+
+    // =========================================================================
+    // 12. INLINE WEIGHT MODAL (NO browser prompt/alert)
+    // =========================================================================
+    function openWeightModal(context, defaultWeight) {
+        modalContext = context;
+        const modal = document.getElementById('weightModal');
+        const title = document.getElementById('weightModalTitle');
+        const input = document.getElementById('weightInput');
+        const err = document.getElementById('weightError');
+
+        const sep = isDirected ? ' → ' : ' — ';
+        title.textContent = `${context.type === 'create' ? 'Add' : 'Edit'} Edge (${context.u}${sep}${context.v})`;
+        input.value = defaultWeight;
+        err.classList.add('hidden');
+
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+            input.focus();
+            input.select();
+        }, 20);
     }
 
-    // Initialize View
-    resize();
-    loadGraph('sample');
-    reset();
+    function closeWeightModal() {
+        document.getElementById('weightModal').classList.add('hidden');
+        modalContext = null;
+        redrawCurrentState();
+    }
 
+    function submitWeightModal(evt) {
+        evt.preventDefault();
+        if (!modalContext) return;
+
+        const input = document.getElementById('weightInput');
+        const err = document.getElementById('weightError');
+        const val = parseInt(input.value, 10);
+
+        if (isNaN(val) || val < 1 || val > 999) {
+            err.textContent = 'Please enter a positive integer between 1 and 999.';
+            err.classList.remove('hidden');
+            return;
+        }
+
+        if (modalContext.type === 'create') {
+            currGraph.edges.push({ u: modalContext.u, v: modalContext.v, w: val });
+        } else if (modalContext.type === 'edit' && currGraph.edges[modalContext.edgeIndex]) {
+            currGraph.edges[modalContext.edgeIndex].w = val;
+        }
+
+        closeWeightModal();
+    }
+
+    // =========================================================================
+    // 13. KEYBOARD SHORTCUTS
+    // =========================================================================
+    window.addEventListener('keydown', (e) => {
+        // Ignore shortcuts when typing in inputs, selects, or when modal is open
+        const tag = document.activeElement ? document.activeElement.tagName : '';
+        const modalOpen = !document.getElementById('weightModal').classList.contains('hidden');
+
+        if (modalOpen) {
+            if (e.key === 'Escape') closeWeightModal();
+            return;
+        }
+        if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+
+        if (e.key === 'ArrowRight') {
+            if (isRunning && !isAnimating && !isAuto) {
+                e.preventDefault();
+                nextStep();
+            }
+        } else if (e.key === 'ArrowLeft') {
+            if (isRunning && !isAnimating && !isAuto) {
+                e.preventDefault();
+                undo();
+            }
+        } else if (e.code === 'Space') {
+            if (isRunning && !isAnimating) {
+                e.preventDefault();
+                toggleAuto();
+            }
+        } else if (e.key === 'r' || e.key === 'R') {
+            e.preventDefault();
+            reset();
+        }
+    });
+
+    // =========================================================================
+    // 14. INITIALIZE APP
+    // =========================================================================
+    window.addEventListener('load', () => {
+        loadGraph('sample');
+        resizeCanvas();
+    });
 </script>
 </body>
 </html>
