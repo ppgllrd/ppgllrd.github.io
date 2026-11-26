@@ -1,0 +1,4201 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>AVLSet Visualizer</title>
+    <style>
+        :root {
+            --bg-color: #ffffff;
+            --panel-bg: #f5f6f8;
+            --panel-alt: #eceff1;
+            --border-color: #d8dee4;
+            --text-primary: #1f2328;
+            --text-secondary: #57606a;
+            --card-bg: rgba(255, 255, 255, 0.96);
+            --input-bg: #ffffff;
+            --input-border: #9aa4b2;
+
+            /* UI Colors (Flat) */
+            --btn-insert: #2E7D32;
+            --btn-delete: #C62828;
+            --btn-search: #1565C0;
+            --btn-minmax: #3949AB;
+            --btn-undo: #6A1B9A;
+            --btn-gray: #546E7A;
+            --btn-random: #EF6C00;
+            --btn-demo: #7B1FA2;
+            --btn-step: #37474F;
+        }
+
+        body.dark {
+            --bg-color: #0f1419;
+            --panel-bg: #161b22;
+            --panel-alt: #1f2630;
+            --border-color: #30363d;
+            --text-primary: #e6edf3;
+            --text-secondary: #9da7b3;
+            --card-bg: rgba(22, 27, 34, 0.96);
+            --input-bg: #0d1117;
+            --input-border: #444c56;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100vh;
+            height: 100dvh;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Segoe UI', system-ui, -apple-system, Tahoma, Geneva, Verdana, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-primary);
+            display: flex;
+            flex-direction: column;
+            user-select: none;
+            transition: background-color 0.2s, color 0.2s;
+        }
+
+        header {
+            padding: 8px 16px;
+            background-color: var(--panel-bg);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            border-bottom: 1px solid var(--border-color);
+            flex-shrink: 0;
+            z-index: 10;
+        }
+
+        .header-top {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            width: 100%;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .gui {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px 14px;
+            width: 100%;
+        }
+
+        h1 {
+            margin: 0;
+            font-size: 1.1rem;
+            color: var(--text-primary);
+            letter-spacing: -0.01em;
+        }
+
+        .controls,
+        .sub-controls {
+            display: flex;
+            gap: 6px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .sub-controls {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            gap: 8px;
+        }
+
+        .divider {
+            width: 1px;
+            height: 20px;
+            background: var(--border-color);
+            margin: 0 2px;
+        }
+
+        input[type="text"] {
+            padding: 6px 8px;
+            border-radius: 5px;
+            border: 1px solid var(--input-border);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            width: 145px;
+            font-weight: 600;
+            font-size: 0.85rem;
+            transition: border-color 0.15s;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--btn-search);
+        }
+
+        input[type="text"].input-error {
+            border-color: var(--btn-delete);
+        }
+
+        input[type="range"] {
+            width: 85px;
+            cursor: pointer;
+            accent-color: var(--btn-search);
+        }
+
+        .toggle-label {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            cursor: pointer;
+            font-size: 0.82rem;
+            color: var(--text-primary);
+            padding: 3px 6px;
+            border-radius: 4px;
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+        }
+
+        .toggle-label input {
+            cursor: pointer;
+            margin: 0;
+        }
+
+        button {
+            padding: 6px 11px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: 600;
+            color: white;
+            transition: filter 0.15s, transform 0.1s, opacity 0.15s;
+            font-size: 0.82rem;
+            white-space: nowrap;
+        }
+
+        button:hover:not(:disabled) {
+            filter: brightness(1.08);
+        }
+
+        button:active:not(:disabled) {
+            transform: scale(0.96);
+        }
+
+        button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        .btn-insert { background-color: var(--btn-insert); }
+        .btn-delete { background-color: var(--btn-delete); }
+        .btn-search { background-color: var(--btn-search); }
+        .btn-minmax { background-color: var(--btn-minmax); }
+        .btn-undo { background-color: var(--btn-undo); }
+        .btn-clear { background-color: var(--btn-gray); }
+        .btn-random { background-color: var(--btn-random); }
+        .btn-demo { background-color: var(--btn-demo); }
+        .btn-step { background-color: var(--btn-step); padding: 6px 9px; }
+
+        .btn-pause {
+            background-color: #455A64;
+            min-width: 72px;
+        }
+
+        .btn-icon {
+            background-color: var(--panel-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            font-size: 0.88rem;
+            padding: 4px 10px;
+        }
+
+        .btn-help {
+            background-color: #607D8B;
+            font-size: 0.95rem;
+            width: 30px;
+            height: 30px;
+            padding: 0;
+            border-radius: 50%;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .speed-badge {
+            font-family: monospace;
+            font-weight: 700;
+            min-width: 38px;
+            text-align: center;
+            color: var(--text-primary);
+        }
+
+        #status-bar {
+            padding-top: 6px;
+            font-size: 0.84rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 12px;
+            color: var(--text-secondary);
+        }
+
+        #status-text {
+            font-weight: 600;
+            color: var(--text-primary);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .status-meta {
+            display: flex;
+            gap: 12px;
+            flex-shrink: 0;
+            font-family: monospace;
+            font-size: 0.8rem;
+        }
+
+        #canvas-container {
+            flex: 1 1 0;
+            position: relative;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            cursor: default;
+            min-height: 0;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        /* Collapsible Flat Legend */
+        #legend {
+            position: absolute;
+            top: 14px;
+            left: 14px;
+            background: var(--card-bg);
+            padding: 8px 10px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.78rem;
+            max-width: 245px;
+            z-index: 5;
+        }
+
+        .legend-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 700;
+            color: var(--text-primary);
+            margin-bottom: 6px;
+            gap: 12px;
+        }
+
+        #legend.collapsed .legend-header {
+            margin-bottom: 0;
+        }
+
+        #legend.collapsed .legend-body {
+            display: none;
+        }
+
+        .legend-toggle {
+            background: var(--panel-alt);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1px 6px;
+            font-size: 0.75rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 5px;
+            color: var(--text-primary);
+        }
+
+        .legend-item:last-child {
+            margin-bottom: 0;
+        }
+
+        /* Mode-specific legend samples */
+        #legend .legend-struct-only {
+            display: none;
+        }
+
+        #legend.struct-mode .legend-circle-only {
+            display: none;
+        }
+
+        #legend.struct-mode .legend-struct-only {
+            display: flex;
+        }
+
+        .struct-sample {
+            display: inline-flex;
+            align-items: center;
+            gap: 0;
+            flex-shrink: 0;
+            font-family: Arial, sans-serif;
+            font-weight: 700;
+            font-size: 8px;
+            line-height: 1;
+        }
+
+        .struct-sample-extval {
+            width: 15px;
+            height: 16px;
+            border-radius: 2px;
+            background: #A8F5A8;
+            color: #C60000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-extval {
+            background: #235334;
+            color: #e6edf3;
+        }
+
+        .struct-sample-arrow {
+            width: 9px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #1565C0;
+            font-size: 9px;
+            line-height: 1;
+        }
+
+        body.dark .struct-sample-arrow {
+            color: #58A6FF;
+        }
+
+        .struct-sample-strip {
+            display: inline-flex;
+            align-items: stretch;
+            gap: 1.5px;
+            height: 16px;
+        }
+
+        .struct-sample-elem {
+            width: 8px;
+            border-radius: 2px;
+            background: #D69EFF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-elem {
+            background: #7E57C2;
+        }
+
+        .struct-sample-h {
+            width: 12px;
+            border-radius: 2px;
+            background: #FFF95B;
+            color: #C60000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-h {
+            background: #9E8C1C;
+            color: #FFFDE7;
+        }
+
+        .struct-sample-ptr {
+            width: 8px;
+            border-radius: 2px;
+            background: #9BF7FF;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        body.dark .struct-sample-ptr {
+            background: #1D6F8A;
+        }
+
+        .struct-sample-dot {
+            width: 4px;
+            height: 4px;
+            border-radius: 50%;
+            background: #1565C0;
+        }
+
+        body.dark .struct-sample-dot {
+            background: #58A6FF;
+        }
+
+        .null-circle-icon {
+            width: 11px;
+            height: 14px;
+            border-radius: 2px;
+            background: #9BF7FF;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            margin: 0 1.5px;
+        }
+
+        body.dark .null-circle-icon {
+            background: #1D6F8A;
+        }
+
+        .dot {
+            width: 13px;
+            height: 13px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .line-icon {
+            width: 14px;
+            height: 3px;
+            border-radius: 2px;
+            flex-shrink: 0;
+        }
+
+        .arrow-icon {
+            font-size: 14px;
+            font-weight: bold;
+            color: #D50000;
+            width: 14px;
+            text-align: center;
+            line-height: 1;
+        }
+
+        .node-sample {
+            display: inline-block;
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: #B0F9B0;
+            border: 2px solid #66BB6A;
+            text-align: center;
+            line-height: 24px;
+            position: relative;
+            font-family: Arial, sans-serif;
+            font-weight: bold;
+            flex-shrink: 0;
+        }
+
+        .node-val {
+            color: #8E0000;
+            font-size: 11px;
+        }
+
+        .node-badge-r {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 8px;
+            line-height: 12px;
+            min-width: 14px;
+            height: 14px;
+            color: #1976D2;
+            background: #ffffff;
+            border: 1px solid #1976D2;
+            border-radius: 50%;
+            text-align: center;
+        }
+
+        .node-badge-l {
+            position: absolute;
+            top: -5px;
+            left: -5px;
+            font-size: 8px;
+            line-height: 12px;
+            min-width: 14px;
+            height: 14px;
+            color: #2E7D32;
+            background: #ffffff;
+            border: 1px solid #2E7D32;
+            border-radius: 50%;
+            text-align: center;
+        }
+
+        /* Camera Floating Controls (Flat) */
+        #camera-controls {
+            position: absolute;
+            bottom: 14px;
+            right: 14px;
+            display: flex;
+            gap: 5px;
+            z-index: 5;
+        }
+
+        #camera-controls button {
+            background: var(--card-bg);
+            color: var(--text-primary);
+            border: 1px solid var(--border-color);
+            padding: 6px 10px;
+            font-size: 0.85rem;
+        }
+
+        /* Traversals & Log Drawer */
+        #info-drawer {
+            background: var(--panel-bg);
+            border-top: 1px solid var(--border-color);
+            padding: 8px 16px;
+            display: none;
+            gap: 16px;
+            flex-wrap: wrap;
+            max-height: 175px;
+            overflow-y: auto;
+            flex-shrink: 0;
+            font-size: 0.82rem;
+        }
+
+        #info-drawer.open {
+            display: flex;
+        }
+
+        .drawer-col {
+            flex: 1 1 280px;
+            min-width: 240px;
+        }
+
+        .drawer-title {
+            font-weight: 700;
+            margin-bottom: 4px;
+            color: var(--text-primary);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .traversal-row {
+            margin: 3px 0;
+            font-family: monospace;
+            color: var(--text-secondary);
+            word-break: break-word;
+        }
+
+        .traversal-row strong {
+            color: var(--text-primary);
+        }
+
+        #op-log {
+            margin: 0;
+            padding-left: 18px;
+            max-height: 110px;
+            overflow-y: auto;
+            color: var(--text-secondary);
+            font-family: monospace;
+            font-size: 0.78rem;
+        }
+
+        #op-log li {
+            line-height: 1.4;
+            color: var(--text-secondary);
+        }
+
+        #author {
+            width: 100%;
+            background: var(--panel-alt);
+            font-size: 0.74em;
+            color: var(--text-secondary);
+            text-align: center;
+            padding: 5px 10px calc(5px + env(safe-area-inset-bottom));
+            border-top: 1px solid var(--border-color);
+            flex-shrink: 0;
+        }
+
+        /* Modal (Flat) */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 100;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.55);
+        }
+
+        .modal-content {
+            background-color: var(--panel-bg);
+            color: var(--text-primary);
+            margin: 4% auto;
+            padding: 20px 24px;
+            border: 1px solid var(--border-color);
+            width: 90%;
+            max-width: 650px;
+            border-radius: 8px;
+            max-height: 84vh;
+            overflow-y: auto;
+        }
+
+        .close {
+            color: var(--text-secondary);
+            float: right;
+            font-size: 26px;
+            font-weight: bold;
+            cursor: pointer;
+            line-height: 1;
+        }
+
+        .close:hover {
+            color: var(--text-primary);
+        }
+
+        h2 { color: #2E7D32; margin-top: 0; }
+        body.dark h2 { color: #66BB6A; }
+        h3 {
+            color: #1565C0;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 4px;
+            margin-top: 16px;
+        }
+        body.dark h3 { color: #64B5F6; }
+
+        .modal p,
+        .modal li {
+            font-size: 0.92rem;
+            line-height: 1.5;
+            color: var(--text-primary);
+        }
+
+        .complexity {
+            font-family: monospace;
+            background: var(--panel-alt);
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #c62828;
+            border: 1px solid var(--border-color);
+        }
+        body.dark .complexity { color: #ff8a80; }
+
+        kbd {
+            background: var(--panel-alt);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 1px 5px;
+            font-family: monospace;
+            font-size: 0.85em;
+        }
+
+        @media (max-width: 768px) {
+            header { padding: 8px 10px; }
+            h1 { font-size: 0.98rem; }
+            input[type="text"] { width: 115px; }
+            .divider { display: none; }
+            #legend { max-width: 205px; font-size: 0.72rem; top: 8px; left: 8px; }
+            .status-meta { display: none; }
+        }
+    </style>
+</head>
+
+<body>
+
+    <header>
+        <div class="header-top">
+            <h1>AVLSet Visualizer</h1>
+            <div class="header-actions">
+                <button class="btn-icon" id="btnDrawer" title="Toggle Set Views &amp; Operation Log">Log &amp; Views</button>
+                <button class="btn-icon" id="btnTheme" title="Toggle Dark / Light Theme">Dark</button>
+                <button class="btn-help" id="btnHelp" title="Help / Algorithms &amp; Shortcuts" aria-label="Help">?</button>
+            </div>
+        </div>
+
+        <div class="gui">
+            <div class="controls">
+                <input type="text" id="inputValue" placeholder="e.g. 25 or 10,20,30"
+                    title="Enter an integer element or comma-separated integers (Enter = insert)">
+                <button class="btn-insert" id="btnInsert" title="Insert element(s) into the set">insert</button>
+                <button class="btn-delete" id="btnDelete" title="Delete element(s) from the set">delete</button>
+                <button class="btn-search" id="btnContains" title="Check whether an element belongs to the set">contains</button>
+                <button class="btn-minmax" id="btnMin" title="Find the minimum element in the set">minimum</button>
+                <button class="btn-minmax" id="btnMax" title="Find the maximum element in the set">maximum</button>
+
+                <div class="divider"></div>
+
+                <button class="btn-demo" id="btnDemoRight" title="Demo: Right Rotation (LL Line)">Right</button>
+                <button class="btn-demo" id="btnDemoLR" title="Demo: Double Left-Right Rotation (LR Zig-Zag)">Left-Right</button>
+                <button class="btn-demo" id="btnDemoLeft" title="Demo: Left Rotation (RR Line)">Left</button>
+                <button class="btn-demo" id="btnDemoRL" title="Demo: Double Right-Left Rotation (RL Zig-Zag)">Right-Left</button>
+                <button class="btn-demo" id="btnDemoDel" title="Demo: Deletion triggering rotation">Del Rot</button>
+
+                <div class="divider"></div>
+
+                <button class="btn-random" id="btnRandom" title="Generate random 12-element AVLSet">Random</button>
+                <label class="toggle-label" title="Run operations instantly without step animation">
+                    <input type="checkbox" id="chkInstant"> Instant
+                </label>
+
+                <div class="divider"></div>
+
+                <button class="btn-undo" id="btnUndo" title="Undo last modification (Ctrl+Z)" disabled>Undo</button>
+                <button class="btn-clear" id="btnClear" title="Clear the set">Clear</button>
+            </div>
+
+            <div class="sub-controls">
+                <label for="speedSlider">Speed:</label>
+                <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1"
+                    title="Animation speed multiplier">
+                <span class="speed-badge" id="speedLabel">1.0x</span>
+
+                <button class="btn-step" id="btnStepBack" title="Step Backward (Left Arrow)" disabled>|&lt;</button>
+                <button class="btn-pause" id="btnPause" title="Pause / Resume (Space)" disabled>Pause</button>
+                <button class="btn-step" id="btnStepFwd" title="Step Forward (Right Arrow)" disabled>&gt;|</button>
+                <button class="btn-step" id="btnSkip" title="Skip animation to end" disabled>&gt;&gt;|</button>
+
+                <label class="toggle-label" title="Show Balance Factor (BF = hL - hR) on every node">
+                    <input type="checkbox" id="chkShowBF"> BF
+                </label>
+                <label class="toggle-label" title="Show inactive null pointer markers">
+                    <input type="checkbox" id="chkShowNulls" checked> Nulls
+                </label>
+                <label class="toggle-label" title="Automatically zoom &amp; center tree on operations">
+                    <input type="checkbox" id="chkAutoFit" checked> Auto-Fit
+                </label>
+                <label class="toggle-label" title="Toggle between circular nodes and internal memory implementation view">
+                    <input type="checkbox" id="chkImplView"> Implementation
+                </label>
+            </div>
+        </div>
+
+        <div id="status-bar">
+            <span id="status-text">Ready. Wheel/Pinch to Zoom, Drag to Pan, Click node to copy element.</span>
+            <div class="status-meta">
+                <span id="step-counter">Step: -</span>
+                <span id="tree-stats">Size: 0 | Height: 0</span>
+            </div>
+        </div>
+    </header>
+
+    <div id="canvas-container">
+        <canvas id="treeCanvas"></canvas>
+
+        <div id="legend">
+            <div class="legend-header">
+                <span>Legend</span>
+                <button class="legend-toggle" id="btnToggleLegend" title="Collapse/Expand Legend">−</button>
+            </div>
+            <div class="legend-body">
+                <div class="legend-item legend-circle-only">
+                    <div class="node-sample">
+                        <span class="node-badge-l">0</span>
+                        <span class="node-val">E</span>
+                        <span class="node-badge-r">H</span>
+                    </div>
+                    <span>BF / Element / Height</span>
+                </div>
+                <div class="legend-item legend-struct-only">
+                    <div class="struct-sample">
+                        <div class="struct-sample-extval">E</div>
+                        <div class="struct-sample-arrow">&#8592;</div>
+                        <div class="struct-sample-strip">
+                            <div class="struct-sample-elem"><span class="struct-sample-dot"></span></div>
+                            <div class="struct-sample-h">H</div>
+                            <div class="struct-sample-ptr"><span class="struct-sample-dot"></span></div>
+                            <div class="struct-sample-ptr"><span class="struct-sample-dot"></span></div>
+                        </div>
+                    </div>
+                    <span>Elem / Ptr / H / L / R</span>
+                </div>
+                <div class="legend-item"><div class="dot" style="background:#B0F9B0; border:1px solid #66BB6A"></div><span>Balanced Node</span></div>
+                <div class="legend-item"><div class="dot" style="background:#1E88E5;"></div><span>Visiting</span></div>
+                <div class="legend-item"><div class="dot" style="background:#CE93D8; border:1px solid #8E24AA"></div><span>Checking Balance</span></div>
+                <div class="legend-item"><div class="dot" style="background:#43A047;"></div><span>Inserted / Replaced</span></div>
+                <div class="legend-item"><div class="dot" style="background:#00C853;"></div><span>Found</span></div>
+                <div class="legend-item"><div class="dot" style="background:#E53935;"></div><span>Deleting</span></div>
+                <div class="legend-item"><div class="dot" style="background:#F4511E;"></div><span>Pivot / Successor</span></div>
+                <div class="legend-item"><div class="dot" style="background:#FFB300;"></div><span>Child (Rotation)</span></div>
+                <div class="legend-item"><div class="line-icon" style="background:#FF8F00;"></div><span>Active Path</span></div>
+                <div class="legend-item"><div class="line-icon" style="background:#AA00FF; height:4px;"></div><span>Unbalanced Path</span></div>
+                <div class="legend-item"><div class="arrow-icon">&#8635;</div><span>Rotation</span></div>
+                <div class="legend-item"><div class="arrow-icon">&#8594;</div><span>Element Replacement</span></div>
+                <div class="legend-item legend-circle-only"><div class="line-icon" style="background:#1976D2;"></div><span>Null Link</span></div>
+                <div class="legend-item legend-struct-only"><div class="null-circle-icon"><span class="struct-sample-dot"></span></div><span>Null Pointer</span></div>
+            </div>
+        </div>
+
+        <div id="camera-controls">
+            <button id="btnZoomOut" title="Zoom Out">−</button>
+            <button id="btnFitView" title="Fit Tree to Screen">Fit</button>
+            <button id="btnZoomIn" title="Zoom In">+</button>
+        </div>
+    </div>
+
+    <div id="info-drawer">
+        <div class="drawer-col">
+            <div class="drawer-title">Sorted Set Views &amp; Traversals</div>
+            <div class="traversal-row"><strong>iterator() [Inorder]:</strong> <span id="trav-inorder">{}</span></div>
+            <div class="traversal-row"><strong>Preorder:</strong> <span id="trav-preorder">[]</span></div>
+            <div class="traversal-row"><strong>Postorder:</strong> <span id="trav-postorder">[]</span></div>
+            <div class="traversal-row"><strong>Level-order:</strong> <span id="trav-level">[]</span></div>
+        </div>
+        <div class="drawer-col">
+            <div class="drawer-title">
+                <span>Operation Log</span>
+                <button class="legend-toggle" id="btnClearLog">Clear Log</button>
+            </div>
+            <ol id="op-log"></ol>
+        </div>
+    </div>
+
+    <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+
+    <!-- Help Modal -->
+    <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+        <div class="modal-content">
+            <span class="close" id="btnCloseModal">&times;</span>
+            <h2 id="modalTitle">AVLSet&lt;T&gt;: Algorithms &amp; Controls</h2>
+
+            <h3>AVLSet Overview</h3>
+            <p><code>AVLSet&lt;T&gt;</code> implements a <strong>SortedSet</strong> backed by a self-balancing <strong>AVL</strong> search tree. Duplicate elements are ignored, and elements are maintained in sorted order.</p>
+            <p><strong>Balance Factor (BF)</strong> = Height(Left) − Height(Right). Valid values are in <code>{-1, 0, 1}</code>.</p>
+
+            <h3>Time Complexity</h3>
+            <ul>
+                <li><code>insert(element)</code>: <span class="complexity">O(log n)</span></li>
+                <li><code>delete(element)</code>: <span class="complexity">O(log n)</span></li>
+                <li><code>contains(element)</code>: <span class="complexity">O(log n)</span></li>
+                <li><code>minimum()</code> / <code>maximum()</code>: <span class="complexity">O(log n)</span></li>
+                <li><code>iterator()</code> (sorted order): <span class="complexity">O(n)</span></li>
+            </ul>
+
+            <h3>Implementation View</h3>
+            <p>Toggle the <strong>Implementation</strong> checkbox to inspect the internal memory layout of each AVL node as a 4-cell horizontal strip:</p>
+            <ul>
+                <li><strong>Purple cell (elem):</strong> pointer referencing an external green element box <code>T</code>.</li>
+                <li><strong>Yellow cell (height):</strong> height of the subtree rooted at this node.</li>
+                <li><strong>Light-blue cells (left / right):</strong> child pointers (a blue dot without an arrow indicates <code>null</code>), together with the top <code>root</code> reference box.</li>
+            </ul>
+
+            <h3>AVL Rotations</h3>
+            <ul>
+                <li><strong>Right Rotation (LL):</strong> Left child moves up, pivot moves down right.</li>
+                <li><strong>Left Rotation (RR):</strong> Right child moves up, pivot moves down left.</li>
+                <li><strong>Left-Right (LR):</strong> Left child rotates left, then pivot rotates right.</li>
+                <li><strong>Right-Left (RL):</strong> Right child rotates right, then pivot rotates left.</li>
+            </ul>
+
+            <h3>Tips &amp; Keyboard Shortcuts</h3>
+            <ul>
+                <li><strong>Batch Insert / Delete:</strong> Enter comma-separated integers (e.g., <code>30, 10, 50, 20</code>).</li>
+                <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click/tap a node to copy its element, hover to highlight its subtree and inspect Balance Factor &amp; metrics.</li>
+                <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> Insert, <kbd>Space</kbd> Pause/Resume, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        (() => {
+            'use strict';
+
+            /* =================================================================
+             * 1. FLAT THEMES & VISUAL PALETTES
+             * ================================================================= */
+            const THEMES = {
+                light: {
+                    BG_DOT: 'rgba(31, 35, 40, 0.11)',
+                    LEVEL_LINE: 'rgba(31, 35, 40, 0.08)',
+                    LEVEL_TEXT: 'rgba(87, 96, 106, 0.72)',
+                    DEFAULT: '#B0F9B0',
+                    STROKE: '#66BB6A',
+                    TEXT: '#8E0000',
+                    EDGE: '#1976D2',
+                    PATH_EDGE: '#FF8F00',
+                    UNBALANCED_EDGE: '#AA00FF',
+                    NEW: '#43A047',
+                    VISIT: '#1E88E5',
+                    PIVOT: '#F4511E',
+                    CHILD: '#FFB300',
+                    CHILD_TEXT: '#1F2328',
+                    FOUND: '#00C853',
+                    FOUND_TEXT: '#FFFFFF',
+                    DELETE: '#E53935',
+                    CHECK: '#CE93D8',
+                    CHECK_STROKE: '#8E24AA',
+                    CHECK_TEXT: '#2A0845',
+                    NULL_LINK: '#1976D2',
+                    ARROW: '#D50000',
+                    BADGE_BG: '#FFFFFF',
+                    BF_BALANCED: '#2E7D32',
+                    BF_TILT: '#EF6C00',
+                    BF_UNBALANCED: '#D32F2F',
+                    PILL_BG: '#FFFFFF',
+                    PILL_BORDER: '#CBD5E1',
+                    PILL_TEXT: '#1E293B',
+                    RING_FOCUS: '#1976D2',
+                    /* Implementation memory-structure tokens */
+                    STRUCT_BORDER: '#334155',
+                    STRUCT_ELEM_PTR_BG: '#D69EFF',
+                    STRUCT_HEIGHT_BG: '#FFF95B',
+                    STRUCT_HEIGHT_TEXT: '#C60000',
+                    STRUCT_PTR_BG: '#9BF7FF',
+                    STRUCT_ROOT_BG: '#9BF7FF',
+                    STRUCT_ROOT_TEXT: '#1F2328',
+                    STRUCT_VAL_BG: '#A8F5A8',
+                    STRUCT_VAL_TEXT: '#C60000',
+                    STRUCT_ARROW: '#1565C0'
+                },
+                dark: {
+                    BG_DOT: 'rgba(230, 237, 243, 0.09)',
+                    LEVEL_LINE: 'rgba(230, 237, 243, 0.07)',
+                    LEVEL_TEXT: 'rgba(157, 167, 179, 0.68)',
+                    DEFAULT: '#235334',
+                    STROKE: '#4CAF50',
+                    TEXT: '#E6EDF3',
+                    EDGE: '#58A6FF',
+                    PATH_EDGE: '#FFB300',
+                    UNBALANCED_EDGE: '#CE93D8',
+                    NEW: '#43A047',
+                    VISIT: '#1E88E5',
+                    PIVOT: '#FF7043',
+                    CHILD: '#FFB300',
+                    CHILD_TEXT: '#1F2328',
+                    FOUND: '#00E676',
+                    FOUND_TEXT: '#0F1419',
+                    DELETE: '#EF5350',
+                    CHECK: '#7B1FA2',
+                    CHECK_STROKE: '#CE93D8',
+                    CHECK_TEXT: '#F3E5F5',
+                    NULL_LINK: '#58A6FF',
+                    ARROW: '#FF5252',
+                    BADGE_BG: '#161B22',
+                    BF_BALANCED: '#66BB6A',
+                    BF_TILT: '#FFA726',
+                    BF_UNBALANCED: '#FF6B6B',
+                    PILL_BG: '#1F2630',
+                    PILL_BORDER: '#444C56',
+                    PILL_TEXT: '#E6EDF3',
+                    RING_FOCUS: '#58A6FF',
+                    /* Implementation memory-structure tokens */
+                    STRUCT_BORDER: '#6E7681',
+                    STRUCT_ELEM_PTR_BG: '#7E57C2',
+                    STRUCT_HEIGHT_BG: '#9E8C1C',
+                    STRUCT_HEIGHT_TEXT: '#FFFDE7',
+                    STRUCT_PTR_BG: '#1D6F8A',
+                    STRUCT_ROOT_BG: '#1D6F8A',
+                    STRUCT_ROOT_TEXT: '#E6EDF3',
+                    STRUCT_VAL_BG: '#235334',
+                    STRUCT_VAL_TEXT: '#E6EDF3',
+                    STRUCT_ARROW: '#58A6FF'
+                }
+            };
+
+            /* =================================================================
+             * 2. IMMUTABLE DATA MODEL & SNAPSHOT CONTRACT
+             * ================================================================= */
+            class Node {
+                constructor(value, left = null, right = null, id = Node.nextId++) {
+                    this.value = value;
+                    this.left = left;
+                    this.right = right;
+                    this.height = 1 + Math.max(left ? left.height : 0, right ? right.height : 0);
+                    this.id = id;
+                    Object.freeze(this);
+                }
+            }
+            Node.nextId = 0;
+
+            const TreeUtils = {
+                getCount(root) {
+                    if (!root) return 0;
+                    return 1 + this.getCount(root.left) + this.getCount(root.right);
+                },
+
+                getHeight(root) {
+                    return root ? root.height : 0;
+                },
+
+                getBalance(node) {
+                    if (!node) return 0;
+                    return (node.left ? node.left.height : 0) - (node.right ? node.right.height : 0);
+                },
+
+                getTraversals(root) {
+                    const inorder = [], preorder = [], postorder = [], level = [];
+                    const inFn = n => { if (!n) return; inFn(n.left); inorder.push(n.value); inFn(n.right); };
+                    const preFn = n => { if (!n) return; preorder.push(n.value); preFn(n.left); preFn(n.right); };
+                    const postFn = n => { if (!n) return; postFn(n.left); postFn(n.right); postorder.push(n.value); };
+                    inFn(root);
+                    preFn(root);
+                    postFn(root);
+
+                    if (root) {
+                        const q = [root];
+                        for (let i = 0; i < q.length; i++) {
+                            const cur = q[i];
+                            level.push(cur.value);
+                            if (cur.left) q.push(cur.left);
+                            if (cur.right) q.push(cur.right);
+                        }
+                    }
+                    return { inorder, preorder, postorder, level };
+                }
+            };
+
+            /**
+             * Standardized snapshot contract:
+             * { root, highlights, pathIds, unbalancedPathIds, floating, activeNull, rotation, arrows, transfer, text, pause }
+             */
+            class SnapshotRecorder {
+                constructor(initialRoot = null, initialText = null) {
+                    this.snapshots = [{
+                        root: initialRoot,
+                        highlights: new Map(),
+                        pathIds: [],
+                        unbalancedPathIds: [],
+                        floating: null,
+                        activeNull: null,
+                        rotation: null,
+                        arrows: [],
+                        transfer: null,
+                        text: initialText,
+                        pause: false
+                    }];
+                }
+
+                emit(root, options = {}) {
+                    const rawH = options.highlights;
+                    const highlights = rawH instanceof Map
+                        ? new Map(rawH)
+                        : new Map(Array.isArray(rawH) ? rawH : []);
+
+                    this.snapshots.push({
+                        root: root || null,
+                        highlights,
+                        pathIds: options.pathIds ? [...options.pathIds] : [],
+                        unbalancedPathIds: options.unbalancedPathIds ? [...options.unbalancedPathIds] : [],
+                        floating: options.floating || null,
+                        activeNull: options.activeNull || null,
+                        rotation: options.rotation || null,
+                        arrows: options.arrows ? [...options.arrows] : [],
+                        transfer: options.transfer || null,
+                        text: options.text ?? null,
+                        pause: Boolean(options.pause)
+                    });
+                }
+            }
+
+            /* =================================================================
+             * 3. AVLSet<T> ENGINE
+             * ================================================================= */
+            class AVLSet {
+                constructor() {
+                    this.root = null;
+                    this.history = [];
+                    this.maxHistory = 30;
+                }
+
+                pushHistory(prevRoot) {
+                    if (prevRoot === this.root) return false;
+                    this.history.push(prevRoot);
+                    if (this.history.length > this.maxHistory) this.history.shift();
+                    return true;
+                }
+
+                restoreFromHistory() {
+                    if (this.history.length === 0) return undefined;
+                    this.root = this.history.pop();
+                    return this.root;
+                }
+
+                clear() {
+                    this.root = null;
+                }
+
+                rightRotate(y, wrap, recorder, fixedHighlights = []) {
+                    const x = y.left;
+                    const T2 = x.right;
+
+                    recorder.emit(wrap(y), {
+                        highlights: [...fixedHighlights, [y.id, 'PIVOT'], [x.id, 'CHILD']],
+                        rotation: { pivotId: y.id, childId: x.id, dir: 'CW' },
+                        pause: true,
+                        text: `Right Rotation: ${y.value} moves down, ${x.value} moves up.`
+                    });
+
+                    const newY = new Node(y.value, T2, y.right, y.id);
+                    return new Node(x.value, x.left, newY, x.id);
+                }
+
+                leftRotate(x, wrap, recorder, fixedHighlights = []) {
+                    const y = x.right;
+                    const T2 = y.left;
+
+                    recorder.emit(wrap(x), {
+                        highlights: [...fixedHighlights, [x.id, 'PIVOT'], [y.id, 'CHILD']],
+                        rotation: { pivotId: x.id, childId: y.id, dir: 'CCW' },
+                        pause: true,
+                        text: `Left Rotation: ${x.value} moves down, ${y.value} moves up.`
+                    });
+
+                    const newX = new Node(x.value, x.left, T2, x.id);
+                    return new Node(y.value, newX, y.right, y.id);
+                }
+
+                insert(value, recorder) {
+                    let insertedId = null;
+
+                    const _insert = (node, wrap, path) => {
+                        if (node) {
+                            const nextPath = [...path, node.id];
+                            recorder.emit(wrap(node), {
+                                pathIds: nextPath,
+                                floating: { val: value, targetId: node.id, targetVal: node.value },
+                                text: `Comparing ${value} with ${node.value}...`
+                            });
+
+                            let cur;
+                            if (value < node.value) {
+                                if (!node.left) {
+                                    recorder.emit(wrap(node), {
+                                        pathIds: nextPath,
+                                        floating: { val: value, targetId: node.id, side: 'L', isNullTarget: true },
+                                        activeNull: { nodeId: node.id, side: 'L', colorKey: 'VISIT' },
+                                        text: `Reached null link (Left of ${node.value})`
+                                    });
+                                }
+                                const nextLeft = _insert(
+                                    node.left,
+                                    sub => sub === node.left ? wrap(node) : wrap(new Node(node.value, sub, node.right, node.id)),
+                                    nextPath
+                                );
+                                if (nextLeft === node.left) return node;
+                                cur = new Node(node.value, nextLeft, node.right, node.id);
+                            } else if (value > node.value) {
+                                if (!node.right) {
+                                    recorder.emit(wrap(node), {
+                                        pathIds: nextPath,
+                                        floating: { val: value, targetId: node.id, side: 'R', isNullTarget: true },
+                                        activeNull: { nodeId: node.id, side: 'R', colorKey: 'VISIT' },
+                                        text: `Reached null link (Right of ${node.value})`
+                                    });
+                                }
+                                const nextRight = _insert(
+                                    node.right,
+                                    sub => sub === node.right ? wrap(node) : wrap(new Node(node.value, node.left, sub, node.id)),
+                                    nextPath
+                                );
+                                if (nextRight === node.right) return node;
+                                cur = new Node(node.value, node.left, nextRight, node.id);
+                            } else {
+                                recorder.emit(wrap(node), {
+                                    pathIds: nextPath,
+                                    highlights: [[node.id, 'FOUND']],
+                                    pause: true,
+                                    text: `Element ${value} is already in the set (ignored).`
+                                });
+                                return node;
+                            }
+
+                            const balance = TreeUtils.getBalance(cur);
+                            const fixedNew = [[insertedId, 'NEW']];
+
+                            recorder.emit(wrap(cur), {
+                                highlights: [...fixedNew, [cur.id, 'CHECK']],
+                                text: `Backtracking: Checking balance of ${cur.value} (BF: ${balance > 0 ? '+' + balance : balance})`
+                            });
+
+                            if (balance > 1 && value < cur.left.value) {
+                                recorder.emit(wrap(cur), {
+                                    highlights: [...fixedNew, [cur.id, 'CHECK']],
+                                    unbalancedPathIds: [cur.id, cur.left.id, cur.left.left.id],
+                                    pause: true,
+                                    text: `Unbalanced at ${cur.value}: Left-Left Case (Right Rotation)`
+                                });
+                                return this.rightRotate(cur, wrap, recorder, fixedNew);
+                            }
+
+                            if (balance < -1 && value > cur.right.value) {
+                                recorder.emit(wrap(cur), {
+                                    highlights: [...fixedNew, [cur.id, 'CHECK']],
+                                    unbalancedPathIds: [cur.id, cur.right.id, cur.right.right.id],
+                                    pause: true,
+                                    text: `Unbalanced at ${cur.value}: Right-Right Case (Left Rotation)`
+                                });
+                                return this.leftRotate(cur, wrap, recorder, fixedNew);
+                            }
+
+                            if (balance > 1 && value > cur.left.value) {
+                                recorder.emit(wrap(cur), {
+                                    highlights: [...fixedNew, [cur.id, 'CHECK']],
+                                    unbalancedPathIds: [cur.id, cur.left.id, cur.left.right.id],
+                                    pause: true,
+                                    text: `Unbalanced at ${cur.value}: Left-Right Case (Double Rotation)`
+                                });
+                                const rotatedLeft = this.leftRotate(
+                                    cur.left,
+                                    sub => wrap(new Node(cur.value, sub, cur.right, cur.id)),
+                                    recorder,
+                                    fixedNew
+                                );
+                                const updatedCur = new Node(cur.value, rotatedLeft, cur.right, cur.id);
+                                return this.rightRotate(updatedCur, wrap, recorder, fixedNew);
+                            }
+
+                            if (balance < -1 && value < cur.right.value) {
+                                recorder.emit(wrap(cur), {
+                                    highlights: [...fixedNew, [cur.id, 'CHECK']],
+                                    unbalancedPathIds: [cur.id, cur.right.id, cur.right.left.id],
+                                    pause: true,
+                                    text: `Unbalanced at ${cur.value}: Right-Left Case (Double Rotation)`
+                                });
+                                const rotatedRight = this.rightRotate(
+                                    cur.right,
+                                    sub => wrap(new Node(cur.value, cur.left, sub, cur.id)),
+                                    recorder,
+                                    fixedNew
+                                );
+                                const updatedCur = new Node(cur.value, cur.left, rotatedRight, cur.id);
+                                return this.leftRotate(updatedCur, wrap, recorder, fixedNew);
+                            }
+
+                            return cur;
+                        }
+
+                        const nn = new Node(value);
+                        insertedId = nn.id;
+                        return nn;
+                    };
+
+                    const newRoot = _insert(this.root, sub => sub, []);
+
+                    if (insertedId === null) {
+                        recorder.emit(this.root, { text: `Element ${value} is already in the set. Ready.` });
+                        return false;
+                    }
+
+                    this.root = newRoot;
+                    recorder.emit(this.root, {
+                        highlights: [[insertedId, 'NEW']],
+                        text: `Inserted ${value}`
+                    });
+                    recorder.emit(this.root, { text: `Inserted ${value}. Ready.` });
+                    return true;
+                }
+
+                delete(value, recorder) {
+                    let found = false;
+
+                    const _delete = (node, val, showSearch, wrap, path, fixedHighlights = []) => {
+                        if (!node) return node;
+
+                        const nextPath = [...path, node.id];
+                        if (showSearch) {
+                            recorder.emit(wrap(node), {
+                                pathIds: nextPath,
+                                highlights: [...fixedHighlights, [node.id, 'VISIT']],
+                                floating: { val, targetId: node.id, targetVal: node.value, pillOnly: true },
+                                text: `Comparing ${val} with ${node.value}...`
+                            });
+                        }
+
+                        let cur = node;
+
+                        if (val < node.value) {
+                            if (showSearch && !node.left) {
+                                recorder.emit(wrap(node), {
+                                    pathIds: nextPath,
+                                    highlights: fixedHighlights,
+                                    activeNull: { nodeId: node.id, side: 'L', colorKey: 'DELETE' },
+                                    pause: true,
+                                    text: `${val} not in set (Left of ${node.value} is null)`
+                                });
+                            }
+                            const nextLeft = _delete(
+                                node.left,
+                                val,
+                                showSearch,
+                                sub => sub === node.left ? wrap(node) : wrap(new Node(node.value, sub, node.right, node.id)),
+                                nextPath,
+                                fixedHighlights
+                            );
+                            if (!found) return node;
+                            cur = new Node(node.value, nextLeft, node.right, node.id);
+                        } else if (val > node.value) {
+                            if (showSearch && !node.right) {
+                                recorder.emit(wrap(node), {
+                                    pathIds: nextPath,
+                                    highlights: fixedHighlights,
+                                    activeNull: { nodeId: node.id, side: 'R', colorKey: 'DELETE' },
+                                    pause: true,
+                                    text: `${val} not in set (Right of ${node.value} is null)`
+                                });
+                            }
+                            const nextRight = _delete(
+                                node.right,
+                                val,
+                                showSearch,
+                                sub => sub === node.right ? wrap(node) : wrap(new Node(node.value, node.left, sub, node.id)),
+                                nextPath,
+                                fixedHighlights
+                            );
+                            if (!found) return node;
+                            cur = new Node(node.value, node.left, nextRight, node.id);
+                        } else {
+                            found = true;
+
+                            if (!node.left || !node.right) {
+                                recorder.emit(wrap(node), {
+                                    pathIds: showSearch ? nextPath : [],
+                                    highlights: [...fixedHighlights, [node.id, 'DELETE']],
+                                    pause: true,
+                                    text: `Deleting ${node.value}`
+                                });
+                                cur = node.left ? node.left : node.right;
+                            } else {
+                                // Two children: find inorder successor (min of right subtree)
+                                const baseRoot = wrap(node);
+                                let temp = node.right;
+                                const succPath = [...nextPath, temp.id];
+
+                                recorder.emit(baseRoot, {
+                                    pathIds: nextPath,
+                                    highlights: [[node.id, 'DELETE']],
+                                    text: `Finding inorder successor of ${node.value}...`
+                                });
+
+                                while (temp.left) {
+                                    recorder.emit(baseRoot, {
+                                        pathIds: succPath,
+                                        highlights: [[node.id, 'DELETE'], [temp.id, 'VISIT']],
+                                        text: `Visiting: ${temp.value}`
+                                    });
+                                    temp = temp.left;
+                                    succPath.push(temp.id);
+                                }
+
+                                recorder.emit(baseRoot, {
+                                    pathIds: succPath,
+                                    highlights: [[node.id, 'DELETE'], [temp.id, 'PIVOT']],
+                                    activeNull: { nodeId: temp.id, side: 'L', colorKey: 'VISIT' },
+                                    text: `Successor ${temp.value} found (Left is null)`
+                                });
+
+                                recorder.emit(baseRoot, {
+                                    pathIds: succPath,
+                                    highlights: [[node.id, 'DELETE'], [temp.id, 'PIVOT']],
+                                    arrows: [{ from: temp.id, to: node.id }],
+                                    pause: true,
+                                    text: `Successor ${temp.value} replaces ${node.value}`
+                                });
+
+                                const replacedNode = new Node(temp.value, node.left, node.right, node.id);
+                                recorder.emit(wrap(replacedNode), {
+                                    pathIds: succPath,
+                                    highlights: [[node.id, 'NEW'], [temp.id, 'PIVOT']],
+                                    transfer: { from: temp.id, to: node.id, val: temp.value },
+                                    text: `Element replaced with ${temp.value}`
+                                });
+
+                                const nextRight = _delete(
+                                    replacedNode.right,
+                                    temp.value,
+                                    false,
+                                    sub => sub === replacedNode.right
+                                        ? wrap(replacedNode)
+                                        : wrap(new Node(replacedNode.value, replacedNode.left, sub, replacedNode.id)),
+                                    nextPath,
+                                    [[node.id, 'NEW']]
+                                );
+                                cur = new Node(replacedNode.value, replacedNode.left, nextRight, replacedNode.id);
+                            }
+                        }
+
+                        if (!cur) return null;
+
+                        const balance = TreeUtils.getBalance(cur);
+                        recorder.emit(wrap(cur), {
+                            highlights: [...fixedHighlights, [cur.id, 'CHECK']],
+                            text: `Backtracking: Checking balance of ${cur.value} (BF: ${balance > 0 ? '+' + balance : balance})`
+                        });
+
+                        if (balance > 1 && TreeUtils.getBalance(cur.left) >= 0) {
+                            const grandchild = cur.left.left ? cur.left.left : cur.left.right;
+                            recorder.emit(wrap(cur), {
+                                highlights: [...fixedHighlights, [cur.id, 'CHECK']],
+                                unbalancedPathIds: [cur.id, cur.left.id, grandchild ? grandchild.id : cur.left.id],
+                                pause: true,
+                                text: `Unbalanced at ${cur.value}: Left-Left Case (Right Rotation)`
+                            });
+                            return this.rightRotate(cur, wrap, recorder, fixedHighlights);
+                        }
+
+                        if (balance > 1 && TreeUtils.getBalance(cur.left) < 0) {
+                            recorder.emit(wrap(cur), {
+                                highlights: [...fixedHighlights, [cur.id, 'CHECK']],
+                                unbalancedPathIds: [cur.id, cur.left.id, cur.left.right.id],
+                                pause: true,
+                                text: `Unbalanced at ${cur.value}: Left-Right Case (Double Rotation)`
+                            });
+                            const rotatedLeft = this.leftRotate(
+                                cur.left,
+                                sub => wrap(new Node(cur.value, sub, cur.right, cur.id)),
+                                recorder,
+                                fixedHighlights
+                            );
+                            const updatedCur = new Node(cur.value, rotatedLeft, cur.right, cur.id);
+                            return this.rightRotate(updatedCur, wrap, recorder, fixedHighlights);
+                        }
+
+                        if (balance < -1 && TreeUtils.getBalance(cur.right) <= 0) {
+                            const grandchild = cur.right.right ? cur.right.right : cur.right.left;
+                            recorder.emit(wrap(cur), {
+                                highlights: [...fixedHighlights, [cur.id, 'CHECK']],
+                                unbalancedPathIds: [cur.id, cur.right.id, grandchild ? grandchild.id : cur.right.id],
+                                pause: true,
+                                text: `Unbalanced at ${cur.value}: Right-Right Case (Left Rotation)`
+                            });
+                            return this.leftRotate(cur, wrap, recorder, fixedHighlights);
+                        }
+
+                        if (balance < -1 && TreeUtils.getBalance(cur.right) > 0) {
+                            recorder.emit(wrap(cur), {
+                                highlights: [...fixedHighlights, [cur.id, 'CHECK']],
+                                unbalancedPathIds: [cur.id, cur.right.id, cur.right.left.id],
+                                pause: true,
+                                text: `Unbalanced at ${cur.value}: Right-Left Case (Double Rotation)`
+                            });
+                            const rotatedRight = this.rightRotate(
+                                cur.right,
+                                sub => wrap(new Node(cur.value, cur.left, sub, cur.id)),
+                                recorder,
+                                fixedHighlights
+                            );
+                            const updatedCur = new Node(cur.value, cur.left, rotatedRight, cur.id);
+                            return this.leftRotate(updatedCur, wrap, recorder, fixedHighlights);
+                        }
+
+                        return cur;
+                    };
+
+                    const newRoot = _delete(this.root, value, true, sub => sub, []);
+
+                    if (!found) {
+                        recorder.emit(this.root, { text: `Element ${value} not in set. Ready.` });
+                        return false;
+                    }
+
+                    this.root = newRoot;
+                    recorder.emit(this.root, { text: `Deleted ${value}` });
+                    recorder.emit(this.root, { text: `Deleted ${value}. Ready.` });
+                    return true;
+                }
+
+                contains(value, recorder) {
+                    let current = this.root;
+                    let found = false;
+                    const path = [];
+
+                    if (!current) {
+                        recorder.emit(null, { pause: true, text: `Set is empty → contains(${value}) = false` });
+                        return false;
+                    }
+
+                    while (current) {
+                        path.push(current.id);
+                        const isMatch = current.value === value;
+                        recorder.emit(this.root, {
+                            pathIds: path,
+                            highlights: [[current.id, isMatch ? 'FOUND' : 'VISIT']],
+                            floating: { val: value, targetId: current.id, targetVal: current.value, pillOnly: true },
+                            text: isMatch ? `contains(${value}) = true` : `Comparing ${value} with ${current.value}...`,
+                            pause: isMatch
+                        });
+                        if (isMatch) {
+                            found = true;
+                            break;
+                        } else if (value < current.value) {
+                            if (!current.left) {
+                                recorder.emit(this.root, {
+                                    pathIds: path,
+                                    activeNull: { nodeId: current.id, side: 'L', colorKey: 'DELETE' },
+                                    pause: true,
+                                    text: `Left of ${current.value} is null → contains(${value}) = false`
+                                });
+                            }
+                            current = current.left;
+                        } else {
+                            if (!current.right) {
+                                recorder.emit(this.root, {
+                                    pathIds: path,
+                                    activeNull: { nodeId: current.id, side: 'R', colorKey: 'DELETE' },
+                                    pause: true,
+                                    text: `Right of ${current.value} is null → contains(${value}) = false`
+                                });
+                            }
+                            current = current.right;
+                        }
+                    }
+
+                    recorder.emit(this.root, {
+                        text: found ? `contains(${value}) = true. Ready.` : `contains(${value}) = false. Ready.`
+                    });
+                    return found;
+                }
+
+                findExtreme(side, recorder) {
+                    const isMin = side === 'L';
+                    const opName = isMin ? 'minimum()' : 'maximum()';
+
+                    if (!this.root) {
+                        recorder.emit(null, {
+                            pause: true,
+                            text: `Set is empty: ${opName} throws NoSuchElementException.`
+                        });
+                        return null;
+                    }
+
+                    let current = this.root;
+                    const path = [current.id];
+
+                    while (isMin ? current.left : current.right) {
+                        recorder.emit(this.root, {
+                            pathIds: path,
+                            highlights: [[current.id, 'VISIT']],
+                            text: `${opName}: traversing ${isMin ? 'left' : 'right'} from ${current.value}...`
+                        });
+                        current = isMin ? current.left : current.right;
+                        path.push(current.id);
+                    }
+
+                    recorder.emit(this.root, {
+                        pathIds: path,
+                        highlights: [[current.id, 'FOUND']],
+                        activeNull: { nodeId: current.id, side, colorKey: 'VISIT' },
+                        pause: true,
+                        text: `${opName} = ${current.value}`
+                    });
+
+                    recorder.emit(this.root, {
+                        text: `${opName} = ${current.value}. Ready.`
+                    });
+                    return current.value;
+                }
+            }
+
+            /* =================================================================
+             * 4. FLAT CANVAS VISUALIZER (VIEW ENGINE)
+             * ================================================================= */
+            class Visualizer {
+                constructor(canvas, options = {}) {
+                    this.canvas = canvas;
+                    this.container = canvas.parentElement;
+                    this.ctx = this.canvas.getContext('2d');
+                    this.theme = options.theme || THEMES.light;
+                    this.callbacks = options.callbacks || {};
+
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = 800;
+                    this.viewHeight = 600;
+                    this.hasInitializedView = false;
+                    this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
+
+                    // Standard circular node metrics
+                    this.nodeRadius = 28;
+                    this.levelHeight = 76;
+
+                    // Implementation 4-cell horizontal strip metrics + external element box
+                    this.structView = options.structView ?? false;
+                    this.structPtrW = 18;
+                    this.structHeightW = 30;
+                    this.structCellGap = 1.5;
+                    this.structW = this.structPtrW * 3 + this.structHeightW + this.structCellGap * 3;
+                    this.structH = 40;
+                    this.structValGap = 22;
+                    this.structValMinW = 34;
+                    this.structValH = 40;
+                    this.structLevelHeight = 104;
+
+                    this.snapshots = [];
+                    this.currentSnapshotIndex = 0;
+                    this.lastDrawnNodes = [];
+                    this.hoveredNode = null;
+                    this.hoveredSubtreeIds = null;
+
+                    this.state = 'IDLE'; // 'IDLE' | 'CAMERA' | 'MORPH' | 'WAITING'
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 0;
+                    this.baseMorphSpeed = 2.8;
+                    this.speedMultiplier = 1;
+                    this.pauseTimer = 0;
+
+                    this.showBalanceFactor = false;
+                    this.showNulls = true;
+                    this.autoFit = true;
+
+                    // On-demand render loop state
+                    this.rafId = null;
+                    this.lastTime = null;
+                    this.needsRender = false;
+
+                    // Navigation state
+                    this.isDragging = false;
+                    this.dragMoved = false;
+                    this.pointerDownNode = null;
+                    this.dragStart = { x: 0, y: 0 };
+                    this.initialCamera = { x: 0, y: 0 };
+                    this.initialPinchDist = 0;
+                    this.initialScale = 1;
+
+                    this.bindEvents();
+                    this.resize();
+                }
+
+                get halfW() {
+                    return this.structView ? this.structW / 2 : this.nodeRadius;
+                }
+
+                get halfH() {
+                    return this.structView ? this.structH / 2 : this.nodeRadius;
+                }
+
+                get currentLevelHeight() {
+                    return this.structView ? this.structLevelHeight : this.levelHeight;
+                }
+
+                get currentTopOffset() {
+                    return this.structView ? 112 : 70;
+                }
+
+                getValBoxWidth(val) {
+                    const str = String(val);
+                    return Math.max(this.structValMinW, str.length * 10 + 14);
+                }
+
+                bindEvents() {
+                    if (typeof ResizeObserver !== 'undefined' && this.container) {
+                        this.resizeObserver = new ResizeObserver(() => this.resize());
+                        this.resizeObserver.observe(this.container);
+                    } else {
+                        window.addEventListener('resize', () => this.resize());
+                    }
+
+                    this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+                    this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+                    this.canvas.addEventListener('mouseup', () => this.onMouseUp());
+                    this.canvas.addEventListener('mouseleave', () => this.onMouseLeave());
+                    this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+                    this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
+                    this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
+                    this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
+                }
+
+                setTheme(theme) {
+                    this.theme = theme;
+                    this.requestRender();
+                }
+
+                setShowBalanceFactor(show) {
+                    this.showBalanceFactor = show;
+                    this.requestRender();
+                }
+
+                setShowNulls(show) {
+                    this.showNulls = show;
+                    this.requestRender();
+                }
+
+                setAutoFit(enabled) {
+                    this.autoFit = enabled;
+                    if (enabled) this.fitCurrentTree();
+                }
+
+                setStructView(enabled) {
+                    this.structView = Boolean(enabled);
+                    if (this.snapshots.length > 0) {
+                        const rootCache = new Map();
+                        this.snapshots.forEach(s => {
+                            if (!rootCache.has(s.root)) {
+                                const layout = this.calculateLayout(s.root);
+                                const bounds = this.getTreeBounds(s.root, layout);
+                                rootCache.set(s.root, { layout, bounds });
+                            }
+                            const cached = rootCache.get(s.root);
+                            s.layout = cached.layout;
+                            s.bounds = cached.bounds;
+                        });
+                    }
+                    if (this.autoFit) this.fitCurrentTree();
+                    this.requestRender();
+                }
+
+                setSpeed(mult) {
+                    this.speedMultiplier = mult;
+                }
+
+                isBusy() {
+                    return this.state !== 'IDLE' ||
+                        (this.isPaused && this.currentSnapshotIndex < this.snapshots.length - 1);
+                }
+
+                requestRender() {
+                    this.needsRender = true;
+                    if (!this.rafId) {
+                        this.rafId = requestAnimationFrame(t => this.loop(t));
+                    }
+                }
+
+                notifyState() {
+                    if (this.callbacks.onStateChange) {
+                        this.callbacks.onStateChange({
+                            state: this.state,
+                            isPaused: this.isPaused,
+                            isBusy: this.isBusy(),
+                            index: this.currentSnapshotIndex,
+                            total: this.snapshots.length
+                        });
+                    }
+                }
+
+                notifySnapshot(snap) {
+                    if (this.callbacks.onSnapshotChange) {
+                        this.callbacks.onSnapshotChange(snap ? snap.root : null);
+                    }
+                }
+
+                setStatus(text) {
+                    if (this.callbacks.onStatus) this.callbacks.onStatus(text);
+                }
+
+                getNodeAtScreenPos(mx, my) {
+                    for (let i = this.lastDrawnNodes.length - 1; i >= 0; i--) {
+                        const n = this.lastDrawnNodes[i];
+                        const sx = n.x * this.camera.scale + this.camera.x;
+                        const sy = n.y * this.camera.scale + this.camera.y;
+                        if (this.structView) {
+                            const sc = n.scale * this.camera.scale;
+                            const hw = (this.structW / 2) * sc;
+                            const hh = (this.structH / 2) * sc;
+                            if (Math.abs(mx - sx) <= hw && Math.abs(my - sy) <= hh) return n;
+                            const valW = this.getValBoxWidth(n.value) * sc;
+                            const gap = this.structValGap * sc;
+                            const valLeft = sx - hw - gap - valW;
+                            const valRight = sx - hw - gap;
+                            const valTop = sy - hh;
+                            const valBottom = sy - hh + this.structValH * sc;
+                            if (mx >= valLeft && mx <= valRight && my >= valTop && my <= valBottom) return n;
+                        } else {
+                            const r = this.nodeRadius * n.scale * this.camera.scale;
+                            if (Math.hypot(mx - sx, my - sy) < r) return n;
+                        }
+                    }
+                    return null;
+                }
+
+                computeSubtreeIdSet(nodeId) {
+                    if (nodeId === null || this.snapshots.length === 0) return null;
+                    const idx = Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
+                    const snap = this.snapshots[idx];
+                    if (!snap || !snap.root) return null;
+
+                    const findTarget = n => {
+                        if (!n) return null;
+                        if (n.id === nodeId) return n;
+                        return findTarget(n.left) || findTarget(n.right);
+                    };
+                    const target = findTarget(snap.root);
+                    if (!target) return null;
+
+                    const set = new Set();
+                    const collect = n => {
+                        if (!n) return;
+                        set.add(n.id);
+                        collect(n.left);
+                        collect(n.right);
+                    };
+                    collect(target);
+                    return set;
+                }
+
+                updateHover(nextHover) {
+                    const prevId = this.hoveredNode ? this.hoveredNode.id : null;
+                    const nextId = nextHover ? nextHover.id : null;
+                    this.hoveredNode = nextHover;
+                    this.canvas.style.cursor = nextHover ? 'pointer' : 'default';
+
+                    if (prevId !== nextId) {
+                        this.hoveredSubtreeIds = nextId !== null ? this.computeSubtreeIdSet(nextId) : null;
+                        this.requestRender();
+                    }
+                }
+
+                onMouseDown(e) {
+                    if (e.button !== 0) return;
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    this.isDragging = true;
+                    this.dragMoved = false;
+                    this.pointerDownNode = this.getNodeAtScreenPos(mx, my);
+                    this.dragStart = { x: mx, y: my };
+                    this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                }
+
+                onMouseMove(e) {
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+
+                    if (this.isDragging) {
+                        const dx = mx - this.dragStart.x;
+                        const dy = my - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
+
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x + dx;
+                            this.camera.targetY = this.initialCamera.y + dy;
+                            this.canvas.style.cursor = 'grabbing';
+                            this.hoveredNode = null;
+                            this.hoveredSubtreeIds = null;
+                            this.requestRender();
+                            return;
+                        }
+                    }
+
+                    this.updateHover(this.getNodeAtScreenPos(mx, my));
+                }
+
+                onMouseUp() {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
+                        if (this.callbacks.onNodeClick) this.callbacks.onNodeClick(this.pointerDownNode);
+                    }
+                    this.isDragging = false;
+                    this.pointerDownNode = null;
+                    this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
+                }
+
+                onMouseLeave() {
+                    this.isDragging = false;
+                    this.pointerDownNode = null;
+                    this.updateHover(null);
+                }
+
+                onWheel(e) {
+                    e.preventDefault();
+                    const rect = this.canvas.getBoundingClientRect();
+                    const mx = e.clientX - rect.left;
+                    const my = e.clientY - rect.top;
+                    const factor = Math.exp(-e.deltaY * 0.0012);
+                    this.zoomAt(this.camera.targetScale * factor, mx, my);
+                }
+
+                zoomAt(newScale, anchorX, anchorY) {
+                    newScale = Math.min(Math.max(0.08, newScale), 4.5);
+                    const worldX = (anchorX - this.camera.targetX) / this.camera.targetScale;
+                    const worldY = (anchorY - this.camera.targetY) / this.camera.targetScale;
+                    this.camera.targetScale = newScale;
+                    this.camera.targetX = anchorX - worldX * newScale;
+                    this.camera.targetY = anchorY - worldY * newScale;
+                    this.requestRender();
+                }
+
+                zoomBy(multiplier) {
+                    this.zoomAt(this.camera.targetScale * multiplier, this.viewWidth / 2, this.viewHeight / 2);
+                }
+
+                getTouchDistance(touches) {
+                    return Math.hypot(
+                        touches[0].clientX - touches[1].clientX,
+                        touches[0].clientY - touches[1].clientY
+                    );
+                }
+
+                onTouchStart(e) {
+                    if (e.touches.length === 1) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const mx = t.clientX - rect.left;
+                        const my = t.clientY - rect.top;
+
+                        this.isDragging = true;
+                        this.dragMoved = false;
+                        this.pointerDownNode = this.getNodeAtScreenPos(mx, my);
+                        this.dragStart = { x: mx, y: my };
+                        this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+                    } else if (e.touches.length === 2) {
+                        this.isDragging = false;
+                        this.pointerDownNode = null;
+                        this.initialPinchDist = this.getTouchDistance(e.touches);
+                        this.initialScale = this.camera.targetScale;
+                    }
+                }
+
+                onTouchMove(e) {
+                    e.preventDefault();
+                    if (e.touches.length === 1 && this.isDragging) {
+                        const t = e.touches[0];
+                        const rect = this.canvas.getBoundingClientRect();
+                        const dx = (t.clientX - rect.left) - this.dragStart.x;
+                        const dy = (t.clientY - rect.top) - this.dragStart.y;
+                        if (Math.hypot(dx, dy) > 6) this.dragMoved = true;
+
+                        if (this.dragMoved) {
+                            this.camera.targetX = this.initialCamera.x + dx;
+                            this.camera.targetY = this.initialCamera.y + dy;
+                            this.requestRender();
+                        }
+                    } else if (e.touches.length === 2 && this.initialPinchDist > 0) {
+                        const rect = this.canvas.getBoundingClientRect();
+                        const midX = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - rect.left;
+                        const midY = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - rect.top;
+                        const scaleFactor = this.getTouchDistance(e.touches) / this.initialPinchDist;
+                        this.zoomAt(this.initialScale * scaleFactor, midX, midY);
+                    }
+                }
+
+                onTouchEnd(e) {
+                    if (this.isDragging && !this.dragMoved && this.pointerDownNode) {
+                        if (this.callbacks.onNodeClick) this.callbacks.onNodeClick(this.pointerDownNode);
+                    }
+                    if (e.touches.length === 0) {
+                        this.isDragging = false;
+                        this.pointerDownNode = null;
+                        this.initialPinchDist = 0;
+                    }
+                }
+
+                resize() {
+                    const rect = (this.container || this.canvas).getBoundingClientRect();
+                    if (rect.width <= 0 || rect.height <= 0) return;
+
+                    this.dpr = window.devicePixelRatio || 1;
+                    this.viewWidth = rect.width;
+                    this.viewHeight = rect.height;
+                    this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
+                    this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
+
+                    if (!this.hasInitializedView) {
+                        this.camera.targetX = this.camera.x = this.viewWidth / 2;
+                        this.camera.targetY = this.camera.y = 60;
+                        this.hasInitializedView = true;
+                    } else if (this.autoFit && this.snapshots.length > 0) {
+                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                        if (snap && snap.bounds) {
+                            this.fitBoundsToScreen(snap.bounds);
+                        }
+                    }
+
+                    this.requestRender();
+                }
+
+                calculateLayout(root) {
+                    const layout = new Map();
+                    if (!root) return layout;
+
+                    let order = 0;
+                    const spacingX = this.structView ? 162 : (this.nodeRadius * 2.65);
+                    const lvlH = this.currentLevelHeight;
+                    const topOff = this.currentTopOffset;
+
+                    const traverse = (node, depth) => {
+                        if (!node) return;
+                        traverse(node.left, depth + 1);
+                        layout.set(node.id, {
+                            x: order * spacingX,
+                            y: depth * lvlH + topOff
+                        });
+                        order++;
+                        traverse(node.right, depth + 1);
+                    };
+                    traverse(root, 0);
+
+                    const offset = ((order > 0 ? order - 1 : 0) * spacingX) / 2;
+                    layout.forEach(pos => { pos.x -= offset; });
+                    return layout;
+                }
+
+                computeNodeMetrics(root) {
+                    const metrics = new Map();
+                    const dfs = (node, depth) => {
+                        if (!node) return { size: 0 };
+                        const l = dfs(node.left, depth + 1);
+                        const r = dfs(node.right, depth + 1);
+                        const height = node.height;
+                        const bf = (node.left ? node.left.height : 0) - (node.right ? node.right.height : 0);
+                        const size = 1 + l.size + r.size;
+                        metrics.set(node.id, { depth, height, bf, size });
+                        return { size };
+                    };
+                    dfs(root, 0);
+                    return metrics;
+                }
+
+                getTreeBounds(root, layout) {
+                    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                    let hasNodes = false;
+                    const hw = this.halfW;
+                    const hh = this.halfH;
+
+                    const walk = (node, isRoot) => {
+                        if (!node) return;
+                        const pos = layout.get(node.id);
+                        if (pos) {
+                            hasNodes = true;
+                            const extLeft = this.structView
+                                ? (this.structValGap + this.getValBoxWidth(node.value) + 6)
+                                : 0;
+                            minX = Math.min(minX, pos.x - hw - extLeft);
+                            maxX = Math.max(maxX, pos.x + hw);
+                            minY = Math.min(minY, pos.y - hh);
+                            maxY = Math.max(maxY, pos.y + hh);
+
+                            if (isRoot && this.structView) {
+                                minY = Math.min(minY, pos.y - hh - 88);
+                                minX = Math.min(minX, pos.x - 66);
+                            }
+                        }
+                        walk(node.left, false);
+                        walk(node.right, false);
+                    };
+
+                    walk(root, true);
+                    return { minX, maxX, minY, maxY, hasNodes };
+                }
+
+                mergeBounds(b1, b2) {
+                    if (!b1 || !b1.hasNodes) return b2 || { hasNodes: false };
+                    if (!b2 || !b2.hasNodes) return b1;
+                    return {
+                        minX: Math.min(b1.minX, b2.minX),
+                        maxX: Math.max(b1.maxX, b2.maxX),
+                        minY: Math.min(b1.minY, b2.minY),
+                        maxY: Math.max(b1.maxY, b2.maxY),
+                        hasNodes: true
+                    };
+                }
+
+                getFloatingPos(snap, floating) {
+                    if (!floating || !snap || !snap.layout) return null;
+                    const targetPos = snap.layout.get(floating.targetId);
+                    if (!targetPos) return null;
+                    const hh = this.halfH;
+
+                    if (floating.pillOnly) {
+                        return {
+                            x: targetPos.x,
+                            y: targetPos.y - hh - 18,
+                            targetX: targetPos.x,
+                            targetY: targetPos.y
+                        };
+                    }
+
+                    if (floating.isNullTarget) {
+                        const dir = floating.side === 'L' ? -1 : 1;
+                        return {
+                            x: targetPos.x + dir * (this.structView ? 64 : 44),
+                            y: targetPos.y + (this.structView ? 92 : 88),
+                            targetX: targetPos.x,
+                            targetY: targetPos.y
+                        };
+                    }
+
+                    return {
+                        x: targetPos.x,
+                        y: targetPos.y - (this.structView ? hh + 46 : this.nodeRadius * 2.15),
+                        targetX: targetPos.x,
+                        targetY: targetPos.y
+                    };
+                }
+
+                fitCurrentTree() {
+                    if (this.snapshots.length === 0) {
+                        this.fitBoundsToScreen({ hasNodes: false });
+                    } else {
+                        const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+                        this.fitBoundsToScreen(snap ? snap.bounds : { hasNodes: false });
+                    }
+                    this.requestRender();
+                }
+
+                fitBoundsToScreen(bounds) {
+                    if (!bounds || !bounds.hasNodes) {
+                        this.camera.targetScale = 1;
+                        this.camera.targetX = this.viewWidth / 2;
+                        this.camera.targetY = 60;
+                        return;
+                    }
+                    const padX = Math.min(120, this.viewWidth * 0.12);
+                    const padY = 90;
+                    const treeW = Math.max(1, (bounds.maxX - bounds.minX) + padX);
+                    const treeH = Math.max(1, (bounds.maxY - bounds.minY) + padY);
+                    const scale = Math.min(1.25, Math.max(0.08, Math.min(this.viewWidth / treeW, this.viewHeight / treeH)));
+                    const treeCX = (bounds.minX + bounds.maxX) / 2;
+                    const treeCY = (bounds.minY + bounds.maxY) / 2;
+
+                    this.camera.targetScale = scale;
+                    this.camera.targetX = (this.viewWidth / 2) - (treeCX * scale);
+                    if (treeH * scale < this.viewHeight * 0.72) {
+                        this.camera.targetY = 48 - (bounds.minY * scale);
+                    } else {
+                        this.camera.targetY = (this.viewHeight / 2) - (treeCY * scale);
+                    }
+                }
+
+                reset(statusText = 'Ready.') {
+                    this.snapshots = [];
+                    this.currentSnapshotIndex = 0;
+                    this.lastDrawnNodes = [];
+                    this.hoveredNode = null;
+                    this.hoveredSubtreeIds = null;
+                    this.state = 'IDLE';
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.camera.targetScale = 1;
+                    this.camera.targetX = this.viewWidth / 2;
+                    this.camera.targetY = 60;
+                    this.setStatus(statusText);
+                    this.notifySnapshot(null);
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                enqueueOperation(opSnapshots, instant = false) {
+                    if (!opSnapshots || opSnapshots.length === 0) return;
+
+                    const rootCache = new Map();
+                    const prepared = opSnapshots.map(s => {
+                        if (!rootCache.has(s.root)) {
+                            const layout = this.calculateLayout(s.root);
+                            const metrics = this.computeNodeMetrics(s.root);
+                            const bounds = this.getTreeBounds(s.root, layout);
+                            rootCache.set(s.root, { layout, metrics, bounds });
+                        }
+                        return { ...s, ...rootCache.get(s.root) };
+                    });
+
+                    let gMinX = Infinity, gMaxX = -Infinity, gMinY = Infinity, gMaxY = -Infinity;
+                    let hasNodes = false;
+                    rootCache.forEach(({ bounds }) => {
+                        if (bounds.hasNodes) {
+                            hasNodes = true;
+                            gMinX = Math.min(gMinX, bounds.minX);
+                            gMaxX = Math.max(gMaxX, bounds.maxX);
+                            gMinY = Math.min(gMinY, bounds.minY);
+                            gMaxY = Math.max(gMaxY, bounds.maxY);
+                        }
+                    });
+
+                    const prevHadNodes = this.snapshots.length > 0 &&
+                        Boolean(this.snapshots[this.currentSnapshotIndex]?.root);
+                    const startedFromEmpty = !prevHadNodes || !prepared[0].root;
+
+                    this.snapshots = prepared;
+                    this.currentSnapshotIndex = 0;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.singleStepTarget = null;
+                    this.isPaused = false;
+                    this.hoveredNode = null;
+                    this.hoveredSubtreeIds = null;
+
+                    if (instant || prepared.length === 1) {
+                        this.currentSnapshotIndex = prepared.length - 1;
+                        this.state = 'IDLE';
+                        const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit || startedFromEmpty) {
+                            this.fitBoundsToScreen(last.bounds);
+                        }
+                        if (last.text) this.setStatus(last.text);
+                        this.notifySnapshot(last);
+                        this.notifyState();
+                        this.requestRender();
+                        return;
+                    }
+
+                    if (this.autoFit || startedFromEmpty) {
+                        const firstActive = prepared.find(s => s.bounds && s.bounds.hasNodes);
+                        const initialBounds = firstActive
+                            ? this.mergeBounds(prepared[0].bounds, firstActive.bounds)
+                            : { minX: gMinX, maxX: gMaxX, minY: gMinY, maxY: gMaxY, hasNodes };
+                        this.fitBoundsToScreen(initialBounds);
+                    }
+
+                    this.notifySnapshot(this.snapshots[0]);
+                    if (this.snapshots[0].text) {
+                        this.setStatus(this.snapshots[0].text);
+                    }
+
+                    if (this.autoFit || startedFromEmpty) {
+                        this.state = 'CAMERA';
+                    } else {
+                        this.startMorphStep();
+                    }
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                startMorphStep() {
+                    if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        this.notifyState();
+                        return;
+                    }
+                    const cur = this.snapshots[this.currentSnapshotIndex];
+                    const next = this.snapshots[this.currentSnapshotIndex + 1];
+                    if (this.autoFit) {
+                        this.fitBoundsToScreen(this.mergeBounds(cur.bounds, next.bounds));
+                    }
+                    if (next.text) this.setStatus(next.text);
+                    this.state = 'MORPH';
+                    this.morphProgress = 0;
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                togglePause() {
+                    if (this.state === 'IDLE' && this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        return this.isPaused;
+                    }
+                    this.isPaused = !this.isPaused;
+                    if (!this.isPaused) {
+                        this.hoveredSubtreeIds = null;
+                        this.singleStepTarget = null;
+                        if (this.state === 'IDLE' && this.currentSnapshotIndex < this.snapshots.length - 1) {
+                            this.startMorphStep();
+                        }
+                    }
+                    this.notifyState();
+                    this.requestRender();
+                    return this.isPaused;
+                }
+
+                stepForward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+
+                    if (this.state === 'CAMERA') {
+                        this.camera.scale = this.camera.targetScale;
+                        this.camera.x = this.camera.targetX;
+                        this.camera.y = this.camera.targetY;
+                        this.state = 'MORPH';
+                        this.morphProgress = 0;
+                    } else if (this.state === 'WAITING' || (this.state === 'MORPH' && this.morphProgress > 0.08)) {
+                        if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                            this.currentSnapshotIndex++;
+                            this.morphProgress = 0;
+                            this.notifySnapshot(this.snapshots[this.currentSnapshotIndex]);
+                        }
+                    }
+
+                    if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+                        this.state = 'IDLE';
+                        this.singleStepTarget = null;
+                        const last = this.snapshots[this.currentSnapshotIndex];
+                        if (this.autoFit && last) this.fitBoundsToScreen(last.bounds);
+                        this.setStatus(last.text || 'Ready.');
+                        this.notifySnapshot(last);
+                        this.notifyState();
+                        this.requestRender();
+                        return;
+                    }
+
+                    this.singleStepTarget = this.currentSnapshotIndex + 1;
+                    this.startMorphStep();
+                }
+
+                stepBackward() {
+                    if (this.snapshots.length <= 1) return;
+                    this.isPaused = true;
+                    this.singleStepTarget = null;
+
+                    if (this.state === 'WAITING' || (this.state === 'MORPH' && this.morphProgress > 0.15)) {
+                        this.morphProgress = 0;
+                        this.state = 'IDLE';
+                    } else if (this.currentSnapshotIndex > 0) {
+                        this.currentSnapshotIndex--;
+                        this.morphProgress = 0;
+                        this.state = 'IDLE';
+                    }
+
+                    const cur = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit && cur) this.fitBoundsToScreen(cur.bounds);
+                    this.setStatus(cur.text || `Step ${this.currentSnapshotIndex + 1}`);
+                    this.notifySnapshot(cur);
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                skipToEnd() {
+                    if (this.snapshots.length === 0) return;
+                    this.isPaused = false;
+                    this.singleStepTarget = null;
+                    this.currentSnapshotIndex = this.snapshots.length - 1;
+                    this.morphProgress = 0;
+                    this.pauseTimer = 0;
+                    this.state = 'IDLE';
+                    const last = this.snapshots[this.currentSnapshotIndex];
+                    if (this.autoFit && last) this.fitBoundsToScreen(last.bounds);
+                    this.setStatus(last.text || 'Ready.');
+                    this.notifySnapshot(last);
+                    this.notifyState();
+                    this.requestRender();
+                }
+
+                isCameraSettled() {
+                    return Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY) < 0.25 &&
+                        Math.abs(this.camera.scale - this.camera.targetScale) < 0.0005;
+                }
+
+                loop(timestamp) {
+                    this.rafId = null;
+                    if (this.lastTime === null) this.lastTime = timestamp;
+                    const dt = Math.min(Math.max((timestamp - this.lastTime) / 1000, 0), 0.1);
+                    this.lastTime = timestamp;
+
+                    this.needsRender = false;
+                    this.update(dt);
+                    this.draw();
+
+                    const playingSingleStep = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+                    const animating = this.state !== 'IDLE' && (!this.isPaused || playingSingleStep);
+                    const movingCamera = !this.isCameraSettled();
+
+                    if (animating || movingCamera || this.needsRender) {
+                        this.rafId = requestAnimationFrame(t => this.loop(t));
+                    } else {
+                        this.lastTime = null;
+                    }
+                }
+
+                update(dt) {
+                    const camFactor = 1 - Math.exp(-10.0 * dt);
+                    this.camera.scale += (this.camera.targetScale - this.camera.scale) * camFactor;
+                    this.camera.x += (this.camera.targetX - this.camera.x) * camFactor;
+                    this.camera.y += (this.camera.targetY - this.camera.y) * camFactor;
+
+                    if (this.isCameraSettled()) {
+                        this.camera.scale = this.camera.targetScale;
+                        this.camera.x = this.camera.targetX;
+                        this.camera.y = this.camera.targetY;
+                    }
+
+                    const playingSingleStep = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+                    if (this.isPaused && !playingSingleStep) return;
+
+                    if (this.state === 'CAMERA') {
+                        const dist = Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY);
+                        if (dist < 4 && Math.abs(this.camera.scale - this.camera.targetScale) < 0.01) {
+                            this.startMorphStep();
+                        }
+                    } else if (this.state === 'MORPH') {
+                        this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * dt;
+                        if (this.morphProgress >= 1) {
+                            this.morphProgress = 1;
+                            const nextSnap = this.snapshots[this.currentSnapshotIndex + 1];
+
+                            if (playingSingleStep) {
+                                this.currentSnapshotIndex = this.singleStepTarget;
+                                this.singleStepTarget = null;
+                                this.morphProgress = 0;
+                                this.state = 'IDLE';
+                                const cur = this.snapshots[this.currentSnapshotIndex];
+                                if (cur?.text) this.setStatus(cur.text);
+                                this.notifySnapshot(cur);
+                                this.notifyState();
+                            } else if (nextSnap && nextSnap.pause) {
+                                this.state = 'WAITING';
+                                this.pauseTimer = 0.75 / this.speedMultiplier;
+                                this.notifySnapshot(nextSnap);
+                            } else {
+                                this.finalizeStep();
+                            }
+                        }
+                    } else if (this.state === 'WAITING') {
+                        this.pauseTimer -= dt;
+                        if (this.pauseTimer <= 0) this.finalizeStep();
+                    }
+                }
+
+                finalizeStep() {
+                    this.currentSnapshotIndex++;
+                    this.morphProgress = 0;
+                    const cur = this.snapshots[this.currentSnapshotIndex];
+                    this.notifySnapshot(cur);
+
+                    if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+                        this.startMorphStep();
+                    } else {
+                        this.state = 'IDLE';
+                        if (this.autoFit && cur) this.fitBoundsToScreen(cur.bounds);
+                        this.setStatus(cur?.text || 'Ready.');
+                        this.notifyState();
+                    }
+                }
+
+                buildPathEdgeSet(pathIds) {
+                    const edgeSet = new Set();
+                    if (!pathIds || pathIds.length < 2) return edgeSet;
+                    for (let i = 0; i < pathIds.length - 1; i++) {
+                        edgeSet.add(`${pathIds[i]}->${pathIds[i + 1]}`);
+                    }
+                    return edgeSet;
+                }
+
+                drawDotGrid(ctx) {
+                    let step = 36 * this.camera.scale;
+                    while (step < 16) step *= 2;
+                    while (step > 90) step /= 2;
+
+                    const offsetX = ((this.camera.x % step) + step) % step;
+                    const offsetY = ((this.camera.y % step) + step) % step;
+
+                    ctx.fillStyle = this.theme.BG_DOT;
+                    for (let x = offsetX; x < this.viewWidth; x += step) {
+                        for (let y = offsetY; y < this.viewHeight; y += step) {
+                            ctx.fillRect(x - 0.75, y - 0.75, 1.5, 1.5);
+                        }
+                    }
+                }
+
+                drawLevelGuides(ctx, nodesToDraw) {
+                    if (!nodesToDraw || nodesToDraw.length === 0) return;
+                    let maxDepth = 0;
+                    nodesToDraw.forEach(n => {
+                        if (n.depth > maxDepth) maxDepth = n.depth;
+                    });
+
+                    const lvlH = this.currentLevelHeight;
+                    const topOff = this.currentTopOffset;
+
+                    ctx.save();
+                    ctx.font = '600 10px monospace';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+
+                    for (let d = 0; d <= maxDepth; d++) {
+                        const worldY = d * lvlH + topOff;
+                        const screenY = worldY * this.camera.scale + this.camera.y;
+                        if (screenY < -10 || screenY > this.viewHeight + 10) continue;
+
+                        ctx.strokeStyle = this.theme.LEVEL_LINE;
+                        ctx.lineWidth = 1;
+                        ctx.setLineDash([4, 6]);
+                        ctx.beginPath();
+                        ctx.moveTo(0, screenY);
+                        ctx.lineTo(this.viewWidth - 36, screenY);
+                        ctx.stroke();
+
+                        ctx.setLineDash([]);
+                        ctx.fillStyle = this.theme.LEVEL_TEXT;
+                        ctx.fillText(`L${d}`, this.viewWidth - 12, screenY);
+                    }
+                    ctx.restore();
+                }
+
+                getEdgeSegment(n, pNode) {
+                    const dx = n.x - n.parentX;
+                    const dy = n.y - n.parentY;
+                    const len = Math.hypot(dx, dy);
+                    const rStart = this.nodeRadius * (pNode ? pNode.scale : 1);
+                    const rEnd = this.nodeRadius * n.scale;
+                    if (len <= rStart + rEnd) return null;
+
+                    const ux = dx / len;
+                    const uy = dy / len;
+                    return {
+                        x1: n.parentX + ux * rStart,
+                        y1: n.parentY + uy * rStart,
+                        x2: n.x - ux * rEnd,
+                        y2: n.y - uy * rEnd
+                    };
+                }
+
+                drawCurvedArrowHead(x, y, angle, col = this.theme.STRUCT_ARROW, head = 13) {
+                    const c = this.ctx;
+                    c.save();
+                    c.fillStyle = col;
+                    c.translate(x, y);
+                    c.rotate(angle);
+                    c.beginPath();
+                    c.moveTo(0, 0);
+                    c.lineTo(-head * 1.4, -head / 2);
+                    c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2);
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                }
+
+                arrow(x1, y1, x2, y2, col = this.theme.STRUCT_ARROW, alpha = 1, lineWidth = 2.6, head = 13) {
+                    if (Math.hypot(x2 - x1, y2 - y1) < 3) return;
+                    const c = this.ctx;
+                    c.save();
+                    c.globalAlpha *= alpha;
+                    c.strokeStyle = col;
+                    c.fillStyle = col;
+                    c.lineWidth = lineWidth;
+                    const a = Math.atan2(y2 - y1, x2 - x1);
+                    const shorten = head * 0.8;
+                    c.beginPath();
+                    c.moveTo(x1, y1);
+                    c.lineTo(x2 - shorten * Math.cos(a), y2 - shorten * Math.sin(a));
+                    c.stroke();
+                    c.translate(x2, y2);
+                    c.rotate(a);
+                    c.beginPath();
+                    c.moveTo(0, 0);
+                    c.lineTo(-head * 1.4, -head / 2);
+                    c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2);
+                    c.closePath();
+                    c.fill();
+                    c.restore();
+                }
+
+                drawStructPointerEdge(n, pNode, strokeColor, lineWidth, edgeAlpha) {
+                    const ctx = this.ctx;
+                    const pScale = pNode ? pNode.scale : 1;
+                    const halfW = this.structW / 2;
+                    const halfH = (this.structH / 2) * pScale;
+                    const gap = this.structCellGap;
+                    const ptrW = this.structPtrW;
+                    const hW = this.structHeightW;
+
+                    const leftCellCenterX = -halfW + ptrW + gap + hW + gap + ptrW / 2;
+                    const rightCellCenterX = leftCellCenterX + ptrW + gap;
+                    const cellXOffset = (n.side === 'L' ? leftCellCenterX : rightCellCenterX) * pScale;
+
+                    const x1 = n.parentX + cellXOffset;
+                    const y1 = n.parentY;
+                    const x2 = n.x;
+                    const y2 = n.y - (this.structH / 2) * n.scale - 3;
+
+                    const dxTotal = x2 - x1;
+                    const dyTotal = y2 - y1;
+                    if (Math.hypot(dxTotal, dyTotal) < 3) return;
+
+                    const exitY = y1 + (2 * halfH) / 3 + 8 * pScale;
+                    const useVerticalExit = y2 > exitY + 12;
+
+                    const angle = useVerticalExit
+                        ? Math.atan2(y2 - exitY, x2 - x1)
+                        : Math.atan2(dyTotal, dxTotal);
+                    const head = Math.min(15, Math.max(11, lineWidth * 4.8));
+                    const shorten = head * 0.8;
+                    const lineEndX = x2 - Math.cos(angle) * shorten;
+                    const lineEndY = y2 - Math.sin(angle) * shorten;
+
+                    ctx.save();
+                    ctx.globalAlpha = edgeAlpha;
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = strokeColor;
+                    ctx.lineWidth = lineWidth;
+                    ctx.lineCap = 'round';
+                    ctx.lineJoin = 'round';
+                    ctx.moveTo(x1, y1);
+
+                    if (useVerticalExit) {
+                        const dxOut = lineEndX - x1;
+                        const dyOut = lineEndY - exitY;
+                        const lenOut = Math.hypot(dxOut, dyOut) || 1;
+                        const bend = Math.min(8 * pScale, lenOut * 0.35);
+                        const p1Y = exitY - bend;
+                        const p2X = x1 + (dxOut / lenOut) * bend;
+                        const p2Y = exitY + (dyOut / lenOut) * bend;
+
+                        ctx.lineTo(x1, p1Y);
+                        ctx.quadraticCurveTo(x1, exitY, p2X, p2Y);
+                        ctx.lineTo(lineEndX, lineEndY);
+                    } else {
+                        ctx.lineTo(lineEndX, lineEndY);
+                    }
+                    ctx.stroke();
+
+                    this.drawCurvedArrowHead(x2, y2, angle, strokeColor, head);
+
+                    ctx.beginPath();
+                    ctx.fillStyle = this.theme.STRUCT_ARROW;
+                    ctx.arc(x1, y1, 4.2 * pScale, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+
+                rect(x, y, w, h, fill, alpha = 1, stroke = null, lineWidth = 0, r = 4) {
+                    const c = this.ctx;
+                    c.save();
+                    c.globalAlpha *= alpha;
+                    c.beginPath();
+                    c.roundRect(x, y, w, h, r);
+                    if (fill && fill !== 'transparent') { c.fillStyle = fill; c.fill(); }
+                    if (stroke && lineWidth > 0) { c.strokeStyle = stroke; c.lineWidth = lineWidth; c.stroke(); }
+                    c.restore();
+                }
+
+                drawRootPointer(rootNode, canDimHover) {
+                    const ctx = this.ctx;
+                    const boxW = this.structPtrW;
+                    const boxH = this.structH;
+                    let rx = 0;
+                    let ry = 70;
+                    let alpha = 1;
+
+                    if (rootNode) {
+                        rx = rootNode.x;
+                        ry = rootNode.y - (this.structH / 2) * rootNode.scale - 58;
+                        alpha = rootNode.alpha;
+                        if (canDimHover && !this.hoveredSubtreeIds.has(rootNode.id)) {
+                            alpha *= 0.35;
+                        }
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+
+                    ctx.font = '600 15px Consolas, "Courier New", monospace';
+                    ctx.fillStyle = this.theme.STRUCT_ROOT_TEXT;
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('root', rx - boxW / 2 - 7, ry + 0.5);
+
+                    this.rect(rx - boxW / 2, ry - boxH / 2, boxW, boxH, this.theme.STRUCT_ROOT_BG);
+
+                    if (rootNode) {
+                        const targetX = rootNode.x;
+                        const targetY = rootNode.y - (this.structH / 2) * rootNode.scale - 3;
+                        this.arrow(rx, ry, targetX, targetY, this.theme.STRUCT_ARROW, 1, 2.5, 13);
+                    }
+
+                    ctx.beginPath();
+                    ctx.fillStyle = this.theme.STRUCT_ARROW;
+                    ctx.arc(rx, ry, 4.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    ctx.restore();
+                }
+
+                drawStructNode(x, y, val, colorKey, scale = 1, alpha = 1, isFloating = false, height = null, bf = null, isHovered = false, hasLeft = false, hasRight = false, activeNull = null) {
+                    if (scale <= 0.02 || alpha <= 0.02) return;
+                    const ctx = this.ctx;
+                    const w = this.structW;
+                    const h = this.structH;
+                    const halfW = w / 2;
+                    const halfH = h / 2;
+                    const ptrW = this.structPtrW;
+                    const hW = this.structHeightW;
+                    const gap = this.structCellGap;
+
+                    const valW = this.getValBoxWidth(val);
+                    const valH = this.structValH;
+                    const valLeft = -halfW - this.structValGap - valW;
+                    const valTop = -halfH;
+
+                    const xElem = -halfW;
+                    const xHeight = xElem + ptrW + gap;
+                    const xLeft = xHeight + hW + gap;
+                    const xRight = xLeft + ptrW + gap;
+
+                    const isHighlighted = colorKey !== 'DEFAULT';
+                    let valFill = this.theme.STRUCT_VAL_BG;
+                    let valTextCol = this.theme.STRUCT_VAL_TEXT;
+
+                    if (isHighlighted) {
+                        valFill = this.theme[colorKey] || this.theme.DEFAULT;
+                        if (colorKey === 'CHECK') {
+                            valTextCol = this.theme.CHECK_TEXT;
+                        } else if (colorKey === 'CHILD') {
+                            valTextCol = this.theme.CHILD_TEXT;
+                        } else if (colorKey === 'FOUND') {
+                            valTextCol = this.theme.FOUND_TEXT;
+                        } else {
+                            valTextCol = '#FFFFFF';
+                        }
+                    }
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(x, y);
+                    ctx.scale(scale, scale);
+
+                    if (isHovered) {
+                        ctx.strokeStyle = this.theme.RING_FOCUS;
+                        ctx.lineWidth = 2.5;
+                        ctx.beginPath();
+                        ctx.roundRect(-halfW - 4, -halfH - 4, w + 8, h + 8, 6);
+                        ctx.stroke();
+                    }
+
+                    if (isHighlighted && !isFloating) {
+                        ctx.strokeStyle = valFill;
+                        ctx.lineWidth = 2.5;
+                        ctx.beginPath();
+                        ctx.roundRect(-halfW - 2.5, -halfH - 2.5, w + 5, h + 5, 5);
+                        ctx.stroke();
+                    }
+
+                    // 1. External green element box
+                    this.rect(valLeft, valTop, valW, valH, valFill);
+
+                    const str = String(val);
+                    const valFontSize = str.length <= 2 ? 20 : str.length === 3 ? 16 : str.length === 4 ? 13 : 11;
+                    ctx.fillStyle = valTextCol;
+                    ctx.font = `600 ${valFontSize}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(str, valLeft + valW / 2, 1);
+
+                    // 2. Cell 1: Purple element pointer
+                    this.rect(xElem, -halfH, ptrW, h, this.theme.STRUCT_ELEM_PTR_BG);
+
+                    const dotX = xElem + ptrW / 2;
+                    const dotY = 0;
+                    const arrowTipX = valLeft + valW + 2;
+
+                    this.arrow(dotX, dotY, arrowTipX, dotY, this.theme.STRUCT_ARROW, 1, 2.2, 10);
+
+                    ctx.beginPath();
+                    ctx.fillStyle = this.theme.STRUCT_ARROW;
+                    ctx.arc(dotX, dotY, 4.2, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    // 3. Cell 2: Yellow height cell
+                    this.rect(xHeight, -halfH, hW, h, this.theme.STRUCT_HEIGHT_BG);
+                    if (height !== null && height !== undefined) {
+                        ctx.fillStyle = this.theme.STRUCT_HEIGHT_TEXT;
+                        ctx.font = '600 20px "Segoe UI", Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(String(height), xHeight + hW / 2, 1);
+                    }
+
+                    // 4. Cell 3 & Cell 4: Cyan left and right pointer cells
+                    this.rect(xLeft, -halfH, ptrW, h, this.theme.STRUCT_PTR_BG);
+                    this.rect(xRight, -halfH, ptrW, h, this.theme.STRUCT_PTR_BG);
+
+                    const drawPtrDot = (cx, side, hasChild) => {
+                        const isActiveNull = Boolean(!hasChild && activeNull && activeNull.side === side);
+                        if (!hasChild && (this.showNulls || isActiveNull)) {
+                            const dotCol = isActiveNull ? this.theme[activeNull.colorKey] : this.theme.STRUCT_ARROW;
+                            ctx.beginPath();
+                            ctx.fillStyle = dotCol;
+                            ctx.arc(cx, 0, isActiveNull ? 5.2 : 4.2, 0, Math.PI * 2);
+                            ctx.fill();
+
+                            if (isActiveNull) {
+                                ctx.font = '700 9.5px monospace';
+                                const label = 'null';
+                                const lw = ctx.measureText(label).width + 10;
+                                const lh = 15;
+                                const lx = cx - lw / 2;
+                                const ly = halfH + 5;
+
+                                ctx.fillStyle = this.theme.PILL_BG;
+                                ctx.strokeStyle = dotCol;
+                                ctx.lineWidth = 1.4;
+                                ctx.beginPath();
+                                ctx.roundRect(lx, ly, lw, lh, 4);
+                                ctx.fill();
+                                ctx.stroke();
+
+                                ctx.fillStyle = dotCol;
+                                ctx.textAlign = 'center';
+                                ctx.textBaseline = 'middle';
+                                ctx.fillText(label, cx, ly + lh / 2);
+                            }
+                        }
+                    };
+
+                    drawPtrDot(xLeft + ptrW / 2, 'L', hasLeft);
+                    drawPtrDot(xRight + ptrW / 2, 'R', hasRight);
+
+                    // Optional Balance Factor badge
+                    if (this.showBalanceFactor && bf !== null && bf !== undefined) {
+                        const br = 10;
+                        const bbx = halfW + 2;
+                        const bby = -halfH - 2;
+                        const bfColor = Math.abs(bf) > 1
+                            ? this.theme.BF_UNBALANCED
+                            : bf === 0 ? this.theme.BF_BALANCED : this.theme.BF_TILT;
+                        const bfText = bf > 0 ? `+${bf}` : `${bf}`;
+                        ctx.beginPath();
+                        ctx.arc(bbx, bby, br, 0, Math.PI * 2);
+                        ctx.fillStyle = this.theme.BADGE_BG;
+                        ctx.fill();
+                        ctx.strokeStyle = bfColor;
+                        ctx.lineWidth = 1.3;
+                        ctx.stroke();
+                        ctx.fillStyle = bfColor;
+                        ctx.font = 'bold 9.5px Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(bfText, bbx, bby + 0.5);
+                    }
+
+                    ctx.restore();
+                }
+
+                draw() {
+                    const ctx = this.ctx;
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+                    ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+
+                    ctx.save();
+                    ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+                    this.drawDotGrid(ctx);
+
+                    if (this.snapshots.length === 0) {
+                        ctx.restore();
+                        if (this.structView) {
+                            ctx.save();
+                            ctx.setTransform(
+                                this.dpr * this.camera.scale, 0, 0, this.dpr * this.camera.scale,
+                                this.dpr * this.camera.x, this.dpr * this.camera.y
+                            );
+                            this.drawRootPointer(null, false);
+                            ctx.restore();
+                        }
+                        return;
+                    }
+
+                    const idx = Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
+                    let nodesToDraw = [];
+                    let floatingInfo = null;
+                    let arrowsToDraw = [];
+                    let transferInfo = null;
+                    let activeNull = null;
+                    let pathIds = [];
+                    let unbalancedPathIds = [];
+                    let rotationSpec = null;
+
+                    if ((this.state === 'MORPH' || this.state === 'WAITING') && idx + 1 < this.snapshots.length) {
+                        const snapA = this.snapshots[idx];
+                        const snapB = this.snapshots[idx + 1];
+                        const t = this.easeInOut(this.morphProgress);
+                        nodesToDraw = this.interpolateTrees(snapA, snapB, t);
+
+                        if (snapB.floating) {
+                            const posB = this.getFloatingPos(snapB, snapB.floating);
+                            if (posB) {
+                                const isPillOnly = Boolean(snapB.floating.pillOnly);
+                                let startX = posB.x;
+                                let startY = isPillOnly ? posB.y - 14 : posB.targetY - this.halfH * 3.5;
+                                let alpha = Math.min(1, t * 1.4);
+
+                                if (snapA.floating) {
+                                    const posA = this.getFloatingPos(snapA, snapA.floating);
+                                    if (posA) {
+                                        startX = posA.x;
+                                        startY = posA.y;
+                                        alpha = 1;
+                                    }
+                                }
+
+                                floatingInfo = {
+                                    x: startX + (posB.x - startX) * t,
+                                    y: startY + (posB.y - startY) * t,
+                                    scale: 0.86,
+                                    alpha,
+                                    value: (t > 0.95 ? snapB.floating : (snapA.floating || snapB.floating)).val,
+                                    targetX: posB.targetX,
+                                    targetY: posB.targetY,
+                                    targetVal: (t > 0.95 ? snapB.floating : (snapA.floating || snapB.floating)).targetVal,
+                                    isNullTarget: Boolean(snapB.floating.isNullTarget),
+                                    pillOnly: isPillOnly,
+                                    showDecision: snapB.floating.targetVal !== undefined
+                                };
+                            }
+                        } else if (snapA.floating && snapA.root === snapB.root && !snapA.floating.pillOnly) {
+                            const posA = this.getFloatingPos(snapA, snapA.floating);
+                            if (posA) {
+                                floatingInfo = {
+                                    x: posA.x + (posA.targetX - posA.x) * t,
+                                    y: posA.y + (posA.targetY - posA.y) * t,
+                                    scale: 0.86 * (1 - 0.35 * t),
+                                    alpha: Math.max(0, 1 - t),
+                                    value: snapA.floating.val,
+                                    targetX: posA.targetX,
+                                    targetY: posA.targetY,
+                                    targetVal: snapA.floating.targetVal,
+                                    isNullTarget: Boolean(snapA.floating.isNullTarget),
+                                    pillOnly: false,
+                                    showDecision: false
+                                };
+                            }
+                        }
+
+                        if (snapB.transfer) {
+                            transferInfo = {
+                                from: snapB.transfer.from,
+                                to: snapB.transfer.to,
+                                val: snapB.transfer.val,
+                                t
+                            };
+                        }
+
+                        arrowsToDraw = snapB.arrows || [];
+                        activeNull = (t > 0.5 ? snapB.activeNull : snapA.activeNull) || null;
+                        pathIds = snapB.pathIds || [];
+                        unbalancedPathIds = (t > 0.5 ? snapB.unbalancedPathIds : snapA.unbalancedPathIds) || [];
+
+                        if (this.state === 'MORPH') {
+                            if (snapA.rotation) {
+                                const alpha = Math.max(0, 1 - (this.morphProgress * 1.5));
+                                if (alpha > 0) {
+                                    rotationSpec = { ...snapA.rotation, layout: snapA.layout, alpha };
+                                }
+                            } else if (snapB.rotation) {
+                                rotationSpec = { ...snapB.rotation, layout: snapB.layout, alpha: Math.min(1, t * 1.6) };
+                            }
+                        } else if (snapB.rotation) {
+                            rotationSpec = { ...snapB.rotation, layout: snapB.layout, alpha: 1 };
+                        }
+                    } else {
+                        const snap = this.snapshots[idx];
+                        nodesToDraw = this.flattenTree(snap);
+                        arrowsToDraw = snap.arrows || [];
+                        activeNull = snap.activeNull || null;
+                        pathIds = snap.pathIds || [];
+                        unbalancedPathIds = snap.unbalancedPathIds || [];
+
+                        if (snap.rotation) {
+                            rotationSpec = { ...snap.rotation, layout: snap.layout, alpha: 1 };
+                        }
+
+                        if (snap.floating) {
+                            const pos = this.getFloatingPos(snap, snap.floating);
+                            if (pos) {
+                                floatingInfo = {
+                                    x: pos.x,
+                                    y: pos.y,
+                                    scale: 0.86,
+                                    alpha: 1,
+                                    value: snap.floating.val,
+                                    targetX: pos.targetX,
+                                    targetY: pos.targetY,
+                                    targetVal: snap.floating.targetVal,
+                                    isNullTarget: Boolean(snap.floating.isNullTarget),
+                                    pillOnly: Boolean(snap.floating.pillOnly),
+                                    showDecision: snap.floating.targetVal !== undefined
+                                };
+                            }
+                        }
+                    }
+
+                    this.drawLevelGuides(ctx, nodesToDraw);
+                    ctx.restore();
+
+                    ctx.save();
+                    ctx.setTransform(
+                        this.dpr * this.camera.scale, 0, 0, this.dpr * this.camera.scale,
+                        this.dpr * this.camera.x, this.dpr * this.camera.y
+                    );
+
+                    this.lastDrawnNodes = nodesToDraw;
+                    const nodeMap = new Map(nodesToDraw.map(n => [n.id, n]));
+                    const pathEdgeSet = this.buildPathEdgeSet(pathIds);
+                    const unbalancedEdgeSet = this.buildPathEdgeSet(unbalancedPathIds);
+
+                    const canDimHover = (this.state === 'IDLE' || this.isPaused) &&
+                        this.hoveredNode && this.hoveredSubtreeIds;
+
+                    if (this.structView) {
+                        const rootNode = nodesToDraw.find(n => n.parentId === null) || null;
+                        this.drawRootPointer(rootNode, canDimHover);
+
+                        nodesToDraw.forEach(n => {
+                            let nodeAlpha = n.alpha;
+                            const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                nodeAlpha *= 0.35;
+                            }
+                            const nodeActiveNull = activeNull && activeNull.nodeId === n.id ? activeNull : null;
+                            this.drawStructNode(
+                                n.x, n.y, n.value, n.colorKey,
+                                n.scale, nodeAlpha, false, n.height, n.bf, isHovered,
+                                n.hasLeft, n.hasRight, nodeActiveNull
+                            );
+                        });
+
+                        nodesToDraw.forEach(n => {
+                            if (n.parentX === undefined) return;
+                            const edgeKey = `${n.parentId}->${n.id}`;
+                            if (pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+
+                            const pNode = nodeMap.get(n.parentId);
+                            let edgeAlpha = n.edgeAlpha !== undefined
+                                ? n.edgeAlpha
+                                : (pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha);
+                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
+                                edgeAlpha *= 0.25;
+                            }
+                            this.drawStructPointerEdge(n, pNode, this.theme.STRUCT_ARROW, 2.5, edgeAlpha);
+                        });
+
+                        if (pathEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                const edgeKey = `${n.parentId}->${n.id}`;
+                                if (!pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+                                const pNode = nodeMap.get(n.parentId);
+                                const edgeAlpha = n.edgeAlpha !== undefined ? n.edgeAlpha : n.alpha;
+                                this.drawStructPointerEdge(n, pNode, this.theme.PATH_EDGE, 3.6, edgeAlpha);
+                            });
+                        }
+
+                        if (unbalancedEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                if (!unbalancedEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+                                const pNode = nodeMap.get(n.parentId);
+                                this.drawStructPointerEdge(n, pNode, this.theme.UNBALANCED_EDGE, 4.2, 1);
+                            });
+                        }
+                    } else {
+                        nodesToDraw.forEach(n => {
+                            if (n.parentX === undefined) return;
+                            const edgeKey = `${n.parentId}->${n.id}`;
+                            if (pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+
+                            const pNode = nodeMap.get(n.parentId);
+                            let edgeAlpha = n.edgeAlpha !== undefined
+                                ? n.edgeAlpha
+                                : (pNode ? Math.min(n.alpha, pNode.alpha) : n.alpha);
+                            if (canDimHover && (!this.hoveredSubtreeIds.has(n.id) || !this.hoveredSubtreeIds.has(n.parentId))) {
+                                edgeAlpha *= 0.25;
+                            }
+
+                            const seg = this.getEdgeSegment(n, pNode);
+                            if (!seg) return;
+
+                            ctx.save();
+                            ctx.globalAlpha = edgeAlpha;
+                            ctx.beginPath();
+                            ctx.strokeStyle = this.theme.EDGE;
+                            ctx.lineWidth = 2.5;
+                            ctx.moveTo(seg.x1, seg.y1);
+                            ctx.lineTo(seg.x2, seg.y2);
+                            ctx.stroke();
+                            ctx.restore();
+                        });
+
+                        if (pathEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                const edgeKey = `${n.parentId}->${n.id}`;
+                                if (!pathEdgeSet.has(edgeKey) || unbalancedEdgeSet.has(edgeKey)) return;
+
+                                const pNode = nodeMap.get(n.parentId);
+                                const seg = this.getEdgeSegment(n, pNode);
+                                if (!seg) return;
+
+                                const edgeAlpha = n.edgeAlpha !== undefined ? n.edgeAlpha : n.alpha;
+                                ctx.save();
+                                ctx.globalAlpha = edgeAlpha;
+                                ctx.beginPath();
+                                ctx.strokeStyle = this.theme.PATH_EDGE;
+                                ctx.lineWidth = 4.5;
+                                ctx.lineCap = 'round';
+                                ctx.moveTo(seg.x1, seg.y1);
+                                ctx.lineTo(seg.x2, seg.y2);
+                                ctx.stroke();
+                                ctx.restore();
+                            });
+                        }
+
+                        if (unbalancedEdgeSet.size > 0) {
+                            nodesToDraw.forEach(n => {
+                                if (n.parentX === undefined) return;
+                                if (!unbalancedEdgeSet.has(`${n.parentId}->${n.id}`)) return;
+
+                                const pNode = nodeMap.get(n.parentId);
+                                const seg = this.getEdgeSegment(n, pNode);
+                                if (!seg) return;
+
+                                ctx.save();
+                                ctx.beginPath();
+                                ctx.strokeStyle = this.theme.UNBALANCED_EDGE;
+                                ctx.lineWidth = 5.5;
+                                ctx.lineCap = 'round';
+                                ctx.moveTo(seg.x1, seg.y1);
+                                ctx.lineTo(seg.x2, seg.y2);
+                                ctx.stroke();
+                                ctx.restore();
+                            });
+                        }
+
+                        nodesToDraw.forEach(n => {
+                            let baseAlpha = n.alpha;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                baseAlpha *= 0.25;
+                            }
+                            if (!n.hasLeft) {
+                                const isActive = Boolean(activeNull && activeNull.nodeId === n.id && activeNull.side === 'L');
+                                if (this.showNulls || isActive) {
+                                    const col = isActive ? this.theme[activeNull.colorKey] : this.theme.NULL_LINK;
+                                    this.drawNullLink(n.x, n.y, 'L', col, isActive, baseAlpha);
+                                }
+                            }
+                            if (!n.hasRight) {
+                                const isActive = Boolean(activeNull && activeNull.nodeId === n.id && activeNull.side === 'R');
+                                if (this.showNulls || isActive) {
+                                    const col = isActive ? this.theme[activeNull.colorKey] : this.theme.NULL_LINK;
+                                    this.drawNullLink(n.x, n.y, 'R', col, isActive, baseAlpha);
+                                }
+                            }
+                        });
+
+                        nodesToDraw.forEach(n => {
+                            let nodeAlpha = n.alpha;
+                            const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+                            if (canDimHover && !this.hoveredSubtreeIds.has(n.id)) {
+                                nodeAlpha *= 0.35;
+                            }
+                            this.drawNodeCircle(
+                                n.x, n.y, n.value, n.colorKey,
+                                n.scale, nodeAlpha, false, n.height, n.bf, isHovered
+                            );
+                        });
+                    }
+
+                    if (rotationSpec && rotationSpec.layout && rotationSpec.alpha > 0) {
+                        const pivotPos = rotationSpec.layout.get(rotationSpec.pivotId);
+                        const childPos = rotationSpec.layout.get(rotationSpec.childId);
+                        if (pivotPos && childPos) {
+                            ctx.save();
+                            ctx.globalAlpha = rotationSpec.alpha;
+                            this.drawRotationArrow(childPos.x, childPos.y, pivotPos.x, pivotPos.y, rotationSpec.dir);
+                            ctx.restore();
+                        }
+                    }
+
+                    if (arrowsToDraw.length > 0) {
+                        arrowsToDraw.forEach(arr => {
+                            const n1 = nodeMap.get(arr.from);
+                            const n2 = nodeMap.get(arr.to);
+                            if (n1 && n2) this.drawStraightArrow(n1.x, n1.y, n2.x, n2.y, true);
+                        });
+                    }
+
+                    if (transferInfo) {
+                        const n1 = nodeMap.get(transferInfo.from);
+                        const n2 = nodeMap.get(transferInfo.to);
+                        if (n1 && n2) {
+                            this.drawTransferToken(n1.x, n1.y, n2.x, n2.y, transferInfo.val, transferInfo.t);
+                        }
+                    }
+
+                    if (floatingInfo) {
+                        this.drawFloatingComparison(floatingInfo);
+                    }
+
+                    if (this.hoveredNode) {
+                        const drawn = nodeMap.get(this.hoveredNode.id);
+                        if (drawn && drawn.bf !== undefined) {
+                            this.drawNodeTooltip(drawn);
+                        }
+                    }
+
+                    ctx.restore();
+                }
+
+                drawRotationArrow(x1, y1, x2, y2, dir) {
+                    const ctx = this.ctx;
+                    const rx = this.halfW;
+                    const ry = this.halfH;
+                    const startX = x1;
+                    const startY = y1 - ry;
+                    const endY = y2;
+                    let endX, endX2, cp1X, cp1Y, cp2X, cp2Y;
+                    const arcHeight = 58;
+                    const sideOffset = 38;
+                    const startBulge = 28;
+
+                    if (dir === 'CW') {
+                        endX = x2 - rx;
+                        endX2 = x2 - rx * 1.2;
+                        cp1X = startX - startBulge; cp1Y = startY - arcHeight;
+                        cp2X = endX - sideOffset; cp2Y = endY;
+                    } else {
+                        endX = x2 + rx;
+                        endX2 = x2 + rx * 1.2;
+                        cp1X = startX + startBulge; cp1Y = startY - arcHeight;
+                        cp2X = endX + sideOffset; cp2Y = endY;
+                    }
+
+                    ctx.beginPath();
+                    ctx.strokeStyle = this.theme.ARROW;
+                    ctx.lineWidth = 4.5;
+                    ctx.lineCap = 'round';
+                    ctx.moveTo(startX, startY);
+                    ctx.bezierCurveTo(cp1X, cp1Y, cp2X, cp2Y, endX2, endY);
+                    ctx.stroke();
+
+                    const angle = Math.atan2(endY - cp2Y, endX - cp2X);
+                    this.drawCurvedArrowHead(endX, endY, angle, this.theme.ARROW, 15);
+                }
+
+                getLineGeometry(fromX, fromY, toX, toY) {
+                    const dx = toX - fromX;
+                    const dy = toY - fromY;
+                    const len = Math.hypot(dx, dy) || 1;
+                    const ux = dx / len;
+                    const uy = dy / len;
+                    const r = (this.structView ? this.halfH : this.nodeRadius) + 5;
+
+                    return {
+                        startX: fromX + ux * r,
+                        startY: fromY + uy * r,
+                        endX: toX - ux * (r + 1),
+                        endY: toY - uy * (r + 1),
+                        angle: Math.atan2(dy, dx)
+                    };
+                }
+
+                drawStraightArrow(fromX, fromY, toX, toY, showHead = true) {
+                    const ctx = this.ctx;
+                    const { startX, startY, endX, endY } = this.getLineGeometry(fromX, fromY, toX, toY);
+
+                    if (showHead) {
+                        this.arrow(startX, startY, endX, endY, this.theme.ARROW, 1, 3, 15);
+                        return;
+                    }
+
+                    ctx.save();
+                    ctx.strokeStyle = this.theme.ARROW;
+                    ctx.lineWidth = 3;
+                    ctx.setLineDash([5, 5]);
+                    ctx.globalAlpha = 0.55;
+
+                    ctx.beginPath();
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+                    ctx.restore();
+                }
+
+                drawTransferToken(fromX, fromY, toX, toY, val, t) {
+                    this.drawStraightArrow(fromX, fromY, toX, toY, false);
+
+                    const { startX, startY, endX, endY } = this.getLineGeometry(fromX, fromY, toX, toY);
+                    const px = startX + (endX - startX) * t;
+                    const py = startY + (endY - startY) * t;
+
+                    const ctx = this.ctx;
+                    const label = String(val);
+                    ctx.save();
+                    ctx.font = '700 13px "Segoe UI", Arial, sans-serif';
+                    const w = Math.max(28, ctx.measureText(label).width + 14);
+                    const h = 24;
+
+                    ctx.fillStyle = this.theme.PIVOT;
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.roundRect(px - w / 2, py - h / 2, w, h, 12);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, px, py + 0.5);
+                    ctx.restore();
+                }
+
+                drawFloatingComparison(info) {
+                    const ctx = this.ctx;
+                    const { x, y, scale, alpha, value, targetX, targetY, targetVal, isNullTarget, pillOnly, showDecision } = info;
+                    const hh = this.halfH;
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+
+                    if (!pillOnly) {
+                        if (!isNullTarget && y < targetY - hh) {
+                            ctx.strokeStyle = this.theme.NEW;
+                            ctx.lineWidth = 2;
+                            ctx.setLineDash([4, 4]);
+                            ctx.beginPath();
+                            ctx.moveTo(x, y + this.nodeRadius * scale);
+                            ctx.lineTo(targetX, targetY - hh);
+                            ctx.stroke();
+                            ctx.setLineDash([]);
+                        }
+
+                        this.drawNodeCircle(x, y, value, 'NEW', scale, alpha, true);
+                    }
+
+                    if (showDecision && targetVal !== undefined) {
+                        let text, pillColor;
+                        if (value < targetVal) {
+                            text = `${value} < ${targetVal} → L`;
+                            pillColor = this.theme.VISIT;
+                        } else if (value > targetVal) {
+                            text = `${value} > ${targetVal} → R`;
+                            pillColor = this.theme.VISIT;
+                        } else {
+                            text = `${value} = ${targetVal}`;
+                            pillColor = this.theme.FOUND;
+                        }
+
+                        ctx.font = '700 11.5px "Segoe UI", Arial, sans-serif';
+                        const w = ctx.measureText(text).width + 14;
+                        const h = 22;
+                        const px = pillOnly ? x - w / 2 : x + this.nodeRadius + 10;
+                        const py = y - h / 2;
+
+                        ctx.fillStyle = this.theme.PILL_BG;
+                        ctx.strokeStyle = pillColor;
+                        ctx.lineWidth = 1.5;
+                        ctx.beginPath();
+                        ctx.roundRect(px, py, w, h, 11);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = this.theme.PILL_TEXT;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(text, px + w / 2, y + 0.5);
+                    }
+
+                    ctx.restore();
+                }
+
+                drawNodeTooltip(node) {
+                    const ctx = this.ctx;
+                    const bf = node.bf;
+                    let bfText = 'Balanced (0)';
+                    let labelColor = this.theme.BF_BALANCED;
+
+                    if (bf > 1) {
+                        bfText = `Left Heavy (+${bf}) - Unbalanced`;
+                        labelColor = this.theme.BF_UNBALANCED;
+                    } else if (bf === 1) {
+                        bfText = 'Left Heavy (+1)';
+                        labelColor = this.theme.BF_TILT;
+                    } else if (bf < -1) {
+                        bfText = `Right Heavy (${bf}) - Unbalanced`;
+                        labelColor = this.theme.BF_UNBALANCED;
+                    } else if (bf === -1) {
+                        bfText = 'Right Heavy (-1)';
+                        labelColor = this.theme.BF_TILT;
+                    }
+
+                    const labelText = `Elem: ${node.value} | ${bfText} | H: ${node.height} | D: ${node.depth} | Subtree: ${node.size}`;
+                    const invScale = 1 / this.camera.scale;
+                    const tx = node.x;
+                    const ty = node.y - this.halfH - (11 * invScale);
+
+                    ctx.save();
+                    ctx.translate(tx, ty);
+                    ctx.scale(invScale, invScale);
+
+                    ctx.font = '600 12.5px "Segoe UI", Arial, sans-serif';
+                    const metrics = ctx.measureText(labelText);
+                    const w = metrics.width + 18;
+                    const h = 26;
+
+                    ctx.fillStyle = this.theme.PILL_BG;
+                    ctx.strokeStyle = this.theme.PILL_BORDER;
+                    ctx.lineWidth = 1.25;
+                    ctx.beginPath();
+                    ctx.roundRect(-w / 2, -h, w, h, 5);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(-5, -1);
+                    ctx.lineTo(5, -1);
+                    ctx.lineTo(0, 5);
+                    ctx.closePath();
+                    ctx.fillStyle = this.theme.PILL_BG;
+                    ctx.fill();
+
+                    ctx.fillStyle = labelColor;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(labelText, 0, -h / 2);
+
+                    ctx.restore();
+                }
+
+                drawNullLink(x, y, side, color, isActive, baseAlpha = 1) {
+                    const ctx = this.ctx;
+                    const r = this.nodeRadius;
+                    const spread = isActive ? 10 : 8;
+                    const drop = isActive ? 12 : 15;
+                    const dir = side === 'L' ? -1 : 1;
+                    const startX = x + r * 0.5 * dir;
+                    const startY = y + r * 0.8;
+                    const endX = x + (r + spread) * dir;
+                    const endY = y + r + drop;
+
+                    ctx.save();
+                    ctx.globalAlpha = baseAlpha;
+                    ctx.beginPath();
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = isActive ? 3.5 : 2.5;
+                    ctx.moveTo(startX, startY);
+                    ctx.lineTo(endX, endY);
+                    ctx.stroke();
+
+                    const perpSize = isActive ? 9 : 6;
+                    const angle = Math.atan2(endY - startY, endX - startX) + Math.PI / 2;
+                    ctx.beginPath();
+                    ctx.moveTo(endX - perpSize * Math.cos(angle), endY - perpSize * Math.sin(angle));
+                    ctx.lineTo(endX + perpSize * Math.cos(angle), endY + perpSize * Math.sin(angle));
+                    ctx.stroke();
+
+                    if (isActive) {
+                        ctx.font = '700 9.5px monospace';
+                        const label = 'null';
+                        const w = ctx.measureText(label).width + 10;
+                        const h = 15;
+                        const lx = endX - w / 2;
+                        const ly = endY + 3;
+
+                        ctx.fillStyle = this.theme.PILL_BG;
+                        ctx.strokeStyle = color;
+                        ctx.lineWidth = 1.4;
+                        ctx.beginPath();
+                        ctx.roundRect(lx, ly, w, h, 4);
+                        ctx.fill();
+                        ctx.stroke();
+
+                        ctx.fillStyle = color;
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(label, endX, ly + h / 2);
+                    }
+                    ctx.restore();
+                }
+
+                drawNodeCircle(x, y, val, colorKey, scale = 1, alpha = 1, isFloating = false, height = null, bf = null, isHovered = false) {
+                    if (scale <= 0.02 || alpha <= 0.02) return;
+                    const ctx = this.ctx;
+                    const r = this.nodeRadius;
+                    const fill = this.theme[colorKey] || this.theme.DEFAULT;
+
+                    ctx.save();
+                    ctx.globalAlpha = alpha;
+                    ctx.translate(x, y);
+                    ctx.scale(scale, scale);
+
+                    if (isHovered) {
+                        ctx.beginPath();
+                        ctx.arc(0, 0, r + 5, 0, Math.PI * 2);
+                        ctx.strokeStyle = this.theme.RING_FOCUS;
+                        ctx.lineWidth = 2.5;
+                        ctx.stroke();
+                    }
+
+                    ctx.beginPath();
+                    ctx.arc(0, 0, r, 0, Math.PI * 2);
+                    ctx.fillStyle = fill;
+                    ctx.fill();
+
+                    let textColor = '#FFFFFF';
+                    if (colorKey === 'DEFAULT') {
+                        textColor = this.theme.TEXT;
+                    } else if (colorKey === 'CHECK') {
+                        textColor = this.theme.CHECK_TEXT;
+                    } else if (colorKey === 'CHILD') {
+                        textColor = this.theme.CHILD_TEXT;
+                    } else if (colorKey === 'FOUND') {
+                        textColor = this.theme.FOUND_TEXT;
+                    }
+
+                    ctx.strokeStyle = fill;
+                    ctx.lineWidth = isFloating ? 3 : 2.2;
+                    ctx.stroke();
+
+                    const str = String(val);
+                    const fontSize = str.length <= 2 ? 21 : str.length === 3 ? 17 : str.length === 4 ? 14 : 11;
+                    ctx.fillStyle = textColor;
+                    ctx.font = `700 ${fontSize}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(str, 0, 1);
+
+                    // Height badge (top-right)
+                    if (height !== null && height !== undefined) {
+                        const br = 10;
+                        const hbx = r * 0.72, hby = -r * 0.72;
+                        ctx.beginPath();
+                        ctx.arc(hbx, hby, br, 0, Math.PI * 2);
+                        ctx.fillStyle = this.theme.BADGE_BG;
+                        ctx.fill();
+                        ctx.strokeStyle = this.theme.EDGE;
+                        ctx.lineWidth = 1.2;
+                        ctx.stroke();
+                        ctx.fillStyle = this.theme.EDGE;
+                        ctx.font = 'bold 10px Arial, sans-serif';
+                        ctx.fillText(height, hbx, hby + 0.5);
+                    }
+
+                    // Balance Factor badge (top-left, optional toggle)
+                    if (this.showBalanceFactor && bf !== null && bf !== undefined) {
+                        const br = 10;
+                        const bbx = -r * 0.72, bby = -r * 0.72;
+                        const bfColor = Math.abs(bf) > 1
+                            ? this.theme.BF_UNBALANCED
+                            : bf === 0 ? this.theme.BF_BALANCED : this.theme.BF_TILT;
+                        const bfText = bf > 0 ? `+${bf}` : `${bf}`;
+                        ctx.beginPath();
+                        ctx.arc(bbx, bby, br, 0, Math.PI * 2);
+                        ctx.fillStyle = this.theme.BADGE_BG;
+                        ctx.fill();
+                        ctx.strokeStyle = bfColor;
+                        ctx.lineWidth = 1.3;
+                        ctx.stroke();
+                        ctx.fillStyle = bfColor;
+                        ctx.font = 'bold 9.5px Arial, sans-serif';
+                        ctx.fillText(bfText, bbx, bby + 0.5);
+                    }
+
+                    ctx.restore();
+                }
+
+                indexTree(root, layout) {
+                    const map = new Map();
+                    const walk = (node, parent, side) => {
+                        if (!node) return;
+                        const pos = layout.get(node.id);
+                        const pPos = parent ? layout.get(parent.id) : null;
+                        map.set(node.id, {
+                            node,
+                            x: pos.x,
+                            y: pos.y,
+                            pId: parent ? parent.id : null,
+                            pX: pPos ? pPos.x : undefined,
+                            pY: pPos ? pPos.y : undefined,
+                            side
+                        });
+                        walk(node.left, node, 'L');
+                        walk(node.right, node, 'R');
+                    };
+                    walk(root, null, null);
+                    return map;
+                }
+
+                interpolateTrees(snapA, snapB, t) {
+                    const mapA = this.indexTree(snapA.root, snapA.layout);
+                    const mapB = this.indexTree(snapB.root, snapB.layout);
+
+                    const result = [];
+                    const allIds = new Set([...mapA.keys(), ...mapB.keys()]);
+
+                    allIds.forEach(id => {
+                        const dA = mapA.get(id);
+                        const dB = mapB.get(id);
+
+                        if (dA && dB) {
+                            const x = dA.x + (dB.x - dA.x) * t;
+                            const y = dA.y + (dB.y - dA.y) * t;
+                            const refSnap = t > 0.5 ? snapB : snapA;
+                            const refNode = t > 0.5 ? dB.node : dA.node;
+                            const refMetrics = refSnap.metrics.get(id) || { depth: 0, height: 1, bf: 0, size: 1 };
+                            const colorKey = refSnap.highlights.get(id) || 'DEFAULT';
+
+                            let pX, pY;
+                            if (dA.pId === dB.pId && dA.pId !== null) {
+                                const pdA = mapA.get(dA.pId), pdB = mapB.get(dB.pId);
+                                if (pdA && pdB) {
+                                    pX = pdA.x + (pdB.x - pdA.x) * t;
+                                    pY = pdA.y + (pdB.y - pdA.y) * t;
+                                }
+                            } else if (dB.pId !== null) {
+                                const pdB = mapB.get(dB.pId);
+                                if (pdB) { pX = pdB.x; pY = pdB.y; }
+                            }
+
+                            result.push({
+                                id, x, y, value: refNode.value,
+                                colorKey,
+                                scale: 1,
+                                alpha: 1,
+                                parentId: dB.pId,
+                                parentX: pX, parentY: pY,
+                                side: dB.side,
+                                hasLeft: Boolean(refNode.left), hasRight: Boolean(refNode.right),
+                                depth: refMetrics.depth, height: refMetrics.height, bf: refMetrics.bf, size: refMetrics.size
+                            });
+                        } else if (dB && !dA) {
+                            let startX = dB.x, startY = dB.y;
+                            let startScale = 0.25;
+                            let fromFloating = false;
+
+                            if (snapA.floating && !snapA.floating.pillOnly && snapA.floating.val === dB.node.value &&
+                                (snapA.floating.isNullTarget || snapA.floating.targetId === dB.pId)) {
+                                const fPos = this.getFloatingPos(snapA, snapA.floating);
+                                if (fPos) {
+                                    startX = fPos.x;
+                                    startY = fPos.y;
+                                    startScale = 0.86;
+                                    fromFloating = true;
+                                }
+                            } else if (dB.pId !== null) {
+                                const parentInA = mapA.get(dB.pId);
+                                if (parentInA) { startX = parentInA.x; startY = parentInA.y; }
+                            }
+
+                            const x = startX + (dB.x - startX) * t;
+                            const y = startY + (dB.y - startY) * t;
+                            const mB = snapB.metrics.get(id) || { depth: 0, height: 1, bf: 0, size: 1 };
+                            const colorKey = snapB.highlights.get(id) || 'DEFAULT';
+
+                            let pX, pY;
+                            if (dB.pId !== null) {
+                                const pdB = mapB.get(dB.pId), pdA = mapA.get(dB.pId);
+                                if (pdA && pdB) {
+                                    pX = pdA.x + (pdB.x - pdA.x) * t;
+                                    pY = pdA.y + (pdB.y - pdA.y) * t;
+                                } else if (pdB) {
+                                    pX = pdB.x; pY = pdB.y;
+                                }
+                            }
+
+                            result.push({
+                                id, x, y, value: dB.node.value,
+                                colorKey,
+                                scale: startScale + (1 - startScale) * t,
+                                alpha: fromFloating ? 1 : Math.min(1, t * 1.3),
+                                edgeAlpha: fromFloating ? t : Math.min(1, t * 1.3),
+                                parentId: dB.pId,
+                                parentX: pX, parentY: pY,
+                                side: dB.side,
+                                hasLeft: Boolean(dB.node.left), hasRight: Boolean(dB.node.right),
+                                depth: mB.depth, height: mB.height, bf: mB.bf, size: mB.size
+                            });
+                        } else if (dA && !dB) {
+                            const mA = snapA.metrics.get(id) || { depth: 0, height: 1, bf: 0, size: 1 };
+                            result.push({
+                                id, x: dA.x, y: dA.y, value: dA.node.value,
+                                colorKey: 'DELETE',
+                                scale: Math.max(0, 1 - t * 0.85),
+                                alpha: Math.max(0, 1 - t),
+                                parentId: dA.pId,
+                                parentX: dA.pX, parentY: dA.pY,
+                                side: dA.side,
+                                hasLeft: Boolean(dA.node.left), hasRight: Boolean(dA.node.right),
+                                depth: mA.depth, height: mA.height, bf: mA.bf, size: mA.size
+                            });
+                        }
+                    });
+                    return result;
+                }
+
+                flattenTree(snap) {
+                    const res = [];
+                    const trav = (n, p, pPos, side) => {
+                        if (!n) return;
+                        const pos = snap.layout.get(n.id);
+                        const m = snap.metrics.get(n.id) || { depth: 0, height: 1, bf: 0, size: 1 };
+                        res.push({
+                            id: n.id,
+                            x: pos.x,
+                            y: pos.y,
+                            value: n.value,
+                            colorKey: snap.highlights.get(n.id) || 'DEFAULT',
+                            scale: 1,
+                            alpha: 1,
+                            parentId: p ? p.id : null,
+                            parentX: pPos ? pPos.x : undefined,
+                            parentY: pPos ? pPos.y : undefined,
+                            side,
+                            hasLeft: Boolean(n.left),
+                            hasRight: Boolean(n.right),
+                            depth: m.depth,
+                            height: m.height,
+                            bf: m.bf,
+                            size: m.size
+                        });
+                        trav(n.left, n, pos, 'L');
+                        trav(n.right, n, pos, 'R');
+                    };
+                    trav(snap.root, null, null, null);
+                    return res;
+                }
+
+                easeInOut(t) {
+                    return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                }
+            }
+
+            /* =================================================================
+             * 5. APPLICATION CONTROLLER (UI & ORCHESTRATION)
+             * ================================================================= */
+            const app = {
+                set: new AVLSet(),
+                viz: null,
+                isDark: false,
+                logs: [],
+
+                init() {
+                    const canvas = document.getElementById('treeCanvas');
+                    const implChecked = document.getElementById('chkImplView').checked;
+                    document.getElementById('legend').classList.toggle('struct-mode', implChecked);
+
+                    this.viz = new Visualizer(canvas, {
+                        theme: THEMES.light,
+                        structView: implChecked,
+                        callbacks: {
+                            onStatus: text => {
+                                document.getElementById('status-text').innerText = text;
+                            },
+                            onNodeClick: node => {
+                                document.getElementById('inputValue').value = node.value;
+                                const bfStr = node.bf > 0 ? `+${node.bf}` : `${node.bf}`;
+                                this.viz.setStatus(
+                                    `Selected element ${node.value} (Height: ${node.height}, BF: ${bfStr}, Depth: ${node.depth}, Subtree: ${node.size})`
+                                );
+                            },
+                            onStateChange: info => this.syncPlaybackUI(info),
+                            onSnapshotChange: root => this.updateTreeStats(root)
+                        }
+                    });
+
+                    this.bindUIEvents();
+                    this.updateTreeStats(this.set.root);
+                    this.updateUndoButton();
+                },
+
+                bindUIEvents() {
+                    const inp = document.getElementById('inputValue');
+                    inp.addEventListener('keydown', e => {
+                        if (e.key === 'Enter') this.handleInsert();
+                    });
+
+                    document.getElementById('btnInsert').addEventListener('click', () => this.handleInsert());
+                    document.getElementById('btnDelete').addEventListener('click', () => this.handleDelete());
+                    document.getElementById('btnContains').addEventListener('click', () => this.handleContains());
+                    document.getElementById('btnMin').addEventListener('click', () => this.handleMinimum());
+                    document.getElementById('btnMax').addEventListener('click', () => this.handleMaximum());
+
+                    document.getElementById('btnDemoRight').addEventListener('click', () => this.handleDemoSimpleRight());
+                    document.getElementById('btnDemoLR').addEventListener('click', () => this.handleDemoDoubleLeftRight());
+                    document.getElementById('btnDemoLeft').addEventListener('click', () => this.handleDemoSimpleLeft());
+                    document.getElementById('btnDemoRL').addEventListener('click', () => this.handleDemoDoubleRightLeft());
+                    document.getElementById('btnDemoDel').addEventListener('click', () => this.handleDemoDeleteRotation());
+
+                    document.getElementById('btnRandom').addEventListener('click', () => this.handleRandomSet());
+                    document.getElementById('btnUndo').addEventListener('click', () => this.handleUndo());
+                    document.getElementById('btnClear').addEventListener('click', () => this.handleClear());
+
+                    document.getElementById('speedSlider').addEventListener('input', e => {
+                        const val = parseFloat(e.target.value);
+                        document.getElementById('speedLabel').innerText = val.toFixed(2).replace(/\.00$/, '.0') + 'x';
+                        this.viz.setSpeed(val);
+                    });
+
+                    document.getElementById('btnPause').addEventListener('click', () => this.viz.togglePause());
+                    document.getElementById('btnStepBack').addEventListener('click', () => this.viz.stepBackward());
+                    document.getElementById('btnStepFwd').addEventListener('click', () => this.viz.stepForward());
+                    document.getElementById('btnSkip').addEventListener('click', () => this.viz.skipToEnd());
+
+                    document.getElementById('chkShowBF').addEventListener('change', e => {
+                        this.viz.setShowBalanceFactor(e.target.checked);
+                    });
+                    document.getElementById('chkShowNulls').addEventListener('change', e => {
+                        this.viz.setShowNulls(e.target.checked);
+                    });
+                    document.getElementById('chkAutoFit').addEventListener('change', e => {
+                        this.viz.setAutoFit(e.target.checked);
+                    });
+                    document.getElementById('chkImplView').addEventListener('change', e => {
+                        const enabled = e.target.checked;
+                        document.getElementById('legend').classList.toggle('struct-mode', enabled);
+                        this.viz.setStructView(enabled);
+                    });
+
+                    document.getElementById('btnZoomIn').addEventListener('click', () => this.viz.zoomBy(1.25));
+                    document.getElementById('btnZoomOut').addEventListener('click', () => this.viz.zoomBy(0.8));
+                    document.getElementById('btnFitView').addEventListener('click', () => this.viz.fitCurrentTree());
+
+                    document.getElementById('btnToggleLegend').addEventListener('click', () => {
+                        const legend = document.getElementById('legend');
+                        const collapsed = legend.classList.toggle('collapsed');
+                        document.getElementById('btnToggleLegend').innerText = collapsed ? '+' : '−';
+                    });
+
+                    document.getElementById('btnDrawer').addEventListener('click', () => {
+                        document.getElementById('info-drawer').classList.toggle('open');
+                    });
+
+                    document.getElementById('btnClearLog').addEventListener('click', () => {
+                        this.logs = [];
+                        this.renderLog();
+                    });
+
+                    document.getElementById('btnTheme').addEventListener('click', () => this.toggleTheme());
+                    document.getElementById('btnHelp').addEventListener('click', () => this.toggleModal(true));
+                    document.getElementById('btnCloseModal').addEventListener('click', () => this.toggleModal(false));
+
+                    window.addEventListener('click', e => {
+                        const modal = document.getElementById('helpModal');
+                        if (e.target === modal) this.toggleModal(false);
+                    });
+
+                    window.addEventListener('keydown', e => {
+                        const modalOpen = document.getElementById('helpModal').style.display === 'block';
+                        if (e.key === 'Escape' && modalOpen) {
+                            this.toggleModal(false);
+                            return;
+                        }
+                        if (document.activeElement === inp || modalOpen) return;
+
+                        if (e.code === 'Space') {
+                            if (!document.getElementById('btnPause').disabled) {
+                                e.preventDefault();
+                                this.viz.togglePause();
+                            }
+                        } else if (e.key === 'ArrowRight') {
+                            if (!document.getElementById('btnStepFwd').disabled) this.viz.stepForward();
+                        } else if (e.key === 'ArrowLeft') {
+                            if (!document.getElementById('btnStepBack').disabled) this.viz.stepBackward();
+                        } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
+                            e.preventDefault();
+                            if (!document.getElementById('btnUndo').disabled) this.handleUndo();
+                        }
+                    });
+                },
+
+                toggleTheme() {
+                    this.isDark = !this.isDark;
+                    document.body.classList.toggle('dark', this.isDark);
+                    this.viz.setTheme(this.isDark ? THEMES.dark : THEMES.light);
+                    document.getElementById('btnTheme').innerText = this.isDark ? 'Light' : 'Dark';
+                },
+
+                toggleModal(show) {
+                    const m = document.getElementById('helpModal');
+                    const open = show !== undefined ? show : m.style.display !== 'block';
+                    m.style.display = open ? 'block' : 'none';
+                },
+
+                addLog(entry) {
+                    const time = new Date().toLocaleTimeString([], {
+                        hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+                    });
+                    this.logs.unshift(`[${time}] ${entry}`);
+                    if (this.logs.length > 40) this.logs.pop();
+                    this.renderLog();
+                },
+
+                renderLog() {
+                    const list = document.getElementById('op-log');
+                    list.innerHTML = '';
+                    this.logs.forEach(item => {
+                        const li = document.createElement('li');
+                        li.textContent = item;
+                        list.appendChild(li);
+                    });
+                },
+
+                parseInputValues(singleOnly = false) {
+                    const inp = document.getElementById('inputValue');
+                    const raw = inp.value.trim();
+                    if (!raw) {
+                        this.flashInputError('Please enter an integer first.');
+                        return null;
+                    }
+
+                    const parts = raw.split(/[\s,;]+/).filter(Boolean);
+                    if (singleOnly && parts.length > 1) {
+                        this.flashInputError('contains accepts a single integer.');
+                        return null;
+                    }
+
+                    const values = [];
+                    for (const p of parts) {
+                        if (!/^-?\d+$/.test(p)) {
+                            this.flashInputError(`Invalid integer: "${p}"`);
+                            return null;
+                        }
+                        const num = parseInt(p, 10);
+                        if (num < -9999 || num > 99999) {
+                            this.flashInputError('Values must be between -9999 and 99999.');
+                            return null;
+                        }
+                        values.push(num);
+                    }
+                    return values;
+                },
+
+                flashInputError(msg) {
+                    const inp = document.getElementById('inputValue');
+                    inp.classList.add('input-error');
+                    this.viz.setStatus(msg);
+                    setTimeout(() => inp.classList.remove('input-error'), 900);
+                },
+
+                syncPlaybackUI({ state, isPaused, isBusy, index, total }) {
+                    const mutatingIds = [
+                        'btnInsert', 'btnDelete', 'btnContains', 'btnMin', 'btnMax', 'btnRandom',
+                        'btnDemoRight', 'btnDemoLR', 'btnDemoLeft', 'btnDemoRL', 'btnDemoDel', 'btnClear'
+                    ];
+                    mutatingIds.forEach(id => {
+                        document.getElementById(id).disabled = isBusy;
+                    });
+
+                    document.getElementById('btnUndo').disabled = isBusy || this.set.history.length === 0;
+
+                    const hasSteps = total > 1;
+                    const atEnd = index >= total - 1 && state === 'IDLE';
+                    document.getElementById('btnPause').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnPause').innerText = isPaused ? 'Resume' : 'Pause';
+                    document.getElementById('btnStepBack').disabled = !hasSteps || (index === 0 && state === 'IDLE');
+                    document.getElementById('btnStepFwd').disabled = !hasSteps || atEnd;
+                    document.getElementById('btnSkip').disabled = !hasSteps || atEnd;
+
+                    document.getElementById('step-counter').innerText =
+                        total > 1 ? `Step: ${Math.min(index + 1, total)}/${total}` : 'Step: -';
+                },
+
+                updateTreeStats(root) {
+                    const count = TreeUtils.getCount(root);
+                    const height = TreeUtils.getHeight(root);
+                    document.getElementById('tree-stats').innerText = `Size: ${count} | Height: ${height}`;
+
+                    const { inorder, preorder, postorder, level } = TreeUtils.getTraversals(root);
+                    document.getElementById('trav-inorder').innerText = inorder.length ? `{${inorder.join(', ')}}` : '{}';
+                    document.getElementById('trav-preorder').innerText = preorder.length ? `[${preorder.join(', ')}]` : '[]';
+                    document.getElementById('trav-postorder').innerText = postorder.length ? `[${postorder.join(', ')}]` : '[]';
+                    document.getElementById('trav-level').innerText = level.length ? `[${level.join(', ')}]` : '[]';
+                },
+
+                updateUndoButton() {
+                    document.getElementById('btnUndo').disabled =
+                        this.viz.isBusy() || this.set.history.length === 0;
+                },
+
+                runOp(fn, { instant = false, logText = null, recordHistory = true, resetBefore = false, initialText = null } = {}) {
+                    if (this.viz.isBusy()) return;
+
+                    const prevRoot = this.set.root;
+                    if (resetBefore) {
+                        this.set.clear();
+                    }
+
+                    const recorder = new SnapshotRecorder(this.set.root, initialText);
+                    fn(recorder);
+
+                    if (recordHistory) {
+                        this.set.pushHistory(prevRoot);
+                    }
+
+                    this.viz.enqueueOperation(recorder.snapshots, instant);
+                    this.updateUndoButton();
+                    if (logText) this.addLog(logText);
+                },
+
+                handleInsert() {
+                    const values = this.parseInputValues(false);
+                    if (!values) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    document.getElementById('inputValue').value = '';
+
+                    this.runOp(recorder => {
+                        for (const val of values) {
+                            this.set.insert(val, recorder);
+                        }
+                    }, {
+                        instant,
+                        recordHistory: true,
+                        logText: `insert: ${values.join(', ')}`
+                    });
+                },
+
+                handleDelete() {
+                    const values = this.parseInputValues(false);
+                    if (!values) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    document.getElementById('inputValue').value = '';
+
+                    this.runOp(recorder => {
+                        for (const val of values) {
+                            this.set.delete(val, recorder);
+                        }
+                    }, {
+                        instant,
+                        recordHistory: true,
+                        logText: `delete: ${values.join(', ')}`
+                    });
+                },
+
+                handleContains() {
+                    const values = this.parseInputValues(true);
+                    if (!values) return;
+                    const instant = document.getElementById('chkInstant').checked;
+                    let result = false;
+
+                    this.runOp(recorder => {
+                        result = this.set.contains(values[0], recorder);
+                    }, {
+                        instant,
+                        recordHistory: false,
+                        logText: `contains(${values[0]}) → ${result}`
+                    });
+                },
+
+                handleMinimum() {
+                    const instant = document.getElementById('chkInstant').checked;
+                    let res = null;
+
+                    this.runOp(recorder => {
+                        res = this.set.findExtreme('L', recorder);
+                    }, {
+                        instant,
+                        recordHistory: false,
+                        logText: res !== null ? `minimum() → ${res}` : 'minimum() → empty'
+                    });
+                },
+
+                handleMaximum() {
+                    const instant = document.getElementById('chkInstant').checked;
+                    let res = null;
+
+                    this.runOp(recorder => {
+                        res = this.set.findExtreme('R', recorder);
+                    }, {
+                        instant,
+                        recordHistory: false,
+                        logText: res !== null ? `maximum() → ${res}` : 'maximum() → empty'
+                    });
+                },
+
+                handleUndo() {
+                    if (this.viz.isBusy() || this.set.history.length === 0) return;
+
+                    const prevRoot = this.set.root;
+                    const restored = this.set.restoreFromHistory();
+
+                    const recorder = new SnapshotRecorder(prevRoot);
+                    recorder.emit(restored, { text: 'Undo successful.' });
+
+                    this.viz.enqueueOperation(recorder.snapshots, false);
+                    this.updateUndoButton();
+                    this.addLog('Undo');
+                },
+
+                handleClear() {
+                    if (this.viz.isBusy()) return;
+
+                    const prevRoot = this.set.root;
+                    if (prevRoot !== null) {
+                        this.set.clear();
+                        this.set.pushHistory(prevRoot);
+                        this.addLog('Cleared set');
+                    }
+                    this.viz.reset('Set cleared. Ready.');
+                    this.updateUndoButton();
+                },
+
+                handleRandomSet() {
+                    const instant = document.getElementById('chkInstant').checked;
+                    const count = 12;
+                    const values = new Set();
+                    while (values.size < count) values.add(Math.floor(Math.random() * 99) + 1);
+                    const arr = [...values];
+
+                    this.runOp(recorder => {
+                        for (const val of arr) {
+                            this.set.insert(val, recorder);
+                        }
+                    }, {
+                        instant,
+                        recordHistory: true,
+                        resetBefore: true,
+                        logText: `Random set (${arr.join(', ')})`
+                    });
+                },
+
+                runDemo(setupValues, actionFn, setupMsg, logMsg) {
+                    if (this.viz.isBusy()) return;
+
+                    const prevRoot = this.set.root;
+                    this.set.clear();
+
+                    const silent = { emit() {} };
+                    for (const val of setupValues) {
+                        this.set.insert(val, silent);
+                    }
+
+                    const recorder = new SnapshotRecorder(this.set.root, setupMsg);
+                    actionFn(recorder);
+
+                    this.set.pushHistory(prevRoot);
+                    this.viz.enqueueOperation(recorder.snapshots, false);
+                    this.updateUndoButton();
+                    this.addLog(logMsg);
+                },
+
+                handleDemoSimpleRight() {
+                    this.runDemo(
+                        [30, 20],
+                        recorder => this.set.insert(10, recorder),
+                        'Setup: {20, 30}. Next: insert(10) [LL Case -> Right Rotation]',
+                        'Demo: Right Rotation (LL)'
+                    );
+                },
+
+                handleDemoSimpleLeft() {
+                    this.runDemo(
+                        [10, 20],
+                        recorder => this.set.insert(30, recorder),
+                        'Setup: {10, 20}. Next: insert(30) [RR Case -> Left Rotation]',
+                        'Demo: Left Rotation (RR)'
+                    );
+                },
+
+                handleDemoDoubleLeftRight() {
+                    this.runDemo(
+                        [30, 10],
+                        recorder => this.set.insert(20, recorder),
+                        'Setup: {10, 30}. Next: insert(20) [LR Case -> Double Rotation]',
+                        'Demo: Left-Right Rotation (LR)'
+                    );
+                },
+
+                handleDemoDoubleRightLeft() {
+                    this.runDemo(
+                        [10, 30],
+                        recorder => this.set.insert(20, recorder),
+                        'Setup: {10, 30}. Next: insert(20) [RL Case -> Double Rotation]',
+                        'Demo: Right-Left Rotation (RL)'
+                    );
+                },
+
+                handleDemoDeleteRotation() {
+                    this.runDemo(
+                        [20, 10, 30, 40],
+                        recorder => this.set.delete(10, recorder),
+                        'Setup: {10, 20, 30, 40}. Next: delete(10) [Triggers Left Rotation at 20]',
+                        'Demo: Delete triggering rotation'
+                    );
+                }
+            };
+
+            window.addEventListener('DOMContentLoaded', () => app.init());
+        })();
+    </script>
+</body>
+
+</html>
