@@ -305,7 +305,7 @@
             font-size: 0.78rem;
             box-shadow: 0 2px 8px rgba(0, 0, 0, 0.12);
             backdrop-filter: blur(4px);
-            max-width: 215px;
+            max-width: 220px;
             z-index: 5;
         }
 
@@ -363,6 +363,19 @@
             width: 14px;
             text-align: center;
             line-height: 1;
+        }
+
+        .badge-icon {
+            font-family: monospace;
+            font-size: 10px;
+            font-weight: 700;
+            padding: 1px 3px;
+            border-radius: 3px;
+            background: #EDE7F6;
+            color: #5E35B1;
+            border: 1px solid #B39DDB;
+            line-height: 1;
+            flex-shrink: 0;
         }
 
         #camera-controls {
@@ -628,7 +641,7 @@
             <span id="status-text">Ready. Wheel/Pinch to Zoom, Drag to Pan, Hover/Click any key.</span>
             <div class="status-meta">
                 <span id="step-counter">Step: -</span>
-                <span id="ht-stats">Size: 0 | Cap: 17 | &alpha;: 0.00 | Max Cluster: 0</span>
+                <span id="ht-stats">Size: 0 | Cap: 11 | &alpha;: 0.00 | Max Cluster: 0</span>
             </div>
         </div>
     </header>
@@ -644,13 +657,14 @@
             <div class="legend-body">
                 <div class="legend-item"><div class="square" style="background:#99FFFF;"></div><span>Empty / Occupied Cell</span></div>
                 <div class="legend-item"><div class="square" style="background:#B0F9B0;"></div><span>Stored Key</span></div>
+                <div class="legend-item"><div class="badge-icon">h:3 +2</div><span>Home Hash &amp; Displacement</span></div>
                 <div class="legend-item"><div class="square" style="background:#E1BEE7;"></div><span>Probe Check</span></div>
                 <div class="legend-item"><div class="square" style="background:#00E676;"></div><span>Match / Insert Hit</span></div>
                 <div class="legend-item"><div class="square" style="background:#FFCA28; border:1px solid #EF6C00;"></div><span>Updated Key (Duplicate)</span></div>
                 <div class="legend-item"><div class="square" style="background:#D32F2F;"></div><span>Search Miss / Hole</span></div>
                 <div class="legend-item"><div class="arrow-icon" style="color:#7F00FF;">&#8631;</div><span>Probe Path</span></div>
                 <div class="legend-item"><div class="arrow-icon" style="color:#D50000;">&#8630;</div><span>Backward Shift</span></div>
-                <div class="legend-item"><div class="square" style="background:#FFD700;"></div><span>Rehashing Key</span></div>
+                <div class="legend-item"><div class="square" style="background:#FFD700;"></div><span>Rehashing / Moving Key</span></div>
             </div>
         </div>
 
@@ -686,7 +700,7 @@
             <h2 id="modalTitle">Linear Probing Hash Table</h2>
 
             <h3>Concept</h3>
-            <p>An open addressing strategy where collisions are resolved by probing linearly: <code>(index + 1) % keys.length</code>. All keys belonging to a probe sequence form a contiguous <strong>cluster</strong> terminated by a <code>null</code> cell.</p>
+            <p>An open addressing strategy where collisions are resolved by probing linearly: <code>(index + 1) % keys.length</code>. All keys belonging to a probe sequence form a contiguous <strong>cluster</strong> terminated by a <code>null</code> cell. Displaced keys display a badge <code>h:home (+dist)</code> indicating their home hash index and probe distance.</p>
 
             <h3>Operations &amp; Complexity (aligned with Java)</h3>
             <ul>
@@ -731,7 +745,10 @@
                 PROBE_CHECK_BG: '#E1BEE7',
                 HASH_BOX_BG: '#CC99FF',
                 FLY_BG: '#FFD700',
-                HOVER_RING: '#FF6D00'
+                HOVER_RING: '#FF6D00',
+                DIST_BADGE_BG: '#EDE7F6',
+                DIST_BADGE_BORDER: '#B39DDB',
+                DIST_BADGE_TEXT: '#4527A0'
             };
 
             const DARK_THEME = {
@@ -753,7 +770,10 @@
                 UPDATE_BG: '#FFB300',
                 UPDATE_STROKE: '#FFE082',
                 HASH_BOX_BG: '#6A1B9A',
-                HOVER_RING: '#FFB300'
+                HOVER_RING: '#FFB300',
+                DIST_BADGE_BG: '#2d2244',
+                DIST_BADGE_BORDER: '#7e57c2',
+                DIST_BADGE_TEXT: '#d1c4e9'
             };
 
             let COLORS = LIGHT_THEME;
@@ -776,7 +796,8 @@
             }
 
             class LinearProbingHashTable {
-                constructor(capacity = 17, maxLoadFactor = 0.5) {
+                // Default initial capacity synchronized to 11
+                constructor(capacity = 11, maxLoadFactor = 0.5) {
                     this.capacity = capacity;
                     this.table = new Array(capacity).fill(null);
                     this.size = 0;
@@ -883,8 +904,6 @@
                 insert(key, recordSnapshot, recordHistory = true) {
                     if (recordHistory) this.saveToHistory();
 
-                    // Matches Java LinearProbingHashTable.insert:
-                    // 1) Check loadFactor() > maxLoadFactor BEFORE searchIndex(key)
                     let rehashed = false;
                     if (this.loadFactor() > this.maxLoadFactor) {
                         this.rehash(recordSnapshot);
@@ -905,7 +924,6 @@
 
                     while (this.table[idx] !== null) {
                         if (this.table[idx] === key) {
-                            // Java: keys[index] = key; (replaces/updates existing key, size unchanged)
                             this.table[idx] = key;
                             recordSnapshot(this.getSnapshotData(), {
                                 text: `Key '${key}' found at ${idx}: updating keys[${idx}] = '${key}' (size stays ${this.size}).`,
@@ -935,7 +953,6 @@
                         idx = nextIdx;
                         steps++;
                         if (steps >= this.capacity) {
-                            // Full table safety fallback (should not happen with maxLoadFactor < 1)
                             this.rehash(recordSnapshot);
                             return this.insert(key, recordSnapshot, false);
                         }
@@ -1125,7 +1142,7 @@
                     this.resetProbePath();
 
                     if (mode === 'backward') {
-                        // Exact Java LinearProbingHashTable.delete(int index) - Backward Shifting
+                        // Backward Shifting with animated flying arc for moved keys
                         this.size--;
                         let emptyIndex = foundIndex;
 
@@ -1189,6 +1206,16 @@
                             this.table[emptyIndex] = keyToShift;
                             this.table[currentIndex] = null;
 
+                            // Step 1: Animate flying arc from currentIndex -> emptyIndex
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Shifting '${keyToShift}' from ${currentIndex} back to ${emptyIndex}...`,
+                                holeIdx: emptyIndex,
+                                hashCalc: { key: keyToShift, hash: keyToShiftHash },
+                                shiftArrow: { from: currentIndex, to: emptyIndex },
+                                flyingMove: { key: keyToShift, fromIdx: currentIndex, toIdx: emptyIndex }
+                            });
+
+                            // Step 2: Landed in emptyIndex; currentIndex becomes the new hole
                             recordSnapshot(this.getSnapshotData(), {
                                 text: `Shifted '${keyToShift}' from ${currentIndex} back to ${emptyIndex}.`,
                                 highlightIdx: emptyIndex,
@@ -1201,7 +1228,7 @@
                             emptyIndex = currentIndex;
                         }
                     } else {
-                        // Alternative Java private method: deleteByRehashingCluster(int index)
+                        // Rehash Cluster with animated flying arc when relocating keys
                         this.table[foundIndex] = null;
                         this.size--;
                         let cur = this.advance(foundIndex);
@@ -1213,7 +1240,7 @@
 
                             recordSnapshot(this.getSnapshotData(), {
                                 text: `Re-inserting '${keyToRelocate}' (was at ${cur}). Hash = ${h}.`,
-                                highlightIdx: cur,
+                                holeIdx: cur,
                                 hashCalc: { key: keyToRelocate, hash: h },
                                 startProbeIdx: h
                             });
@@ -1227,6 +1254,17 @@
                             }
                             this.table[dest] = keyToRelocate;
 
+                            // Step 1: Animate flying arc from cur -> dest
+                            recordSnapshot(this.getSnapshotData(), {
+                                text: `Moving '${keyToRelocate}' from ${cur} to ${dest}...`,
+                                holeIdx: cur,
+                                hashCalc: { key: keyToRelocate, hash: h },
+                                probeArrows: path,
+                                startProbeIdx: h,
+                                flyingMove: { key: keyToRelocate, fromIdx: cur, toIdx: dest }
+                            });
+
+                            // Step 2: Landed at dest
                             recordSnapshot(this.getSnapshotData(), {
                                 text: `Relocated '${keyToRelocate}' to ${dest}.`,
                                 highlightIdx: dest,
@@ -1349,19 +1387,20 @@
                     let contentW, contentH, centerXOffset = 0;
 
                     if (meta.rehashMode) {
-                        const oldW = meta.oldCapacity * this.boxSize;
+                        // Stacked vertically: New Table width dictates horizontal span, vertical span holds both tables + data boxes
                         const newW = data.capacity * this.boxSize;
-                        contentW = oldW + 150 + newW;
-                        contentH = 340;
+                        contentW = newW + 130; // room for "Old Table" / "New Table" side labels
+                        contentH = 470;
+                        centerXOffset = -35;
                     } else {
                         const arrayW = data.capacity * this.boxSize;
                         const sidePanelW = 250;
                         contentW = arrayW + sidePanelW;
-                        contentH = 360;
+                        contentH = 380;
                         centerXOffset = -sidePanelW / 2;
                     }
 
-                    const scale = Math.min(this.viewWidth / (contentW + 70), this.viewHeight / (contentH + 70), 2.2);
+                    const scale = Math.min(this.viewWidth / (contentW + 70), this.viewHeight / (contentH + 60), 2.2);
                     this.camera.targetScale = Math.max(0.15, scale);
                     this.camera.targetX = centerXOffset;
                     this.camera.targetY = 0;
@@ -1708,7 +1747,11 @@
                             }
                         } else if (this.state === 'MORPH') {
                             const snap = this.snapshots[this.currentSnapshotIndex];
-                            const mod = (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') ? 0.55 : 1.0;
+                            const isFlying = snap.meta && (
+                                (snap.meta.rehashMode && snap.meta.phase === 'FLYING') ||
+                                snap.meta.flyingMove
+                            );
+                            const mod = isFlying ? 0.65 : 1.0;
                             this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * mod * dt;
 
                             if (this.morphProgress >= 1) {
@@ -1721,7 +1764,7 @@
                                     this.state = 'WAITING';
                                     let waitSec = 0.25 / this.speedMultiplier;
                                     if (snap.meta && snap.meta.pause) waitSec = 0.72 / this.speedMultiplier;
-                                    if (snap.meta && snap.meta.rehashMode && snap.meta.phase === 'FLYING') waitSec = 0.08 / this.speedMultiplier;
+                                    if (isFlying) waitSec = 0.08 / this.speedMultiplier;
                                     this.pauseTimer = waitSec;
                                 }
                             }
@@ -1768,16 +1811,32 @@
                     const leftPanelW = 105;
 
                     if (meta.rehashMode) {
-                        const oldW = meta.oldCapacity * this.boxSize;
-                        const newW = data.capacity * this.boxSize;
-                        const totalW = oldW + 150 + newW;
-                        this.drawRehashScene(data, meta, -totalW / 2, baseY);
+                        this.drawRehashScene(data, meta, baseY);
                         return;
                     }
 
                     const startX = -(data.capacity * this.boxSize) / 2;
                     this.drawStruct(startX - leftPanelW - 20, baseY, 72, data, startX);
                     this.drawArray(startX, baseY, this.boxSize, data, meta);
+
+                    // Animated flying key during deletion (Backward Shift or Rehash Cluster)
+                    if (meta.flyingMove) {
+                        const fm = meta.flyingMove;
+                        const cellSize = this.boxSize;
+                        const srcX = startX + fm.fromIdx * cellSize + cellSize / 2;
+                        const srcY = baseY + cellSize / 2 + 56;
+                        const destX = startX + fm.toIdx * cellSize + cellSize / 2;
+                        const destY = baseY + cellSize / 2 + 56;
+
+                        const t = this.morphProgress;
+                        const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                        const currX = srcX + (destX - srcX) * ease;
+                        // Arc downward below the array boxes (or slightly upward if wrapping)
+                        const arcHeight = Math.min(62, 26 + Math.abs(fm.toIdx - fm.fromIdx) * 8);
+                        const currY = srcY + (destY - srcY) * ease + (Math.sin(t * Math.PI) * arcHeight);
+
+                        this.drawFlyingKeyBox(currX, currY, fm.key);
+                    }
 
                     if (meta.hashCalc) {
                         const fade = meta.isCleanup ? (1 - this.morphProgress) : 1;
@@ -1788,6 +1847,19 @@
                             this.ctx.restore();
                         }
                     }
+                }
+
+                drawFlyingKeyBox(cx, topY, key) {
+                    const ctx = this.ctx;
+                    const boxW = 36, boxH = 32;
+                    this.paintRect(cx - boxW / 2, topY, boxW, boxH, COLORS.FLY_BG, { stroke: '#222', lineWidth: 1.5, inset: true });
+                    const str = String(key);
+                    const fs = str.length <= 2 ? 19 : str.length === 3 ? 15 : 11;
+                    ctx.fillStyle = '#111111';
+                    ctx.font = `700 ${fs}px "Segoe UI", Arial, sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(str, cx, topY + boxH / 2 + 1, boxW - 6);
                 }
 
                 paintRect(x, y, w, h, fill, { stroke = null, lineWidth = 1, alpha = 1, radius = 7, inset = false } = {}) {
@@ -1817,76 +1889,83 @@
                     c.restore();
                 }
 
-                drawRehashScene(data, meta, startX, baseY) {
+                drawRehashScene(data, meta, baseY) {
                     const ctx = this.ctx;
                     const cellSize = this.boxSize;
-                    const oldTableX = startX;
                     const oldW = meta.oldCapacity * cellSize;
-                    const newTableX = oldTableX + oldW + 150;
+                    const newW = data.capacity * cellSize;
 
+                    // Vertical stacking with enough clearance for data boxes & displacement badges
+                    const oldTableX = -oldW / 2;
+                    const oldTableY = baseY - 210;
+                    const newTableX = -newW / 2;
+                    const newTableY = baseY + 45;
+
+                    // Old Table label on the left
                     ctx.fillStyle = COLORS.TEXT_MUTED;
-                    ctx.font = 'bold 16px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText('Old Table', oldTableX + oldW / 2, baseY - 32);
+                    ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('Old Table', oldTableX - 18, oldTableY + cellSize / 2);
 
                     const oldTableDisplay = [...meta.oldTable];
                     meta.processedIndices.forEach(idx => oldTableDisplay[idx] = null);
                     if (meta.phase === 'FLYING' && meta.flyingNode) {
                         oldTableDisplay[meta.flyingNode.fromIdx] = null;
                     }
-                    this.drawArray(oldTableX, baseY, cellSize, { capacity: meta.oldCapacity, table: oldTableDisplay }, { isCleanup: true });
+                    this.drawArray(oldTableX, oldTableY, cellSize, { capacity: meta.oldCapacity, table: oldTableDisplay }, { isCleanup: true });
 
-                    const arrowX1 = oldTableX + oldW + 20;
-                    const arrowX2 = newTableX - 20;
-                    this.drawArrow(arrowX1, baseY + cellSize / 2, arrowX2, baseY + cellSize / 2, COLORS.TEXT_MUTED, 14);
+                    // Downward rehash transition arrow placed cleanly below Old Table's data boxes
+                    const arrowY1 = oldTableY + cellSize / 2 + 114;
+                    const arrowY2 = newTableY - 26;
+                    this.drawArrow(0, arrowY1, 0, arrowY2, COLORS.TEXT_MUTED, 11);
                     ctx.fillStyle = COLORS.TEXT_MUTED;
-                    ctx.font = '12px Arial';
-                    ctx.fillText('Rehashing', (arrowX1 + arrowX2) / 2, baseY + cellSize / 2 - 12);
+                    ctx.font = '600 12px "Segoe UI", Arial, sans-serif';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`Rehashing (${meta.oldCapacity} → ${data.capacity})`, 12, (arrowY1 + arrowY2) / 2);
 
-                    ctx.fillStyle = '#2E7D32';
-                    ctx.font = 'bold 16px Arial';
-                    ctx.fillText('New Table', newTableX + (data.capacity * cellSize) / 2, baseY - 32);
+                    // New Table label on the left
+                    ctx.fillStyle = COLORS === DARK_THEME ? '#66BB6A' : '#2E7D32';
+                    ctx.font = 'bold 15px "Segoe UI", Arial, sans-serif';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('New Table', newTableX - 18, newTableY + cellSize / 2);
 
                     const newTableDisplay = [...data.table];
                     if (meta.phase === 'FLYING' && meta.flyingNode && newTableDisplay[meta.flyingNode.toIdx] === meta.flyingNode.key) {
                         newTableDisplay[meta.flyingNode.toIdx] = null;
                     }
-                    this.drawArray(newTableX, baseY, cellSize, { capacity: data.capacity, table: newTableDisplay }, { isCleanup: true });
+                    this.drawArray(newTableX, newTableY, cellSize, { capacity: data.capacity, table: newTableDisplay }, { isCleanup: true });
 
+                    // Smooth arc from Old Table slot to New Table slot
                     if (meta.phase === 'FLYING' && meta.flyingNode) {
                         const fNode = meta.flyingNode;
                         const srcX = oldTableX + fNode.fromIdx * cellSize + cellSize / 2;
-                        const srcY = baseY + cellSize / 2 + 56;
+                        const srcY = oldTableY + cellSize / 2 + 56;
                         const destX = newTableX + fNode.toIdx * cellSize + cellSize / 2;
-                        const destY = baseY + cellSize / 2 + 56;
+                        const destY = newTableY + cellSize / 2 + 56;
 
                         const t = this.morphProgress;
                         const ease = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
-                        const currX = srcX + (destX - srcX) * ease;
-                        const currY = srcY + (destY - srcY) * ease - (Math.sin(t * Math.PI) * 52);
+                        const currX = srcX + (destX - srcX) * ease + (Math.sin(t * Math.PI) * 28);
+                        const currY = srcY + (destY - srcY) * ease;
 
-                        const boxW = 36, boxH = 32;
-                        this.paintRect(currX - boxW / 2, currY, boxW, boxH, COLORS.FLY_BG, { stroke: '#222', lineWidth: 1.5, inset: true });
-                        const str = String(fNode.key);
-                        const fs = str.length <= 2 ? 19 : str.length === 3 ? 15 : 11;
-                        ctx.fillStyle = '#111111';
-                        ctx.font = `700 ${fs}px "Segoe UI", Arial, sans-serif`;
-                        ctx.textAlign = 'center';
-                        ctx.textBaseline = 'middle';
-                        ctx.fillText(str, currX, currY + boxH / 2 + 1, boxW - 6);
+                        this.drawFlyingKeyBox(currX, currY, fNode.key);
                     }
                 }
 
                 drawStruct(x, y, w, data, arrowDestX) {
                     const ctx = this.ctx;
                     const h = 36;
+                    const gap = 2;
 
                     ctx.textAlign = 'right';
                     ctx.textBaseline = 'middle';
                     ctx.font = '15px monospace';
                     ctx.fillStyle = COLORS.TEXT_MAIN;
                     ctx.fillText('keys', x - 8, y + h / 2);
-                    this.paintRect(x, y, w, h, COLORS.STRUCT_KEYS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2, inset: true });
+                    this.paintRect(x + gap / 2, y + gap / 2, w - gap, h - gap, COLORS.STRUCT_KEYS_BG);
 
                     const dotX = x + w / 2, dotY = y + h / 2;
                     ctx.beginPath();
@@ -1899,7 +1978,7 @@
                     ctx.font = '15px monospace';
                     ctx.fillStyle = COLORS.TEXT_MAIN;
                     ctx.fillText('size', x - 8, y + h + h / 2);
-                    this.paintRect(x, y + h, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2, inset: true });
+                    this.paintRect(x + gap / 2, y + h + gap / 2, w - gap, h - gap, COLORS.STRUCT_STATS_BG);
                     ctx.textAlign = 'center';
                     ctx.fillStyle = COLORS.TEXT_RED;
                     ctx.font = 'bold 20px Arial';
@@ -1909,7 +1988,7 @@
                     ctx.font = '14px monospace';
                     ctx.fillStyle = COLORS.TEXT_MAIN;
                     ctx.fillText('maxLoadFactor', x - 8, y + h * 2 + h / 2);
-                    this.paintRect(x, y + h * 2, w, h, COLORS.STRUCT_STATS_BG, { stroke: COLORS.CELL_STROKE, lineWidth: 2, inset: true });
+                    this.paintRect(x + gap / 2, y + h * 2 + gap / 2, w - gap, h - gap, COLORS.STRUCT_STATS_BG);
                     ctx.textAlign = 'center';
                     ctx.fillStyle = COLORS.TEXT_RED;
                     ctx.font = 'bold 18px Arial';
@@ -1919,6 +1998,8 @@
                 drawArray(x, y, size, data, meta) {
                     const ctx = this.ctx;
                     const table = data.table;
+                    const hideFlyingDest = (meta.flyingMove && this.morphProgress < 1) ? meta.flyingMove.toIdx : -1;
+                    const cellGap = 3; // Espacio real entre celdas para que se vea el fondo del canvas
 
                     for (let i = 0; i < data.capacity; i++) {
                         const cx = x + i * size;
@@ -1931,30 +2012,37 @@
                         ctx.fillText(i, cx + size / 2, cy - 6);
 
                         let cellColor = COLORS.CELL_BG;
-                        let cellStroke = COLORS.CELL_STROKE;
-                        let cellStrokeW = 1.5;
+                        let cellStroke = null;
+                        let cellStrokeW = 0;
 
                         if (meta.holeIdx === i) {
                             cellColor = COLORS.HOLE_BG;
                             cellStroke = COLORS.HOLE_STROKE;
-                            cellStrokeW = 2.5;
+                            cellStrokeW = 2;
                         }
                         if (meta.highlightIdx === i) {
                             if (meta.hit) cellColor = COLORS.HIT_CELL;
                             else if (meta.update) {
                                 cellColor = COLORS.UPDATE_BG;
                                 cellStroke = COLORS.UPDATE_STROKE;
-                                cellStrokeW = 2.5;
+                                cellStrokeW = 2;
                             }
                             else if (meta.miss) cellColor = COLORS.MISS_CELL_BG;
                             else if (meta.probeCheck) cellColor = COLORS.PROBE_CHECK_BG;
                         }
 
-                        this.paintRect(cx, cy, size, size, cellColor, { stroke: cellStroke, lineWidth: cellStrokeW, inset: true });
+                        this.paintRect(
+                            cx + cellGap / 2,
+                            cy + cellGap / 2,
+                            size - cellGap,
+                            size - cellGap,
+                            cellColor,
+                            { stroke: cellStroke, lineWidth: cellStrokeW, inset: true }
+                        );
 
                         const dotX = cx + size / 2;
                         const dotY = cy + size / 2;
-                        const occupied = table[i] !== null;
+                        const occupied = table[i] !== null && i !== hideFlyingDest;
 
                         ctx.beginPath();
                         ctx.arc(dotX, dotY, 5, 0, Math.PI * 2);
@@ -2000,6 +2088,27 @@
                             ctx.textAlign = 'center';
                             ctx.textBaseline = 'middle';
                             ctx.fillText(str, dotX, boxY + boxH / 2 + 1, boxW - 6);
+
+                            // Discrete badge on displaced keys (dist > 0) showing home hash and offset
+                            if (this.callbacks.getKeyInfo) {
+                                const info = this.callbacks.getKeyInfo(table[i], i, data.capacity);
+                                if (info && info.dist > 0) {
+                                    const badgeText = `h:${info.hash} +${info.dist}`;
+                                    const bw = 42, bh = 14;
+                                    const by = boxY + boxH + 4;
+                                    this.paintRect(dotX - bw / 2, by, bw, bh, COLORS.DIST_BADGE_BG, {
+                                        stroke: COLORS.DIST_BADGE_BORDER,
+                                        lineWidth: 1,
+                                        radius: 4,
+                                        inset: true
+                                    });
+                                    ctx.fillStyle = COLORS.DIST_BADGE_TEXT;
+                                    ctx.font = '700 9px monospace';
+                                    ctx.textAlign = 'center';
+                                    ctx.textBaseline = 'middle';
+                                    ctx.fillText(badgeText, dotX, by + bh / 2 + 0.5, bw - 4);
+                                }
+                            }
                         }
 
                         if (meta.highlightIdx === i && meta.miss) {
@@ -2045,12 +2154,12 @@
                             });
                         }
 
-                        // Backward-shift arrow drawn cleanly below data boxes
+                        // Backward-shift arrow drawn cleanly below data boxes and displacement badges
                         if (meta.shiftArrow) {
                             const { from, to } = meta.shiftArrow;
                             const fx = x + from * size + size / 2;
                             const tx = x + to * size + size / 2;
-                            const sy = y + size / 2 + 56 + 38;
+                            const sy = y + size / 2 + 56 + 52;
 
                             ctx.save();
                             ctx.strokeStyle = COLORS.ARROW_SHIFT;
@@ -2064,7 +2173,6 @@
                                 ctx.stroke();
                                 this.drawArrowHead(tx, sy + 2, Math.atan2(sy + 2 - cpY, tx - midX), COLORS.ARROW_SHIFT, 9);
                             } else {
-                                // Wrap-around shift (e.g., from 0 back to capacity - 1)
                                 ctx.beginPath();
                                 ctx.moveTo(fx, sy);
                                 ctx.quadraticCurveTo(fx - 26, sy + 42, fx - 54, sy + 12);
@@ -2138,7 +2246,8 @@
             }
 
             const app = {
-                ht: new LinearProbingHashTable(17, 0.5),
+                // Synchronized initial capacity to 11 (matching selInitCap default)
+                ht: new LinearProbingHashTable(11, 0.5),
                 viz: null,
                 isDark: false,
                 logs: [],
@@ -2185,9 +2294,9 @@
                         const lf = parseFloat(document.getElementById('selMaxLF').value);
                         if (this.ht.loadFactor() > lf && !this.isBusy()) {
                             this.runOp(rec => {
-                                this.ht.saveToHistory();     
-                                this.ht.maxLoadFactor = lf;  
-                                this.ht.rehash(rec);         
+                                this.ht.saveToHistory();
+                                this.ht.maxLoadFactor = lf;
+                                this.ht.rehash(rec);
                                 this.ht.cleanUp(rec, `Rehashed for Max α = ${lf}. Ready.`);
                             }, { instant: document.getElementById('chkInstant').checked, logText: `Max α -> ${lf} (rehash)` });
                         } else {
@@ -2458,7 +2567,7 @@
                     if (this.ht.size > 0) {
                         this.ht.saveToHistory();
                     }
-                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 17;
+                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 11;
                     const lf = parseFloat(document.getElementById('selMaxLF').value) || 0.5;
 
                     const oldHistory = this.ht.history;
@@ -2495,7 +2604,7 @@
                     const instant = document.getElementById('chkInstant').checked;
                     if (this.ht.size > 0) this.ht.saveToHistory();
 
-                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 17;
+                    const cap = parseInt(document.getElementById('selInitCap').value, 10) || 11;
                     const lf = parseFloat(document.getElementById('selMaxLF').value) || 0.5;
                     const oldHistory = this.ht.history;
                     this.ht = new LinearProbingHashTable(cap, lf);
