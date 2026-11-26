@@ -1494,7 +1494,7 @@
                     // Implementation 3-cell horizontal strip metrics + external value box
                     this.structView = false;
                     this.structPtrW = 18;
-                    this.structCellGap = 2.5;
+                    this.structCellGap = 1.5;
                     this.structW = this.structPtrW * 3 + this.structCellGap * 2; // 59
                     this.structH = 40;
                     this.structValGap = 22;
@@ -2471,7 +2471,7 @@
                     const dyTotal = y2 - y1;
                     if (Math.hypot(dxTotal, dyTotal) < 3) return;
 
-                    const exitY = y1 + halfH + 8 * pScale;
+                    const exitY = y1 + 2*halfH/3 + 8 * pScale;
                     const useVerticalExit = y2 > exitY + 12;
 
                     const angle = useVerticalExit
@@ -2520,6 +2520,14 @@
                     ctx.restore();
                 }
 
+                rect(x, y, w, h, fill, alpha = 1, stroke = null, lineWidth = 0, r = 4) {
+                    const c = this.ctx;
+                    c.save(); c.globalAlpha *= alpha; c.beginPath(); c.roundRect(x, y, w, h, r);
+                    if (fill && fill !== 'transparent') { c.fillStyle = fill; c.fill(); }
+                    if (stroke && lineWidth > 0) { c.strokeStyle = stroke; c.lineWidth = lineWidth; c.stroke(); }
+                    c.restore();
+                }    
+
                 /**
                  * Draw the tall narrow cyan `root` reference box above the root node
                  * with a solid blue dot (and downward arrow when non-empty).
@@ -2551,7 +2559,8 @@
                     ctx.fillText('root', rx - boxW / 2 - 7, ry + 0.5);
 
                     ctx.fillStyle = this.theme.STRUCT_ROOT_BG;
-                    ctx.fillRect(rx - boxW / 2, ry - boxH / 2, boxW, boxH);
+                    //ctx.fillRect(rx - boxW / 2, ry - boxH / 2, boxW, boxH);
+                    this.rect(rx - boxW / 2, ry - boxH / 2, boxW, boxH, this.theme.STRUCT_ROOT_BG);
 
                     if (rootNode) {
                         const targetX = rootNode.x;
@@ -2624,7 +2633,8 @@
 
                     // 1. External green value box
                     ctx.fillStyle = valFill;
-                    ctx.fillRect(valLeft, valTop, valW, valH);
+                    //ctx.fillRect(valLeft, valTop, valW, valH);
+                    this.rect(valLeft, valTop, valW, valH, valFill);
 
                     const str = String(val);
                     const valFontSize = str.length <= 2 ? 20 : str.length === 3 ? 16 : str.length === 4 ? 13 : 11;
@@ -2636,7 +2646,8 @@
 
                     // 2. Cell 1: Purple element pointer
                     ctx.fillStyle = this.theme.STRUCT_ELEM_PTR_BG;
-                    ctx.fillRect(xElem, -halfH, ptrW, h);
+                    //ctx.fillRect(xElem, -halfH, ptrW, h);
+                    this.rect(xElem, -halfH, ptrW, h, this.theme.STRUCT_ELEM_PTR_BG);
 
                     const dotX = xElem + ptrW / 2;
                     const dotY = 0;
@@ -2651,8 +2662,10 @@
 
                     // 3. Cell 2 & Cell 3: Cyan left and right pointer cells
                     ctx.fillStyle = this.theme.STRUCT_PTR_BG;
-                    ctx.fillRect(xLeft, -halfH, ptrW, h);
-                    ctx.fillRect(xRight, -halfH, ptrW, h);
+                    //ctx.fillRect(xLeft, -halfH, ptrW, h);
+                    this.rect(xLeft, -halfH, ptrW, h, this.theme.STRUCT_PTR_BG);
+                    //ctx.fillRect(xRight, -halfH, ptrW, h);
+                    this.rect(xRight, -halfH, ptrW, h, this.theme.STRUCT_PTR_BG);
 
                     // Draw solid blue dots for null pointers (non-null dots are drawn on top of edge origins)
                     const drawPtrDot = (cx, side, hasChild) => {

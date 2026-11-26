@@ -881,7 +881,7 @@
 
             /**
              * Standardized snapshot contract:
-             * { heap, highlights, activeEdges, heapifiedSet, levelMap, arrows, text, pause }
+             * { heap, highlights, activeEdges, heapifiedSet, activeSubtree, levelMap, arrows, text, pause }
              */
             class SnapshotRecorder {
                 constructor(initialHeap = EMPTY_HEAP, initialText = null) {
@@ -890,6 +890,7 @@
                         highlights: new Map(),
                         activeEdges: [],
                         heapifiedSet: null,
+                        activeSubtree: null,
                         levelMap: null,
                         arrows: [],
                         text: initialText,
@@ -908,6 +909,7 @@
                         highlights,
                         activeEdges: options.activeEdges ? options.activeEdges.map(e => [...e]) : [],
                         heapifiedSet: options.heapifiedSet ? new Set(options.heapifiedSet) : null,
+                        activeSubtree: options.activeSubtree ? new Set(options.activeSubtree) : null,
                         levelMap: options.levelMap ? new Map(options.levelMap) : null,
                         arrows: options.arrows ? options.arrows.map(a => ({ ...a })) : [],
                         text: options.text ?? null,
@@ -1059,6 +1061,18 @@
                     this.heap = Object.freeze(values.map(v => new HeapItem(v)));
                     const heapifiedSet = new Set();
 
+                    const getSubtreeSet = rootIdx => {
+                        const set = new Set();
+                        const collect = idx => {
+                            if (idx >= this.heap.length) return;
+                            set.add(idx);
+                            collect(HeapUtils.left(idx));
+                            collect(HeapUtils.right(idx));
+                        };
+                        collect(rootIdx);
+                        return set;
+                    };
+
                     recorder.emit(this.heap, {
                         pause: true,
                         text: 'Initial Unsorted Array (Floyd O(n))'
@@ -1078,25 +1092,23 @@
                     }
 
                     for (let i = startIdx; i >= 0; i--) {
+                        const activeSubtree = getSubtreeSet(i);
+
                         recorder.emit(this.heap, {
                             highlights: [[i, 'NEW']],
                             heapifiedSet,
+                            activeSubtree,
                             pause: true,
                             text: `Heapifying down from index ${i} (${this.heap[i].val})`
                         });
 
-                        this.heapifyDown(i, recorder, heapifiedSet, true);
+                        this.heapifyDown(i, recorder, heapifiedSet, true, activeSubtree);
 
-                        const markSubtree = idx => {
-                            if (idx >= this.heap.length) return;
-                            heapifiedSet.add(idx);
-                            markSubtree(HeapUtils.left(idx));
-                            markSubtree(HeapUtils.right(idx));
-                        };
-                        markSubtree(i);
+                        activeSubtree.forEach(idx => heapifiedSet.add(idx));
 
                         recorder.emit(this.heap, {
                             heapifiedSet,
+                            activeSubtree,
                             pause: true,
                             text: `Subtree at index ${i} heapified`
                         });
@@ -1110,7 +1122,7 @@
                     recorder.emit(this.heap, { text: 'Build Heap complete. Ready.' });
                 }
 
-                heapifyDown(index, recorder, persistentSet = null, isBuildHeap = false) {
+                heapifyDown(index, recorder, persistentSet = null, isBuildHeap = false, activeSubtree = null) {
                     const size = this.heap.length;
 
                     while (true) {
@@ -1123,6 +1135,7 @@
                                 highlights: [[left, 'SELECTED'], [right, 'SELECTED']],
                                 activeEdges: [[index, left], [index, right]],
                                 heapifiedSet: persistentSet,
+                                activeSubtree,
                                 pause: true,
                                 text: `Comparing children: ${this.heap[left].val} (idx ${left}) vs ${this.heap[right].val} (idx ${right})`
                             });
@@ -1133,6 +1146,7 @@
                             recorder.emit(this.heap, {
                                 highlights: [[index, 'SATISFIED']],
                                 heapifiedSet: persistentSet,
+                                activeSubtree,
                                 pause: true,
                                 text: `Reached leaf at index ${index}`
                             });
@@ -1143,6 +1157,7 @@
                             highlights: [[index, 'NEW'], [smallestChildIdx, 'SELECTED']],
                             activeEdges: [[index, smallestChildIdx]],
                             heapifiedSet: persistentSet,
+                            activeSubtree,
                             pause: true,
                             text: `Comparing Parent ${this.heap[index].val} (idx ${index}) vs Smallest Child ${this.heap[smallestChildIdx].val} (idx ${smallestChildIdx})`
                         });
@@ -1162,6 +1177,7 @@
                                 highlights: [[smallestChildIdx, 'NEW'], [index, oldIdxColor]],
                                 activeEdges: [[index, smallestChildIdx]],
                                 heapifiedSet: persistentSet,
+                                activeSubtree,
                                 pause: false,
                                 text: `Swapped index ${index} and ${smallestChildIdx}`
                             });
@@ -1171,6 +1187,7 @@
                                 highlights: [[index, 'SATISFIED'], [smallestChildIdx, 'SATISFIED']],
                                 activeEdges: [[index, smallestChildIdx]],
                                 heapifiedSet: persistentSet,
+                                activeSubtree,
                                 pause: true,
                                 text: `Order Satisfied (${this.heap[index].val} <= ${this.heap[smallestChildIdx].val})`
                             });
@@ -1889,18 +1906,18 @@
                     const t = this.theme;
                     switch (colorKey) {
                         case 'NEW':
-                            return { fill: t.NEW, stroke: t.NEW/*_STROKE*/, text: t.NEW_TEXT };
+                            return { fill: t.NEW, stroke: t.NEW, text: t.NEW_TEXT };
                         case 'SELECTED':
                         case 'COMPARING':
-                            return { fill: t.COMPARING, stroke: t.COMPARING/*_STROKE*/, text: t.COMPARING_TEXT };
+                            return { fill: t.COMPARING, stroke: t.COMPARING, text: t.COMPARING_TEXT };
                         case 'SATISFIED':
-                            return { fill: t.SATISFIED, stroke: t.SATISFIED/*'#FFFFFF'*/, text: t.SATISFIED_TEXT };
+                            return { fill: t.SATISFIED, stroke: t.SATISFIED, text: t.SATISFIED_TEXT };
                         case 'HEAPIFIED':
-                            return { fill: t.HEAPIFIED, stroke: t.HEAPIFIED/*_STROKE*/, text: t.HEAPIFIED_TEXT };
+                            return { fill: t.HEAPIFIED, stroke: t.HEAPIFIED, text: t.HEAPIFIED_TEXT };
                         case 'DELETE':
-                            return { fill: t.DELETE, stroke: t.DELETE/*'#FFFFFF'*/, text: '#FFFFFF' };
+                            return { fill: t.DELETE, stroke: t.DELETE, text: '#FFFFFF' };
                         default:
-                            return { fill: t.DEFAULT, stroke: t.DEFAULT/*t.STROKE*/, text: t.TEXT };
+                            return { fill: t.DEFAULT, stroke: t.DEFAULT, text: t.TEXT };
                     }
                 }
 
@@ -1915,7 +1932,7 @@
                         return {
                             colorKey: 'LEVEL',
                             fill: t.LEVELS[lvl % t.LEVELS.length],
-                            stroke: t.LEVELS[lvl % t.LEVELS.length] /*t.LEVEL_STROKE*/,
+                            stroke: t.LEVELS[lvl % t.LEVELS.length],
                             text: t.LEVEL_CELL_TEXT
                         };
                     }
@@ -2164,6 +2181,7 @@
                     const mapB = snapB.layout.nodes;
                     const idxMapA = snapA.layout.idxMap;
                     const idxMapB = snapB.layout.idxMap;
+                    const dimAlpha = 0.45;
 
                     const ids = new Set([...mapA.keys(), ...mapB.keys()]);
                     const result = [];
@@ -2175,8 +2193,14 @@
                         if (nA && nB) {
                             const useB = t > 0.5;
                             const refSnap = useB ? snapB : snapA;
-                            const visualIdx = useB ? idxMapB.get(id) : idxMapA.get(id);
+                            const idxA = idxMapA.get(id);
+                            const idxB = idxMapB.get(id);
+                            const visualIdx = useB ? idxB : idxA;
                             const vis = this.resolveCellVisual(visualIdx, refSnap);
+
+                            const alphaA = (snapA.activeSubtree && !snapA.activeSubtree.has(idxA)) ? dimAlpha : 1;
+                            const alphaB = (snapB.activeSubtree && !snapB.activeSubtree.has(idxB)) ? dimAlpha : 1;
+                            const alpha = alphaA + (alphaB - alphaA) * t;
 
                             result.push({
                                 id,
@@ -2186,7 +2210,7 @@
                                 idx: visualIdx,
                                 depth: useB ? nB.depth : nA.depth,
                                 scale: 1,
-                                alpha: 1,
+                                alpha,
                                 ...vis
                             });
                         } else if (!nA && nB) {
@@ -2201,6 +2225,7 @@
                                 startScale = 0.25;
                             }
 
+                            const targetAlpha = (snapB.activeSubtree && !snapB.activeSubtree.has(nB.idx)) ? dimAlpha : 1;
                             const vis = this.resolveCellVisual(nB.idx, snapB);
                             result.push({
                                 id,
@@ -2210,7 +2235,7 @@
                                 idx: nB.idx,
                                 depth: nB.depth,
                                 scale: startScale + (1 - startScale) * t,
-                                alpha: Math.min(1, t * 1.3),
+                                alpha: Math.min(1, t * 1.3) * targetAlpha,
                                 ...vis
                             });
                         } else if (nA && !nB) {
@@ -2468,7 +2493,7 @@
                     ctx.fillStyle = n.fill;
                     ctx.fill();
 
-                    ctx.strokeStyle = /*isHovered ? this.theme.RING_FOCUS :*/ n.stroke;
+                    ctx.strokeStyle = n.stroke;
                     ctx.lineWidth = isHovered ? 2.8 : 2.2;
                     ctx.stroke();
 

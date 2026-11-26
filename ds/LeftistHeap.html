@@ -1536,7 +1536,7 @@
                     this.structView = false;
                     this.structPtrW = 18;
                     this.structWeightW = 30;
-                    this.structCellGap = 2.5;
+                    this.structCellGap = 1.5;
                     this.structW = this.structPtrW * 3 + this.structWeightW + this.structCellGap * 3; // 91.5
                     this.structH = 40;
                     this.structValGap = 22;
@@ -2396,6 +2396,14 @@
                     }
                 }
 
+                rect(x, y, w, h, fill, alpha = 1, stroke = null, lineWidth = 0, r = 4) {
+                    const c = this.ctx;
+                    c.save(); c.globalAlpha *= alpha; c.beginPath(); c.roundRect(x, y, w, h, r);
+                    if (fill && fill !== 'transparent') { c.fillStyle = fill; c.fill(); }
+                    if (stroke && lineWidth > 0) { c.strokeStyle = stroke; c.lineWidth = lineWidth; c.stroke(); }
+                    c.restore();
+                }
+
                 drawLevelGuides(ctx, nodesToDraw) {
                     if (!nodesToDraw || nodesToDraw.length === 0) return;
                     let maxDepth = 0;
@@ -2523,7 +2531,7 @@
                     const dyTotal = y2 - y1;
                     if (Math.hypot(dxTotal, dyTotal) < 3) return;
 
-                    const exitY = y1 + halfH + 8 * pScale;
+                    const exitY = y1 + 2*halfH/3 + 8 * pScale;
                     const useVerticalExit = y2 > exitY + 12;
 
                     const angle = useVerticalExit
@@ -2609,7 +2617,8 @@
                     ctx.fillText(label, rx - boxW / 2 - 7, ry + 0.5);
 
                     ctx.fillStyle = boxFill;
-                    ctx.fillRect(rx - boxW / 2, ry - boxH / 2, boxW, boxH);
+                    //ctx.fillRect(rx - boxW / 2, ry - boxH / 2, boxW, boxH);
+                    this.rect(rx - boxW / 2, ry - boxH / 2, boxW, boxH, boxFill);
 
                     if (rootNode) {
                         const targetX = rootNode.x;
@@ -2662,7 +2671,8 @@
                         ctx.fillText(label, -boxW / 2 - 7, 0.5);
 
                         ctx.fillStyle = boxFill;
-                        ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
+                        //ctx.fillRect(-boxW / 2, -boxH / 2, boxW, boxH);
+                        this.rect(-boxW / 2, -boxH / 2, boxW, boxH, boxFill);
 
                         ctx.beginPath();
                         ctx.fillStyle = dotCol;
@@ -2753,7 +2763,8 @@
 
                     // 1. External value box
                     ctx.fillStyle = valFill;
-                    ctx.fillRect(valLeft, valTop, valW, valH);
+                    //ctx.fillRect(valLeft, valTop, valW, valH);
+                    this.rect(valLeft, valTop, valW, valH, valFill);
 
                     const str = String(n.val);
                     const valFontSize = str.length <= 2 ? 20 : str.length === 3 ? 16 : str.length === 4 ? 13 : 11;
@@ -2765,7 +2776,9 @@
 
                     // 2. Cell 1: Purple element pointer
                     ctx.fillStyle = elemCellFill;
-                    ctx.fillRect(xElem, -halfH, ptrW, h);
+                    //ctx.fillRect(xElem, -halfH, ptrW, h);
+                    this.rect(xElem, -halfH, ptrW, h, elemCellFill);
+
 
                     const dotX = xElem + ptrW / 2;
                     const dotY = 0;
@@ -2780,7 +2793,8 @@
 
                     // 3. Cell 2: Yellow weight cell (turns red when highlighted as heavier right child)
                     ctx.fillStyle = weightCellFill;
-                    ctx.fillRect(xWeight, -halfH, wW, h);
+                    //ctx.fillRect(xWeight, -halfH, wW, h);
+                    this.rect(xWeight, -halfH, wW, h, weightCellFill);
                     ctx.fillStyle = weightTextCol;
                     const wStr = String(n.weight);
                     const wFontSize = wStr.length <= 2 ? 20 : 15;
@@ -2791,8 +2805,10 @@
 
                     // 4. Cell 3 & Cell 4: Cyan left and right pointer cells
                     ctx.fillStyle = ptrCellFill;
-                    ctx.fillRect(xLeft, -halfH, ptrW, h);
-                    ctx.fillRect(xRight, -halfH, ptrW, h);
+                    //ctx.fillRect(xLeft, -halfH, ptrW, h);
+                    this.rect(xLeft, -halfH, ptrW, h, ptrCellFill);
+                    //ctx.fillRect(xRight, -halfH, ptrW, h);
+                    this.rect(xRight, -halfH, ptrW, h, ptrCellFill);
 
                     // Draw dashed line if unassigned, or solid dot for null pointers
                     const drawPtrDot = (cx, side, hasChild, isUnassigned) => {
