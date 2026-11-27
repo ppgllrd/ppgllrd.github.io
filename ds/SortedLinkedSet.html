@@ -2287,6 +2287,7 @@
                     targets.forEach(target => {
                         if (target === 'first') flashTarget.flashFirst = true;
                         else if (target.startsWith('next:')) flashTarget.flashNext = Number(target.slice(5));
+                        else if (target === 'finder:current') flashTarget.flashFinderCur = true;
                         else if (target === 'iterator:current') flashTarget.flashIteratorCurrent = true;
                     });
                     const push = (nodes, extra, text, marks, flash = false, redRefs = []) => {
@@ -2340,11 +2341,22 @@
                             flashFinderPrev: true, greenRefs: ['finder:previous'], firstId, size, finder, pause: true
                         }));
 
+                        const nextFinder = { ...finder, current: cn.next };
+                        this.emitAssignment(snaps, {
+                            beforeNodes: nodes,
+                            beforeExtra: { firstId, size, finder },
+                            afterNodes: nodes,
+                            afterExtra: { firstId, size, finder: nextFinder },
+                            source: ['finder:previous', 'next:' + cn.id],
+                            targets: ['finder:current'],
+                            texts: [
+                                'Finder.previous.next is read to advance Finder.current.',
+                                'Finder.current is selected to be updated.',
+                                'Finder.current advances to next node.'
+                            ]
+                        });
                         cur = cn.next;
-                        finder = { ...finder, current: cur };
-                        snaps.push(this.snapshot('Finder.current advances to next node.', nodes, {
-                            flashFinderCur: true, greenRefs: ['finder:current', 'next:' + cn.id], firstId, size, finder, pause: true
-                        }));
+                        finder = nextFinder;
 
                         finder = { ...finder, x: this.finderX(prev, cur, nodes) };
                         snaps.push(this.snapshot('Visualization only: Finder repositioned.', nodes, {
