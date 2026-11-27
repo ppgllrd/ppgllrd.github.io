@@ -1607,6 +1607,8 @@
           snaps.push(...ec.snaps);
           let cap = ec.cap,
             work = [...old];
+          let insertBeforeExtra = { size: old.length },
+            insertAfterExtra = { size: old.length };
           if (idx < old.length) {
             const b = this.viz.base(),
               source = [];
@@ -1698,29 +1700,33 @@
               y: b.arrayTopY,
               border: false
             };
-            snaps.push(this.snapshot('The reference in the insertion cell is overwritten so that it points to the new object', work, cap, {
+            insertBeforeExtra = {
               size: old.length,
               objBoxes: [...moved, newObj],
-              refArrows: [...changed, {
-                from: idx,
-                objId: 'newInsertObj'
-              }],
-              hideObjectIndices: [...hide, idx],
-              flashRefDots: [idx],
-              pause: true
-            }));
-          } else snaps.push(this.snapshot('The insertion position is the first available cell at the end of the list', work, cap, {
-            size: old.length,
-            flashRefDots: [idx],
-            pause: true
-          }));
+              refArrows: [...changed, { from: idx, objId: 'shiftObj' + idx }],
+              hideObjectIndices: [...hide, idx]
+            };
+            insertAfterExtra = {
+              ...insertBeforeExtra,
+              refArrows: [...changed, { from: idx, objId: 'newInsertObj' }]
+            };
+          }
+          const beforeAssignment = [...work];
           work[idx] = e;
           let final = work.slice(0, old.length + 1);
-          snaps.push(this.snapshot('The new object reference is stored at index ' + idx, final, cap, {
-            size: old.length,
-            flashRefDots: [idx],
-            pause: true
-          }));
+          this.emitReferenceAssignment(snaps, {
+            beforeVals: beforeAssignment,
+            afterVals: final,
+            cap,
+            target: idx,
+            beforeExtra: insertBeforeExtra,
+            afterExtra: insertAfterExtra,
+            texts: [
+              'The new object is ready to be stored at index ' + idx + '.',
+              'The pointer in cell ' + idx + ' is selected as the destination.',
+              'The new object reference is stored at index ' + idx + '.'
+            ]
+          });
           snaps.push(this.snapshot('The size field is incremented after the insertion', final, cap, {
             size: old.length,
             flashSize: true,
