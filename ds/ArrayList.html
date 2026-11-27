@@ -325,6 +325,19 @@
         background-color: #ffe6e6 !important;
         color: #c62828 !important;
       }
+
+      #legend { top: 14px; left: 14px; background: rgba(255,255,255,.96); padding: 8px 10px; border: 1px solid #d8dee4; border-radius: 6px; font-size: .78rem; max-width: 245px; z-index: 5; box-shadow: none; pointer-events: auto; }
+      #camera-controls { position: absolute; bottom: 14px; right: 14px; display: flex; gap: 5px; z-index: 5; }
+      #camera-controls button { background: rgba(255,255,255,.96); color: #1f2328; border: 1px solid #d8dee4; padding: 6px 10px; font-size: .85rem; }
+      .legend-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: #1f2328; margin-bottom: 6px; gap: 12px; }
+      #legend.collapsed .legend-header { margin-bottom: 0; }
+      #legend.collapsed .legend-body { display: none; }
+      .legend-toggle { background: #eceff1; color: #1f2328; border: 1px solid #d8dee4; border-radius: 4px; padding: 1px 6px; font-size: .75rem; box-shadow: none; }
+      .li { color: #1f2328; }
+      .li:last-child { margin-bottom: 0; }
+      .sw { width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0; }
+      .dot { width: 11px; height: 11px; flex-shrink: 0; margin: 0 2px; }
+      @media (max-width: 768px) { #legend { max-width: 190px; font-size: .72rem; top: 8px; left: 8px; } }
     </style>
   </head>
 
@@ -361,20 +374,27 @@
           <button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo: restore the previous ArrayList state.">Undo</button>
         </div>
         <div class="sub">
-          <label>Slowdown:</label>
-          <input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()">
+          <label for="speed">Speed:</label>
+          <input id="speed" type="range" min="0.25" max="3" step="0.25" value="1" oninput="app.speed()">
+          <span id="speedLabel">1.0x</span>
+          <button id="btnBack" class="gray" title="Step backward" aria-label="Step backward">|&lt;</button>
           <button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation.">Pause</button>
           <label class="step-toggle" id="stepModeLabel" title="When on, only real Java ArrayList steps wait for Next step; visual-only steps run automatically." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label>
-          <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java ArrayList step." aria-label="Advance to the next non-visual Java ArrayList step">Next step</button>
+          <button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java ArrayList step." aria-label="Advance to the next non-visual Java ArrayList step">&gt;|</button>
+          <button id="btnSkip" class="gray" title="Skip to end" aria-label="Skip to end">&gt;&gt;|</button>
+          <label class="step-toggle"><input id="chkInstant" type="checkbox"> Instant</label>
+          <label class="step-toggle"><input id="chkAutoFit" type="checkbox" checked> Auto-Fit</label>
         </div>
       </div>
       <div id="status">
-        <span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span>
+        <span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span> <span id="step-counter">Step: -</span>
       </div>
     </header>
     <div id="wrap">
       <canvas id="cv"></canvas>
       <div id="legend">
+        <div class="legend-header"><span>Legend</span><button class="legend-toggle" id="btnToggleLegend" aria-label="Toggle legend" aria-expanded="true">−</button></div>
+        <div class="legend-body">
         <div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div>
         <div class="li"><span class="sw" style="background:#91f4f4"></span>array reference slot</div>
         <div class="li"><span class="sw" style="background:#c78cff"></span>list reference</div>
@@ -384,6 +404,12 @@
         <div class="li"><span class="dot" style="background:#1565c0"></span>idle / normal reference</div>
         <div class="li"><span class="dot" style="background:#00B843"></span>read / traversal / source</div>
         <div class="li"><span class="dot" style="background:#E60000"></span>write / modified target</div>
+        </div>
+      </div>
+      <div id="camera-controls">
+        <button id="btnZoomOut" title="Zoom out" aria-label="Zoom out">−</button>
+        <button id="btnFitView" title="Fit view">Fit</button>
+        <button id="btnZoomIn" title="Zoom in" aria-label="Zoom in">+</button>
       </div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
@@ -406,8 +432,11 @@
           <li><strong>Clear</strong>: iterates the array setting all references to <span class="code">null</span>, so the objects may become unreachable and later be reclaimed by Java's garbage collector, and sets <span class="code">size</span> to <span class="code">0</span>. Complexity: <strong>O(n)</strong>.</li>
           <li><strong>Ensure capacity</strong>: when full, <span class="code">Arrays.copyOf</span> allocates a larger array and copies the references over. Complexity: <strong>O(n)</strong>.</li>
         </ul>
+        <h3>Playback</h3>
+        <p>Use the playback controls or the left and right arrow keys to navigate steps; Space pauses or resumes. Step-by-step pauses at Java operations, while visual-only steps run automatically. Instant skips animation, and Auto-Fit controls automatic camera adjustment.</p>
       </div>
     </div>
+    <script src="array-playback.js"></script>
     <script>
       'use strict';
       const K = {
@@ -443,7 +472,6 @@
             targetY: 0
           };
           this.sn = [];
-          this.pending = [];
           this.idx = -1;
           this.state = 'IDLE';
           this.t = 0;
@@ -454,8 +482,6 @@
           this.last = 0;
           this.cell = 58;
           this.lastCells = [];
-          this.resize();
-          window.addEventListener('resize', () => this.resize());
           this.cv.addEventListener('wheel', e => this.wheel(e), {
             passive: false
           });
@@ -471,7 +497,7 @@
           });
           this.cv.addEventListener('touchend', () => this.up());
           this.cv.addEventListener('touchcancel', () => this.up());
-          requestAnimationFrame(t => this.loop(t))
+          this.initializePlayback()
         }
         base() {
           const arrayLeftX = 325;
@@ -523,17 +549,6 @@
             boundBottomExtra: 220, // Increased to account for the object boxes below the array
             fitPadding: 150,
             maxAutoScale: 1.22
-          }
-        }
-        resize() {
-          const w = document.getElementById('wrap');
-          this.cv.width = w.offsetWidth;
-          this.cv.height = w.offsetHeight;
-          if (this.sn.length) {
-            this.fit([this.sn[Math.max(this.idx, 0)]]);
-            this.cam.scale = this.cam.targetScale;
-            this.cam.x = this.cam.targetX;
-            this.cam.y = this.cam.targetY
           }
         }
         screenToWorld(x, y) {
@@ -713,88 +728,10 @@
             B.maxY = Math.max(B.maxY, b.maxY)
           });
           const m = this.layoutMetrics();
-          const sc = Math.min(m.maxAutoScale, this.cv.width / (B.maxX - B.minX + m.fitPadding), this.cv.height / (B.maxY - B.minY + m.fitPadding));
+          const sc = Math.min(m.maxAutoScale, this.viewWidth / (B.maxX - B.minX + m.fitPadding), this.viewHeight / (B.maxY - B.minY + m.fitPadding));
           this.cam.targetScale = sc;
-          this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-          this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-        }
-        enqueue(snaps) {
-          snaps.forEach(s => this.layout(s));
-          this.fit(this.sn.length ? [this.sn[this.sn.length - 1], ...snaps] : snaps);
-          if (!this.sn.length) {
-            this.sn.push(snaps.shift());
-            this.idx = 0;
-            const firstStatus = document.getElementById('status-text');
-            const firstScene = this.sn[0];
-            // if (firstStatus) firstStatus.innerText = firstScene?.visualOnly ? '' : (firstScene?.text || 'Ready.')
-          }
-          if (snaps.length) {
-            this.pending = snaps;
-            this.state = 'CAMERA';
-            this.waitingForStep = false;
-            this.updateStepControls();
-          }
-        }
-        loop(ts) {
-          if (!this.last) this.last = ts;
-          const dt = Math.min((ts - this.last) / 1000, .1);
-          this.last = ts;
-          if (!this.paused) this.update(dt);
-          this.draw();
-          requestAnimationFrame(t => this.loop(t))
-        }
-        update(dt) {
-          const f = 1 - Math.exp(-10 * dt);
-          this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-          this.cam.x += (this.cam.targetX - this.cam.x) * f;
-          this.cam.y += (this.cam.targetY - this.cam.y) * f;
-          if (this.state === 'CAMERA') {
-            if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < 5 && Math.abs(this.cam.scale - this.cam.targetScale) < .01) this.next()
-          } else if (this.state === 'MORPH') {
-            this.t += 2.5 * this.speedFactor * dt;
-            if (this.t >= 1) {
-              this.t = 1;
-              const arrivedScene = this.sn[this.idx + 1];
-              const isVisualOnlyStep = !!arrivedScene?.visualOnly;
-              if (this.stepMode && !isVisualOnlyStep) {
-                this.state = 'STEP_WAIT';
-                this.waitingForStep = true;
-                this.updateStepControls();
-              } else if (arrivedScene?.pause && !isVisualOnlyStep) {
-                this.state = 'WAIT';
-                this.wait = .75 / this.speedFactor
-              } else this.finish()
-            }
-          } else if (this.state === 'WAIT') {
-            this.wait -= dt;
-            if (this.wait <= 0) this.finish()
-          }
-        }
-        next() {
-          const s = this.pending.shift();
-          this.sn.push(s);
-          if (s.fitCamera) this.fit([s]);
-          const status = document.getElementById('status-text');
-          if (status) status.innerText = s.visualOnly ? '' : (s.text || 'Ready.');
-          this.t = 0;
-          this.waitingForStep = false;
-          this.state = 'MORPH';
-          this.updateStepControls();
-        }
-        finish() {
-          this.idx++;
-          this.waitingForStep = false;
-          if (this.pending.length) {
-            this.next()
-          } else {
-            this.state = 'IDLE';
-            const finalScene = this.sn[this.idx];
-            if (finalScene) this.fit([finalScene]);
-            const status = document.getElementById('status-text');
-            if (status) status.innerText = 'Ready.';
-            this.updateStepControls();
-            window.app?.clearInputs()
-          }
+          this.cam.targetX = this.viewWidth / 2 - ((B.minX + B.maxX) / 2) * sc;
+          this.cam.targetY = this.viewHeight / 2 - ((B.minY + B.maxY) / 2) * sc
         }
         ease(t) {
           return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
@@ -885,57 +822,7 @@
           return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
         }
         setSpeed(v) {
-          this.speedFactor = 1 / v
-        }
-        togglePause() {
-          this.paused = !this.paused;
-          return this.paused
-        }
-        setStepMode(enabled) {
-          this.stepMode = !!enabled;
-          if (!this.stepMode && this.state === 'STEP_WAIT') {
-            this.waitingForStep = false;
-            this.finish();
-          }
-          this.updateStepControls();
-        }
-        nextStep() {
-          if (!this.stepMode || this.paused) return;
-          if (this.state === 'STEP_WAIT') {
-            this.waitingForStep = false;
-            this.finish();
-          }
-          this.updateStepControls();
-        }
-        updateStepControls() {
-          const step = document.getElementById('stepMode');
-          const label = document.getElementById('stepState');
-          const next = document.getElementById('btnNext');
-          const lbl = document.getElementById('stepModeLabel');
-          if (step) step.checked = this.stepMode;
-          if (label) label.innerText = this.stepMode ? 'On' : 'Off';
-          if (lbl) {
-            lbl.classList.toggle('step-toggle-on', !!this.stepMode);
-            lbl.style.pointerEvents = 'auto';
-            lbl.style.opacity = '1';
-          }
-          if (next) {
-            const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
-            next.disabled = !canAdvance;
-            next.title = !this.stepMode ?
-              'Turn Step-by-step mode ON first.' :
-              (canAdvance ? 'Advance to the next non-visual Java ArrayList step.' : 'Visual-only steps advance automatically. The button becomes available at the next Java ArrayList step.');
-            next.setAttribute('aria-label', next.title);
-          }
-        }
-        draw() {
-          const s = this.current();
-          const c = this.ctx;
-          c.clearRect(0, 0, this.cv.width, this.cv.height);
-          c.save();
-          c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-          if (s) this.renderScene(s);
-          c.restore();
+          this.speedFactor = v
         }
         renderScene(_scene) {}
         paintRect(x, y, w, h, fill, {
@@ -1065,6 +952,7 @@
         }
       }
       /* View: Java ArrayList-specific semantic rendering only. */
+      installArrayPlayback(VisualizationEngine);
       class JavaArrayListView extends VisualizationEngine {
         renderScene(s) {
           this.lastCells = s.cells || [];
@@ -1412,10 +1300,6 @@
           this.storage = next
         }
         showCurrent(text = 'Visualization only: Ready.') {
-          this.viz.sn = [];
-          this.viz.pending = [];
-          this.viz.idx = -1;
-          this.viz.state = 'IDLE';
           this.viz.enqueue([this.snapshot(text, this.values, this.capacity, {
             size: this.values.length
           })])
@@ -2220,12 +2104,11 @@
           this.updateUI()
         }
         speed() {
-          this.viz.setSpeed(parseFloat(document.getElementById('speed').value))
+          const speed = parseFloat(document.getElementById('speed').value);
+          this.viz.setSpeed(speed);
+          document.getElementById('speedLabel').textContent = speed.toFixed(2).replace(/0$/, '') + 'x'
         }
-        pause() {
-          const p = this.viz.togglePause();
-          document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause'
-        }
+        pause() { this.viz.togglePause(); }
         toggleStep() {
           const enabled = !!document.getElementById('stepMode')?.checked;
           this.viz.setStepMode(enabled);
@@ -2257,6 +2140,7 @@
       window.app = app;
       window.onload = () => {
 		app.init();
+        setupArrayPlayback(app);
 		app.clearInputs();
 		const chk = document.getElementById('chkStepMode');
         const label = document.getElementById('stepModeLabel');
