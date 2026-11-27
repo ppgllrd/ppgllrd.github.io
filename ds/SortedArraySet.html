@@ -24,6 +24,11 @@
             --p: #c78cff;
             --v: #8d35c9;
             --y: #fff7b3;
+            --legend-ptr-bg: #91f4f4;
+            --legend-ptr-border: #0097a7;
+            --legend-blue: #1565c0;
+            --legend-green: #00b843;
+            --legend-red: #e60000;
         }
 
         body.dark {
@@ -36,6 +41,12 @@
             --card-bg: rgba(22, 27, 34, 0.94);
             --input-bg: #0d1117;
             --input-border: #444c56;
+            --c: #0d4f5c;
+            --legend-ptr-bg: #0d4f5c;
+            --legend-ptr-border: #26c6da;
+            --legend-blue: #58a6ff;
+            --legend-green: #4ade80;
+            --legend-red: #ff5252;
         }
 
         * {
@@ -382,6 +393,34 @@
             flex-shrink: 0;
         }
 
+        .swatch-ptr {
+            background: var(--legend-ptr-bg);
+            border: 1px solid var(--legend-ptr-border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .swatch-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--legend-blue);
+            display: block;
+        }
+
+        .swatch-arrow {
+            position: relative;
+        }
+
+        .swatch-arrow::after {
+            content: '→';
+            color: var(--legend-blue);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
         /* Camera Floating Controls */
         #camera-controls {
             position: absolute;
@@ -648,7 +687,12 @@
                 <div class="li"><span class="sw" style="background:#91f4f4"></span><span>array reference slot</span></div>
                 <div class="li"><span class="sw" style="background:#fff7b3"></span><span>binary search range</span></div>
                 <div class="li"><span class="sw" style="background:#c78cff"></span><span>set / finder / iterator ref</span></div>
-                <div class="li"><span class="dot"></span><span>object reference</span></div>
+                <div class="li"><span class="sw swatch-ptr"></span><span>uninitialized reference</span></div>
+                <div class="li"><span class="sw swatch-ptr"><span class="swatch-dot"></span></span><span>null reference (no arrow)</span></div>
+                <div class="li"><span class="sw swatch-ptr swatch-arrow"></span><span>initialized reference</span></div>
+                <div class="li"><span class="dot" style="background:var(--legend-blue)"></span><span>idle / normal reference</span></div>
+                <div class="li"><span class="dot" style="background:var(--legend-green)"></span><span>read / traversal / source</span></div>
+                <div class="li"><span class="dot" style="background:var(--legend-red)"></span><span>write / modified target</span></div>
             </div>
         </div>
 
@@ -714,6 +758,7 @@
 
             const LIGHT_THEME = {
                 b: '#1565c0',
+                green: '#00b843',
                 c: '#91f4f4',
                 g: '#b6f8b6',
                 r: '#e60000',
@@ -731,9 +776,10 @@
 
             const DARK_THEME = {
                 b: '#58a6ff',
-                c: '#184e5e',
+                green: '#4ade80',
+                c: '#0d4f5c',
                 g: '#245832',
-                r: '#ff6b6b',
+                r: '#ff5252',
                 p: '#6f42c1',
                 v: '#c084fc',
                 k: '#e6edf3',
@@ -1646,13 +1692,14 @@
                     const listBoxY = structTop - m.listPointerBoxOffsetY;
                     const listDotX = listBoxX + m.cellCenter;
                     const listDotY = listBoxY + m.cellCenter;
+                    const setColor = s.greenSet ? K.green : (s.redSet ? K.r : K.v);
 
                     this.paintText('set', listBoxX - m.listPointerLabelGap, listBoxY + m.listPointerLabelBaselineFromBoxTop, {
                         font: '28px monospace', fill: K.k, align: 'right', baseline: 'alphabetic'
                     });
                     this.paintRect(listBoxX, listBoxY, cell, cell, K.p);
-                    this.paintDot(listDotX, listDotY, m.dotRadius, K.v);
-                    this.arrow(listDotX, listDotY, structLeft, structTop, K.v, 3);
+                    this.paintDot(listDotX, listDotY, m.dotRadius, setColor);
+                    this.arrow(listDotX, listDotY, structLeft, structTop, setColor, 3);
 
                     [['elements', K.c], ['size', K.g]].forEach((r, i) => {
                         const rowTop = structTop + i * rowHeight;
@@ -1662,7 +1709,8 @@
                         });
                         this.paintRect(structLeft, rowTop, cell, cell - m.rowStrokeCompensation, r[1]);
                         if (r[0] === 'elements') {
-                            this.paintDot(structLeft + m.cellCenter, rowCenterY, m.dotRadius, K.b);
+                            const pointerColor = s.redArrayPointer ? K.r : (s.greenArrayPointer ? K.green : K.b);
+                            this.paintDot(structLeft + m.cellCenter, rowCenterY, m.dotRadius, pointerColor);
                         } else {
                             this.paintText(String(s.size), structLeft + m.cellCenter, rowCenterY + 2, {
                                 font: `${this.valueFontSize(s.size, 32)}px Arial`, fill: K.r
@@ -1679,7 +1727,8 @@
                         : null;
                     if (!firstCell) firstCell = (s.cells || [])[0];
                     if (firstCell) {
-                        this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, K.b, 3);
+                        const pointerColor = s.redArrayPointer ? K.r : (s.greenArrayPointer ? K.green : K.b);
+                        this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, pointerColor, 3);
                     }
                 }
 
@@ -1702,16 +1751,22 @@
                     this.paintText(cell.i, cell.x + m.cellCenter, cell.y - m.indexLabelGap, {
                         font: '22px monospace', fill: K.k, baseline: 'alphabetic'
                     });
-                    this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, K.b);
+                    const redReferences = new Set(s.redReferenceCells || []);
+                    const greenReferences = new Set(s.greenReferenceCells || []);
+                    const referenceColor = redReferences.has(cell.i) ? K.r : (greenReferences.has(cell.i) ? K.green : K.b);
+                    this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, referenceColor);
 
                     const hiddenObjectIds = new Set(s.hideObjectIds || []);
                     const hiddenObjectIndices = new Set(s.hideObjectIndices || []);
                     const redObjectArrows = new Set(s.redObjectArrows || []);
+                    const greenObjectArrows = new Set(s.greenObjectArrows || []);
 
                     if (cell.v !== '?' && !hiddenObjectIds.has(cell.id) && !hiddenObjectIndices.has(cell.i)) {
                         const objY = cell.y + w + 30;
-                        const arrowColor = redObjectArrows.has(cell.i) ? K.r : K.b;
-                        const arrowWidth = redObjectArrows.has(cell.i) ? 4 : 3;
+                        const arrowColor = redObjectArrows.has(cell.i) || redReferences.has(cell.i)
+                            ? K.r
+                            : (greenObjectArrows.has(cell.i) || greenReferences.has(cell.i) ? K.green : K.b);
+                        const arrowWidth = arrowColor === K.b ? 3 : 4;
                         this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, arrowColor);
                         this.arrow(cell.x + m.cellCenter, cell.y + m.cellCenter, cell.x + m.cellCenter, objY, arrowColor, arrowWidth);
                         this.paintRect(cell.x, objY, w, w, K.g, {
@@ -1769,7 +1824,10 @@
                         if (!slot || !obj) return;
                         const tipX = r.tipX ?? (obj.x + m.cellCenter);
                         const tipY = r.tipY ?? (obj.y + this.cell + 30);
-                        this.arrow(slot.x + m.cellCenter, slot.y + m.cellCenter, tipX, tipY, K.b, 3);
+                        const color = (s.redReferenceCells || []).includes(r.from)
+                            ? K.r
+                            : ((s.greenReferenceCells || []).includes(r.from) ? K.green : K.b);
+                        this.arrow(slot.x + m.cellCenter, slot.y + m.cellCenter, tipX, tipY, color, 3);
                     });
                 }
 
@@ -1781,9 +1839,12 @@
                             font: '22px monospace', fill: K.k, baseline: 'alphabetic'
                         });
                         this.paintRect(p.x, p.y, m.cell, m.cell, K.c);
-                        this.paintDot(cx, cy, m.dotRadius, K.b);
+                        const color = (s.redPtrs || []).includes(p.label)
+                            ? K.r
+                            : ((s.greenPtrs || []).includes(p.label) ? K.green : K.b);
+                        this.paintDot(cx, cy, m.dotRadius, color);
                         const target = (s.cells || []).find(c => c.i === p.i);
-                        if (target) this.arrow(cx, cy, target.x + m.cellCenter, target.y, K.b, 3);
+                        if (target) this.arrow(cx, cy, target.x + m.cellCenter, target.y, color, 3);
                     });
                 }
 
@@ -2202,6 +2263,32 @@
                     if (this.history.length > 0) this.history.pop();
                 }
 
+                emitReferenceAssignment(snaps, {
+                    beforeVals,
+                    afterVals,
+                    cap,
+                    target,
+                    source = null,
+                    beforeExtra = {},
+                    afterExtra = {},
+                    texts
+                }) {
+                    const push = (vals, extra, text, targetColor = false, flashTarget = false, sourceColor = true) => snaps.push(
+                        this.snapshot(text, vals, cap, {
+                            ...extra,
+                            greenReferenceCells: source === null || !sourceColor ? [] : [source],
+                            redReferenceCells: targetColor ? [target] : [],
+                            flashRefDots: flashTarget ? [target] : [],
+                            pause: !extra.visualOnly
+                        })
+                    );
+                    push(beforeVals, beforeExtra, texts[0]);
+                    push(beforeVals, beforeExtra, texts[1], false, true);
+                    push(afterVals, afterExtra, texts[2], true);
+                    push(afterVals, afterExtra, texts[2], false, false, false);
+                    snaps[snaps.length - 1].visualOnly = true;
+                }
+
                 box(label, index, y, fill, color) {
                     const b = this.viz.base();
                     return {
@@ -2244,11 +2331,14 @@
                         mid = left + Math.floor((right - left) / 2);
                         finder = { ...finder };
                         snaps.push(snap(`mid = ${mid} (checking elements[${mid}] = ${vals[mid]}).`, { flashFinder: 'mid' }));
-                        snaps.push(snap(`Comparing ${e} with object value ${vals[mid]} at index ${mid}.`, { flashObjects: [mid] }));
+                        snaps.push(snap(`Comparing ${e} with object value ${vals[mid]} at index ${mid}.`, {
+                            flashObjects: [mid],
+                            greenObjectArrows: [mid]
+                        }));
 
                         if (e === vals[mid]) {
                             finder = { ...finder, found: true, index: mid };
-                            snaps.push(snap(`Match! Finder.found = true.`, { flashFinder: 'found', flashCells: [mid] }));
+                            snaps.push(snap(`Match! Finder.found = true.`, { flashFinder: 'found', flashCells: [mid], greenObjectArrows: [mid] }));
                             snaps.push(snap(`Finder.index = ${mid}.`, { flashFinder: 'index', flashCells: [mid] }));
                             return { snaps, found: true, index: mid };
                         } else if (e > vals[mid]) {
@@ -2291,13 +2381,23 @@
                     return [...oldCells, ...newCells];
                 }
 
-                reallocLabels(oldCap, newCap) {
+                reallocLabels(oldCap, newCap, greenArraySource = false) {
                     const b = this.viz.base(), m = this.viz.layoutMetrics();
                     const cx = cap => b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + m.cellCenter;
                     return [
                         { text: 'old elements', x: cx(oldCap), y: b.reallocOldArrayY - 38, color: K.muted },
-                        { text: 'new elements', x: cx(newCap), y: b.reallocNewArrayY - 38, color: K.greenLabel }
+                        { text: 'new elements', x: cx(newCap), y: b.reallocNewArrayY - 38, color: greenArraySource ? K.green : K.greenLabel }
                     ];
+                }
+
+                finalArrayLabel(cap, color) {
+                    const b = this.viz.base(), m = this.viz.layoutMetrics();
+                    return {
+                        text: 'new elements',
+                        x: b.arrayLeftX + (cap - 1) * b.cellPitch / 2 + m.cellCenter,
+                        y: b.arrayTopY - 38,
+                        color
+                    };
                 }
 
                 reallocSnapshot(text, vals, oldCap, newCap, copiedCount, extra = {}) {
@@ -2305,7 +2405,7 @@
                         size: vals.length,
                         capacity: oldCap,
                         cells: this.reallocCells(vals, oldCap, newCap, copiedCount),
-                        labels: this.reallocLabels(oldCap, newCap),
+                        labels: this.reallocLabels(oldCap, newCap, extra.greenArraySource),
                         arrayPointerId: 'old0',
                         fitCamera: true,
                         ...extra
@@ -2352,10 +2452,27 @@
                         }));
                     }
 
-                    snaps.push(this.reallocFinalSnapshot('Updated elements reference to the new internal array.', vals, newCap, {
-                        capacity: cap,
+                    snaps.push(this.reallocSnapshot('The set reference is used to reach its elements field.', vals, cap, newCap, vals.length, {
+                        greenSet: true,
                         flashElements: true,
                         pause: true
+                    }));
+                    snaps.push(this.reallocSnapshot('The new internal array is selected as the source for elements.', vals, cap, newCap, vals.length, {
+                        greenArraySource: true,
+                        flashElements: true,
+                        pause: true
+                    }));
+                    snaps.push(this.reallocFinalSnapshot('The elements field now references the new internal array.', vals, newCap, {
+                        capacity: cap,
+                        flashElements: true,
+                        redArrayPointer: true,
+                        labels: [this.finalArrayLabel(newCap, K.green)],
+                        pause: true
+                    }));
+                    snaps.push(this.reallocFinalSnapshot('Visualization only: elements pointer assignment highlights cleared.', vals, newCap, {
+                        capacity: cap,
+                        visualOnly: true,
+                        fitCamera: true
                     }));
                     snaps.push(this.reallocFinalSnapshot(`Capacity is now ${newCap}.`, vals, newCap, { pause: true }));
                     return { cap: newCap, snaps };
@@ -2391,6 +2508,8 @@
                         curCap = ec.cap;
 
                         const work = [...curVals];
+                        let insertBeforeExtra = { size: curVals.length };
+                        let insertAfterExtra = { size: curVals.length };
                         if (idx < curVals.length) {
                             const b = this.viz.base();
                             const source = [];
@@ -2404,17 +2523,30 @@
 
                             const changed = [];
                             for (let j = curVals.length - 1; j >= idx; j--) {
+                                const beforeChanged = [...changed];
                                 changed.push({ from: j + 1, objId: 'shiftObj' + j });
                                 const unchanged = [];
                                 for (let k = idx; k <= j; k++) unchanged.push({ from: k, objId: 'shiftObj' + k });
-                                snaps.push(this.snapshot(`elements[${j + 1}] = elements[${j}] (shifting right).`, work, curCap, {
+                                const beforeExtra = {
                                     size: curVals.length,
                                     objBoxes: oldObjs,
-                                    refArrows: [...changed, ...unchanged],
+                                    refArrows: [...beforeChanged, ...unchanged],
                                     hideObjectIndices: hide,
-                                    flashRefDots: [j + 1],
-                                    pause: true
-                                }));
+                                };
+                                this.emitReferenceAssignment(snaps, {
+                                    beforeVals: work,
+                                    afterVals: work,
+                                    cap: curCap,
+                                    source: j,
+                                    target: j + 1,
+                                    beforeExtra,
+                                    afterExtra: { ...beforeExtra, refArrows: [...changed, ...unchanged] },
+                                    texts: [
+                                        `elements[${j}] is read as the source reference.`,
+                                        `elements[${j + 1}] is selected as the destination.`,
+                                        `elements[${j + 1}] now references the object from elements[${j}].`
+                                    ]
+                                });
                             }
 
                             const moved = source.map(j => ({
@@ -2433,29 +2565,35 @@
                                 id: 'newInsertObj', i: idx, v: e,
                                 x: b.arrayLeftX + idx * b.cellPitch, y: b.arrayTopY, border: false
                             };
-                            snaps.push(this.snapshot(`elements[${idx}] now points to new object ${e}.`, work, curCap, {
+                            insertBeforeExtra = {
                                 size: curVals.length,
                                 objBoxes: [...moved, newObj],
-                                refArrows: [...changed, { from: idx, objId: 'newInsertObj' }],
-                                hideObjectIndices: [...hide, idx],
-                                flashRefDots: [idx],
-                                pause: true
-                            }));
-                        } else {
-                            snaps.push(this.snapshot(`Insertion position is index ${idx} at the end of the set.`, work, curCap, {
-                                size: curVals.length,
-                                flashRefDots: [idx],
-                                pause: true
-                            }));
+                                refArrows: [...changed],
+                                hideObjectIndices: [...hide, idx]
+                            };
+                            insertAfterExtra = {
+                                ...insertBeforeExtra,
+                                refArrows: [...changed, { from: idx, objId: 'newInsertObj' }]
+                            };
                         }
 
+                        const beforeAssignment = [...work];
                         work[idx] = e;
-                        curVals = work.slice(0, curVals.length + 1);
-                        snaps.push(this.snapshot(`Stored ${e} at elements[${idx}].`, curVals, curCap, {
-                            size: curVals.length - 1,
-                            flashRefDots: [idx],
-                            pause: true
-                        }));
+                        const afterAssignment = work.slice(0, curVals.length + 1);
+                        this.emitReferenceAssignment(snaps, {
+                            beforeVals: beforeAssignment,
+                            afterVals: afterAssignment,
+                            cap: curCap,
+                            target: idx,
+                            beforeExtra: insertBeforeExtra,
+                            afterExtra: insertAfterExtra,
+                            texts: [
+                                `The object ${e} is ready to be stored in elements[${idx}].`,
+                                `elements[${idx}] is selected as the destination.`,
+                                `elements[${idx}] now references the new object ${e}.`
+                            ]
+                        });
+                        curVals = afterAssignment;
                         snaps.push(this.snapshot(`Incremented size to ${curVals.length}.`, curVals, curCap, {
                             size: curVals.length - 1,
                             flashSize: true,
@@ -2515,20 +2653,27 @@
                                 id: 'deleteLastObj', i: idx, v: curVals[idx],
                                 x: b.arrayLeftX + idx * b.cellPitch, y: b.arrayTopY, border: false
                             };
-                            snaps.push(this.snapshot(`Setting last reference elements[${idx}] to null.`, curVals, curCap, {
-                                size: curVals.length,
-                                flashRefDots: [idx],
-                                pause: true
-                            }));
+                            const beforeDelete = [...curVals];
                             work[idx] = '?';
-                            snaps.push(this.snapshot(`elements[${idx}] is now null; old object ${e} is unreachable (GC).`, curVals, curCap, {
-                                size: curVals.length,
-                                storage: [...work],
-                                objBoxes: [delObj],
-                                hideObjectIndices: [idx],
-                                crossObjectIds: ['deleteLastObj'],
-                                pause: true
-                            }));
+                            this.emitReferenceAssignment(snaps, {
+                                beforeVals: beforeDelete,
+                                afterVals: beforeDelete,
+                                cap: curCap,
+                                target: idx,
+                                beforeExtra: { size: curVals.length },
+                                afterExtra: {
+                                    size: curVals.length,
+                                    storage: [...work],
+                                    objBoxes: [delObj],
+                                    hideObjectIndices: [idx],
+                                    crossObjectIds: ['deleteLastObj']
+                                },
+                                texts: [
+                                    `null is going to be stored in elements[${idx}].`,
+                                    `elements[${idx}] is selected as the destination.`,
+                                    `elements[${idx}] now stores null; old object ${e} is unreachable (GC).`
+                                ]
+                            });
                             curVals = curVals.slice(0, curVals.length - 1);
                             const finalStorage = this.makeDisplayStorage(curVals, curCap);
                             snaps.push(this.snapshot(`Decremented size to ${curVals.length}.`, curVals, curCap, {
@@ -2550,17 +2695,30 @@
 
                         const changed = [];
                         for (let j = idx + 1; j < curVals.length; j++) {
+                            const beforeChanged = [...changed];
                             changed.push({ from: j - 1, objId: 'shiftObj' + j });
                             const unchanged = [];
                             for (let k = j; k < curVals.length; k++) unchanged.push({ from: k, objId: 'shiftObj' + k });
-                            snaps.push(this.snapshot(`elements[${j - 1}] = elements[${j}] (shifting left).`, work, curCap, {
+                            const beforeExtra = {
                                 size: curVals.length,
                                 objBoxes: objs,
-                                refArrows: [...changed, ...unchanged],
+                                refArrows: [...beforeChanged, ...unchanged],
                                 hideObjectIndices: hide,
-                                flashRefDots: [j - 1],
-                                pause: true
-                            }));
+                            };
+                            this.emitReferenceAssignment(snaps, {
+                                beforeVals: work,
+                                afterVals: work,
+                                cap: curCap,
+                                source: j,
+                                target: j - 1,
+                                beforeExtra,
+                                afterExtra: { ...beforeExtra, refArrows: [...changed, ...unchanged] },
+                                texts: [
+                                    `elements[${j}] is read as the source reference.`,
+                                    `elements[${j - 1}] is selected as the destination.`,
+                                    `elements[${j - 1}] now references the object from elements[${j}].`
+                                ]
+                            });
                         }
 
                         snaps.push(this.snapshot(`Removed object ${e} is now unreachable (GC).`, work, curCap, {
@@ -2586,16 +2744,34 @@
                             hideObjectIndices: hide
                         }));
 
-                        work[curVals.length - 1] = '?';
-                        snaps.push(this.snapshot(`Set trailing slot elements[${curVals.length - 1}] to null.`, work, curCap, {
-                            size: curVals.length,
-                            storage: [...work],
-                            objBoxes: moved,
-                            refArrows: [...changed],
-                            hideObjectIndices: hide,
-                            flashRefDots: [curVals.length - 1],
-                            pause: true
-                        }));
+                        const trailingIndex = curVals.length - 1;
+                        const beforeTrailing = [...work];
+                        work[trailingIndex] = '?';
+                        this.emitReferenceAssignment(snaps, {
+                            beforeVals: beforeTrailing,
+                            afterVals: curVals,
+                            cap: curCap,
+                            target: trailingIndex,
+                            beforeExtra: {
+                                size: curVals.length,
+                                storage: beforeTrailing,
+                                objBoxes: moved,
+                                refArrows: [...changed],
+                                hideObjectIndices: hide
+                            },
+                            afterExtra: {
+                                size: curVals.length,
+                                storage: [...work],
+                                objBoxes: moved,
+                                refArrows: [...changed],
+                                hideObjectIndices: hide
+                            },
+                            texts: [
+                                `null is going to be stored in elements[${trailingIndex}].`,
+                                `elements[${trailingIndex}] is selected as the destination.`,
+                                `elements[${trailingIndex}] now stores null.`
+                            ]
+                        });
 
                         curVals = curVals.filter((_, i) => i !== idx);
                         const finalStorage = this.makeDisplayStorage(curVals, curCap);
@@ -2664,21 +2840,27 @@
                             id: 'gcClearObj' + j, i: j, v: old[j],
                             x: b.arrayLeftX + j * b.cellPitch, y: b.arrayTopY, border: false
                         };
-                        snaps.push(this.snapshot(`Setting elements[${j}] = null...`, old, this.capacity, {
-                            size: old.length,
-                            storage: [...work],
-                            flashRefDots: [j],
-                            pause: true
-                        }));
+                        const beforeClear = [...work];
                         work[j] = '?';
-                        snaps.push(this.snapshot(`elements[${j}] is null; object ${old[j]} eligible for GC.`, old, this.capacity, {
-                            size: old.length,
-                            storage: [...work],
-                            objBoxes: [gcObj],
-                            hideObjectIndices: [j],
-                            crossObjectIds: ['gcClearObj' + j],
-                            pause: true
-                        }));
+                        this.emitReferenceAssignment(snaps, {
+                            beforeVals: old,
+                            afterVals: old,
+                            cap: this.capacity,
+                            target: j,
+                            beforeExtra: { size: old.length, storage: beforeClear },
+                            afterExtra: {
+                                size: old.length,
+                                storage: [...work],
+                                objBoxes: [gcObj],
+                                hideObjectIndices: [j],
+                                crossObjectIds: ['gcClearObj' + j]
+                            },
+                            texts: [
+                                `null is going to be stored in elements[${j}].`,
+                                `elements[${j}] is selected as the destination.`,
+                                `elements[${j}] now stores null; object ${old[j]} is eligible for GC.`
+                            ]
+                        });
                     }
 
                     snaps.push(this.snapshot('Set size = 0 (allocated array is kept).', [], this.capacity, {

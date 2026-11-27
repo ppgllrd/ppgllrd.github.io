@@ -24,6 +24,12 @@
             --btn-gray: #546E7A;
             --btn-orange: #EF6C00;
             --btn-step: #37474F;
+
+            --legend-ptr-bg: #91F4F4;
+            --legend-ptr-border: #0097A7;
+            --legend-blue: #1565C0;
+            --legend-green: #00B843;
+            --legend-red: #E60000;
         }
 
         body.dark {
@@ -36,6 +42,12 @@
             --card-bg: rgba(22, 27, 34, 0.96);
             --input-bg: #0d1117;
             --input-border: #444c56;
+
+            --legend-ptr-bg: #0D4F5C;
+            --legend-ptr-border: #26C6DA;
+            --legend-blue: #58A6FF;
+            --legend-green: #4ADE80;
+            --legend-red: #FF5252;
         }
 
         * { box-sizing: border-box; }
@@ -331,6 +343,32 @@
             flex-shrink: 0;
         }
 
+        .swatch-ptr {
+            background: var(--legend-ptr-bg);
+            border: 1px solid var(--legend-ptr-border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .swatch-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--legend-blue);
+            display: block;
+        }
+
+        .swatch-arrow { position: relative; }
+
+        .swatch-arrow::after {
+            content: '→';
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--legend-blue);
+        }
+
         .dot {
             width: 11px;
             height: 11px;
@@ -580,10 +618,13 @@
             </div>
             <div class="legend-body">
                 <div class="legend-item"><span class="swatch" style="background:#FFF59D; border:1px solid #D4B106"></span><span>songName</span></div>
-                <div class="legend-item"><span class="swatch" style="background:#91F4F4; border:1px solid #0097A7"></span><span>node pointer</span></div>
                 <div class="legend-item"><span class="swatch" style="background:#C78CFF; border:1px solid #8D35C9"></span><span>pointer to PlayList</span></div>
-                <div class="legend-item"><span class="dot" style="background:#1565C0"></span><span>null / valid pointer</span></div>
-                <div class="legend-item"><span class="dot" style="background:#E60000"></span><span>active / updated pointer</span></div>
+                <div class="legend-item"><span class="swatch swatch-ptr"></span><span>uninitialized pointer</span></div>
+                <div class="legend-item"><span class="swatch swatch-ptr"><span class="swatch-dot"></span></span><span>null pointer (no arrow)</span></div>
+                <div class="legend-item"><span class="swatch swatch-ptr swatch-arrow"></span><span>initialized pointer</span></div>
+                <div class="legend-item"><span class="dot" style="background:var(--legend-blue)"></span><span>idle / normal reference</span></div>
+                <div class="legend-item"><span class="dot" style="background:var(--legend-green)"></span><span>read / traversal / source</span></div>
+                <div class="legend-item"><span class="dot" style="background:var(--legend-red)"></span><span>write / modified target</span></div>
                 <div class="legend-item"><span class="dot" style="background:#EF6C00"></span><span>dangling pointer</span></div>
             </div>
         </div>
@@ -653,6 +694,7 @@
                 light: {
                     BG_DOT: 'rgba(31, 35, 40, 0.11)',
                     PTR_BLUE: '#1565C0',
+                    GREEN: '#00B843',
                     NODE_PTR_BG: '#91F4F4',
                     SONG_BG: '#FFF59D',
                     SONG_TEXT: '#E60000',
@@ -668,6 +710,7 @@
                 dark: {
                     BG_DOT: 'rgba(230, 237, 243, 0.09)',
                     PTR_BLUE: '#58A6FF',
+                    GREEN: '#4ADE80',
                     NODE_PTR_BG: '#0D4F5C',
                     SONG_BG: '#3D3518',
                     SONG_TEXT: '#FFE082',
@@ -753,6 +796,12 @@
                     const statsState = extra.statsState !== undefined ? extra.statsState : this.defaultStats;
                     if (extra.statsState !== undefined) this.defaultStats = extra.statsState;
 
+                    // Standalone red* extras describe pointers that are only read/tested, so they render green.
+                    const readMarks = {};
+                    [['redPtrs', 'greenPtrs'], ['redStruct', 'greenStruct'], ['redPrev', 'greenPrev'], ['redNext', 'greenNext']].forEach(([r, g]) => {
+                        if (extra[r]) readMarks[g] = [...extra[r]];
+                    });
+
                     return {
                         nodes: clonedNodes,
                         first: extra.first !== undefined ? extra.first : (clonedNodes[0]?.id ?? null),
@@ -760,6 +809,11 @@
                         ptrs: (extra.ptrs || []).map(p => ({ ...p })),
                         statsState,
                         ...extra,
+                        ...readMarks,
+                        redPtrs: [],
+                        redStruct: [],
+                        redPrev: [],
+                        redNext: [],
                         visualOnly,
                         keepStatus: Boolean(extra.keepStatus),
                         text: (visualOnly && !extra.keepStatus) ? '' : originalText,
@@ -780,6 +834,10 @@
                         redStruct: [...(s.redStruct || [])],
                         redPrev: [...(s.redPrev || [])],
                         redNext: [...(s.redNext || [])],
+                        greenPtrs: [...(s.greenPtrs || [])],
+                        greenStruct: [...(s.greenStruct || [])],
+                        greenPrev: [...(s.greenPrev || [])],
+                        greenNext: [...(s.greenNext || [])],
                         flashPtrs: [...(s.flashPtrs || [])],
                         flashNameBoxes: s.flashNameBoxes ? [...s.flashNameBoxes] : undefined,
                         crossPtrs: s.crossPtrs ? [...s.crossPtrs] : undefined
@@ -792,6 +850,10 @@
                     q.redStruct = [];
                     q.redPrev = [];
                     q.redNext = [];
+                    q.greenPtrs = [];
+                    q.greenStruct = [];
+                    q.greenPrev = [];
+                    q.greenNext = [];
                     delete q.flashStruct;
                     delete q.flashPrev;
                     delete q.flashNext;
@@ -803,18 +865,26 @@
                     return q;
                 }
 
-                applyRed(s, ref) {
+                applyColor(s, ref, color) {
                     if (!ref) return s;
-                    if (ref.kind === 'ptr') {
-                        if (!s.redPtrs.includes(ref.key)) s.redPtrs.push(ref.key);
-                    } else if (ref.kind === 'struct') {
-                        if (!s.redStruct.includes(ref.key)) s.redStruct.push(ref.key);
-                    } else if (ref.kind === 'prev' && ref.key != null) {
-                        if (!s.redPrev.includes(ref.key)) s.redPrev.push(ref.key);
-                    } else if (ref.kind === 'next' && ref.key != null) {
-                        if (!s.redNext.includes(ref.key)) s.redNext.push(ref.key);
-                    }
+                    const g = color === 'green';
+                    const list = name => s[(g ? 'green' : 'red') + name];
+                    const add = (arr, key) => { if (!arr.includes(key)) arr.push(key); };
+                    if (ref.kind === 'ptr') add(list('Ptrs'), ref.key);
+                    else if (ref.kind === 'struct') add(list('Struct'), ref.key);
+                    else if (ref.kind === 'prev' && ref.key != null) add(list('Prev'), ref.key);
+                    else if (ref.kind === 'next' && ref.key != null) add(list('Next'), ref.key);
                     return s;
+                }
+
+                // Finds the pointer (aux pointer, p_first or p_playing) used to reach a node whose field is assigned.
+                findAccessRef(target, extra, nodes) {
+                    const id = target.key;
+                    const ptr = (extra.ptrs || []).find(p => p.target === id && nodes.some(n => n.id === id));
+                    if (ptr) return { kind: 'ptr', key: ptr.label };
+                    if (extra.first === id) return { kind: 'struct', key: 'first' };
+                    if (extra.playing === id) return { kind: 'struct', key: 'playing' };
+                    return null;
                 }
 
                 applyFlash(s, ref) {
@@ -831,11 +901,21 @@
                     return s;
                 }
 
+                /**
+                 * Strict 4-phase pointer assignment.
+                 * Case A (direct assignment to a variable, e.g. p_first = p_node):
+                 *  1) source green; 2) source green + blinking red ring on destination;
+                 *  3) destination updated in red, source green; 4) everything back to blue.
+                 * Case B (field reached through another pointer, e.g. p_node->p_next = p_first):
+                 *  1) access pointer green + red ring on the field; 2) source green + ring kept;
+                 *  3) field updated in red, source green; 4) everything back to blue.
+                 */
                 emitAssignment({
                     beforeNodes,
                     beforeExtra = {},
                     afterNodes,
                     afterExtra = {},
+                    accessPtr,
                     source,
                     targets,
                     phase1Text,
@@ -848,16 +928,28 @@
                     const baseAfter = this.clearHighlights(
                         this.buildSnap(phase3Text, afterNodes, { ...afterExtra, visualOnly: false, pause: true })
                     );
+                    const sources = Array.isArray(source) ? source : [source];
+                    const fieldTargets = targets.filter(t => t.kind === 'prev' || t.kind === 'next');
+                    let access = accessPtr === undefined
+                        ? (fieldTargets.length ? this.findAccessRef(fieldTargets[0], beforeExtra, beforeNodes || []) : null)
+                        : accessPtr;
+                    const accessList = access ? (Array.isArray(access) ? access : [access]) : [];
+                    const isCaseB = fieldTargets.length > 0;
 
                     const p1 = this.cloneSnap(baseBefore);
-                    this.applyRed(p1, source);
+                    if (isCaseB) {
+                        accessList.forEach(ap => this.applyColor(p1, ap, 'green'));
+                        targets.forEach(t => this.applyFlash(p1, t));
+                    } else {
+                        sources.forEach(src => this.applyColor(p1, src, 'green'));
+                    }
                     p1.text = phase1Text;
                     p1.visualOnly = false;
                     p1.pause = true;
                     this.snapshots.push(p1);
 
                     const p2 = this.cloneSnap(baseBefore);
-                    this.applyRed(p2, source);
+                    sources.forEach(src => this.applyColor(p2, src, 'green'));
                     targets.forEach(t => this.applyFlash(p2, t));
                     p2.text = phase2Text;
                     p2.visualOnly = false;
@@ -865,8 +957,8 @@
                     this.snapshots.push(p2);
 
                     const p3 = this.cloneSnap(baseAfter);
-                    this.applyRed(p3, source);
-                    targets.forEach(t => this.applyRed(p3, t));
+                    sources.forEach(src => this.applyColor(p3, src, 'green'));
+                    targets.forEach(t => this.applyColor(p3, t, 'red'));
                     p3.text = phase3Text;
                     p3.visualOnly = false;
                     p3.pause = true;
@@ -995,18 +1087,16 @@
                     });
 
                     const nnBoth = { ...nnWithNext, prev: null };
-                    recorder.emit('NULL will be stored in p_node->p_previous.', [nnWithNext, ...shifted], {
-                        first: oldFirst,
-                        playing,
-                        ptrs: [pn],
-                        flashPrev: id,
-                        pause: true
-                    });
-                    recorder.emit('p_node->p_previous now stores NULL.', [nnBoth, ...shifted], {
-                        first: oldFirst,
-                        playing,
-                        ptrs: [pn],
-                        pause: true
+                    recorder.emitAssignment({
+                        beforeNodes: [nnWithNext, ...shifted],
+                        beforeExtra: { first: oldFirst, playing, ptrs: [pn] },
+                        afterNodes: [nnBoth, ...shifted],
+                        afterExtra: { first: oldFirst, playing, ptrs: [pn] },
+                        source: [],
+                        targets: [{ kind: 'prev', key: id }],
+                        phase1Text: 'NULL will be stored in p_node->p_previous.',
+                        phase2Text: 'p_node->p_previous is selected to be updated.',
+                        phase3Text: 'p_node->p_previous now stores NULL.'
                     });
 
                     if (oldFirst != null) {
@@ -1197,18 +1287,16 @@
                     });
 
                     const nnWithNext = { ...nn, next: null };
-                    recorder.emit('NULL will be stored in p_node->p_next.', all, {
-                        first,
-                        playing,
-                        ptrs,
-                        flashNext: id,
-                        pause: true
-                    });
-                    recorder.emit('p_node->p_next now stores NULL.', [...old, nnWithNext], {
-                        first,
-                        playing,
-                        ptrs,
-                        pause: true
+                    recorder.emitAssignment({
+                        beforeNodes: all,
+                        beforeExtra: { first, playing, ptrs },
+                        afterNodes: [...old, nnWithNext],
+                        afterExtra: { first, playing, ptrs },
+                        source: [],
+                        targets: [{ kind: 'next', key: id }],
+                        phase1Text: 'NULL will be stored in p_node->p_next.',
+                        phase2Text: 'p_node->p_next is selected to be updated.',
+                        phase3Text: 'p_node->p_next now stores NULL.'
                     });
 
                     const nnBoth = { ...nnWithNext, prev };
@@ -1956,21 +2044,19 @@
 
                     const linked = nodes.map(n => ({ ...n }));
                     if (after != null) {
-                        recorder.emit('NULL will be stored in p_first->p_previous.', linked, {
-                            first,
-                            playing,
-                            ptrs: [pd],
-                            firstBypass: true,
-                            flashPrev: after,
-                            pause: true
-                        });
+                        const linkedBefore = linked.map(n => ({ ...n }));
                         linked.find(n => n.id === after).prev = null;
-                        recorder.emit('p_first->p_previous now stores NULL.', linked, {
-                            first,
-                            playing,
-                            ptrs: [pd],
-                            firstBypass: true,
-                            pause: true
+                        recorder.emitAssignment({
+                            beforeNodes: linkedBefore,
+                            beforeExtra: { first, playing, ptrs: [pd], firstBypass: true },
+                            afterNodes: linked,
+                            afterExtra: { first, playing, ptrs: [pd], firstBypass: true },
+                            accessPtr: { kind: 'struct', key: 'first' },
+                            source: [],
+                            targets: [{ kind: 'prev', key: after }],
+                            phase1Text: 'NULL will be stored in p_first->p_previous.',
+                            phase2Text: 'p_first->p_previous is selected to be updated.',
+                            phase3Text: 'p_first->p_previous now stores NULL.'
                         });
                     }
 
@@ -2861,31 +2947,29 @@
                         }));
                     }
 
-                    recorder.emit('All nodes have been freed; p_first and p_playing are cleared to NULL', [], stateExtra({
-                        ptrs: [pcur, pd],
-                        flashStruct: 'first',
-                        pause: true
-                    }));
-
-                    recorder.emit('p_first now stores NULL; p_playing is selected to be cleared', [], {
-                        ptrs: [pcur, pd],
-                        first: null,
-                        playing: originalPlaying,
-                        playingAnchor,
-                        playingDangling,
-                        ghost,
-                        redStruct: ['first'],
-                        flashStruct: 'playing',
-                        pause: true
+                    const clearedFirst = { ptrs: [pcur, pd], first: null, playing: originalPlaying, playingAnchor, playingDangling, ghost };
+                    recorder.emitAssignment({
+                        beforeNodes: [],
+                        beforeExtra: stateExtra({ ptrs: [pcur, pd] }),
+                        afterNodes: [],
+                        afterExtra: clearedFirst,
+                        source: [],
+                        targets: [{ kind: 'struct', key: 'first' }],
+                        phase1Text: 'All nodes have been freed; p_first is going to be cleared to NULL.',
+                        phase2Text: 'p_first is selected to be updated.',
+                        phase3Text: 'p_first now stores NULL; p_playing is selected to be cleared.'
                     });
 
-                    recorder.emit('p_first and p_playing now store NULL.', [], {
-                        ptrs: [pcur, pd],
-                        first: null,
-                        playing: null,
-                        ghost,
-                        statsState: EMPTY_STATE,
-                        pause: true
+                    recorder.emitAssignment({
+                        beforeNodes: [],
+                        beforeExtra: clearedFirst,
+                        afterNodes: [],
+                        afterExtra: { ptrs: [pcur, pd], first: null, playing: null, ghost, statsState: EMPTY_STATE },
+                        source: [],
+                        targets: [{ kind: 'struct', key: 'playing' }],
+                        phase1Text: 'p_playing is going to be cleared to NULL.',
+                        phase2Text: 'p_playing is selected to be updated.',
+                        phase3Text: 'p_first and p_playing now store NULL.'
                     });
 
                     recorder.emit('PlayList_deleteAll returns; p_current and p_toDelete go out of scope.', [], {
@@ -3750,6 +3834,13 @@
                     return s;
                 }
 
+                refColor(isRed, isGreen, isDangling = false) {
+                    if (isRed) return this.theme.RED;
+                    if (isGreen) return this.theme.GREEN;
+                    if (isDangling) return this.theme.DANGLING;
+                    return this.theme.PTR_BLUE;
+                }
+
                 hasMark(val, key) {
                     return Array.isArray(val) ? val.includes(key) : val === key;
                 }
@@ -3916,8 +4007,7 @@
                     ].forEach(([label, val, ry, key, isDangling]) => {
                         this.text(label, x - 15, ry + h / 2, '25px monospace', 'right');
                         this.rect(x, ry, 58, h, this.theme.NODE_PTR_BG);
-                        const isRed = this.hasMark(s.redStruct, key);
-                        const col = isRed ? this.theme.RED : (isDangling ? this.theme.DANGLING : this.theme.PTR_BLUE);
+                        const col = this.refColor(this.hasMark(s.redStruct, key), this.hasMark(s.greenStruct, key), isDangling);
                         this.dot(x + 29, ry + 28, col);
                     });
                 }
@@ -3932,9 +4022,7 @@
                         const a = s.firstAnchor || (s.ghost && s.ghost[s.first]);
                         const tx = s.firstTipX ?? (n ? n.x : a?.x);
                         const ty = s.firstTipY ?? (n ? n.y + V.cell / 2 : (a ? a.y + V.cell / 2 : undefined));
-                        const col = this.hasMark(s.redStruct, 'first')
-                            ? this.theme.RED
-                            : (s.firstDangling ? this.theme.DANGLING : this.theme.PTR_BLUE);
+                        const col = this.refColor(this.hasMark(s.redStruct, 'first'), this.hasMark(s.greenStruct, 'first'), s.firstDangling);
                         if (tx != null && ty != null) {
                             if (s.firstBypass) this.routedArrow(x, firstY, tx, ty, false, col);
                             else this.arrow(x, firstY, tx, ty, col, Boolean(s.firstDangling));
@@ -3946,9 +4034,7 @@
                         const a = s.playingAnchor || (s.ghost && s.ghost[s.playing]);
                         const tx = s.playingTipX ?? (n ? n.x : a?.x);
                         const ty = s.playingTipY ?? (n ? n.y + V.cell : (a ? a.y + V.cell : undefined));
-                        const col = this.hasMark(s.redStruct, 'playing')
-                            ? this.theme.RED
-                            : (s.playingDangling ? this.theme.DANGLING : this.theme.PTR_BLUE);
+                        const col = this.refColor(this.hasMark(s.redStruct, 'playing'), this.hasMark(s.greenStruct, 'playing'), s.playingDangling);
                         if (tx != null && ty != null) {
                             this.playingArrow(x, playingY, tx, ty, col, Boolean(s.playingDangling));
                         }
@@ -3959,8 +4045,8 @@
                     const a = n.alpha ?? 1;
                     const x = n.x;
                     const y = n.y;
-                    const prevDot = this.hasMark(s.redPrev, n.id) ? this.theme.RED : this.theme.PTR_BLUE;
-                    const nextDot = this.hasMark(s.redNext, n.id) ? this.theme.RED : this.theme.PTR_BLUE;
+                    const prevDot = this.refColor(this.hasMark(s.redPrev, n.id), this.hasMark(s.greenPrev, n.id));
+                    const nextDot = this.refColor(this.hasMark(s.redNext, n.id), this.hasMark(s.greenNext, n.id));
                     const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
 
                     if (isHovered) {
@@ -3988,8 +4074,8 @@
                     const alpha = n.alpha ?? 1;
                     const prev = (s.nodes || []).find(q => q.id === n.prev);
                     const next = (s.nodes || []).find(q => q.id === n.next);
-                    const prevCol = this.hasMark(s.redPrev, n.id) ? this.theme.RED : this.theme.PTR_BLUE;
-                    const nextCol = this.hasMark(s.redNext, n.id) ? this.theme.RED : this.theme.PTR_BLUE;
+                    const prevCol = this.refColor(this.hasMark(s.redPrev, n.id), this.hasMark(s.greenPrev, n.id));
+                    const nextCol = this.refColor(this.hasMark(s.redNext, n.id), this.hasMark(s.greenNext, n.id));
 
                     if (prev || n.prevTipX !== undefined) {
                         const x1 = n.x + V.cell / 2;
@@ -4016,9 +4102,8 @@
                     this.rect(p.x, p.y, V.ptrW, V.cell, this.theme.NODE_PTR_BG, alpha);
                     const n = (s.nodes || []).find(q => q.id === p.target);
                     const g = s.ghost && s.ghost[p.target];
-                    const isRed = this.hasMark(s.redPtrs, p.label);
                     const isDangling = p.target != null && !n && Boolean(g);
-                    const col = isRed ? this.theme.RED : (isDangling ? this.theme.DANGLING : this.theme.PTR_BLUE);
+                    const col = this.refColor(this.hasMark(s.redPtrs, p.label), this.hasMark(s.greenPtrs, p.label), isDangling);
 
                     this.dot(p.x + 31, p.y + 28, col, alpha);
 

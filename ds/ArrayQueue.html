@@ -226,6 +226,30 @@
         display: inline-block
       }
 
+      .sw-ptr {
+        background: #91f4f4;
+        border: 1px solid #0097A7;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center
+      }
+
+      .sw-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #1565c0;
+        display: block
+      }
+
+      .sw-arrow::after {
+        content: '\2192';
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        color: #1565c0
+      }
+
       .dot {
         width: 12px;
         height: 12px;
@@ -353,12 +377,12 @@
     <div id="wrap">
       <canvas id="cv"></canvas>
       <div id="legend">
-        <div class="li">
-          <span class="sw" style="background:var(--c)"></span>reference
-        </div>
-        <div class="li">
-          <span class="dot"></span>null reference
-        </div>
+        <div class="li"><span class="sw sw-ptr"></span>uninitialized reference</div>
+        <div class="li"><span class="sw sw-ptr"><span class="sw-dot"></span></span>null reference (no arrow)</div>
+        <div class="li"><span class="sw sw-ptr sw-arrow"></span>initialized reference</div>
+        <div class="li"><span class="dot" style="background:#1565c0"></span>idle / normal reference</div>
+        <div class="li"><span class="dot" style="background:#00B843"></span>read / traversal / source</div>
+        <div class="li"><span class="dot" style="background:#E60000"></span>write / modified target</div>
         <div class="li">
           <span class="sw" style="background:var(--g)"></span>object/value
         </div>
@@ -439,6 +463,7 @@
         c: '#91f4f4',
         g: '#b6f8b6',
         r: '#e60000',
+        gr: '#00B843',
         p: '#c78cff',
         v: '#8d35c9',
         k: '#111',
@@ -1129,9 +1154,9 @@
             hasReferencedValue = active && !isNull,
             hasUnreachableValue = cell[GC_ANIMATION.unreachableValueKey] !== undefined,
             displayedValue = hasReferencedValue ? cell.v : cell[GC_ANIMATION.unreachableValueKey],
-            redReference = (s.redReferenceCells || []).includes(cell.i),
-            referenceColor = redReference ? K.r : K.b,
-            referenceLineWidth = redReference ? 3.5 : 2.5;
+            greenReference = (s.greenReferenceCells || []).includes(cell.i),
+            referenceColor = greenReference ? K.gr : K.b,
+            referenceLineWidth = greenReference ? 3.5 : 2.5;
           this.paintRect(cell.x, cell.y, w, w, K.c, {
             stroke: '#fff',
             lineWidth: 2
@@ -1612,7 +1637,7 @@
               text: 'elements[first]',
               i: this.first
             }],
-            redReferenceCells: [this.first],
+            greenReferenceCells: [this.first],
             flashValueCells: [this.first],
             flashFirst: true,
             pause: true
@@ -1621,7 +1646,7 @@
               text: 'elements[first]',
               i: this.first
             }],
-            redReferenceCells: [this.first],
+            greenReferenceCells: [this.first],
             flashValueCells: [this.first],
             pause: true
           }), this.snapshot('Visualization only: the reference arrow is redrawn in its normal color.', {

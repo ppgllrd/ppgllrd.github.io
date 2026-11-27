@@ -220,6 +220,30 @@
         display: inline-block
       }
 
+      .sw-ptr {
+        background: #91f4f4;
+        border: 1px solid #0097A7;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center
+      }
+
+      .sw-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #1565c0;
+        display: block
+      }
+
+      .sw-arrow::after {
+        content: '\2192';
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        color: #1565c0
+      }
+
       .dot {
         width: 12px;
         height: 12px;
@@ -318,7 +342,12 @@
         <div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div>
         <div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div>
         <div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div>
-        <div class="li"><span class="dot"></span>null reference</div>
+        <div class="li"><span class="sw sw-ptr"></span>uninitialized reference</div>
+        <div class="li"><span class="sw sw-ptr"><span class="sw-dot"></span></span>null reference (no arrow)</div>
+        <div class="li"><span class="sw sw-ptr sw-arrow"></span>initialized reference</div>
+        <div class="li"><span class="dot" style="background:#1565c0"></span>idle / normal reference</div>
+        <div class="li"><span class="dot" style="background:#00B843"></span>read / traversal / source</div>
+        <div class="li"><span class="dot" style="background:#E60000"></span>write / modified target</div>
       </div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
@@ -345,6 +374,7 @@
         c: '#91f4f4',
         g: '#b6f8b6',
         r: '#e60000',
+        gr: '#00B843',
         p: '#c78cff',
         v: '#8d35c9',
         d: '#EF6C00',
@@ -745,7 +775,7 @@
           const s = this.pending.shift();
           this.scenes.push(s);
           if (s.fitCamera) this.fit([s]);
-          this.setStatus(s.visualOnly ? '' : (s.text || 'Ready.'));
+          this.setStatus(s.visualOnly && !s.keepStatus ? '' : (s.text || 'Ready.'));
           this.t = 0;
           this.waitingForStep = false;
           this.state = 'MORPH';
@@ -1259,6 +1289,10 @@
             bounds: this.bounds(o)
           };
         }
+        col(s, tok, legacyGreen = false) {
+          if ((s.red || []).includes(tok)) return K.r;
+          return legacyGreen || (s.green || []).includes(tok) ? K.gr : K.b;
+        }
         node(o, s, n) {
           const w = this.c,
             x = n.x,
@@ -1279,9 +1313,10 @@
           this.rect(o, id + ':right', x + w, y, w, w, K.c, {
             value: n.e
           });
-          this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w);
-          this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
-          this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, K.b);
+          const elemCol = this.col(s, 'elem:' + n.id);
+          this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w, elemCol);
+          this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, elemCol);
+          this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, this.col(s, 'next:' + n.id));
         }
         struct(o, s) {
           const x = VISUAL.struct.x,
@@ -1302,7 +1337,7 @@
             this.rect(o, id + ':box', x, yy, w, h, r[1]);
             if (r[0] === 'size') this.txt(o, id + ':value', String(r[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
             else {
-              const col = (s.markFirstArrow && r[0] == 'first') || (s.markLastArrow && r[0] == 'last') ? K.r : K.b;
+              const col = this.col(s, r[0], (s.markFirstArrow && r[0] == 'first') || (s.markLastArrow && r[0] == 'last'));
               this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, col);
             }
           });
@@ -1317,7 +1352,7 @@
             last = this.n(s, s.lastId);
           if (first) {
             const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
-            const col = s.markFirstArrow ? K.r : K.b;
+            const col = this.col(s, 'first', s.markFirstArrow);
             this.det(
               o,
               'a:first',
@@ -1330,7 +1365,7 @@
             );
           }
           if (last) {
-            const col = s.markLastArrow ? K.r : K.b;
+            const col = this.col(s, 'last', s.markLastArrow);
             const startY = y + h + h / 2,
               targetY = last.y + h * .75;
             if (((s.nodes && s.nodes.length === 1) || s.straightLastArrow) && !s.keepCurvedLastArrow) {
@@ -1363,7 +1398,7 @@
                   p.y,
                   t.x,
                   t.y + this.c / 2,
-                  K.b,
+                  this.col(s, 'next:' + n.id),
                   a
                 );
               }
@@ -1375,13 +1410,13 @@
             under = VISUAL.layers.underBox;
           this.txt(o, 'pn:label', p.label || 'newNode', p.x - 12, p.y + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic', under.text);
           this.rect(o, 'pn:box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c, null, under.box);
-          this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, 8, K.b, under.dot);
+          this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, 8, this.col(s, 'pnode'), under.dot);
         }
         pnodeArrow(o, s) {
           const p = s.pnode,
             t = this.n(s, p.target),
             under = VISUAL.layers.underBox;
-          if (t) this.ar(o, 'pn:arrow', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, t.x, t.y + this.c / 2, K.b, under.arrow);
+          if (t) this.ar(o, 'pn:arrow', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, t.x, t.y + this.c / 2, this.col(s, 'pnode'), under.arrow);
         }
         over(o, s) {
           const x = VISUAL.struct.x,
@@ -1577,8 +1612,28 @@
             size: extra.size ?? nodes.length,
             ...extra,
             visualOnly,
-            text: visualOnly ? '' : originalText
+            text: visualOnly && !extra.keepStatus ? '' : originalText
           };
+        },
+        // Strict 4-phase assignment. Tokens: 'first', 'last', 'pnode', 'next:<id>', 'elem:<id>'.
+        // Case A (target is a variable/struct field): source green; + ring on target; target red; cleared.
+        // Case B (target is a node.next field): access reference green + ring on field; source green; field red; cleared.
+        assign(snaps, { beforeNodes, beforeExtra = {}, afterNodes, afterExtra = {}, access = [], source = [], targets, texts }) {
+          const flashOf = toks => {
+            const f = {};
+            toks.forEach(t => {
+              if (t === 'first') f.flashFirst = true;
+              else if (t === 'last') f.flashLast = true;
+              else if (t.startsWith('next:')) f.flashNext = +t.slice(5);
+            });
+            return f;
+          };
+          const isB = targets.some(t => t.startsWith('next:'));
+          const push = (nodes, extra, text, o) => snaps.push(this.snapshot(text, nodes, { ...extra, ...o, preserveLinks: true }));
+          push(beforeNodes, beforeExtra, texts[0], { green: isB ? access : source, ...(isB ? flashOf(targets) : {}), pause: true });
+          push(beforeNodes, beforeExtra, texts[1], { green: source, ...flashOf(targets), pause: true });
+          push(afterNodes, afterExtra, texts[2], { green: source, red: targets, pause: true });
+          push(afterNodes, afterExtra, texts[2], { visualOnly: true, keepStatus: true });
         },
         showCurrent(text = 'Visualization only: Ready.') {
           this.viz.reset();
@@ -1651,16 +1706,22 @@
               ...newNode,
               y: b.y
             };
-            snaps.push(this.snapshot('The first and last fields are updated to reference the new node object.', [nd], {
-              flashFirst: true,
-              flashLast: true,
-              size: 0,
-              pnode,
-              firstId: newId,
-              lastId: newId,
-              preserveLinks: true,
-              pause: true
-            }));
+            this.assign(snaps, {
+              beforeNodes: [nd],
+              beforeExtra: { size: 0, pnode, firstId: null, lastId: null },
+              afterNodes: [nd],
+              afterExtra: { size: 0, pnode, firstId: newId, lastId: null },
+              source: ['pnode'], targets: ['first'],
+              texts: ['newNode is going to be stored in the first field.', 'The first field is selected to be updated.', 'The first field now references the new node object.']
+            });
+            this.assign(snaps, {
+              beforeNodes: [nd],
+              beforeExtra: { size: 0, pnode, firstId: newId, lastId: null },
+              afterNodes: [nd],
+              afterExtra: { size: 0, pnode, firstId: newId, lastId: newId },
+              source: ['pnode'], targets: ['last'],
+              texts: ['newNode is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now references the new node object.']
+            });
             snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [nd], {
               size: 1,
               pnode,
@@ -1687,31 +1748,18 @@
             }));
           } else {
             const last = oldNodes.at(-1);
-            snaps.push(this.snapshot('The algorithm reads queue.last to reach the current rear node directly.', [...oldNodes, newNode], {
-              size: oldSize,
-              pnode,
-              firstId: oldIds[0],
-              lastId: oldIds.at(-1),
-              markLastArrow: true,
-              straightLastArrow: oldSize === 1,
-              preserveLinks: true,
-              pause: true
-            }));
             let linkedOld = oldNodes.map(n => ({
               ...n
             }));
             linkedOld[linkedOld.length - 1].next = newId;
-            snaps.push(this.snapshot('The former rear node.next field is updated to reference the new node object.', [...linkedOld, newNode], {
-              flashNext: last.id,
-              size: oldSize,
-              pnode,
-              firstId: oldIds[0],
-              lastId: oldIds.at(-1),
-              markLastArrow: true,
-              straightLastArrow: oldSize === 1,
-              preserveLinks: true,
-              pause: true
-            }));
+            this.assign(snaps, {
+              beforeNodes: [...oldNodes, newNode],
+              beforeExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1 },
+              afterNodes: [...linkedOld, newNode],
+              afterExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1 },
+              access: ['last'], source: ['pnode'], targets: ['next:' + last.id],
+              texts: ['newNode is going to be stored in last.next.', 'last.next is selected to be updated.', 'last.next now references the new node object.']
+            });
             let nd = {
               ...newNode,
               y: b.y
@@ -1725,15 +1773,14 @@
               preserveLinks: true,
               pause: true
             }));
-            snaps.push(this.snapshot('The last field is updated to reference the new node object.', [...linkedOld, nd], {
-              flashLast: true,
-              size: oldSize,
-              pnode,
-              firstId: oldIds[0],
-              lastId: newId,
-              preserveLinks: true,
-              pause: true
-            }));
+            this.assign(snaps, {
+              beforeNodes: [...linkedOld, nd],
+              beforeExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1) },
+              afterNodes: [...linkedOld, nd],
+              afterExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: newId },
+              source: ['pnode'], targets: ['last'],
+              texts: ['newNode is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now references the new node object.']
+            });
             snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [...linkedOld, nd], {
               size: oldSize + 1,
               pnode,
@@ -1778,24 +1825,32 @@
           let snaps = [this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
             size: oldSize
           })];
-          snaps.push(this.snapshot('The first field is updated to reference the node after the removed node, or null if there is no next node.', oldNodes, {
-            size: oldSize,
-            firstId: newFirst,
-            lastId: oldIds.at(-1),
-            flashFirst: true,
-            detourFirst: newFirst !== null,
-            firstDetourAmount: newFirst !== null ? 1 : 0,
-            preserveLinks: true,
-            pause: true
-          }));
-          if (oldSize === 1) snaps.push(this.snapshot('The removed node was the only node, so The last field is set to null..', oldNodes, {
-            size: oldSize,
-            firstId: null,
-            lastId: null,
-            flashLast: true,
-            preserveLinks: true,
-            pause: true
-          }));
+          this.assign(snaps, {
+            beforeNodes: oldNodes,
+            beforeExtra: { size: oldSize, firstId: removedId, lastId: oldIds.at(-1) },
+            afterNodes: oldNodes,
+            afterExtra: {
+              size: oldSize,
+              firstId: newFirst,
+              lastId: oldIds.at(-1),
+              detourFirst: newFirst !== null,
+              firstDetourAmount: newFirst !== null ? 1 : 0
+            },
+            source: ['first', 'next:' + removedId], targets: ['first'],
+            texts: [
+              newFirst !== null ? 'first.next is going to be read to update the first field.' : 'first.next (null) is going to be read to update the first field.',
+              'The first field is selected to be updated.',
+              newFirst !== null ? 'The first field now references the node after the removed node.' : 'The first field now stores null.'
+            ]
+          });
+          if (oldSize === 1) this.assign(snaps, {
+            beforeNodes: oldNodes,
+            beforeExtra: { size: oldSize, firstId: null, lastId: removedId },
+            afterNodes: oldNodes,
+            afterExtra: { size: oldSize, firstId: null, lastId: null },
+            source: [], targets: ['last'],
+            texts: ['The removed node was the only node; null is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now stores null.']
+          });
           snaps.push(this.snapshot('The size field is decremented because one element reference was removed.', oldNodes, {
             size: oldSize - 1,
             firstId: newFirst,
@@ -1869,6 +1924,7 @@
             } : n), {
               size: this.values.length,
               markFirstArrow: true,
+              green: ['elem:' + firstId],
               pause: true
             }),
             this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', nodes, {
@@ -1919,20 +1975,22 @@
               pause: true
             }));
           } else {
-            snaps.push(this.snapshot('The first field is set to null.', originalNodes, {
-              firstId: null,
-              lastId: oldIds.at(-1),
-              size: oldSize,
-              flashFirst: true,
-              pause: true
-            }));
-            snaps.push(this.snapshot('The last field is set to null.', originalNodes, {
-              firstId: null,
-              lastId: null,
-              size: oldSize,
-              flashLast: true,
-              pause: true
-            }));
+            this.assign(snaps, {
+              beforeNodes: originalNodes,
+              beforeExtra: { firstId: oldIds[0], lastId: oldIds.at(-1), size: oldSize },
+              afterNodes: originalNodes,
+              afterExtra: { firstId: null, lastId: oldIds.at(-1), size: oldSize },
+              source: [], targets: ['first'],
+              texts: ['null is going to be stored in the first field.', 'The first field is selected to be updated.', 'The first field now stores null.']
+            });
+            this.assign(snaps, {
+              beforeNodes: originalNodes,
+              beforeExtra: { firstId: null, lastId: oldIds.at(-1), size: oldSize },
+              afterNodes: originalNodes,
+              afterExtra: { firstId: null, lastId: null, size: oldSize },
+              source: [], targets: ['last'],
+              texts: ['null is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now stores null.']
+            });
             snaps.push(this.snapshot('The size field is set to 0.', originalNodes, {
               firstId: null,
               lastId: null,

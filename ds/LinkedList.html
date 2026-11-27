@@ -12,11 +12,15 @@
       --card-bg: rgba(255, 255, 255, 0.96); --input-bg: #ffffff; --input-border: #9aa4b2;
       --btn-insert: #2E7D32; --btn-delete: #C62828; --btn-search: #1565C0;
       --btn-undo: #6A1B9A; --btn-gray: #546E7A; --btn-orange: #EF6C00; --btn-step: #37474F;
+      --legend-ptr-bg: #91F4F4; --legend-ptr-border: #0097A7;
+      --legend-blue: #1565C0; --legend-green: #00B843; --legend-red: #E60000;
     }
     body.dark {
       --bg-color: #0f1419; --panel-bg: #161b22; --panel-alt: #1f2630;
       --border-color: #30363d; --text-primary: #e6edf3; --text-secondary: #9da7b3;
       --card-bg: rgba(22, 27, 34, 0.96); --input-bg: #0d1117; --input-border: #444c56;
+      --legend-ptr-bg: #0D4F5C; --legend-ptr-border: #26C6DA;
+      --legend-blue: #58A6FF; --legend-green: #4ADE80; --legend-red: #FF5252;
     }
     * { box-sizing: border-box; }
     html, body { margin: 0; padding: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; }
@@ -88,6 +92,10 @@
     .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text-primary); }
     .legend-item:last-child { margin-bottom: 0; }
     .swatch { width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0; }
+    .swatch-ptr { background: var(--legend-ptr-bg); border: 1px solid var(--legend-ptr-border); display: inline-flex; align-items: center; justify-content: center; }
+    .swatch-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--legend-blue); display: block; }
+    .swatch-arrow { position: relative; }
+    .swatch-arrow::after { content: '→'; font-size: 11px; font-weight: 800; line-height: 1; color: var(--legend-blue); }
     .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; margin: 0 2px; }
     #camera-controls { position: absolute; bottom: 14px; right: 14px; display: flex; gap: 5px; z-index: 5; }
     #camera-controls button { background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--border-color); padding: 6px 10px; font-size: 0.85rem; }
@@ -185,8 +193,12 @@
         <div class="legend-item"><span class="swatch" style="background:#B6F8B6; border:1px solid #2E7D32"></span><span>element value object / size</span></div>
         <div class="legend-item"><span class="swatch" style="background:#91F4F4; border:1px solid #0097A7"></span><span>node / reference field</span></div>
         <div class="legend-item"><span class="swatch" style="background:#C78CFF; border:1px solid #8D35C9"></span><span>list / iterator reference</span></div>
-        <div class="legend-item"><span class="dot" style="background:#1565C0"></span><span>null / valid reference</span></div>
-        <div class="legend-item"><span class="dot" style="background:#E60000"></span><span>active / updated reference</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr"></span><span>uninitialized reference</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr"><span class="swatch-dot"></span></span><span>null reference (no arrow)</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr swatch-arrow"></span><span>initialized reference</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-blue)"></span><span>idle / normal reference</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-green)"></span><span>read / traversal / source</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-red)"></span><span>write / modified target</span></div>
       </div>
     </div>
     <div id="camera-controls">
@@ -247,14 +259,14 @@
       const THEMES = {
         light: {
           BG_DOT: 'rgba(31, 35, 40, 0.11)',
-          PTR_BLUE: '#1565C0', NODE_PTR_BG: '#91F4F4',
+          PTR_BLUE: '#1565C0', GREEN: '#00B843', NODE_PTR_BG: '#91F4F4',
           ELEM_BG: '#B6F8B6', ELEM_TEXT: '#E60000',
           RED: '#E60000', LIST_BG: '#C78CFF', LIST_ARROW: '#8D35C9',
           TEXT_DARK: '#1F2328', PILL_BG: '#FFFFFF', PILL_BORDER: '#CBD5E1', RING_FOCUS: '#1565C0'
         },
         dark: {
           BG_DOT: 'rgba(230, 237, 243, 0.09)',
-          PTR_BLUE: '#58A6FF', NODE_PTR_BG: '#0D4F5C',
+          PTR_BLUE: '#58A6FF', GREEN: '#4ADE80', NODE_PTR_BG: '#0D4F5C',
           ELEM_BG: '#1B4D2E', ELEM_TEXT: '#FF8A80',
           RED: '#FF5252', LIST_BG: '#4A236E', LIST_ARROW: '#CE93D8',
           TEXT_DARK: '#E6EDF3', PILL_BG: '#1F2630', PILL_BORDER: '#444C56', RING_FOCUS: '#58A6FF'
@@ -313,6 +325,15 @@
           const statsState = extra.statsState !== undefined ? extra.statsState : this.defaultStats;
           if (extra.statsState !== undefined) this.defaultStats = extra.statsState;
 
+          // Standalone marks are reads (green); real writes use emitAssignment or writeElement (red).
+          const readOnly = { ...extra };
+          const greenPtrs = [...(extra.redPtrs || [])], greenStruct = [...(extra.redStruct || [])];
+          const greenNext = [...(extra.redNext || [])], greenElement = [...(extra.redElement || [])];
+          const greenPNode = Boolean(extra.redPNode), greenIterator = Boolean(extra.redIterator);
+          delete readOnly.redPtrs; delete readOnly.redStruct; delete readOnly.redNext;
+          delete readOnly.redElement; delete readOnly.redPNode; delete readOnly.redIterator;
+          extra = readOnly;
+
           return {
             nodes: clonedNodes,
             firstId: extra.firstId !== undefined ? extra.firstId : (clonedNodes[0]?.id ?? null),
@@ -323,10 +344,11 @@
             iterator: extra.iterator ? { ...extra.iterator } : null,
             statsState,
             ...extra,
-            redPtrs: [...(extra.redPtrs || [])],
-            redStruct: [...(extra.redStruct || [])],
-            redNext: [...(extra.redNext || [])],
-            redElement: [...(extra.redElement || [])],
+            redPtrs: [],
+            redStruct: [],
+            redNext: [],
+            redElement: [...(extra.writeElement || [])],
+            greenPtrs, greenStruct, greenNext, greenElement, greenPNode, greenIterator,
             flashPtrs: [...(extra.flashPtrs || [])],
             flashStruct: [...(extra.flashStruct || [])],
             flashElement: [...(extra.flashElement || [])],
@@ -356,6 +378,10 @@
             redStruct: [...(s.redStruct || [])],
             redNext: [...(s.redNext || [])],
             redElement: [...(s.redElement || [])],
+            greenPtrs: [...(s.greenPtrs || [])],
+            greenStruct: [...(s.greenStruct || [])],
+            greenNext: [...(s.greenNext || [])],
+            greenElement: [...(s.greenElement || [])],
             flashPtrs: [...(s.flashPtrs || [])],
             flashStruct: [...(s.flashStruct || [])],
             flashElement: [...(s.flashElement || [])],
@@ -370,25 +396,43 @@
           const q = this.cloneSnap(s);
           q.redPtrs = []; q.redStruct = []; q.redNext = []; q.redElement = [];
           q.redPNode = false; q.redIterator = false;
+          q.greenPtrs = []; q.greenStruct = []; q.greenNext = []; q.greenElement = [];
+          q.greenPNode = false; q.greenIterator = false;
           q.flashPtrs = []; q.flashStruct = []; delete q.flashNext;
           q.flashPNode = false; q.flashIterator = false;
           q.flashElement = []; q.flashNew = [];
           return q;
         }
 
-        applyRed(s, refOrRefs) {
+        applyColor(s, refOrRefs, color) {
           if (!refOrRefs) return s;
           const refs = Array.isArray(refOrRefs) ? refOrRefs : [refOrRefs];
+          const g = color === 'green';
+          const list = name => s[(g ? 'green' : 'red') + name];
+          const add = (arr, key) => { if (!arr.includes(key)) arr.push(key); };
           for (const ref of refs) {
             if (!ref) continue;
-            if (ref.kind === 'ptr') { if (!s.redPtrs.includes(ref.key)) s.redPtrs.push(ref.key); }
-            else if (ref.kind === 'struct') { if (!s.redStruct.includes(ref.key)) s.redStruct.push(ref.key); }
-            else if (ref.kind === 'next' && ref.key != null) { if (!s.redNext.includes(ref.key)) s.redNext.push(ref.key); }
-            else if (ref.kind === 'element' && ref.key != null) { if (!s.redElement.includes(ref.key)) s.redElement.push(ref.key); }
-            else if (ref.kind === 'pnode') s.redPNode = true;
-            else if (ref.kind === 'iterator') s.redIterator = true;
+            if (ref.kind === 'ptr') add(list('Ptrs'), ref.key);
+            else if (ref.kind === 'struct') add(list('Struct'), ref.key);
+            else if (ref.kind === 'next' && ref.key != null) add(list('Next'), ref.key);
+            else if (ref.kind === 'element' && ref.key != null) add(list('Element'), ref.key);
+            else if (ref.kind === 'pnode') s[g ? 'greenPNode' : 'redPNode'] = true;
+            else if (ref.kind === 'iterator') s[g ? 'greenIterator' : 'redIterator'] = true;
           }
           return s;
+        }
+
+        // Finds the reference (aux pointer, newNode, first or last) used to reach the node whose field is assigned.
+        findAccessRef(target, extra, nodes, hint = '') {
+          const id = target.key;
+          const ptr = (extra.ptrs || []).find(p => p.target === id);
+          if (ptr) return { kind: 'ptr', key: ptr.label };
+          if (extra.pnode && extra.pnode.target === id) return { kind: 'pnode' };
+          const isFirst = extra.firstId === id, isLast = extra.lastId === id;
+          if (isFirst && isLast) return { kind: 'struct', key: /\blast\b/.test(hint) ? 'last' : 'first' };
+          if (isLast) return { kind: 'struct', key: 'last' };
+          if (isFirst) return { kind: 'struct', key: 'first' };
+          return null;
         }
 
         applyFlash(s, ref) {
@@ -401,24 +445,41 @@
           return s;
         }
 
-        emitAssignment({ beforeNodes, beforeExtra = {}, afterNodes, afterExtra = {}, source, targets, phase1Text, phase2Text, phase3Text }) {
+        /**
+         * Strict 4-phase pointer assignment.
+         * Case A (direct assignment to a variable): 1) source green; 2) source green + red ring on target;
+         * 3) target updated in red, source green; 4) back to blue.
+         * Case B (field reached through another reference): 1) access reference green + red ring on the field;
+         * 2) source green + ring kept; 3) field updated in red, source green; 4) back to blue.
+         */
+        emitAssignment({ beforeNodes, beforeExtra = {}, afterNodes, afterExtra = {}, accessPtr, source, targets, phase1Text, phase2Text, phase3Text }) {
           const baseBefore = this.clearHighlights(this.buildSnap(phase1Text, beforeNodes, { ...beforeExtra, visualOnly: false, pause: true }));
           const baseAfter = this.clearHighlights(this.buildSnap(phase3Text, afterNodes, { ...afterExtra, visualOnly: false, pause: true }));
+          const sources = source ? (Array.isArray(source) ? source : [source]) : [];
+          const fieldTargets = targets.filter(t => t.kind === 'next');
+          const isCaseB = fieldTargets.length > 0;
+          const access = accessPtr !== undefined ? accessPtr
+            : (isCaseB ? this.findAccessRef(fieldTargets[0], beforeExtra, beforeNodes || [], phase1Text) : null);
 
           const p1 = this.cloneSnap(baseBefore);
-          this.applyRed(p1, source);
+          if (isCaseB) {
+            this.applyColor(p1, access, 'green');
+            targets.forEach(t => this.applyFlash(p1, t));
+          } else {
+            this.applyColor(p1, sources, 'green');
+          }
           p1.text = phase1Text; p1.visualOnly = false; p1.pause = true;
           this.snapshots.push(p1);
 
           const p2 = this.cloneSnap(baseBefore);
-          this.applyRed(p2, source);
+          this.applyColor(p2, sources, 'green');
           targets.forEach(t => this.applyFlash(p2, t));
           p2.text = phase2Text; p2.visualOnly = false; p2.pause = true;
           this.snapshots.push(p2);
 
           const p3 = this.cloneSnap(baseAfter);
-          this.applyRed(p3, source);
-          targets.forEach(t => this.applyRed(p3, t));
+          this.applyColor(p3, sources, 'green');
+          targets.forEach(t => this.applyColor(p3, t, 'red'));
           p3.text = phase3Text; p3.visualOnly = false; p3.pause = true;
           this.snapshots.push(p3);
 
@@ -916,7 +977,7 @@
               size: oldItems.length, firstId, lastId, redStruct: ['last'], flashElement: [lastId], pause: true
             });
             recorder.emit(`target.element now references value object ${newValue}.`, updatedNodes, {
-              size: oldItems.length, firstId, lastId, redElement: [lastId], statsState: nextState, pause: true
+              size: oldItems.length, firstId, lastId, writeElement: [lastId], statsState: nextState, pause: true
             });
             recorder.emit('Visualization only: completed LinkedList.', updatedNodes, {
               size: oldItems.length, firstId, lastId
@@ -931,7 +992,7 @@
           });
           recorder.emit(`current.element now references value object ${newValue}.`, updatedNodes, {
             size: oldItems.length, firstId, lastId, ptrs: [this.makePtr('current', curId, updatedNodes)],
-            redElement: [curId], statsState: nextState, pause: true
+            writeElement: [curId], statsState: nextState, pause: true
           });
           recorder.emit('The method returns; local variable current leaves the call stack.', updatedNodes, {
             size: oldItems.length, firstId, lastId, ptrs: [this.makePtr('current', curId, updatedNodes)],
@@ -1173,18 +1234,26 @@
             return;
           }
 
-          recorder.emit('null will be stored in list.first.', oldNodes, {
-            size: oldSize, firstId: first0, lastId: last0, flashStruct: ['first'], pause: true
-          });
-          recorder.emit('list.first now stores null.', oldNodes, {
-            size: oldSize, firstId: null, lastId: last0, redStruct: ['first'], pause: true
+          recorder.emitAssignment({
+            beforeNodes: oldNodes,
+            beforeExtra: { size: oldSize, firstId: first0, lastId: last0 },
+            afterNodes: oldNodes,
+            afterExtra: { size: oldSize, firstId: null, lastId: last0 },
+            source: [], targets: [{ kind: 'struct', key: 'first' }],
+            phase1Text: 'null is going to be stored in list.first.',
+            phase2Text: 'null will be stored in list.first.',
+            phase3Text: 'list.first now stores null.'
           });
 
-          recorder.emit('null will be stored in list.last.', oldNodes, {
-            size: oldSize, firstId: null, lastId: last0, flashStruct: ['last'], pause: true
-          });
-          recorder.emit('list.last now stores null.', oldNodes, {
-            size: oldSize, firstId: null, lastId: null, redStruct: ['last'], pause: true
+          recorder.emitAssignment({
+            beforeNodes: oldNodes,
+            beforeExtra: { size: oldSize, firstId: null, lastId: last0 },
+            afterNodes: oldNodes,
+            afterExtra: { size: oldSize, firstId: null, lastId: null },
+            source: [], targets: [{ kind: 'struct', key: 'last' }],
+            phase1Text: 'null is going to be stored in list.last.',
+            phase2Text: 'null will be stored in list.last.',
+            phase3Text: 'list.last now stores null.'
           });
 
           recorder.emit('The size field is set to 0.', oldNodes, {
@@ -1828,6 +1897,7 @@
           return s;
         }
 
+        refColor(red, green) { return red ? this.theme.RED : (green ? this.theme.GREEN : this.theme.PTR_BLUE); }
         hasMark(val, key) { return Array.isArray(val) ? val.includes(key) : val === key; }
 
         rect(x, y, w, h, fill, alpha = 1, stroke = null, lineWidth = 0, r = 7) {
@@ -1905,7 +1975,7 @@
             if (key === 'size') {
               this.text(String(s.size), x + c / 2, yy + c / 2 + 1, '700 30px "Segoe UI", Arial, sans-serif', 'center', this.theme.ELEM_TEXT);
             } else {
-              const col = this.hasMark(s.redStruct, key) ? this.theme.RED : this.theme.PTR_BLUE;
+              const col = this.refColor(this.hasMark(s.redStruct, key), this.hasMark(s.greenStruct, key));
               this.dot(x + c / 2, yy + c / 2, col);
             }
           });
@@ -1916,7 +1986,7 @@
           const f = s.firstId != null ? nodeMap.get(s.firstId) : null;
           if (f || s.firstTipX != null) {
             const tx = s.firstTipX ?? f.x, ty = s.firstTipY ?? (f.y + c / 2);
-            const col = this.hasMark(s.redStruct, 'first') ? this.theme.RED : this.theme.PTR_BLUE;
+            const col = this.refColor(this.hasMark(s.redStruct, 'first'), this.hasMark(s.greenStruct, 'first'));
             const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
             this.detourArrow(x + c / 2, y + c / 2, tx, ty, col, a);
           }
@@ -1928,7 +1998,7 @@
             const straight = ((s.nodes && s.nodes.length === 1) || s.straightLastArrow) && !s.keepCurvedLastArrow;
             const mx = s.lastMidX ?? (straight ? (sx + tx) / 2 : tx - 24);
             const my = s.lastMidY ?? (straight ? (sy + ty) / 2 : sy);
-            const col = this.hasMark(s.redStruct, 'last') ? this.theme.RED : this.theme.PTR_BLUE;
+            const col = this.refColor(this.hasMark(s.redStruct, 'last'), this.hasMark(s.greenStruct, 'last'));
             this.polylineArrow([{ x: sx, y: sy }, { x: mx, y: my }, { x: tx, y: ty }], col);
           }
         }
@@ -1949,12 +2019,12 @@
           this.rect(x, y, w, w, this.theme.NODE_PTR_BG, a);
           this.rect(x + w, y, w, w, this.theme.NODE_PTR_BG, a);
 
-          const elemCol = this.hasMark(s.redElement, n.id) ? this.theme.RED : this.theme.PTR_BLUE;
+          const elemCol = this.refColor(this.hasMark(s.redElement, n.id), this.hasMark(s.greenElement, n.id));
           this.arrow(x + w / 2, y + w / 2, x + w / 2, ey + w, elemCol, a);
           this.dot(x + w / 2, y + w / 2, elemCol, a);
 
           if (n.next !== UNINITIALIZED) {
-            const nextCol = this.hasMark(s.redNext, n.id) ? this.theme.RED : this.theme.PTR_BLUE;
+            const nextCol = this.refColor(this.hasMark(s.redNext, n.id), this.hasMark(s.greenNext, n.id));
             this.dot(x + w + w / 2, y + w / 2, nextCol, a);
           }
         }
@@ -1965,13 +2035,13 @@
           if (!t && n.nextTipX == null) return;
           const sx = n.x + V.cell + V.cell / 2, sy = n.y + V.cell / 2;
           const tx = n.nextTipX ?? t.x, ty = n.nextTipY ?? (t.y + V.cell / 2);
-          const col = this.hasMark(s.redNext, n.id) ? this.theme.RED : this.theme.PTR_BLUE;
+          const col = this.refColor(this.hasMark(s.redNext, n.id), this.hasMark(s.greenNext, n.id));
           const a = n.detourAmount ?? (n.detourNext ? 1 : 0);
           this.detourArrow(sx, sy, tx, ty, col, a, n.alpha ?? 1);
         }
 
         drawPNode(s, p, nodeMap) {
-          const alpha = p.alpha ?? 1, col = s.redPNode ? this.theme.RED : this.theme.PTR_BLUE;
+          const alpha = p.alpha ?? 1, col = this.refColor(s.redPNode, s.greenPNode);
           this.text(p.label || 'newNode', p.x - 12, p.y + 38, '22px monospace', 'right', this.theme.TEXT_DARK, alpha, 'alphabetic');
           this.rect(p.x, p.y, V.ptrW, V.ptrH, this.theme.NODE_PTR_BG, alpha);
           this.dot(p.x + V.ptrW / 2, p.y + V.ptrH / 2, col, alpha);
@@ -1981,22 +2051,18 @@
         }
 
         drawAuxPtr(s, p, nodeMap) {
-          const alpha = p.alpha ?? 1, col = this.hasMark(s.redPtrs, p.label) ? this.theme.RED : this.theme.PTR_BLUE;
+          const alpha = p.alpha ?? 1, col = this.refColor(this.hasMark(s.redPtrs, p.label), this.hasMark(s.greenPtrs, p.label));
           this.text(p.label, p.x + V.ptrW / 2, p.y - 10, '21px monospace', 'center', this.theme.TEXT_DARK, alpha, 'alphabetic');
           this.rect(p.x, p.y, V.ptrW, V.ptrH, this.theme.NODE_PTR_BG, alpha);
           this.dot(p.x + V.ptrW / 2, p.y + V.ptrH / 2, col, alpha);
           const t = p.target != null ? nodeMap.get(p.target) : null;
           const tx = p.tipX ?? t?.x, ty = p.tipY ?? t?.y;
           if (tx != null && ty != null) this.arrow(p.x + V.ptrW / 2, p.y + V.ptrH / 2, tx, ty, col, alpha);
-          const nullA = p.nullAlpha ?? (p.target == null ? 1 : 0);
-          if (nullA > 0.02 && p.tipX == null) {
-            this.text('null', p.x + V.ptrW / 2, p.y + V.ptrH + 16, '15px monospace', 'center', col, alpha * nullA);
-          }
         }
 
         drawIterator(s, it, nodeMap) {
           const alpha = it.alpha ?? 1, cx = it.x, cy = it.y, ix = cx - 85, iy = cy - 60;
-          const col = s.redIterator ? this.theme.RED : this.theme.PTR_BLUE;
+          const col = this.refColor(s.redIterator, s.greenIterator);
           this.text('iterator', ix - 10, iy + 38, '22px monospace', 'right', this.theme.TEXT_DARK, alpha, 'alphabetic');
           this.rect(ix, iy, V.ptrW, V.ptrH, this.theme.LIST_BG, alpha);
           this.dot(ix + V.ptrW / 2, iy + V.ptrH / 2, this.theme.LIST_ARROW, alpha);
@@ -2009,11 +2075,6 @@
           const t = it.target != null ? nodeMap.get(it.target) : null;
           const tx = it.tipX ?? t?.x, ty = it.tipY ?? t?.y;
           if (tx != null && ty != null) this.arrow(cx + V.ptrW / 2, cy + V.ptrH / 2, tx, ty, col, alpha);
-
-          const nullA = it.nullAlpha ?? (it.target == null ? 1 : 0);
-          if (nullA > 0.02 && it.tipX == null) {
-            this.text('null', cx + V.ptrW / 2, cy + V.ptrH + 16, '15px monospace', 'center', col, alpha * nullA);
-          }
         }
 
         flashCircle(x, y, r = 28) {

@@ -24,6 +24,12 @@
             --btn-gray: #546E7A;
             --btn-orange: #EF6C00;
             --btn-step: #37474F;
+
+            --legend-ptr-bg: #91F4F4;
+            --legend-ptr-border: #0097A7;
+            --legend-blue: #1565C0;
+            --legend-green: #00B843;
+            --legend-red: #E60000;
         }
 
         body.dark {
@@ -36,6 +42,12 @@
             --card-bg: rgba(22, 27, 34, 0.96);
             --input-bg: #0d1117;
             --input-border: #444c56;
+
+            --legend-ptr-bg: #0D4F5C;
+            --legend-ptr-border: #26C6DA;
+            --legend-blue: #58A6FF;
+            --legend-green: #4ADE80;
+            --legend-red: #FF5252;
         }
 
         * { box-sizing: border-box; }
@@ -333,6 +345,40 @@
             flex-shrink: 0;
         }
 
+        .swatch-ptr {
+            background: var(--legend-ptr-bg);
+            border: 1px solid var(--legend-ptr-border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .swatch-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--legend-blue);
+            display: block;
+        }
+
+        .swatch-arrow { position: relative; }
+
+        .swatch-arrow::after {
+            content: '→';
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+            color: var(--legend-blue);
+        }
+
+        .dot {
+            width: 11px;
+            height: 11px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin: 0 2px;
+        }
+
         #camera-controls {
             position: absolute;
             bottom: 14px;
@@ -568,8 +614,13 @@
             <div class="legend-body">
                 <div class="legend-item"><span class="swatch" style="background:#B6F8B6; border:1px solid #66BB6A"></span><span>logical element / cap / size</span></div>
                 <div class="legend-item"><span class="swatch" style="background:#FFF7B3; border:1px solid #D4B106"></span><span>allocated outside size</span></div>
-                <div class="legend-item"><span class="swatch" style="background:#91F4F4; border:1px solid #0097A7"></span><span>pointer to array</span></div>
                 <div class="legend-item"><span class="swatch" style="background:#C78CFF; border:1px solid #8D35C9"></span><span>pointer to list</span></div>
+                <div class="legend-item"><span class="swatch swatch-ptr"></span><span>uninitialized pointer</span></div>
+                <div class="legend-item"><span class="swatch swatch-ptr"><span class="swatch-dot"></span></span><span>null pointer (no arrow)</span></div>
+                <div class="legend-item"><span class="swatch swatch-ptr swatch-arrow"></span><span>initialized pointer</span></div>
+                <div class="legend-item"><span class="dot" style="background:var(--legend-blue)"></span><span>idle / normal reference</span></div>
+                <div class="legend-item"><span class="dot" style="background:var(--legend-green)"></span><span>read / traversal / source</span></div>
+                <div class="legend-item"><span class="dot" style="background:var(--legend-red)"></span><span>write / modified target</span></div>
             </div>
         </div>
 
@@ -639,6 +690,7 @@
                 light: {
                     BG_DOT: 'rgba(31, 35, 40, 0.11)',
                     PTR_BLUE: '#1565C0',
+                    GREEN: '#00B843',
                     NODE_PTR_BG: '#91F4F4',
                     ACTIVE_BG: '#B6F8B6',
                     ACTIVE_TEXT: '#E60000',
@@ -657,6 +709,7 @@
                 dark: {
                     BG_DOT: 'rgba(230, 237, 243, 0.09)',
                     PTR_BLUE: '#58A6FF',
+                    GREEN: '#4ADE80',
                     NODE_PTR_BG: '#0D4F5C',
                     ACTIVE_BG: '#235334',
                     ACTIVE_TEXT: '#FF8A80',
@@ -880,7 +933,14 @@
                     }
 
                     // 4-step update for elements pointer & capacity
-                    emitRealloc('All existing elements have been copied; elements is selected to point to the new array', vals.length, {
+                    // Field assigned through another pointer: p_list->elements = new array.
+                    emitRealloc('All existing elements have been copied; p_list is used to reach the elements field', vals.length, {
+                        greenList: true,
+                        flashElements: true,
+                        pause: true
+                    });
+
+                    emitRealloc('elements is selected to point to the new array', vals.length, {
                         flashElements: true,
                         pause: true
                     });
@@ -2075,8 +2135,9 @@
                         baseline: 'alphabetic'
                     });
                     this.paintRect(listBoxX, listBoxY, cell, cell, this.theme.LIST_BG, { radius: 7 });
-                    this.paintDot(listDotX, listDotY, VISUAL.dotRadius, this.theme.LIST_ARROW);
-                    this.arrow(listDotX, listDotY, structLeft, structTop + 8, this.theme.LIST_ARROW, 3);
+                    const listCol = s.greenList ? this.theme.GREEN : this.theme.LIST_ARROW;
+                    this.paintDot(listDotX, listDotY, VISUAL.dotRadius, listCol);
+                    this.arrow(listDotX, listDotY, structLeft, structTop + 8, listCol, 3);
 
                     [
                         ['elements', this.theme.NODE_PTR_BG, null, Boolean(s.redElements)],

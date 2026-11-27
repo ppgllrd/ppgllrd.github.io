@@ -226,6 +226,30 @@
         display: inline-block
       }
 
+      .sw-ptr {
+        background: #91f4f4;
+        border: 1px solid #0097A7;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center
+      }
+
+      .sw-dot {
+        width: 5px;
+        height: 5px;
+        border-radius: 50%;
+        background: #1565c0;
+        display: block
+      }
+
+      .sw-arrow::after {
+        content: '\2192';
+        font-size: 11px;
+        font-weight: 800;
+        line-height: 1;
+        color: #1565c0
+      }
+
       .dot {
         width: 12px;
         height: 12px;
@@ -354,7 +378,12 @@
         <div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div>
         <div class="li"><span class="sw" style="background:#91f4f4"></span>array reference slot</div>
         <div class="li"><span class="sw" style="background:#c78cff"></span>list reference</div>
-        <div class="li"><span class="dot"></span>object reference</div>
+        <div class="li"><span class="sw sw-ptr"></span>uninitialized reference</div>
+        <div class="li"><span class="sw sw-ptr"><span class="sw-dot"></span></span>null reference (no arrow)</div>
+        <div class="li"><span class="sw sw-ptr sw-arrow"></span>initialized reference</div>
+        <div class="li"><span class="dot" style="background:#1565c0"></span>idle / normal reference</div>
+        <div class="li"><span class="dot" style="background:#00B843"></span>read / traversal / source</div>
+        <div class="li"><span class="dot" style="background:#E60000"></span>write / modified target</div>
       </div>
     </div>
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
@@ -386,6 +415,7 @@
         c: '#91f4f4',
         g: '#b6f8b6',
         r: '#e60000',
+        gr: '#00B843',
         p: '#c78cff',
         v: '#8d35c9',
         k: '#111',
@@ -1069,8 +1099,9 @@
             baseline: 'alphabetic'
           });
           this.paintRect(listBoxX, listBoxY, cell, cell, K.p);
-          this.paintDot(listDotX, listDotY, m.dotRadius, K.v);
-          this.arrow(listDotX, listDotY, structLeft, structTop, K.v, 3);
+          const listColor = s.greenList ? K.gr : K.v;
+          this.paintDot(listDotX, listDotY, m.dotRadius, listColor);
+          this.arrow(listDotX, listDotY, structLeft, structTop, listColor, 3);
           [
             ['elements', K.c],
             ['size', K.g]
@@ -1084,7 +1115,10 @@
               baseline: 'middle'
             });
             this.paintRect(structLeft, rowTop, cell, cell - m.rowStrokeCompensation, r[1]);
-            if (r[0] === 'elements') this.paintDot(structLeft + m.cellCenter, rowCenterY, m.dotRadius, K.b);
+            if (r[0] === 'elements') {
+              const elementsColor = s.redElements ? K.r : (s.greenElements ? K.gr : K.b);
+              this.paintDot(structLeft + m.cellCenter, rowCenterY, m.dotRadius, elementsColor);
+            }
             else this.paintText(String(s.size), structLeft + m.cellCenter, rowCenterY + 2, {
               font: '32px Arial',
               fill: K.r
@@ -1098,7 +1132,10 @@
           let firstCell = null;
           if (s.arrayPointerId !== undefined) firstCell = (s.cells || []).find(c => c.id === s.arrayPointerId);
           if (!firstCell) firstCell = (s.cells || [])[0];
-          if (firstCell) this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, K.b, 3)
+          if (firstCell) {
+            const elementsColor = s.redElements ? K.r : (s.greenElements ? K.gr : K.b);
+            this.arrow(b.structLeftX + m.cellCenter, b.structTopY + m.cellCenter, firstCell.x, firstCell.y + m.cellCenter, elementsColor, 3);
+          }
         }
         drawLabels(s) {
           (s.labels || []).forEach(l => this.paintText(l.text, l.x, l.y, {
@@ -1120,11 +1157,11 @@
           this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, K.b);
           const hiddenObjectIds = new Set(s.hideObjectIds || []),
             hiddenObjectIndices = new Set(s.hideObjectIndices || []),
-            redObjectArrows = new Set(s.redObjectArrows || []);
+            greenObjectArrows = new Set(s.greenObjectArrows || []);
           if (cell.v !== '?' && !hiddenObjectIds.has(cell.id) && !hiddenObjectIndices.has(cell.i)) {
             const objY = cell.y + w + 30,
-              arrowColor = redObjectArrows.has(cell.i) ? K.r : K.b,
-              arrowWidth = redObjectArrows.has(cell.i) ? 4 : 3;
+              arrowColor = greenObjectArrows.has(cell.i) ? K.gr : K.b,
+              arrowWidth = greenObjectArrows.has(cell.i) ? 4 : 3;
             this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, arrowColor);
             this.arrow(cell.x + m.cellCenter, cell.y + m.cellCenter, cell.x + m.cellCenter, objY, arrowColor, arrowWidth);
             this.paintRect(cell.x, objY, w, w, K.g);
@@ -1498,14 +1535,26 @@
               pause: true
             }));
           }
-          snaps.push(this.reallocSnapshot('All existing references have been copied; the list will now refer to the new internal array', vals, cap, newCap, vals.length, {
+          snaps.push(this.reallocSnapshot('All references are copied; the list reference is used to reach elements', vals, cap, newCap, vals.length, {
+            greenList: true,
+            flashElements: true,
             pause: true
           }));
-          snaps.push(this.reallocFinalSnapshot('The elements reference is updated to refer to the new internal array', vals, newCap, {
+          snaps.push(this.reallocSnapshot('The elements field is selected to refer to the new internal array', vals, cap, newCap, vals.length, {
+            flashElements: true,
+            pause: true
+          }));
+          snaps.push(this.reallocFinalSnapshot('The elements reference now points to the new internal array', vals, newCap, {
             capacity: cap,
             fitCamera: true,
             flashElements: true,
+            redElements: true,
             pause: true
+          }));
+          snaps.push(this.reallocFinalSnapshot('Visualization only: elements pointer assignment highlights cleared', vals, newCap, {
+            capacity: cap,
+            fitCamera: true,
+            visualOnly: true
           }));
           snaps.push(this.reallocFinalSnapshot('The effective capacity is now the length of the new internal array: ' + newCap, vals, newCap, {
             pause: true
@@ -1661,7 +1710,7 @@
                 font: '18px monospace',
                 color: K.k
               }],
-              redObjectArrows: [idx],
+              greenObjectArrows: [idx],
               pause: true
             }),
             this.snapshot('Visualization only: the object referenced at index ' + idx + ' is highlighted.', this.values, this.capacity, {
@@ -1992,7 +2041,7 @@
             this.snapshot('The reference at index ' + idx + ' is selected directly.', old, this.capacity, {
               size: old.length,
               labels: accessLabel,
-              redObjectArrows: [idx],
+              greenObjectArrows: [idx],
               pause: true
             }),
             this.snapshot('The reference at index ' + idx + ' is selected before replacement.', old, this.capacity, {

@@ -23,6 +23,12 @@
             --r: #e60000;
             --p: #c78cff;
             --v: #8d35c9;
+            --ptr-green: #00b843;
+            --legend-ptr-bg: #91f4f4;
+            --legend-ptr-border: #0097a7;
+            --legend-blue: #1565c0;
+            --legend-green: #00b843;
+            --legend-red: #e60000;
         }
 
         body.dark {
@@ -35,6 +41,13 @@
             --card-bg: rgba(22, 27, 34, 0.94);
             --input-bg: #0d1117;
             --input-border: #444c56;
+            --c: #0d4f5c;
+            --ptr-green: #4ade80;
+            --legend-ptr-bg: #0d4f5c;
+            --legend-ptr-border: #26c6da;
+            --legend-blue: #58a6ff;
+            --legend-green: #4ade80;
+            --legend-red: #ff5252;
         }
 
         * {
@@ -374,6 +387,34 @@
             flex-shrink: 0;
         }
 
+        .swatch-ptr {
+            background: var(--legend-ptr-bg) !important;
+            border: 1px solid var(--legend-ptr-border);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .swatch-dot {
+            width: 5px;
+            height: 5px;
+            border-radius: 50%;
+            background: var(--legend-blue);
+            display: block;
+        }
+
+        .swatch-arrow {
+            position: relative;
+        }
+
+        .swatch-arrow::after {
+            content: '→';
+            color: var(--legend-blue);
+            font-size: 11px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
         /* Camera Floating Controls */
         #camera-controls {
             position: absolute;
@@ -636,7 +677,12 @@
                 <div class="li"><span class="sw" style="background:#b6f8b6"></span><span>element value object / size</span></div>
                 <div class="li"><span class="sw" style="background:#91f4f4"></span><span>node / reference field</span></div>
                 <div class="li"><span class="sw" style="background:#c78cff"></span><span>set / finder / builder ref</span></div>
-                <div class="li"><span class="dot"></span><span>object / null reference</span></div>
+                <div class="li"><span class="sw swatch-ptr"></span><span>uninitialized reference</span></div>
+                <div class="li"><span class="sw swatch-ptr"><span class="swatch-dot"></span></span><span>null reference (no arrow)</span></div>
+                <div class="li"><span class="sw swatch-ptr swatch-arrow"></span><span>initialized reference</span></div>
+                <div class="li"><span class="dot" style="background:var(--legend-blue)"></span><span>idle / normal reference</span></div>
+                <div class="li"><span class="dot" style="background:var(--legend-green)"></span><span>read / traversal / source</span></div>
+                <div class="li"><span class="dot" style="background:var(--legend-red)"></span><span>write / modified target</span></div>
             </div>
         </div>
 
@@ -700,6 +746,7 @@
 
             const LIGHT_THEME = {
                 b: '#1565c0',
+                green: '#00b843',
                 c: '#91f4f4',
                 g: '#b6f8b6',
                 r: '#e60000',
@@ -716,9 +763,10 @@
 
             const DARK_THEME = {
                 b: '#58a6ff',
-                c: '#184e5e',
+                green: '#4ade80',
+                c: '#0d4f5c',
                 g: '#245832',
-                r: '#ff6b6b',
+                r: '#ff5252',
                 p: '#6f42c1',
                 v: '#c084fc',
                 d: '#FFA726',
@@ -1649,6 +1697,11 @@
                     this.nw = VISUAL.node.width;
                 }
 
+                refColor(s, ref, legacyGreen = false) {
+                    if ((s.redRefs || []).includes(ref)) return K.r;
+                    return legacyGreen || (s.greenRefs || []).includes(ref) ? K.green : K.b;
+                }
+
                 obj(o, x) { o.push(x); }
 
                 txt(o, id, t, x, y, font = VISUAL.fonts.value, fill = null, align = 'center', base = 'middle', layer = LAYER.text) {
@@ -1714,9 +1767,11 @@
                     this.txt(o, id + ':v', n.e, x + w / 2, ey + w / 2 + 2, `${valueFontSize(n.e, 28)}px Arial`, K.r);
                     this.rect(o, id + ':l', x, y, w, w, K.c, hit, LAYER.box);
                     this.rect(o, id + ':r', x + w, y, w, w, K.c, hit, LAYER.box);
-                    this.ar(o, id + ':ea', x + w / 2, y + w / 2, x + w / 2, ey + w);
-                    this.cir(o, id + ':ed', x + w / 2, y + w / 2, 7.5, K.b);
-                    this.cir(o, id + ':nd', x + w + w / 2, y + w / 2, 7.5, K.b);
+                    const elementColor = this.refColor(s, 'element:' + n.id);
+                    const nextColor = this.refColor(s, 'next:' + n.id);
+                    this.ar(o, id + ':ea', x + w / 2, y + w / 2, x + w / 2, ey + w, elementColor);
+                    this.cir(o, id + ':ed', x + w / 2, y + w / 2, 7.5, elementColor);
+                    this.cir(o, id + ':nd', x + w + w / 2, y + w / 2, 7.5, nextColor);
                 }
 
                 struct(o, s) {
@@ -1731,7 +1786,7 @@
                         if (r[0] === 'size') {
                             this.txt(o, id + ':val', String(r[2]), x + w / 2, yy + h / 2 + 2, `${valueFontSize(r[2], 32)}px Arial`, K.r);
                         } else {
-                            this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, K.b);
+                            this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, this.refColor(s, 'first'));
                         }
                     });
                 }
@@ -1743,8 +1798,8 @@
                     if (f) {
                         const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
                         a > 0.001
-                            ? this.det(o, 'a:first', x + w / 2, y + h / 2, f.x, f.y + h / 2, K.b, a)
-                            : this.ar(o, 'a:first', x + w / 2, y + h / 2, f.x, f.y + h / 2);
+                            ? this.det(o, 'a:first', x + w / 2, y + h / 2, f.x, f.y + h / 2, this.refColor(s, 'first'), a)
+                            : this.ar(o, 'a:first', x + w / 2, y + h / 2, f.x, f.y + h / 2, this.refColor(s, 'first'));
                     }
                 }
 
@@ -1755,8 +1810,8 @@
                             if (t) {
                                 const a = n.detourAmount ?? (n.detourNext ? 1 : 0);
                                 a > 0.001
-                                    ? this.det(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2, K.b, a)
-                                    : this.ar(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2);
+                                    ? this.det(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2, this.refColor(s, 'next:' + n.id), a)
+                                    : this.ar(o, 'link:' + n.id, p.x, p.y, t.x, t.y + this.c / 2, this.refColor(s, 'next:' + n.id));
                             }
                         }
                     });
@@ -1785,13 +1840,13 @@
                 finder(o, s) {
                     const f = s.finder, x = f.x, y = f.y, w = this.c, h = this.c;
                     this.fieldObject(o, 'finder', 'finder', x, y, [
-                        { label: 'previous', fill: K.c },
-                        { label: 'current', fill: K.c },
+                        { label: 'previous', fill: K.c, dot: this.refColor(s, 'finder:previous') },
+                        { label: 'current', fill: K.c, dot: this.refColor(s, 'finder:current') },
                         { label: 'found', fill: K.g, type: 'value', value: f.found === null ? '?' : f.found, valueFont: 'bold 18px monospace' }
                     ]);
                     const p = this.nodeById(s, f.previous), c = this.nodeById(s, f.current);
-                    if (p) this.ar(o, 'finder:par', x + w / 2, y + h / 2, p.x, p.y + h);
-                    if (c) this.ar(o, 'finder:car', x + w / 2, y + h + h / 2, c.x, c.y + h);
+                    if (p) this.ar(o, 'finder:par', x + w / 2, y + h / 2, p.x, p.y + h, this.refColor(s, 'finder:previous'));
+                    if (c) this.ar(o, 'finder:car', x + w / 2, y + h + h / 2, c.x, c.y + h, this.refColor(s, 'finder:current'));
                     if (s.crossFinder) {
                         this.obj(o, { id: 'finder:cross', kind: 'cross', x: x - 125, y: y - 108, w, h, layer: LAYER.overlay });
                     }
@@ -1801,13 +1856,14 @@
                     const w = this.c, h = this.c, id = 'var:' + v.label;
                     this.txt(o, id + ':lab', v.label, v.x - 14, v.y + h / 2, VISUAL.fonts.auxPointerLabel, K.k, 'right');
                     this.rect(o, id + ':box', v.x, v.y, w, h, K.c);
-                    this.cir(o, id + ':dot', v.x + w / 2, v.y + h / 2, 8, K.b);
+                    const ptrColor = this.refColor(s, 'var:' + v.label);
+                    this.cir(o, id + ':dot', v.x + w / 2, v.y + h / 2, 8, ptrColor);
                     const t = this.nodeById(s, v.target);
                     if (t) {
                         const isElem = v.targetPart === 'element';
                         const tx = isElem ? t.x + w / 2 : t.x;
                         const ty = isElem ? t.y + VISUAL.node.elementYOffset : t.y + h / 2;
-                        this.ar(o, id + ':ar', v.x + w / 2, v.y + h / 2, tx, ty);
+                        this.ar(o, id + ':ar', v.x + w / 2, v.y + h / 2, tx, ty, ptrColor);
                         if (isElem && (v.label === 'elem1' || v.label === 'elem2')) {
                             const ey = t.y + VISUAL.node.elementYOffset;
                             this.obj(o, {
@@ -1824,8 +1880,6 @@
                                 layer: LAYER.overlay - 1
                             });
                         }
-                    } else if (v.label === 'elem1' || v.label === 'elem2') {
-                        this.txt(o, id + ':null', 'null', v.x + w / 2, v.y + h + 15, '14px monospace', K.muted);
                     }
                     if (v.flash) this.obj(o, { id: id + ':fl', kind: 'flashCircle', x: v.x + w / 2, y: v.y + h / 2, r: 28, layer: LAYER.overlay });
                     if (v.flashCell) this.obj(o, { id: id + ':flcell', kind: 'flashCircle', x: v.x + w / 2, y: v.y + h / 2, r: 28, layer: LAYER.overlay });
@@ -1840,10 +1894,11 @@
                     this.cir(o, 'it:rd', ix + w / 2, iy + h / 2, 8, K.v, itL.dot);
                     this.txt(o, 'it:cl', 'current', cx + 30, cy - 10, VISUAL.fonts.pointerLabel, K.k, 'center', 'alphabetic', itL.text);
                     this.rect(o, 'it:cur', cx, cy, w, h, K.c, null, itL.box);
-                    this.cir(o, 'it:cd', cx + w / 2, cy + h / 2, 8, K.b, itL.dot);
+                    const iteratorColor = this.refColor(s, 'iterator:current');
+                    this.cir(o, 'it:cd', cx + w / 2, cy + h / 2, 8, iteratorColor, itL.dot);
                     this.ar(o, 'it:a1', ix + w / 2, iy + h / 2, cx, cy + h / 2, K.v, itL.arrow);
                     const t = this.nodeById(s, it.target);
-                    if (t) this.ar(o, 'it:a2', cx + w / 2, cy + h / 2, t.x, t.y, K.b, itL.arrow);
+                    if (t) this.ar(o, 'it:a2', cx + w / 2, cy + h / 2, t.x, t.y, iteratorColor, itL.arrow);
                 }
 
                 setOperationExtras(o, s) {
@@ -1851,22 +1906,22 @@
                     if (s.opSetStructs) {
                         s.opSetStructs.forEach((st, i) => {
                             this.fieldObject(o, 'opset:' + i, st.label, st.x, st.y, [
-                                { label: 'first', fill: K.c },
+                                { label: 'first', fill: K.c, dot: this.refColor(s, 'result:first') },
                                 { label: 'size', fill: K.g, type: 'value', value: st.size }
                             ], true);
                             const f = this.nodeById(s, st.firstId);
-                            if (f) this.ar(o, 'opset:' + i + ':first', st.x + this.c / 2, st.y + this.c / 2, f.x, f.y + this.c / 2);
+                            if (f) this.ar(o, 'opset:' + i + ':first', st.x + this.c / 2, st.y + this.c / 2, f.x, f.y + this.c / 2, this.refColor(s, 'result:first'));
                         });
                     }
                     if (s.builderStruct) {
                         const b = s.builderStruct;
                         this.fieldObject(o, 'builder', 'builder', b.x, b.y, [
-                            { label: 'first', fill: K.c },
+                            { label: 'first', fill: K.c, dot: this.refColor(s, 'builder:first') },
                             { label: 'last', fill: K.c },
                             { label: 'size', fill: K.g, type: 'value', value: b.size }
                         ], true);
                         const f = this.nodeById(s, b.firstId), l = this.nodeById(s, b.lastId);
-                        if (f) this.ar(o, 'builder:firstar', b.x + this.c / 2, b.y + this.c / 2, f.x, f.y + this.c / 2);
+                        if (f) this.ar(o, 'builder:firstar', b.x + this.c / 2, b.y + this.c / 2, f.x, f.y + this.c / 2, this.refColor(s, 'builder:first'));
                         if (l) {
                             this.poly(o, 'builder:lastar', [
                                 { x: b.x + this.c / 2, y: b.y + this.c + this.c / 2 },
@@ -2224,6 +2279,35 @@
                     if (this.history.length > 0) this.history.pop();
                 },
 
+                emitAssignment(snaps, { beforeNodes, beforeExtra = {}, afterNodes, afterExtra = {}, access = [], source = [], targets, texts }) {
+                    const isFieldAssignment = targets.some(target => target.startsWith('next:'));
+                    const flashTarget = {};
+                    targets.forEach(target => {
+                        if (target === 'first') flashTarget.flashFirst = true;
+                        else if (target.startsWith('next:')) flashTarget.flashNext = Number(target.slice(5));
+                        else if (target === 'iterator:current') flashTarget.flashIteratorCurrent = true;
+                    });
+                    const push = (nodes, extra, text, marks, flash = false, redRefs = []) => {
+                        snaps.push(this.snapshot(text, nodes, {
+                            ...extra,
+                            greenRefs: marks,
+                            redRefs,
+                            ...(flash ? flashTarget : {}),
+                            preserveLinks: true,
+                            pause: true
+                        }));
+                    };
+
+                    push(beforeNodes, beforeExtra, texts[0], isFieldAssignment ? access : source, isFieldAssignment);
+                    push(beforeNodes, beforeExtra, texts[1], source, true);
+                    push(afterNodes, afterExtra, texts[2], source, false, targets);
+                    snaps.push(this.snapshot(texts[2], afterNodes, {
+                        ...afterExtra,
+                        preserveLinks: true,
+                        visualOnly: true
+                    }));
+                },
+
                 finderX(prev, cur, nodes) {
                     const p = nodes.find(n => n.id === prev), c = nodes.find(n => n.id === cur);
                     return p ? p.x - 40 : (c ? c.x - 220 : VISUAL.list.originX - 100);
@@ -2251,13 +2335,13 @@
                         prev = cur;
                         finder = { ...finder, previous: prev };
                         snaps.push(this.snapshot(`Finder.previous -> node(${cn.e}).`, nodes, {
-                            flashFinderPrev: true, firstId, size, finder, pause: true
+                            flashFinderPrev: true, greenRefs: ['finder:previous'], firstId, size, finder, pause: true
                         }));
 
                         cur = cn.next;
                         finder = { ...finder, current: cur };
                         snaps.push(this.snapshot('Finder.current advances to next node.', nodes, {
-                            flashFinderCur: true, firstId, size, finder, pause: true
+                            flashFinderCur: true, greenRefs: ['finder:current', 'next:' + cn.id], firstId, size, finder, pause: true
                         }));
 
                         finder = { ...finder, x: this.finderX(prev, cur, nodes) };
@@ -2272,7 +2356,7 @@
                     snaps.push(this.snapshot(
                         `Finder stops: ${found ? `current.element == ${val}` : (cn ? `current.element (${cn.e}) > ${val}` : 'current is null')}; found = ${found}.`,
                         nodes,
-                        { firstId, size, finder, flashFinderFound: true, pause: true }
+                        { firstId, size, finder, greenRefs: cn ? ['finder:current', 'element:' + cn.id] : ['finder:current'], flashFinderFound: true, pause: true }
                     ));
                     return { snaps, prev, cur, found, finder };
                 },
@@ -2320,7 +2404,7 @@
                             id: newId, e,
                             x: VISUAL.list.originX + insertIdx * gap,
                             y: this.viz.base().up,
-                            next: res.cur,
+                            next: null,
                             flashNew: true
                         };
                         let newVar = {
@@ -2331,20 +2415,46 @@
                             targetPart: 'node'
                         };
 
-                        snaps.push(this.snapshot(`Created newNode(${e}) with newNode.next = current.`, [...shifted, newNode], {
+                        snaps.push(this.snapshot(`Created newNode(${e}) with newNode.next = null.`, [...shifted, newNode], {
                             firstId: curFirst, size: curSize, finder, localVars: [newVar], preserveLinks: true, pause: true
                         }));
 
                         newNode = { ...newNode, flashNew: false };
+                        const linkedNewNode = { ...newNode, next: res.cur };
+                        this.emitAssignment(snaps, {
+                            beforeNodes: [...shifted, newNode],
+                            beforeExtra: { firstId: curFirst, size: curSize, finder, localVars: [newVar] },
+                            afterNodes: [...shifted, linkedNewNode],
+                            afterExtra: { firstId: curFirst, size: curSize, finder, localVars: [newVar] },
+                            access: ['var:newNode'],
+                            source: res.cur == null ? [] : ['finder:current'],
+                            targets: ['next:' + newId],
+                            texts: [
+                                res.cur == null ? 'newNode.next is going to store null.' : 'current is going to be stored in newNode.next.',
+                                'newNode.next is selected to be updated.',
+                                res.cur == null ? 'newNode.next now stores null.' : 'newNode.next now references current.'
+                            ]
+                        });
+                        newNode = linkedNewNode;
                         if (res.prev === null) {
-                            snaps.push(this.snapshot('Updated set.first = newNode.', [...shifted, newNode], {
-                                firstId: newId, size: curSize, finder, localVars: [newVar], flashFirst: true, preserveLinks: true, pause: true
-                            }));
+                            this.emitAssignment(snaps, {
+                                beforeNodes: [...shifted, newNode],
+                                beforeExtra: { firstId: curFirst, size: curSize, finder, localVars: [newVar] },
+                                afterNodes: [...shifted, newNode],
+                                afterExtra: { firstId: newId, size: curSize, finder, localVars: [newVar] },
+                                source: ['var:newNode'], targets: ['first'],
+                                texts: ['newNode is going to be stored in set.first.', 'set.first is selected to be updated.', 'set.first now references newNode.']
+                            });
                         } else {
                             shifted = shifted.map(n => n.id === res.prev ? { ...n, next: newId } : n);
-                            snaps.push(this.snapshot('Updated previous.next = newNode.', [...shifted, newNode], {
-                                firstId: curFirst, size: curSize, finder, localVars: [newVar], flashNext: res.prev, preserveLinks: true, pause: true
-                            }));
+                            this.emitAssignment(snaps, {
+                                beforeNodes: [...shifted.map(n => n.id === res.prev ? { ...n, next: res.cur } : n), newNode],
+                                beforeExtra: { firstId: curFirst, size: curSize, finder, localVars: [newVar] },
+                                afterNodes: [...shifted, newNode],
+                                afterExtra: { firstId: curFirst, size: curSize, finder, localVars: [newVar] },
+                                access: ['finder:previous'], source: ['var:newNode'], targets: ['next:' + res.prev],
+                                texts: ['newNode is going to be stored in previous.next.', 'previous.next is selected to be updated.', 'previous.next now references newNode.']
+                            });
                         }
 
                         newNode = { ...newNode, y: this.viz.base().y };
@@ -2427,20 +2537,31 @@
                         if (res.prev === null) {
                             firstAfter = nextOfCur;
                             firstNeedsDetour = nextOfCur !== null;
-                            snaps.push(this.snapshot('Updated set.first = current.next.', linked, {
-                                firstId: firstAfter, size: curSize, finder, flashFirst: true,
-                                detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : 0,
-                                preserveLinks: true, pause: true
-                            }));
+                            this.emitAssignment(snaps, {
+                                beforeNodes: linked,
+                                beforeExtra: { firstId: curFirst, size: curSize, finder },
+                                afterNodes: linked,
+                                afterExtra: {
+                                    firstId: firstAfter, size: curSize, finder,
+                                    detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : 0
+                                },
+                                source: ['next:' + cur], targets: ['first'],
+                                texts: ['current.next is going to be read to update set.first.', 'set.first is selected to be updated.', 'set.first now references current.next.']
+                            });
                         } else {
                             const needsDetour = nextOfCur !== null;
+                            const beforeLinked = linked.map(n => ({ ...n }));
                             linked = linked.map(n => n.id === res.prev ? {
                                 ...n, next: nextOfCur, detourNext: needsDetour, detourAmount: needsDetour ? 1 : 0
                             } : n);
-                            snaps.push(this.snapshot('Updated previous.next = current.next.', linked, {
-                                firstId: curFirst, size: curSize, finder, flashNext: res.prev,
-                                preserveLinks: true, pause: true
-                            }));
+                            this.emitAssignment(snaps, {
+                                beforeNodes: beforeLinked,
+                                beforeExtra: { firstId: curFirst, size: curSize, finder },
+                                afterNodes: linked,
+                                afterExtra: { firstId: curFirst, size: curSize, finder },
+                                access: ['finder:previous'], source: ['next:' + cur], targets: ['next:' + res.prev],
+                                texts: ['current.next is going to be read to update previous.next.', 'previous.next is selected to be updated.', 'previous.next now references current.next.']
+                            });
                         }
 
                         snaps.push(this.snapshot(`Decremented size to ${curSize - 1}.`, linked, {
@@ -2554,10 +2675,21 @@
 
                         const nextNode = nodes.find(n => n.id === next);
                         const nextIteratorX = (nextNode ? nextNode.x : b.x + size * VISUAL.node.step - VISUAL.list.nullPointerXOffset) - 100;
-                        iterator = { ...iterator, target: next };
-                        snaps.push(this.snapshot('iterator.current updated to current.next.', nodes, {
-                            flashIteratorCurrent: true, size, iterator, pause: true
-                        }));
+                        const nextIterator = { ...iterator, target: next };
+                        this.emitAssignment(snaps, {
+                            beforeNodes: nodes,
+                            beforeExtra: { size, iterator },
+                            afterNodes: nodes,
+                            afterExtra: { size, iterator: nextIterator },
+                            source: ['next:' + cur],
+                            targets: ['iterator:current'],
+                            texts: [
+                                'current.next is going to be read to update iterator.current.',
+                                'iterator.current is selected to be updated.',
+                                'iterator.current now references current.next.'
+                            ]
+                        });
+                        iterator = nextIterator;
 
                         iterator = { ...iterator, x: nextIteratorX, y: b.y - 150 };
                         snaps.push(this.snapshot('Visualization only: iterator repositioned.', nodes, { size, iterator }));
@@ -2752,7 +2884,7 @@
                     ));
 
                     const y1 = VISUAL.list.originY, yb = VISUAL.list.originY + 560;
-                    const makeTransition = (text, nodeY, { newFirstId = null, newSize = 0, flashNewFirst = false, flashNewSize = false, crossBuilder = false, visualOnly = false } = {}) => {
+                    const makeTransition = (text, nodeY, { newFirstId = null, newSize = 0, flashNewFirst = false, flashNewSize = false, crossBuilder = false, visualOnly = false, greenRefs = [], redRefs = [] } = {}) => {
                         const moved = this.opNodes(resultVals, resultIds, nodeY);
                         return this.snapshot(text, moved, {
                             hideMainStruct: true,
@@ -2762,6 +2894,8 @@
                             opSetStructs: [{ label: 'set', x: VISUAL.struct.x, y: y1, firstId: newFirstId, size: newSize, flashFirst: flashNewFirst, flashSize: flashNewSize }],
                             nextVars: [],
                             builderStruct: { x: VISUAL.struct.x, y: yb, firstId: resultIds[0] ?? null, lastId: resultIds.at(-1) ?? null, size: resultVals.length },
+                            greenRefs,
+                            redRefs,
                             crossBuilder,
                             preserveLinks: true,
                             visualOnly,
@@ -2770,7 +2904,17 @@
                     };
 
                     snaps.push(makeTransition(`${kind}: new result set prepared (first = null, size = 0).`, yb));
-                    snaps.push(makeTransition(`${kind}: assigned result.first = builder.first.`, yb, { newFirstId: resultIds[0] ?? null, flashNewFirst: true }));
+                    snaps.push(makeTransition(`${kind}: builder.first is read as the source reference.`, yb, { greenRefs: ['builder:first'] }));
+                    snaps.push(makeTransition(`${kind}: result.first is selected to be updated.`, yb, { greenRefs: ['builder:first'], flashNewFirst: true }));
+                    snaps.push(makeTransition(`${kind}: result.first now references builder.first.`, yb, {
+                        newFirstId: resultIds[0] ?? null,
+                        greenRefs: ['builder:first'],
+                        redRefs: ['result:first']
+                    }));
+                    snaps.push(makeTransition('Visualization only: result.first assignment highlights cleared.', yb, {
+                        newFirstId: resultIds[0] ?? null,
+                        visualOnly: true
+                    }));
                     snaps.push(makeTransition(`${kind}: assigned result.size = builder.size (${resultVals.length}).`, yb, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, flashNewSize: true }));
                     snaps.push(makeTransition('Visualization only: result chain positioned.', y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, visualOnly: true }));
                     snaps.push(makeTransition(`${kind}: method returns; builder leaves call stack.`, y1, { newFirstId: resultIds[0] ?? null, newSize: resultVals.length, crossBuilder: true }));
@@ -2840,9 +2984,19 @@
                     const nodes = this.baseNodes(oldVals, oldIds);
                     const snaps = [this.snapshot('Starting SortedLinkedSet.clear()...', nodes, { firstId: oldIds[0], size: oldSize })];
 
-                    snaps.push(this.snapshot('Set first = null (O(1) unlink).', nodes, {
-                        firstId: null, size: oldSize, flashFirst: true, pause: true
-                    }));
+                    this.emitAssignment(snaps, {
+                        beforeNodes: nodes,
+                        beforeExtra: { firstId: oldIds[0], size: oldSize },
+                        afterNodes: nodes,
+                        afterExtra: { firstId: null, size: oldSize },
+                        source: [],
+                        targets: ['first'],
+                        texts: [
+                            'null is going to be stored in set.first.',
+                            'set.first is selected to be updated.',
+                            'set.first now stores null.'
+                        ]
+                    });
                     snaps.push(this.snapshot('Set size = 0.', nodes, {
                         firstId: null, size: 0, flashSize: true, pause: true
                     }));

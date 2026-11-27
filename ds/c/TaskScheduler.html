@@ -24,6 +24,12 @@
       --btn-gray: #546E7A;
       --btn-orange: #EF6C00;
       --btn-step: #37474F;
+
+      --legend-ptr-bg: #91F4F4;
+      --legend-ptr-border: #0097A7;
+      --legend-blue: #1565C0;
+      --legend-green: #00B843;
+      --legend-red: #E60000;
     }
 
     body.dark {
@@ -36,6 +42,12 @@
       --card-bg: rgba(22, 27, 34, 0.96);
       --input-bg: #0d1117;
       --input-border: #444c56;
+
+      --legend-ptr-bg: #0D4F5C;
+      --legend-ptr-border: #26C6DA;
+      --legend-blue: #58A6FF;
+      --legend-green: #4ADE80;
+      --legend-red: #FF5252;
     }
 
     * { box-sizing: border-box; }
@@ -338,6 +350,32 @@
       flex-shrink: 0;
     }
 
+    .swatch-ptr {
+      background: var(--legend-ptr-bg);
+      border: 1px solid var(--legend-ptr-border);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .swatch-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--legend-blue);
+      display: block;
+    }
+
+    .swatch-arrow { position: relative; }
+
+    .swatch-arrow::after {
+      content: '→';
+      font-size: 11px;
+      font-weight: 800;
+      line-height: 1;
+      color: var(--legend-blue);
+    }
+
     .dot {
       width: 11px;
       height: 11px;
@@ -579,10 +617,13 @@
       </div>
       <div class="legend-body">
         <div class="legend-item"><span class="swatch" style="background:#FFF59D; border:1px solid #D4B106"></span><span>task fields</span></div>
-        <div class="legend-item"><span class="swatch" style="background:#91F4F4; border:1px solid #0097A7"></span><span>node pointer</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr"></span><span>uninitialized pointer</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr"><span class="swatch-dot"></span></span><span>null pointer (no arrow)</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr swatch-arrow"></span><span>initialized pointer</span></div>
         <div class="legend-item"><span class="swatch" style="background:#B6F8B6; border:1px solid #2E7D32"></span><span>scalar variable</span></div>
-        <div class="legend-item"><span class="dot" style="background:#1565C0"></span><span>null / valid pointer</span></div>
-        <div class="legend-item"><span class="dot" style="background:#E60000"></span><span>active / updated pointer</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-blue)"></span><span>idle / normal reference</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-green)"></span><span>read / traversal / source</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-red)"></span><span>write / modified target</span></div>
         <div class="legend-item"><span class="dot" style="background:#EF6C00"></span><span>dangling pointer</span></div>
       </div>
     </div>
@@ -651,6 +692,7 @@
         light: {
           BG_DOT: 'rgba(31, 35, 40, 0.11)',
           PTR_BLUE: '#1565C0',
+          GREEN: '#00B843',
           NODE_PTR_BG: '#91F4F4',
           TASK_BG: '#FFF59D',
           TASK_TEXT: '#E60000',
@@ -666,6 +708,7 @@
         dark: {
           BG_DOT: 'rgba(230, 237, 243, 0.09)',
           PTR_BLUE: '#58A6FF',
+          GREEN: '#4ADE80',
           NODE_PTR_BG: '#0D4F5C',
           TASK_BG: '#3D3518',
           TASK_TEXT: '#FFE082',
@@ -760,8 +803,13 @@
             copy: extra.copy ? { ...extra.copy, task: { ...extra.copy.task } } : null,
             statsState,
             ...extra,
-            redPtrs: [...(extra.redPtrs || [])],
-            redNext: [...(extra.redNext || [])],
+            // Standalone red* extras describe pointers that are only read/tested, so they render green.
+            greenPtrs: [...(extra.greenPtrs || []), ...(extra.redPtrs || [])],
+            greenNext: [...(extra.greenNext || []), ...(extra.redNext || [])],
+            greenLast: Boolean(extra.greenLast || extra.redLast),
+            redPtrs: [],
+            redNext: [],
+            redLast: false,
             flashPtrs: [...(extra.flashPtrs || [])],
             flashNodes: [...(extra.flashNodes || [])],
             flashTaskFields: [...(extra.flashTaskFields || [])],
@@ -789,6 +837,8 @@
             copy: s.copy ? { ...s.copy, task: { ...s.copy.task } } : null,
             redPtrs: [...(s.redPtrs || [])],
             redNext: [...(s.redNext || [])],
+            greenPtrs: [...(s.greenPtrs || [])],
+            greenNext: [...(s.greenNext || [])],
             flashPtrs: [...(s.flashPtrs || [])],
             flashNodes: [...(s.flashNodes || [])],
             flashTaskFields: [...(s.flashTaskFields || [])],
@@ -804,6 +854,9 @@
           q.redPtrs = [];
           q.redLast = false;
           q.redNext = [];
+          q.greenPtrs = [];
+          q.greenLast = false;
+          q.greenNext = [];
           q.flashLast = false;
           delete q.flashNext;
           q.flashPtrs = [];
@@ -813,20 +866,32 @@
           return q;
         }
 
-        applyRed(s, refOrRefs) {
+        applyColor(s, refOrRefs, color) {
           if (!refOrRefs) return s;
+          const g = color === 'green';
           const refs = Array.isArray(refOrRefs) ? refOrRefs : [refOrRefs];
           for (const ref of refs) {
             if (!ref) continue;
             if (ref.kind === 'ptr') {
-              if (!s.redPtrs.includes(ref.key)) s.redPtrs.push(ref.key);
+              const list = g ? s.greenPtrs : s.redPtrs;
+              if (!list.includes(ref.key)) list.push(ref.key);
             } else if (ref.kind === 'last') {
-              s.redLast = true;
+              if (g) s.greenLast = true;
+              else s.redLast = true;
             } else if (ref.kind === 'next' && ref.key != null) {
-              if (!s.redNext.includes(ref.key)) s.redNext.push(ref.key);
+              const list = g ? s.greenNext : s.redNext;
+              if (!list.includes(ref.key)) list.push(ref.key);
             }
           }
           return s;
+        }
+
+        // Finds the pointer (local pointer or p_last) used to reach a node whose p_next is assigned.
+        findAccessRef(target, extra) {
+          const ptr = (extra.ptrs || []).find(p => p.target === target.key);
+          if (ptr) return { kind: 'ptr', key: ptr.label };
+          if (extra.lastUid === target.key) return { kind: 'last' };
+          return null;
         }
 
         applyFlash(s, ref) {
@@ -841,11 +906,21 @@
           return s;
         }
 
+        /**
+         * Strict 4-phase pointer assignment.
+         * Case A (direct assignment to a variable, e.g. p_last = p_node):
+         *  1) source green; 2) source green + blinking red ring on destination;
+         *  3) destination updated in red, source green; 4) everything back to blue.
+         * Case B (field reached through another pointer, e.g. p_node->p_next = p_first):
+         *  1) access pointer green + red ring on the field; 2) source green + ring kept;
+         *  3) field updated in red, source green; 4) everything back to blue.
+         */
         emitAssignment({
           beforeNodes,
           beforeExtra = {},
           afterNodes,
           afterExtra = {},
+          accessPtr,
           source,
           targets,
           phase1Text,
@@ -858,34 +933,41 @@
           const baseAfter = this.clearHighlights(
             this.buildSnap(phase3Text, afterNodes, { ...afterExtra, visualOnly: false, pause: true })
           );
+          const sources = Array.isArray(source) ? source : [source];
+          const fieldTargets = targets.filter(t => t.kind === 'next');
+          const isCaseB = fieldTargets.length > 0;
+          const access = accessPtr !== undefined
+            ? accessPtr
+            : (isCaseB ? this.findAccessRef(fieldTargets[0], beforeExtra) : null);
 
-          // Phase 1: Source highlighted (red)
           const p1 = this.cloneSnap(baseBefore);
-          this.applyRed(p1, source);
+          if (isCaseB) {
+            this.applyColor(p1, access, 'green');
+            targets.forEach(t => this.applyFlash(p1, t));
+          } else {
+            this.applyColor(p1, sources, 'green');
+          }
           p1.text = phase1Text;
           p1.visualOnly = false;
           p1.pause = true;
           this.snapshots.push(p1);
 
-          // Phase 2: Target selected (red circle)
           const p2 = this.cloneSnap(baseBefore);
-          this.applyRed(p2, source);
+          this.applyColor(p2, sources, 'green');
           targets.forEach(t => this.applyFlash(p2, t));
           p2.text = phase2Text;
           p2.visualOnly = false;
           p2.pause = true;
           this.snapshots.push(p2);
 
-          // Phase 3: Updated (red), circle removed
           const p3 = this.cloneSnap(baseAfter);
-          this.applyRed(p3, source);
-          targets.forEach(t => this.applyRed(p3, t));
+          this.applyColor(p3, sources, 'green');
+          this.applyColor(p3, targets, 'red');
           p3.text = phase3Text;
           p3.visualOnly = false;
           p3.pause = true;
           this.snapshots.push(p3);
 
-          // Phase 4: Cleared
           const p4 = this.cloneSnap(baseAfter);
           p4.text = phase3Text;
           p4.visualOnly = true;
@@ -1309,25 +1391,29 @@
               pause: true
             });
 
-            recorder.emit('NULL will be stored in *p_p_last (p_last).', [], {
-              lastUid: first.uid,
-              ...fixedBox,
-              ptrs: [pfDangling],
-              ghost,
-              lastTarget: { x: oldNodes[0].x, y: oldNodes[0].y },
-              lastDangling: true,
-              flashLast: true,
-              pause: true
-            });
-
-            recorder.emit('*p_p_last (p_last) now stores NULL; p_first remains dangling.', [], {
-              lastUid: null,
-              ...fixedBox,
-              ptrs: [pfDangling],
-              ghost,
-              redLast: true,
-              statsState: EMPTY_STATE,
-              pause: true
+            recorder.emitAssignment({
+              beforeNodes: [],
+              beforeExtra: {
+                lastUid: first.uid,
+                ...fixedBox,
+                ptrs: [pfDangling],
+                ghost,
+                lastTarget: { x: oldNodes[0].x, y: oldNodes[0].y },
+                lastDangling: true
+              },
+              afterNodes: [],
+              afterExtra: {
+                lastUid: null,
+                ...fixedBox,
+                ptrs: [pfDangling],
+                ghost,
+                statsState: EMPTY_STATE
+              },
+              source: [],
+              targets: [{ kind: 'last' }],
+              phase1Text: 'NULL will be stored in *p_p_last (p_last).',
+              phase2Text: 'p_last is selected to be updated.',
+              phase3Text: '*p_p_last (p_last) now stores NULL; p_first remains dangling.'
             });
 
             recorder.emit('Visualization only: highlights cleared.', [], {
@@ -1961,21 +2047,22 @@
           const fixedBox = { pLastBoxX: fixedLast.x, pLastBoxY: fixedLast.y };
           const endPtrs = [pfCurrent, pcur, pdel];
 
-          recorder.emit('All nodes have been freed; NULL will be stored in *p_p_last (p_last).', [], stateExtra({
-            ...fixedBox,
-            ptrs: endPtrs,
-            flashLast: true,
-            pause: true
-          }));
-
-          recorder.emit('*p_p_last (p_last) now stores NULL; local pointers remain dangling.', [], {
-            lastUid: null,
-            ...fixedBox,
-            ptrs: endPtrs,
-            ghost,
-            redLast: true,
-            statsState: EMPTY_STATE,
-            pause: true
+          recorder.emitAssignment({
+            beforeNodes: [],
+            beforeExtra: stateExtra({ ...fixedBox, ptrs: endPtrs }),
+            afterNodes: [],
+            afterExtra: {
+              lastUid: null,
+              ...fixedBox,
+              ptrs: endPtrs,
+              ghost,
+              statsState: EMPTY_STATE
+            },
+            source: [],
+            targets: [{ kind: 'last' }],
+            phase1Text: 'All nodes have been freed; NULL will be stored in *p_p_last (p_last).',
+            phase2Text: 'p_last is selected to be updated.',
+            phase3Text: '*p_p_last (p_last) now stores NULL; local pointers remain dangling.'
           });
 
           recorder.emit('Visualization only: highlights cleared.', [], {
@@ -2953,6 +3040,13 @@
           return s;
         }
 
+        refColor(isRed, isGreen, isDangling = false) {
+          if (isRed) return this.theme.RED;
+          if (isGreen) return this.theme.GREEN;
+          if (isDangling) return this.theme.DANGLING;
+          return this.theme.PTR_BLUE;
+        }
+
         hasMark(val, key) {
           return Array.isArray(val) ? val.includes(key) : val === key;
         }
@@ -3071,23 +3165,14 @@
           const y = lastBox.y;
           this.text('p_last', x - 14, y + V.lastBoxH / 2, '21px monospace', 'right', this.theme.TEXT_DARK);
           this.rect(x, y, V.lastBoxW, V.lastBoxH, this.theme.NODE_PTR_BG);
-          const col = s.lastDangling
-            ? this.theme.DANGLING
-            : (s.redLast ? this.theme.RED : this.theme.PTR_BLUE);
+          const col = this.refColor(s.redLast, s.greenLast, s.lastDangling);
           this.dot(x + V.lastBoxW / 2, y + V.lastBoxH / 2, col);
-
-          const nullAlpha = s.lastNullAlpha ?? (s.lastUid == null ? 1 : 0);
-          if (nullAlpha > 0.02 && s.lastTipX == null) {
-            this.text('NULL', x + V.lastBoxW / 2, y + V.lastBoxH + 20, '16px monospace', 'center', col, nullAlpha);
-          }
         }
 
         drawLastPointerArrow(s, lastBox, nodeMap) {
           const sx = lastBox.x + V.lastBoxW / 2;
           const sy = lastBox.y + V.lastBoxH / 2;
-          const col = s.lastDangling
-            ? this.theme.DANGLING
-            : (s.redLast ? this.theme.RED : this.theme.PTR_BLUE);
+          const col = this.refColor(s.redLast, s.greenLast, s.lastDangling);
 
           let tx = s.lastTipX;
           let ty = s.lastTipY;
@@ -3140,9 +3225,7 @@
           this.text('p_next', ptrX + V.ptrCellW / 2, y - 14, '15px monospace', 'center', this.theme.TEXT_DARK, a);
 
           if (n.next !== UNINITIALIZED) {
-            const col = n.danglingNext
-              ? this.theme.DANGLING
-              : (this.hasMark(s.redNext, n.uid) ? this.theme.RED : this.theme.PTR_BLUE);
+            const col = this.refColor(this.hasMark(s.redNext, n.uid), this.hasMark(s.greenNext, n.uid), n.danglingNext);
             this.dot(ptrX + V.ptrCellW / 2, y + V.nodeH / 2, col, a);
           }
         }
@@ -3153,9 +3236,7 @@
           const baseAlpha = n.alpha ?? 1;
           const nx = n.x + V.taskW + 3 + V.ptrCellW / 2;
           const ny = n.y + V.nodeH / 2;
-          const col = n.danglingNext
-            ? this.theme.DANGLING
-            : (this.hasMark(s.redNext, n.uid) ? this.theme.RED : this.theme.PTR_BLUE);
+          const col = this.refColor(this.hasMark(s.redNext, n.uid), this.hasMark(s.greenNext, n.uid), n.danglingNext);
 
           if (n.oldWrapTip && n.oldWrapAlpha > 0.02) {
             this.wrapAroundArrow(
@@ -3218,8 +3299,7 @@
 
           const target = p.target != null ? nodeMap.get(p.target) : null;
           const dangling = Boolean(p.forceDangling) || (p.target != null && !target && p.targetX != null);
-          const isRed = this.hasMark(s.redPtrs, p.label);
-          const col = dangling ? this.theme.DANGLING : (isRed ? this.theme.RED : this.theme.PTR_BLUE);
+          const col = this.refColor(this.hasMark(s.redPtrs, p.label), this.hasMark(s.greenPtrs, p.label), dangling);
 
           this.dot(cx, cy, col, alpha);
 
@@ -3230,10 +3310,6 @@
             this.arrow(cx, cy, tx, ty, col, dangling, alpha);
           }
 
-          const nullAlpha = p.nullAlpha ?? (p.target == null ? 1 : 0);
-          if (nullAlpha > 0.02 && p.tipX == null) {
-            this.text('NULL', cx, p.y + V.ptrBoxH + 18, '15px monospace', 'center', col, alpha * nullAlpha);
-          }
         }
 
         drawScalar(sc) {
