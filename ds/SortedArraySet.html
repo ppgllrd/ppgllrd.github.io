@@ -319,11 +319,11 @@
             -webkit-tap-highlight-color: transparent;
         }
 
-        /* Collapsible Legend moved to top-right so it never covers 'set' / 'Finder' on the left */
+        /* Collapsible Legend anchored on the left */
         #legend {
             position: absolute;
             top: 14px;
-            right: 14px;
+            left: 14px;
             background: var(--card-bg);
             border: 1px solid var(--border-color);
             border-radius: 8px;
@@ -592,7 +592,7 @@
             .val-input { width: 105px; }
             .other-input { width: 92px; }
             .sep { display: none; }
-            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; right: 8px; }
+            #legend { max-width: 175px; font-size: 0.72rem; top: 8px; left: 8px; }
             .status-meta { display: none; }
         }
     </style>
@@ -618,7 +618,7 @@
                 <label class="field-label">Cap
                     <input id="cap" class="idx" type="number" min="1" max="64" value="8" title="Initial capacity">
                 </label>
-                <button class="green" id="btnInsert" title="Binary-search insertion point, shift right if needed, insert element">Insert</button>
+                <button class="green" id="btnInsert" title="Binary-search insertion point, update if found or shift right and insert">Insert</button>
                 <button class="red" id="btnDelete" title="Binary-search element, shift left and null trailing reference">Delete</button>
                 <button class="purple" id="btnContains" title="Binary-search membership test. Complexity: O(log n)">Contains</button>
                 <button class="purple" id="btnIterate" title="Iterate elements in sorted order. Complexity: O(n)">Iterate</button>
@@ -721,7 +721,7 @@
 
     <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
 
-    <!-- Help Modal (properly closed before script!) -->
+    <!-- Help Modal -->
     <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
         <div class="modal-content">
             <span class="close" id="btnCloseModal">&times;</span>
@@ -730,7 +730,7 @@
 
             <h3>Operations</h3>
             <ul>
-                <li><strong>Insert:</strong> Binary-searches the element. If not found, uses the insertion point and shifts references right to keep the set sorted. Complexity: <strong>O(log n)</strong> search + <strong>O(n)</strong> shifting (and <strong>O(n)</strong> on reallocation).</li>
+                <li><strong>Insert:</strong> Binary-searches the element. If already present, updates the reference at that index to the new element object (leaving the old object eligible for GC). Otherwise, uses the insertion point and shifts references right to keep the set sorted. Complexity: <strong>O(log n)</strong> search + <strong>O(n)</strong> shifting (and <strong>O(n)</strong> on reallocation).</li>
                 <li><strong>Delete:</strong> Binary-searches the element. If found, shifts following references left and sets the old last slot to <span class="code">null</span>. Complexity: <strong>O(log n)</strong> search + <strong>O(n)</strong> shifting.</li>
                 <li><strong>Contains:</strong> Binary-search membership test. Complexity: <strong>O(log n)</strong>.</li>
                 <li><strong>Iterate:</strong> Visits elements in sorted order from index <span class="code">0</span> to <span class="code">size - 1</span>. Complexity: <strong>O(n)</strong>.</li>
@@ -770,7 +770,7 @@
                 greenLabel: '#2E7D32',
                 orangeLabel: '#EF6C00',
                 y: '#fff7b3',
-                hoverRing: '#FF6D00',
+                hoverRing: '#1565C0',
                 tooltipBg: '#FFFFFF',
                 tooltipBorder: '#D0D7DE'
             };
@@ -789,7 +789,7 @@
                 greenLabel: '#66BB6A',
                 orangeLabel: '#FFA726',
                 y: '#4b451c',
-                hoverRing: '#FFB300',
+                hoverRing: '#58A6FF',
                 tooltipBg: '#1F2630',
                 tooltipBorder: '#444C56'
             };
@@ -806,6 +806,9 @@
 
             const CELL = 58;
 
+            /**
+             * Core 2D canvas animation, camera pan/zoom, and snapshot interpolation engine.
+             */
             class VisualizationEngine {
                 constructor(id, callbacks = {}) {
                     this.cv = document.getElementById(id);
@@ -956,11 +959,12 @@
                     };
                 }
 
+                // Only non-null cells are hoverable/clickable
                 cellAtScreen(sx, sy) {
                     const w = this.screenToWorld(sx, sy);
                     for (const c of this.lastCells) {
-                        let ch = this.cell;
-                        if (c.v !== '?') ch += 30 + this.cell;
+                        if (c.v === '?') continue;
+                        const ch = this.cell + 30 + this.cell;
                         if (w.x >= c.x && w.x <= c.x + this.cell && w.y >= c.y && w.y <= c.y + ch) {
                             return c;
                         }
@@ -1617,6 +1621,9 @@
                 }
             }
 
+            /**
+             * Specialized renderer for Java SortedArraySet memory layout, binary search, and set operations.
+             */
             class JavaSortedArraySetView extends VisualizationEngine {
                 renderScene(s) {
                     this.lastCells = s.cells || [];
@@ -1632,23 +1639,40 @@
                     this.drawRefArrows(s);
                     this.drawPtrs(s);
                     this.drawSearchBoxes(s);
+                    this.drawSearchCompare(s);
                     this.drawFinder(s);
                     this.drawCustomObjects(s);
                     (s.iterators || []).forEach(it => this.drawIterator(it));
                     this.drawOverlays(s);
+
+                    // Draw hover outline and tooltip on top of everything for non-null cells
                     if (this.hoveredCell && !s.skipStruct) {
                         const live = this.lastCells.find(c => c.id === this.hoveredCell.id);
-                        if (live) this.drawCellTooltip(live, s);
+                        if (live && live.v !== '?') {
+                            this.drawCellHover(live);
+                            this.drawCellTooltip(live, s);
+                        }
                     }
                 }
 
-                drawCellTooltip(cell, s) {
+                drawCellHover(cell) {
+                    const c = this.ctx;
+                    const w = this.cell;
+                    const h = w + 30 + w;
+                    const pad = 4;
+                    c.save();
+                    c.strokeStyle = K.hoverRing;
+                    c.lineWidth = 3;
+                    c.beginPath();
+                    c.roundRect(cell.x - pad, cell.y - pad, w + pad * 2, h + pad * 2, 10);
+                    c.stroke();
+                    c.restore();
+                }
+
+                drawCellTooltip(cell) {
                     const c = this.ctx;
                     const m = this.layoutMetrics();
-                    const isUsed = cell.i < s.size;
-                    const labelText = cell.v === '?'
-                        ? `elements[${cell.i}] = null (${isUsed ? 'slot' : 'unused'})`
-                        : `elements[${cell.i}] -> ${cell.v} (click to copy)`;
+                    const labelText = `elements[${cell.i}] -> ${cell.v} (click to copy)`;
                     const invScale = 1 / this.cam.scale;
                     const tx = cell.x + m.cellCenter;
                     const ty = cell.y - 28 - (8 * invScale);
@@ -1745,11 +1769,7 @@
 
                 drawCell(cell, s) {
                     const m = this.layoutMetrics(), w = m.cell;
-                    const isHovered = this.hoveredCell && this.hoveredCell.id === cell.id;
-                    this.paintRect(cell.x, cell.y, w, w, cell.range ? K.y : K.c, {
-                        stroke: isHovered ? K.hoverRing : null,
-                        lineWidth: isHovered ? 3 : 0
-                    });
+                    this.paintRect(cell.x, cell.y, w, w, cell.range ? K.y : K.c);
                     this.paintText(cell.i, cell.x + m.cellCenter, cell.y - m.indexLabelGap, {
                         font: '22px monospace', fill: K.k, baseline: 'alphabetic'
                     });
@@ -1771,10 +1791,7 @@
                         const arrowWidth = arrowColor === K.b ? 3 : 4;
                         this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, arrowColor);
                         this.arrow(cell.x + m.cellCenter, cell.y + m.cellCenter, cell.x + m.cellCenter, objY, arrowColor, arrowWidth);
-                        this.paintRect(cell.x, objY, w, w, K.g, {
-                            stroke: isHovered ? K.hoverRing : null,
-                            lineWidth: isHovered ? 3 : 0
-                        });
+                        this.paintRect(cell.x, objY, w, w, K.g);
                         this.paintText(String(cell.v), cell.x + m.cellCenter, objY + m.cellCenter + 2, {
                             font: `700 ${this.valueFontSize(cell.v, 28)}px "Segoe UI", Arial, sans-serif`, fill: K.valueText
                         });
@@ -1850,17 +1867,120 @@
                     });
                 }
 
-                drawSearchBoxes(s) {
+                searchPillGeometry(p) {
                     const m = this.layoutMetrics();
+                    const labelText = `${p.label}=${p.i}`;
+                    const c = this.ctx;
+                    c.save();
+                    c.font = '700 12px "Segoe UI", Arial, sans-serif';
+                    const w = Math.max(50, Math.ceil(c.measureText(labelText).width + 12));
+                    c.restore();
+                    const h = 24;
+                    const cx = p.x + m.cellCenter;
+                    return { x: cx - w / 2, y: p.y, w, h, cx, labelText };
+                }
+
+                drawSearchBoxes(s) {
+                    const b = this.base();
+                    const tipY = b.arrayTopY - 30;
                     (s.searchBoxes || []).forEach(p => {
-                        this.paintText(p.label, p.x - 10, p.y + m.cellCenter, {
-                            font: '22px monospace', fill: p.color || K.k, align: 'right'
+                        const g = this.searchPillGeometry(p);
+                        const col = p.color || K.b;
+                        const outOfBounds = p.i < 0 || p.i >= s.size;
+
+                        if (p.hasArrow) {
+                            const c = this.ctx;
+                            c.save();
+                            c.strokeStyle = col;
+                            c.fillStyle = col;
+                            c.lineWidth = 2.5;
+                            if (outOfBounds) {
+                                c.globalAlpha = 0.7;
+                                c.setLineDash([4, 3]);
+                            }
+                            c.beginPath();
+                            c.moveTo(g.cx, g.y + g.h);
+                            c.lineTo(g.cx, tipY - 6);
+                            c.stroke();
+                            c.setLineDash([]);
+                            c.beginPath();
+                            c.moveTo(g.cx, tipY);
+                            c.lineTo(g.cx - 5, tipY - 8);
+                            c.lineTo(g.cx + 5, tipY - 8);
+                            c.closePath();
+                            c.fill();
+                            c.restore();
+                        }
+
+                        this.paintRect(g.x, g.y, g.w, g.h, p.fill || K.c, {
+                            stroke: col,
+                            lineWidth: 2,
+                            alpha: outOfBounds ? 0.8 : 1,
+                            radius: 6
                         });
-                        this.paintRect(p.x, p.y, m.cell, m.cell, p.fill || K.c);
-                        this.paintText(String(p.i), p.x + m.cellCenter, p.y + m.cellCenter + 2, {
-                            font: `700 ${this.valueFontSize(p.i, 26)}px "Segoe UI", Arial, sans-serif`, fill: K.valueText
+                        this.paintText(g.labelText, g.cx, g.y + g.h / 2 + 0.5, {
+                            font: '700 12px "Segoe UI", Arial, sans-serif',
+                            fill: K.k,
+                            alpha: outOfBounds ? 0.85 : 1
                         });
                     });
+                }
+
+                drawSearchCompare(s) {
+                    const cmp = s.searchCompare;
+                    if (!cmp) return;
+                    const b = this.base(), m = this.layoutMetrics();
+                    const cell = (s.cells || []).find(c => c.i === cmp.i);
+                    const cx = (cell ? cell.x : b.arrayLeftX + cmp.i * b.cellPitch) + m.cellCenter;
+                    const topY = (cell ? cell.y : b.arrayTopY) + this.cell + 30 + this.cell + 14;
+                    const c = this.ctx;
+
+                    const fill = cmp.kind === 'match' ? K.g : K.tooltipBg;
+                    const stroke = cmp.kind === 'match'
+                        ? K.greenLabel
+                        : (cmp.kind === 'check' ? K.b : K.orangeLabel);
+                    const textColor = cmp.kind === 'check' ? K.b : K.k;
+
+                    c.save();
+                    c.font = '700 14px "Segoe UI", Arial, sans-serif';
+                    const w = Math.max(76, Math.ceil(c.measureText(cmp.text).width + 22));
+                    const h = 30;
+                    const x = cx - w / 2;
+
+                    c.shadowColor = 'rgba(0,0,0,0.22)';
+                    c.shadowBlur = 6;
+                    c.shadowOffsetY = 2;
+
+                    c.fillStyle = fill;
+                    c.strokeStyle = stroke;
+                    c.lineWidth = 2;
+                    c.beginPath();
+                    c.roundRect(x, topY, w, h, 8);
+                    c.fill();
+                    c.stroke();
+
+                    c.shadowColor = 'rgba(0,0,0,0)';
+                    c.shadowBlur = 0;
+                    c.shadowOffsetY = 0;
+
+                    c.beginPath();
+                    c.moveTo(cx, topY - 7);
+                    c.lineTo(cx - 6, topY + 1);
+                    c.lineTo(cx + 6, topY + 1);
+                    c.closePath();
+                    c.fill();
+
+                    c.beginPath();
+                    c.moveTo(cx - 6, topY);
+                    c.lineTo(cx, topY - 7);
+                    c.lineTo(cx + 6, topY);
+                    c.stroke();
+
+                    c.fillStyle = textColor;
+                    c.textAlign = 'center';
+                    c.textBaseline = 'middle';
+                    c.fillText(cmp.text, cx, topY + h / 2 + 0.5);
+                    c.restore();
                 }
 
                 drawFinder(s) {
@@ -1873,7 +1993,7 @@
                     [['found', f.found == null ? '?' : f.found], ['index', f.index == null ? '?' : f.index]].forEach((r, i) => {
                         const yy = y + i * cell;
                         this.paintText(r[0], x - 16, yy + m.cellCenter, { font: '21px monospace', fill: K.k, align: 'right' });
-                        this.paintRect(x, yy, cell, cell * 0.96, K.g, { stroke: '#b0bec5', lineWidth: 0.8 });
+                        this.paintRect(x, yy, cell, cell * 0.96, K.g);
                         this.paintText(String(r[1]), x + m.cellCenter, yy + m.cellCenter + 2, {
                             font: '700 20px "Segoe UI", Arial, sans-serif', fill: K.valueText
                         });
@@ -1938,7 +2058,10 @@
                             this.flashCircle(s.finder.x + m2.cellCenter, s.finder.y + row * m2.rowHeight + m2.cellCenter, m2.structFlashRadius);
                         } else if (s.flashFinder === 'left' || s.flashFinder === 'right' || s.flashFinder === 'mid') {
                             const box = (s.searchBoxes || []).find(p => p.label === s.flashFinder);
-                            if (box) this.flashCircle(box.x + m2.cellCenter, box.y + m2.cellCenter, m2.structFlashRadius);
+                            if (box) {
+                                const g = this.searchPillGeometry(box);
+                                this.roundFlash(g.x - 2, g.y - 2, g.w + 4, g.h + 4);
+                            }
                         }
                     }
 
@@ -1971,6 +2094,9 @@
                 }
             }
 
+            /**
+             * Application controller managing SortedArraySet state, user actions, and animation scenes.
+             */
             class App {
                 constructor() {
                     this.values = [];
@@ -2025,8 +2151,6 @@
                             if (cell.v !== '?') {
                                 document.getElementById('val').value = cell.v;
                                 this.viz.setStatus(`Selected value ${cell.v} from elements[${cell.i}].`);
-                            } else {
-                                this.viz.setStatus(`elements[${cell.i}] is null.`);
                             }
                         },
                         onStateChange: info => this.syncPlaybackUI(info)
@@ -2162,7 +2286,7 @@
                     return this.viz.state !== 'IDLE' || (this.viz.paused && this.viz.idx < this.viz.sn.length - 1);
                 }
 
-                syncPlaybackUI({ state, paused, waitingForStep, stepMode, idx, total, t }) {
+                syncPlaybackUI({ state, paused, stepMode, idx, total, t }) {
                     const busy = state !== 'IDLE' || (paused && idx < total - 1);
                     ['btnInsert', 'btnDelete', 'btnContains', 'btnIterate', 'btnEmpty', 'btnClear', 'btnRandom', 'btnUnion', 'btnInter', 'btnDiff'].forEach(id => {
                         document.getElementById(id).disabled = busy;
@@ -2291,16 +2415,17 @@
                     snaps[snaps.length - 1].visualOnly = true;
                 }
 
-                box(label, index, y, fill, color) {
+                box(label, index, y, fill, color, hasArrow = true) {
                     const b = this.viz.base();
                     return {
                         id: 'searchBox:' + label,
                         label,
                         i: index,
-                        x: b.arrayLeftX + Math.max(index, 0) * b.cellPitch,
+                        x: b.arrayLeftX + index * b.cellPitch,
                         y,
                         fill,
-                        color
+                        color,
+                        hasArrow
                     };
                 }
 
@@ -2310,11 +2435,21 @@
                     let left = 0, right = vals.length - 1, mid = null;
                     let finder = { x: b.structLeftX, y: b.structTopY + 240, found: null, index: null };
 
-                    const boxes = () => [
-                        this.box('left', left, b.arrayTopY - 116, K.g, K.greenLabel),
-                        ...(mid === null ? [] : [this.box('mid', mid, b.arrayTopY - 184, K.p, K.v)]),
-                        this.box('right', right, b.arrayTopY - 252, K.g, K.orangeLabel)
-                    ];
+                    const boxes = () => {
+                        const entries = [
+                            { label: 'left', index: left, fill: K.g, color: K.greenLabel },
+                            ...(mid === null ? [] : [{ label: 'mid', index: mid, fill: K.p, color: K.v }]),
+                            { label: 'right', index: right, fill: K.y, color: K.orangeLabel }
+                        ];
+                        const stackCounts = new Map();
+                        const baseY = b.arrayTopY - 78;
+                        const stepY = 28;
+                        return entries.map(entry => {
+                            const level = stackCounts.get(entry.index) || 0;
+                            stackCounts.set(entry.index, level + 1);
+                            return this.box(entry.label, entry.index, baseY - level * stepY, entry.fill, entry.color, level === 0);
+                        });
+                    };
                     const snap = (txt, extra = {}) => this.snapshot(txt, vals, cap, {
                         range: [left, right],
                         finder,
@@ -2332,25 +2467,51 @@
                     while (left <= right) {
                         mid = left + Math.floor((right - left) / 2);
                         finder = { ...finder };
-                        snaps.push(snap(`mid = ${mid} (checking elements[${mid}] = ${vals[mid]}).`, { flashFinder: 'mid' }));
-                        snaps.push(snap(`Comparing ${e} with object value ${vals[mid]} at index ${mid}.`, {
+                        const midVal = vals[mid];
+                        const cmpResult = e === midVal
+                            ? { i: mid, text: `${e} == ${midVal} ✓`, kind: 'match' }
+                            : (e > midVal
+                                ? { i: mid, text: `${e} > ${midVal} →`, kind: 'right' }
+                                : { i: mid, text: `${e} < ${midVal} ←`, kind: 'left' });
+
+                        snaps.push(snap(`mid = ${mid} (checking elements[${mid}] = ${midVal}).`, {
+                            flashFinder: 'mid',
+                            searchCompare: { i: mid, text: `${e} ? ${midVal}`, kind: 'check' }
+                        }));
+                        snaps.push(snap(`Comparing ${e} with object value ${midVal} at index ${mid}.`, {
                             flashObjects: [mid],
-                            greenObjectArrows: [mid]
+                            greenObjectArrows: [mid],
+                            searchCompare: cmpResult
                         }));
 
-                        if (e === vals[mid]) {
+                        if (e === midVal) {
                             finder = { ...finder, found: true, index: mid };
-                            snaps.push(snap(`Match! Finder.found = true.`, { flashFinder: 'found', flashCells: [mid], greenObjectArrows: [mid] }));
-                            snaps.push(snap(`Finder.index = ${mid}.`, { flashFinder: 'index', flashCells: [mid] }));
+                            snaps.push(snap(`Match! Finder.found = true.`, {
+                                flashFinder: 'found',
+                                flashCells: [mid],
+                                greenObjectArrows: [mid],
+                                searchCompare: cmpResult
+                            }));
+                            snaps.push(snap(`Finder.index = ${mid}.`, {
+                                flashFinder: 'index',
+                                flashCells: [mid],
+                                searchCompare: cmpResult
+                            }));
                             return { snaps, found: true, index: mid };
-                        } else if (e > vals[mid]) {
+                        } else if (e > midVal) {
                             left = mid + 1;
                             finder = { ...finder };
-                            snaps.push(snap(`${e} > ${vals[mid]} -> left = mid + 1 = ${left}.`, { flashFinder: 'left' }));
+                            snaps.push(snap(`${e} > ${midVal} -> left = mid + 1 = ${left}.`, {
+                                flashFinder: 'left',
+                                searchCompare: cmpResult
+                            }));
                         } else {
                             right = mid - 1;
                             finder = { ...finder };
-                            snaps.push(snap(`${e} < ${vals[mid]} -> right = mid - 1 = ${right}.`, { flashFinder: 'right' }));
+                            snaps.push(snap(`${e} < ${midVal} -> right = mid - 1 = ${right}.`, {
+                                flashFinder: 'right',
+                                searchCompare: cmpResult
+                            }));
                         }
                     }
 
@@ -2493,13 +2654,87 @@
                     let curCap = this.capacity;
                     const snaps = [this.snapshot('Starting insertion...', curVals, curCap, { size: curVals.length })];
                     let anyInserted = false;
+                    let anyUpdated = false;
 
                     for (const e of inputList) {
                         const fs = this.finderSnaps(e, curVals, curCap);
                         snaps.push(...fs.snaps);
 
                         if (fs.found) {
-                            snaps.push(this.snapshot(`Element ${e} already exists. Insertion skipped.`, curVals, curCap, { pause: true }));
+                            anyUpdated = true;
+                            const idx = fs.index;
+                            const b = this.viz.base();
+                            const oldObj = {
+                                id: 'oldUpdateObj',
+                                i: idx,
+                                v: curVals[idx],
+                                x: b.arrayLeftX + idx * b.cellPitch,
+                                y: b.arrayTopY,
+                                border: false
+                            };
+                            const newObjPending = {
+                                id: 'newUpdateObj',
+                                i: idx,
+                                v: e,
+                                x: b.arrayLeftX + idx * b.cellPitch,
+                                y: b.arrayTopY + 84,
+                                border: true
+                            };
+                            const newObjFinal = {
+                                id: 'newUpdateObj',
+                                fromId: 'newUpdateObj',
+                                i: idx,
+                                v: e,
+                                x: b.arrayLeftX + idx * b.cellPitch,
+                                y: b.arrayTopY,
+                                border: false
+                            };
+
+                            snaps.push(this.snapshot(`Element ${e} already exists at index ${idx}. Updating reference to the new object.`, curVals, curCap, {
+                                size: curVals.length,
+                                objBoxes: [oldObj, newObjPending],
+                                refArrows: [{ id: 'updArrow', from: idx, objId: 'oldUpdateObj' }],
+                                hideObjectIndices: [idx],
+                                pause: true
+                            }));
+
+                            const updatedVals = [...curVals];
+                            updatedVals[idx] = e;
+
+                            this.emitReferenceAssignment(snaps, {
+                                beforeVals: curVals,
+                                afterVals: updatedVals,
+                                cap: curCap,
+                                target: idx,
+                                beforeExtra: {
+                                    size: curVals.length,
+                                    objBoxes: [oldObj, newObjPending],
+                                    refArrows: [{ id: 'updArrow', from: idx, objId: 'oldUpdateObj' }],
+                                    hideObjectIndices: [idx]
+                                },
+                                afterExtra: {
+                                    size: curVals.length,
+                                    objBoxes: [oldObj, newObjPending],
+                                    refArrows: [{ id: 'updArrow', from: idx, objId: 'newUpdateObj' }],
+                                    hideObjectIndices: [idx],
+                                    crossObjectIds: ['oldUpdateObj']
+                                },
+                                texts: [
+                                    `New object ${e} is ready to replace the reference in elements[${idx}].`,
+                                    `elements[${idx}] is selected as the destination.`,
+                                    `elements[${idx}] now references the updated object ${e}; old object is unreachable (GC).`
+                                ]
+                            });
+
+                            snaps.push(this.snapshot('Visualization only: updated value object aligned.', updatedVals, curCap, {
+                                size: updatedVals.length,
+                                objBoxes: [newObjFinal],
+                                refArrows: [{ id: 'updArrow', from: idx, objId: 'newUpdateObj' }],
+                                hideObjectIndices: [idx],
+                                visualOnly: true
+                            }));
+
+                            curVals = updatedVals;
                             continue;
                         }
 
@@ -2607,15 +2842,17 @@
                         }));
                     }
 
-                    if (!anyInserted) {
-                        this.discardLastSave();
-                    } else {
-                        this.commitStorage(curVals, curCap);
-                        this.values = curVals;
-                        this.capacity = curCap;
-                    }
+                    this.commitStorage(curVals, curCap);
+                    this.values = curVals;
+                    this.capacity = curCap;
 
-                    snaps.push(this.snapshot(anyInserted ? `Inserted ${inputList.join(', ')}. Ready.` : 'No new elements inserted.', curVals, curCap, {
+                    const finalMsg = anyInserted && anyUpdated
+                        ? `Inserted / updated ${inputList.join(', ')}. Ready.`
+                        : (anyUpdated
+                            ? `Updated ${inputList.join(', ')}. Ready.`
+                            : `Inserted ${inputList.join(', ')}. Ready.`);
+
+                    snaps.push(this.snapshot(finalMsg, curVals, curCap, {
                         size: curVals.length,
                         storage: this.makeDisplayStorage(curVals, curCap),
                         visualOnly: true
@@ -2624,7 +2861,7 @@
                     this.viz.enqueue(snaps, instant);
                     this.updateSetInfo();
                     this.updateUI();
-                    this.addLog(`Insert (${inputList.join(', ')})`);
+                    this.addLog(`${anyUpdated && !anyInserted ? 'Update' : 'Insert'} (${inputList.join(', ')})`);
                 }
 
                 del() {

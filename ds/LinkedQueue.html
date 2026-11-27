@@ -1,2104 +1,1937 @@
 <!DOCTYPE html>
 <html lang="en">
 
-  <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>LinkedQueue Visualizer</title>
-    <style>
-      :root {
-        --b: #1565c0;
-        --c: #91f4f4;
-        --g: #b6f8b6;
-        --r: #e60000;
-        --p: #c78cff;
-        --v: #8d35c9;
-        --panel: #f5f5f5
-      }
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>LinkedQueue Visualizer</title>
+  <style>
+    :root {
+      --bg-color: #ffffff; --panel-bg: #f5f6f8; --panel-alt: #eceff1;
+      --border-color: #d8dee4; --text-primary: #1f2328; --text-secondary: #57606a;
+      --card-bg: rgba(255, 255, 255, 0.96); --input-bg: #ffffff; --input-border: #9aa4b2;
+      --btn-insert: #2E7D32; --btn-delete: #C62828; --btn-search: #1565C0;
+      --btn-undo: #6A1B9A; --btn-gray: #546E7A; --btn-orange: #EF6C00; --btn-step: #37474F;
+      --legend-ptr-bg: #91F4F4; --legend-ptr-border: #0097A7;
+      --legend-blue: #1565C0; --legend-green: #00B843; --legend-red: #E60000;
+    }
+    body.dark {
+      --bg-color: #0f1419; --panel-bg: #161b22; --panel-alt: #1f2630;
+      --border-color: #30363d; --text-primary: #e6edf3; --text-secondary: #9da7b3;
+      --card-bg: rgba(22, 27, 34, 0.96); --input-bg: #0d1117; --input-border: #444c56;
+      --legend-ptr-bg: #0D4F5C; --legend-ptr-border: #26C6DA;
+      --legend-blue: #58A6FF; --legend-green: #4ADE80; --legend-red: #FF5252;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100vh; height: 100dvh; overflow: hidden; }
+    body {
+      font-family: 'Segoe UI', system-ui, -apple-system, Tahoma, sans-serif;
+      background: var(--bg-color); color: var(--text-primary);
+      display: flex; flex-direction: column; user-select: none;
+      transition: background-color 0.2s, color 0.2s;
+    }
+    header {
+      padding: 8px 16px; background: var(--panel-bg); display: flex; flex-direction: column;
+      gap: 8px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; z-index: 10;
+    }
+    .header-top { display: flex; justify-content: space-between; align-items: center; gap: 10px; width: 100%; }
+    .header-actions { display: flex; align-items: center; gap: 6px; }
+    .gui { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px 14px; width: 100%; }
+    h1 { margin: 0; font-size: 1.1rem; color: var(--text-primary); letter-spacing: -0.01em; }
+    .controls, .sub-controls { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .sub-controls { font-size: 0.85rem; color: var(--text-secondary); gap: 8px; }
+    .divider { width: 1px; height: 20px; background: var(--border-color); margin: 0 2px; }
+    .field-label { display: inline-flex; align-items: center; gap: 4px; font-size: 0.82rem; font-weight: 600; color: var(--text-secondary); }
+    input[type="number"] {
+      padding: 6px 8px; border-radius: 5px; border: 1px solid var(--input-border);
+      background: var(--input-bg); color: var(--text-primary); font-weight: 600;
+      font-size: 0.85rem; text-align: center; transition: border-color 0.15s;
+    }
+    #val { width: 68px; }
+    input[type="number"]:focus { outline: none; border-color: var(--btn-search); }
+    @keyframes shake-error { 0%, 100% { transform: translateX(0); } 20%, 60% { transform: translateX(-4px); } 40%, 80% { transform: translateX(4px); } }
+    input.input-error { animation: shake-error 0.4s ease-in-out; border-color: var(--btn-delete); }
+    input[type="range"] { width: 85px; cursor: pointer; accent-color: var(--btn-search); }
+    .toggle-label {
+      display: inline-flex; align-items: center; gap: 4px; cursor: pointer; font-size: 0.82rem;
+      color: var(--text-primary); padding: 3px 6px; border-radius: 4px;
+      background: var(--panel-alt); border: 1px solid var(--border-color);
+    }
+    .toggle-label.step-active { border-color: #FF8F00; background: rgba(255, 143, 0, 0.14); }
+    .toggle-label input { cursor: pointer; margin: 0; }
+    button {
+      padding: 6px 10px; border: none; border-radius: 5px; cursor: pointer; font-weight: 600;
+      color: white; transition: filter 0.15s, transform 0.1s, opacity 0.15s; font-size: 0.8rem; white-space: nowrap;
+    }
+    button:hover:not(:disabled) { filter: brightness(1.08); }
+    button:active:not(:disabled) { transform: scale(0.96); }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-insert { background: var(--btn-insert); }
+    .btn-delete { background: var(--btn-delete); }
+    .btn-search { background: var(--btn-search); }
+    .btn-undo { background: var(--btn-undo); }
+    .btn-clear { background: var(--btn-gray); }
+    .btn-orange { background: var(--btn-orange); }
+    .btn-step { background: var(--btn-step); padding: 6px 9px; }
+    .btn-pause { background: #455A64; min-width: 72px; }
+    .btn-pause.step-wait { background: #00695C; }
+    .btn-icon { background: var(--panel-alt); color: var(--text-primary); border: 1px solid var(--border-color); font-size: 0.88rem; padding: 4px 10px; }
+    .btn-help { background: #607D8B; font-size: 0.95rem; width: 30px; height: 30px; padding: 0; border-radius: 50%; display: inline-flex; align-items: center; justify-content: center; }
+    .speed-badge { font-family: monospace; font-weight: 700; min-width: 38px; text-align: center; color: var(--text-primary); }
+    #status-bar { padding-top: 6px; font-size: 0.84rem; border-top: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; gap: 12px; min-height: 26px; color: var(--text-secondary); }
+    #status-text { font-weight: 600; color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .status-meta { display: flex; gap: 12px; flex-shrink: 0; font-family: monospace; font-size: 0.8rem; }
+    #canvas-container { flex: 1 1 0; position: relative; overflow: hidden; background: var(--bg-color); cursor: default; min-height: 0; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; -webkit-tap-highlight-color: transparent; }
+    #legend { position: absolute; top: 14px; left: 14px; background: var(--card-bg); padding: 8px 10px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.78rem; max-width: 245px; z-index: 5; }
+    .legend-header { display: flex; justify-content: space-between; align-items: center; font-weight: 700; color: var(--text-primary); margin-bottom: 6px; gap: 12px; }
+    #legend.collapsed .legend-header { margin-bottom: 0; }
+    #legend.collapsed .legend-body { display: none; }
+    .legend-toggle { background: var(--panel-alt); color: var(--text-primary); border: 1px solid var(--border-color); border-radius: 4px; padding: 1px 6px; font-size: 0.75rem; }
+    .legend-item { display: flex; align-items: center; gap: 8px; margin-bottom: 5px; color: var(--text-primary); }
+    .legend-item:last-child { margin-bottom: 0; }
+    .swatch { width: 15px; height: 15px; border-radius: 4px; flex-shrink: 0; }
+    .swatch-ptr { background: var(--legend-ptr-bg); border: 1px solid var(--legend-ptr-border); display: inline-flex; align-items: center; justify-content: center; }
+    .swatch-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--legend-blue); display: block; }
+    .swatch-arrow { position: relative; }
+    .swatch-arrow::after { content: '→'; font-size: 11px; font-weight: 800; line-height: 1; color: var(--legend-blue); }
+    .dot { width: 11px; height: 11px; border-radius: 50%; flex-shrink: 0; margin: 0 2px; }
+    #camera-controls { position: absolute; bottom: 14px; right: 14px; display: flex; gap: 5px; z-index: 5; }
+    #camera-controls button { background: var(--card-bg); color: var(--text-primary); border: 1px solid var(--border-color); padding: 6px 10px; font-size: 0.85rem; }
+    #info-drawer { background: var(--panel-bg); border-top: 1px solid var(--border-color); padding: 8px 16px; display: none; gap: 16px; flex-wrap: wrap; max-height: 170px; overflow-y: auto; flex-shrink: 0; font-size: 0.82rem; }
+    #info-drawer.open { display: flex; }
+    .drawer-col { flex: 1 1 280px; min-width: 240px; }
+    .drawer-title { font-weight: 700; margin-bottom: 4px; color: var(--text-primary); display: flex; justify-content: space-between; align-items: center; }
+    .traversal-row { margin: 3px 0; font-family: monospace; color: var(--text-secondary); word-break: break-word; }
+    .traversal-row strong { color: var(--text-primary); }
+    #op-log { margin: 0; padding-left: 18px; max-height: 105px; overflow-y: auto; color: var(--text-secondary); font-family: monospace; font-size: 0.78rem; }
+    #op-log li { line-height: 1.4; color: var(--text-secondary); }
+    #author { width: 100%; background: var(--panel-alt); font-size: 0.74em; color: var(--text-secondary); text-align: center; padding: 5px 10px calc(5px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border-color); flex-shrink: 0; }
+    .modal { display: none; position: fixed; z-index: 100; inset: 0; background: rgba(0, 0, 0, 0.55); }
+    .modal-content { background: var(--panel-bg); color: var(--text-primary); margin: 4% auto; padding: 20px 24px; border: 1px solid var(--border-color); width: 90%; max-width: 820px; border-radius: 8px; max-height: 84vh; overflow-y: auto; }
+    .close { color: var(--text-secondary); float: right; font-size: 26px; font-weight: bold; cursor: pointer; line-height: 1; }
+    .close:hover { color: var(--text-primary); }
+    h2 { color: #2E7D32; margin-top: 0; }
+    body.dark h2 { color: #66BB6A; }
+    h3 { color: #1565C0; border-bottom: 1px solid var(--border-color); padding-bottom: 4px; margin-top: 16px; }
+    body.dark h3 { color: #64B5F6; }
+    .modal p, .modal li { font-size: 0.92rem; line-height: 1.5; color: var(--text-primary); }
+    .complexity { font-family: monospace; background: var(--panel-alt); padding: 2px 6px; border-radius: 4px; color: #c62828; border: 1px solid var(--border-color); }
+    body.dark .complexity { color: #ff8a80; }
+    kbd { background: var(--panel-alt); border: 1px solid var(--border-color); border-radius: 4px; padding: 1px 5px; font-family: monospace; font-size: 0.85em; }
+    @media (max-width: 768px) {
+      header { padding: 8px 10px; } h1 { font-size: 0.98rem; }
+      #val { width: 58px; } .divider { display: none; }
+      #legend { max-width: 190px; font-size: 0.72rem; top: 8px; left: 8px; }
+      .status-meta { display: none; }
+    }
+  </style>
+</head>
 
-      * {
-        box-sizing: border-box
-      }
-
-      body {
-        margin: 0;
-        height: 100vh;
-        height: 100dvh;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
-        font-family: 'Segoe UI', system-ui, -apple-system, Tahoma, sans-serif;
-        background: white;
-        user-select: none
-      }
-
-      header {
-        background: var(--panel);
-        border-bottom: 1px solid #ddd;
-        padding: 10px 20px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-        flex-shrink: 0
-      }
-
-      .top,
-      .gui {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        gap: 12px
-      }
-
-      .gui {
-        align-items: flex-start
-      }
-
-      h1 {
-        font-size: 1.2rem;
-        margin: 0
-      }
-
-      .controls,
-      .sub {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        flex-wrap: wrap
-      }
-
-      .sub {
-        font-size: .9rem;
-        color: #555
-      }
-
-      input[type=number] {
-        width: 64px;
-        padding: 6px;
-        border: 1px solid #999;
-        border-radius: 4px;
-        text-align: center;
-        font-weight: bold
-      }
-
-      button {
-        border: 0;
-        border-radius: 4px;
-        color: white;
-        font-weight: 600;
-        padding: 6px 12px;
-        box-shadow: 0 1px 3px #0003;
-        cursor: pointer;
-      }
-
-      button:disabled {
-        opacity: .4;
-        cursor: default;
-      }
-
-      .green {
-        background: #2E7D32
-      }
-
-      .blue {
-        background: #1668BD
-      }
-
-      .red {
-        background: #c62828
-      }
-
-      .purple {
-        background: #6A1B9A
-      }
-
-      .gray {
-        background: #546E7A
-      }
-
-      .orange {
-        background: #EF6C00
-      }
-
-      .pause {
-        background: #455A64;
-        width: 80px
-      }
-
-      .step-toggle {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 6px 10px;
-        border-radius: 4px;
-        background: #ECEFF1;
-        color: #263238;
-        font-weight: 600;
-        box-shadow: 0 1px 3px #0002;
-        cursor: pointer;
-        user-select: none
-      }
-
-      .step-toggle input {
-        width: auto;
-        margin: 0;
-        cursor: pointer
-      }
-
-      .step-toggle-on {
-        outline: 3px solid #FFB300;
-        outline-offset: 2px;
-        background: #E0F2F1
-      }
-
-      .help {
-        background: #607D8B;
-        border-radius: 50%;
-        font-size: 1.1rem;
-        padding: 4px 10px
-      }
-
-      .sep {
-        width: 1px;
-        height: 20px;
-        background: #ccc;
-        margin: 0 5px
-      }
-
-      #status {
-        border-top: 1px solid #ddd;
-        padding-top: 8px;
-        font-size: .85rem;
-        color: #555;
-        min-height: 32px;
-        line-height: 1.3
-      }
-
-      #status-text {
-        font-weight: bold;
-        color: #222
-      }
-
-      #wrap {
-        position: relative;
-        flex: 1;
-        min-height: 0;
-        overflow: hidden;
-        background: white
-      }
-
-      canvas {
-        display: block;
-        width: 100%;
-        height: 100%
-      }
-
-      #legend {
-        position: absolute;
-        top: 18px;
-        left: 18px;
-        background: #fffffff2;
-        border: 1px solid #ddd;
-        border-radius: 8px;
-        padding: 10px;
-        font-size: .8rem;
-        box-shadow: 0 2px 5px #0002;
-        pointer-events: none
-      }
-
-      .li {
-        display: flex;
-        gap: 8px;
-        align-items: center;
-        margin-bottom: 5px
-      }
-
-      .sw {
-        width: 18px;
-        height: 18px;
-		    border-radius: 25%;
-        display: inline-block
-      }
-
-      .sw-ptr {
-        background: #91f4f4;
-        border: 1px solid #0097A7;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center
-      }
-
-      .sw-dot {
-        width: 5px;
-        height: 5px;
-        border-radius: 50%;
-        background: #1565c0;
-        display: block
-      }
-
-      .sw-arrow::after {
-        content: '\2192';
-        font-size: 11px;
-        font-weight: 800;
-        line-height: 1;
-        color: #1565c0
-      }
-
-      .dot {
-        width: 12px;
-        height: 12px;
-        background: var(--b);
-        border-radius: 50%;
-        display: inline-block
-      }
-
-      #author {
-        background: #f4f7f6;
-        color: #777;
-        text-align: center;
-        line-height: 2.5;
-        font-size: .75em;
-        flex-shrink: 0
-      }
-
-      .modal {
-        display: none;
-        position: fixed;
-        inset: 0;
-        background: #0008;
-        z-index: 10
-      }
-
-      .modal-content {
-        background: white;
-        margin: 20px auto;
-        padding: 20px;
-        border-radius: 8px;
-        width: min(90vw, 820px);
-        max-height: calc(100dvh - 40px);
-        overflow-y: auto;
-        touch-action: pan-y
-      }
-
-      .close {
-        float: right;
-        font-size: 28px;
-        color: #aaa;
-        cursor: pointer
-      }
-
-      .code {
-        font-family: Consolas, monospace;
-        background: #eee;
-        border-radius: 4px;
-        padding: 2px 5px;
-        color: #c62828
-      }
-
-      @keyframes shake-error {
-
-        0%,
-        100% {
-          transform: translateX(0);
-        }
-
-        20%,
-        60% {
-          transform: translateX(-4px);
-        }
-
-        40%,
-        80% {
-          transform: translateX(4px);
-        }
-      }
-
-      .input-error {
-        animation: shake-error 0.4s ease-in-out !important;
-        border-color: #e60000 !important;
-        background-color: #ffe6e6 !important;
-        color: #c62828 !important;
-      }
-      body { color: #1f2328; }
-      h1 { font-size: 1.1rem; color: #1f2328; letter-spacing: -0.01em; }
-      .controls label, .sub { font-size: 0.82rem; color: #57606a; }
-      input[type=number] { font-size: 0.85rem; font-weight: 600; color: #1f2328; }
-      button { font-size: 0.8rem; font-weight: 600; }
-      #status { font-size: 0.84rem; color: #57606a; }
-      #status-text { font-weight: 600; color: #1f2328; }
-      #author { font-size: 0.74em; color: #57606a; }
-      .modal p, .modal li { font-size: 0.92rem; line-height: 1.5; color: #1f2328; }
-      @media (max-width: 768px) { h1 { font-size: 0.98rem; } }
-    </style>
-  </head>
-
-  <body>
-    <header>
-      <div class="top">
-        <h1>LinkedQueue Visualizer</h1><button class="help" onclick="app.toggleModal()" title="Open help: structure, operations, and asymptotic complexity." aria-label="Open help: structure, operations, and asymptotic complexity.">?</button>
-      </div>
-      <div class="gui">
-        <div class="controls"><label>Element <input id="val" type="number" placeholder="#" onkeydown="if(event.key==='Enter')app.enqueue()"></label><button class="green" onclick="app.enqueue()" title="Enqueue the element at the end of the queue." aria-label="Enqueue the element at the end of the queue.">Enqueue</button><button class="red" onclick="app.dequeue()" title="Dequeue (remove) the first element of the queue." aria-label="Dequeue (remove) the first element of the queue.">Dequeue</button><button class="purple" onclick="app.first()" title="Get the first element of the queue without removing it." aria-label="Get the first element of the queue without removing it.">First</button>
-          <div class="sep"></div><button class="orange" onclick="app.newList()" title="Create a new empty queue." aria-label="Create a new empty queue.">Empty</button><button class="gray" onclick="app.clear()" title="Clear the queue." aria-label="Clear the queue.">Clear</button>
-          <div class="sep"></div><button class="orange" onclick="app.random()" title="Build a random sample queue." aria-label="Build a random sample queue.">Build Random</button>
-          <div class="sep"></div><button class="purple" onclick="app.undo()" id="btnUndo" disabled title="Undo the last operation that modified the queue." aria-label="Undo the last operation that modified the queue.">Undo</button>
-        </div>
-        <div class="sub"><label>Slowdown:</label><input id="speed" type="range" min="1" max="5" step="0.1" value="1" oninput="app.speed()"><button id="btnPause" class="pause" onclick="app.pause()" title="Pause or resume the current animation." aria-label="Pause or resume the current animation.">Pause</button><label id="stepModeLabel" class="step-toggle" title="When on, only real Java LinkedQueue steps wait for Next step; visual-only steps run automatically." aria-label="Step-by-step toggle"><input id="stepMode" type="checkbox" onchange="app.toggleStep()"> Step-by-step: <span id="stepState">Off</span></label><button id="btnNext" class="blue" onclick="app.nextStep()" title="Advance to the next non-visual Java LinkedQueue step." aria-label="Advance to the next non-visual Java LinkedQueue step">Next step</button></div>
-      </div>
-      <div id="status"><span id="status-text">Ready. Use the mouse wheel to zoom, drag to pan, or use touch gestures on touch screens.</span></div>
-    </header>
-    <div id="wrap"><canvas id="cv"></canvas>
-      <div id="legend">
-        <div class="li"><span class="sw" style="background:#b6f8b6"></span>element value object / size</div>
-        <div class="li"><span class="sw" style="background:#91f4f4"></span>node / reference field</div>
-        <div class="li"><span class="sw" style="background:#c78cff"></span>queue reference</div>
-        <div class="li"><span class="sw sw-ptr"></span>uninitialized reference</div>
-        <div class="li"><span class="sw sw-ptr"><span class="sw-dot"></span></span>null reference (no arrow)</div>
-        <div class="li"><span class="sw sw-ptr sw-arrow"></span>initialized reference</div>
-        <div class="li"><span class="dot" style="background:#1565c0"></span>idle / normal reference</div>
-        <div class="li"><span class="dot" style="background:#00B843"></span>read / traversal / source</div>
-        <div class="li"><span class="dot" style="background:#E60000"></span>write / modified target</div>
+<body>
+  <header>
+    <div class="header-top">
+      <h1>LinkedQueue Visualizer</h1>
+      <div class="header-actions">
+        <button class="btn-icon" id="btnDrawer" title="Toggle LinkedQueue Details &amp; Log">Log &amp; Details</button>
+        <button class="btn-icon" id="btnTheme" title="Toggle Dark / Light Theme">Dark</button>
+        <button class="btn-help" id="btnHelp" title="Help: Structure, Operations &amp; Shortcuts" aria-label="Help">?</button>
       </div>
     </div>
-    <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
-    <div id="helpModal" class="modal">
-      <div class="modal-content"><span class="close" onclick="app.toggleModal()">&times;</span>
-        <h2>LinkedQueue</h2>
-        <p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy. Elements are enqueued at the rear and dequeued from the front.</p>
-        <p>This is a Java-style reference/object visualization. A field or local variable contains a <strong>reference</strong> to an object, or <span class="code">null</span>. The queue object stores <span class="code">first</span>, a reference to the front node object; <span class="code">last</span>, a reference to the rear node object; and <span class="code">size</span>, the number of stored elements.</p>
-        <p>Each node object has an <span class="code">element</span> field and a <span class="code">next</span> field. Because the structure is generic, <span class="code">node.element</span> is a reference to a value object, not necessarily a primitive stored inside the node.</p>
-        <p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
-        <h3>Data-structure operations and asymptotic complexity</h3>
-        <ul>
-          <li><strong>Enqueue</strong>: creates a node object with <span class="code">next = null</span>. If the queue is empty, both <span class="code">first</span> and <span class="code">last</span> reference it; otherwise, <span class="code">last.next</span> and then <span class="code">last</span> are updated. Complexity: <span class="code">O(1)</span>.</li>
-          <li><strong>Dequeue</strong>: removes the front node by updating <span class="code">first</span> to the next node. If the queue becomes empty, <span class="code">last</span> is set to <span class="code">null</span>. The removed node becomes unreachable from the queue and later be reclaimed by Java's garbage collector. Complexity: <span class="code">O(1)</span>.</li>
-          <li><strong>First</strong>: reads and returns the element reference stored in the front node without removing it. Complexity: <span class="code">O(1)</span>.</li>
-          <li><strong>Clear</strong>: sets <span class="code">first</span> and <span class="code">last</span> to <span class="code">null</span>, then sets <span class="code">size</span> to <span class="code">0</span>. The former node chain becomes unreachable from the queue and later be reclaimed by Java's garbage collector. Complexity: <span class="code">O(1)</span>.</li>
-        </ul>
+
+    <div class="gui">
+      <div class="controls">
+        <label class="field-label">Element <input type="number" id="val" placeholder="#" title="Element value (Enter = Enqueue)"></label>
+        <button class="btn-insert" id="btnEnqueue" title="Enqueue the element at the end of the queue in O(1)">Enqueue</button>
+        <button class="btn-delete" id="btnDequeue" title="Dequeue (remove) the first element of the queue in O(1)">Dequeue</button>
+        <button class="btn-undo" id="btnFirst" title="Get the first element of the queue without removing it in O(1)">First</button>
+        <div class="divider"></div>
+        <button class="btn-orange" id="btnEmpty" title="Create a new empty queue">Empty</button>
+        <button class="btn-clear" id="btnClear" title="Clear the queue in O(1)">Clear</button>
+        <button class="btn-orange" id="btnRandom" title="Build a random sample queue">Build random</button>
+        <label class="toggle-label" title="Run operations instantly without step animation"><input type="checkbox" id="chkInstant"> Instant</label>
+        <div class="divider"></div>
+        <button class="btn-undo" id="btnUndo" title="Undo the last modification (Ctrl+Z)" disabled>Undo</button>
+      </div>
+
+      <div class="sub-controls">
+        <label for="speedSlider">Speed:</label>
+        <input type="range" id="speedSlider" min="0.25" max="3" step="0.25" value="1" title="Animation speed multiplier">
+        <span class="speed-badge" id="speedLabel">1.0x</span>
+        <button class="btn-step" id="btnStepBack" title="Step Backward (Left Arrow)" disabled>|&lt;</button>
+        <button class="btn-pause" id="btnPause" title="Pause / Resume / Next (Space)" disabled>Pause</button>
+        <button class="btn-step" id="btnStepFwd" title="Step Forward (Right Arrow)" disabled>&gt;|</button>
+        <button class="btn-step" id="btnSkip" title="Skip animation to end" disabled>&gt;&gt;|</button>
+        <label class="toggle-label" id="stepModeLabel" title="Pause at every non-visual Java LinkedQueue step (auto-runs layout shifts)"><input type="checkbox" id="chkStepMode"> Step-by-step</label>
+        <label class="toggle-label" title="Automatically zoom &amp; center queue on operations"><input type="checkbox" id="chkAutoFit" checked> Auto-Fit</label>
       </div>
     </div>
-    <script>
+
+    <div id="status-bar">
+      <span id="status-text">Ready. Wheel/Pinch to Zoom, Drag to Pan, Click node to copy Element.</span>
+      <div class="status-meta">
+        <span id="step-counter">Step: -</span>
+        <span id="queue-stats">Size: 0 | First: - | Last: -</span>
+      </div>
+    </div>
+  </header>
+
+  <div id="canvas-container">
+    <canvas id="queueCanvas"></canvas>
+    <div id="legend">
+      <div class="legend-header">
+        <span>Legend</span>
+        <button class="legend-toggle" id="btnToggleLegend" title="Collapse/Expand Legend">−</button>
+      </div>
+      <div class="legend-body">
+        <div class="legend-item"><span class="swatch" style="background:#B6F8B6; border:1px solid #2E7D32"></span><span>element value object / size</span></div>
+        <div class="legend-item"><span class="swatch" style="background:#91F4F4; border:1px solid #0097A7"></span><span>node / reference field</span></div>
+        <div class="legend-item"><span class="swatch" style="background:#C78CFF; border:1px solid #8D35C9"></span><span>queue reference</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr"></span><span>uninitialized reference</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr"><span class="swatch-dot"></span></span><span>null reference (no arrow)</span></div>
+        <div class="legend-item"><span class="swatch swatch-ptr swatch-arrow"></span><span>initialized reference</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-blue)"></span><span>idle / normal reference</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-green)"></span><span>read / traversal / source</span></div>
+        <div class="legend-item"><span class="dot" style="background:var(--legend-red)"></span><span>write / modified target</span></div>
+      </div>
+    </div>
+    <div id="camera-controls">
+      <button id="btnZoomOut" title="Zoom Out">−</button>
+      <button id="btnFitView" title="Fit Queue to Screen">Fit</button>
+      <button id="btnZoomIn" title="Zoom In">+</button>
+    </div>
+  </div>
+
+  <div id="info-drawer">
+    <div class="drawer-col">
+      <div class="drawer-title">LinkedQueue State</div>
+      <div class="traversal-row"><strong>Elements (front → rear):</strong> <span id="queue-array">empty</span></div>
+      <div class="traversal-row"><strong>size:</strong> <span id="queue-size">0</span></div>
+      <div class="traversal-row"><strong>first:</strong> <span id="queue-first">null</span></div>
+      <div class="traversal-row"><strong>last:</strong> <span id="queue-last">null</span></div>
+    </div>
+    <div class="drawer-col">
+      <div class="drawer-title"><span>Operation Log</span><button class="legend-toggle" id="btnClearLog">Clear Log</button></div>
+      <ol id="op-log"></ol>
+    </div>
+  </div>
+
+  <div id="author">Pepe Gallardo. Dpto. Lenguajes y Ciencias de la Computación. Universidad de Málaga</div>
+
+  <div id="helpModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <div class="modal-content">
+      <span class="close" id="btnCloseModal">&times;</span>
+      <h2 id="modalTitle">LinkedQueue</h2>
+      <h3>Data Structure</h3>
+      <p>A <strong>LinkedQueue</strong> stores elements using a First-In-First-Out (FIFO) policy. Elements are enqueued at the rear and dequeued from the front.</p>
+      <p>This is a Java-style reference/object visualization: a field or local variable contains a <strong>reference</strong> to an object, or <code>null</code>. The queue object stores <code>first</code>, a reference to the front node object; <code>last</code>, a reference to the rear node object; and <code>size</code>, the number of stored elements.</p>
+      <p>Each node object has an <code>element</code> field and a <code>next</code> field. Because the structure is generic, <code>node.element</code> is a reference to a value object, not necessarily a primitive stored inside the node.</p>
+      <p>An object is <strong>reachable</strong> if it can be reached by following references from active variables or fields. When no active reference can reach a node object, it is an <strong>unreachable object</strong> and the Java garbage collector may eventually reclaim it.</p>
+      <h3>Operations &amp; Complexity</h3>
+      <ul>
+        <li><strong>Enqueue:</strong> Creates a node object with <code>next = null</code>. If the queue is empty, both <code>first</code> and <code>last</code> reference it; otherwise, <code>last.next</code> and then <code>last</code> are updated — <span class="complexity">O(1)</span></li>
+        <li><strong>Dequeue:</strong> Removes the front node by updating <code>first</code> to the next node. If the queue becomes empty, <code>last</code> is set to <code>null</code>. The removed node becomes unreachable from the queue and may later be reclaimed by Java's garbage collector — <span class="complexity">O(1)</span></li>
+        <li><strong>First:</strong> Reads and returns the element reference stored in the front node without removing it — <span class="complexity">O(1)</span></li>
+        <li><strong>Clear / Empty:</strong> Sets <code>first</code> and <code>last</code> to <code>null</code>, then sets <code>size</code> to <code>0</code>. The former node chain becomes unreachable from the queue and may later be reclaimed by Java's garbage collector — <span class="complexity">O(1)</span></li>
+      </ul>
+      <h3>Tips &amp; Keyboard Shortcuts</h3>
+      <ul>
+        <li><strong>Mouse / Touch:</strong> Drag to pan, scroll wheel or pinch to zoom, click/tap any node to copy its Element into the input, hover to inspect fields.</li>
+        <li><strong>Shortcuts:</strong> <kbd>Enter</kbd> in Element enqueues, <kbd>Space</kbd> Pause/Resume/Next, <kbd>←</kbd>/<kbd>→</kbd> Step Back/Forward, <kbd>Ctrl+Z</kbd> Undo, <kbd>Esc</kbd> Close Help.</li>
+      </ul>
+    </div>
+  </div>
+
+  <script>
+    (() => {
       'use strict';
-      const K = {
-        b: '#1565c0',
-        c: '#91f4f4',
-        g: '#b6f8b6',
-        r: '#e60000',
-        gr: '#00B843',
-        p: '#c78cff',
-        v: '#8d35c9',
-        d: '#EF6C00',
-        k: '#1F2328'
+
+      /* =================================================================
+       * 1. FLAT THEMES & VISUAL CONSTANTS (EXACT POSITIONS PRESERVED)
+       * ================================================================= */
+      const THEMES = {
+        light: {
+          BG_DOT: 'rgba(31, 35, 40, 0.11)',
+          PTR_BLUE: '#1565C0', GREEN: '#00B843', NODE_PTR_BG: '#91F4F4',
+          ELEM_BG: '#B6F8B6', ELEM_TEXT: '#E60000',
+          RED: '#E60000', LIST_BG: '#C78CFF', LIST_ARROW: '#8D35C9',
+          TEXT_DARK: '#1F2328', PILL_BG: '#FFFFFF', PILL_BORDER: '#CBD5E1', RING_FOCUS: '#1565C0'
+        },
+        dark: {
+          BG_DOT: 'rgba(230, 237, 243, 0.09)',
+          PTR_BLUE: '#58A6FF', GREEN: '#4ADE80', NODE_PTR_BG: '#0D4F5C',
+          ELEM_BG: '#1B4D2E', ELEM_TEXT: '#FF8A80',
+          RED: '#FF5252', LIST_BG: '#4A236E', LIST_ARROW: '#CE93D8',
+          TEXT_DARK: '#E6EDF3', PILL_BG: '#1F2630', PILL_BORDER: '#444C56', RING_FOCUS: '#58A6FF'
+        }
       };
-      const LAYER = Object['fr' + 'eeze']({
-        background: 0,
-        box: 10,
-        arrow: 20,
-        dot: 30,
-        text: 40,
-        overlay: 100
+
+      const V = Object.freeze({
+        cell: 60, nodeW: 120, gap: 60, step: 180,
+        originX: 360, originY: 250, upY: 90, downY: 410,
+        elemOffsetY: -90, structX: 205, structY: 250,
+        ptrW: 60, ptrH: 60, detourOffset: 46, auxYOffset: 190
       });
-      const VISUAL = (() => {
-        const CELL = 60;
-        const NODE_WIDTH = CELL * 2;
-        const NODE_GAP = CELL;
-        const STRUCT_X = 205;
-        const STRUCT_Y = 250;
-        const POINTER_BOX_WIDTH = CELL;
-        const POINTER_BOX_HEIGHT = CELL;
-        const BOX_TRANSPARENT_BORDER = 1;
-        return Object['fr' + 'eeze']({
-          node: Object['fr' + 'eeze']({
-            cell: CELL,
-            width: NODE_WIDTH,
-            step: NODE_WIDTH + NODE_GAP,
-            elementYOffset: -90
-          }),
-          list: Object['fr' + 'eeze']({
-            originX: 360,
-            originY: 250,
-            tempNodeYOffset: 160,
-            tempPointerXOffset: 100,
-            insertPointerXOffset: 120,
-            pointerTraversalYOffset: 190,
-            pointerTraversalLevelGap: 0,
-            pointerFallbackXOffset: 200,
-            nullPointerXOffset: 50
-          }),
-          struct: Object['fr' + 'eeze']({
-            x: STRUCT_X,
-            y: STRUCT_Y
-          }),
-          pointerBox: Object['fr' + 'eeze']({
-            width: POINTER_BOX_WIDTH,
-            height: POINTER_BOX_HEIGHT,
-            auxTargetXOffset: CELL,
-            transparentBorder: BOX_TRANSPARENT_BORDER
-          }),
-          stroke: Object['fr' + 'eeze']({
-            detourOffset: 46
-          }),
-          fonts: Object['fr' + 'eeze']({
-            value: '700 28px "Segoe UI", Arial, sans-serif',
-            structValue: '700 30px "Segoe UI", Arial, sans-serif',
-            structLabel: '25px monospace',
-            index: '23px monospace',
-            pointerLabel: '24px monospace',
-            auxPointerLabel: '22px monospace'
-          }),
-          random: Object['fr' + 'eeze']({
-            minSize: 2,
-            sizeRange: 4,
-            minValue: 1,
-            valueRange: 9,
-            sortedProbability: 0.33
-          }),
-          undo: Object['fr' + 'eeze']({
-            maxHistoryEntries: 30
-          }),
-          drawing: Object['fr' + 'eeze']({
-            arrowHeadLength: 17,
-            arrowShaftShorteningFactor: 0.8,
-            arrowHeadWidthFactor: 1.4,
-            arrowHeadControlFactor: 0.9,
-            polylineCornerRadius: 16,
-            crossPadding: 7,
-            flashLineWidth: 5,
-            nodeDotRadius: 7.5,
-            fieldDotRadius: 8,
-            highlightRadius: 28
-          }),
-          layers: Object['fr' + 'eeze']({
-            underBox: Object['fr' + 'eeze']({
-              box: LAYER.box - 4,
-              dot: LAYER.box - 3,
-              text: LAYER.box - 2,
-              arrow: LAYER.box - 1
-            }),
-            overArrow: Object['fr' + 'eeze']({
-              box: LAYER.arrow + 1,
-              dot: LAYER.arrow + 2,
-              text: LAYER.arrow + 3,
-              arrow: LAYER.arrow + 4
-            }),
-          })
-        });
-      })();
-      let nextId = 0;
-      class VisualizationEngine {
-        constructor({
-          canvasId,
-          wrapId,
-          statusId,
-          onHit = null,
-          options = {}
-        }) {
-          this.cv = document.getElementById(canvasId);
-          this.ctx = this.cv.getContext('2d');
-          this.wrap = document.getElementById(wrapId);
-          this.statusEl = document.getElementById(statusId);
-          this.onHit = onHit;
-          this.options = Object.assign({
-            minScale: .2,
-            maxScale: 5,
-            maxFitScale: 1.22,
-            wheelSensitivity: .001,
-            cameraSmoothing: 10,
-            cameraSnapPx: 5,
-            cameraSnapScale: .01,
-            maxFrameDelta: .1,
-            morphSpeed: 2.5,
-            waitSeconds: .75,
-            fadeCutoff: .95,
-            fitPadding: 150,
-            worldFallback: {
-              minX: 20,
-              minY: 35,
-              maxX: 760,
-              maxY: 650
-            }
-          }, options);
-          this.cam = {
-            scale: 1,
-            targetScale: 1,
-            x: 0,
-            targetX: 0,
-            y: 0,
-            targetY: 0
-          };
-          this.scenes = [];
-          this.pending = [];
-          this.idx = -1;
-          this.state = 'IDLE';
-          this.t = 0;
-          this.wait = 0;
-          this.speedFactor = 1;
-          this.paused = false;
-          this.stepMode = false;
-          this.waitingForStep = false;
-          this.last = 0;
-          this.drag = false;
-          this.hitObjects = [];
-          this.resize();
-          window.addEventListener('resize', () => this.resize());
-          this.cv.addEventListener('wheel', e => this.wheel(e), {
-            passive: false
-          });
-          this.cv.addEventListener('mousedown', e => this.pointerStart(e));
-          this.cv.addEventListener('mousemove', e => this.pointerMove(e));
-          this.cv.addEventListener('mouseup', () => this.pointerEnd());
-          this.cv.addEventListener('mouseleave', () => this.pointerEnd());
-          this.cv.addEventListener('touchstart', e => this.touchStart(e), {
-            passive: false
-          });
-          this.cv.addEventListener('touchmove', e => this.touchMove(e), {
-            passive: false
-          });
-          this.cv.addEventListener('touchend', () => this.pointerEnd());
-          requestAnimationFrame(ts => this.loop(ts))
-        }
-        resize() {
-          this.cv.width = this.wrap.offsetWidth;
-          this.cv.height = this.wrap.offsetHeight;
-          const cur = this.current();
-          if (cur) {
-            this.fit([cur]);
-            this.cam.scale = this.cam.targetScale;
-            this.cam.x = this.cam.targetX;
-            this.cam.y = this.cam.targetY
-          }
-        }
-        screenToWorld(x, y) {
-          return {
-            x: (x - this.cam.x) / this.cam.scale,
-            y: (y - this.cam.y) / this.cam.scale
-          }
-        }
-        wheel(e) {
-          e.preventDefault();
-          const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
-          let ns = this.cam.targetScale * (1 - e.deltaY * this.options.wheelSensitivity);
-          ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
-          const wx = (sx - this.cam.targetX) / this.cam.targetScale,
-            wy = (sy - this.cam.targetY) / this.cam.targetScale;
-          this.cam.targetScale = ns;
-          this.cam.targetX = sx - wx * ns;
-          this.cam.targetY = sy - wy * ns
-        }
-        pointerStart(e) {
-          const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top,
-            w = this.screenToWorld(sx, sy),
-            hit = this.findHit(w.x, w.y);
-          if (hit && this.onHit) {
-            this.onHit(hit);
-            return
-          }
-          this.drag = true;
-          this.start = {
-            x: sx,
-            y: sy
-          };
-          this.c0 = {
-            x: this.cam.targetX,
-            y: this.cam.targetY
-          };
-          this.cv.style.cursor = 'grabbing'
-        }
-        pointerMove(e) {
-          const r = this.cv.getBoundingClientRect(),
-            sx = e.clientX - r.left,
-            sy = e.clientY - r.top;
-          if (this.drag) {
-            this.cam.targetX = this.c0.x + sx - this.start.x;
-            this.cam.targetY = this.c0.y + sy - this.start.y;
-            return
-          }
-          const w = this.screenToWorld(sx, sy);
-          this.cv.style.cursor = this.findHit(w.x, w.y) ? 'pointer' : 'default'
-        }
-        pointerEnd() {
-          this.drag = false;
-          this.cv.style.cursor = 'default';
-          this.pinch = null
-        }
-        td(t) {
-          return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY)
-        }
-        tc(t, r) {
-          return {
-            x: (t[0].clientX + t[1].clientX) / 2 - r.left,
-            y: (t[0].clientY + t[1].clientY) / 2 - r.top
-          }
-        }
-        touchStart(e) {
-          e.preventDefault();
-          const r = this.cv.getBoundingClientRect();
-          if (e.touches.length === 1) {
-            const x = e.touches[0].clientX - r.left,
-              y = e.touches[0].clientY - r.top,
-              w = this.screenToWorld(x, y),
-              hit = this.findHit(w.x, w.y);
-            if (hit && this.onHit) {
-              this.onHit(hit);
-              return
-            }
-            this.drag = true;
-            this.start = {
-              x,
-              y
-            };
-            this.c0 = {
-              x: this.cam.targetX,
-              y: this.cam.targetY
-            }
-          } else if (e.touches.length === 2) {
-            this.drag = false;
-            const c = this.tc(e.touches, r);
-            this.pinch = {
-              d: this.td(e.touches),
-              s: this.cam.targetScale,
-              wx: (c.x - this.cam.targetX) / this.cam.targetScale,
-              wy: (c.y - this.cam.targetY) / this.cam.targetScale
-            }
-          }
-        }
-        touchMove(e) {
-          e.preventDefault();
-          const r = this.cv.getBoundingClientRect();
-          if (e.touches.length === 1 && this.drag) {
-            const x = e.touches[0].clientX - r.left,
-              y = e.touches[0].clientY - r.top;
-            this.cam.targetX = this.c0.x + x - this.start.x;
-            this.cam.targetY = this.c0.y + y - this.start.y
-          } else if (e.touches.length === 2 && this.pinch) {
-            const c = this.tc(e.touches, r);
-            let ns = this.pinch.s * this.td(e.touches) / this.pinch.d;
-            ns = Math.min(this.options.maxScale, Math.max(this.options.minScale, ns));
-            this.cam.targetScale = ns;
-            this.cam.targetX = c.x - this.pinch.wx * ns;
-            this.cam.targetY = c.y - this.pinch.wy * ns
-          }
-        }
-        findHit(x, y) {
-          for (let i = this.hitObjects.length - 1; i >= 0; i--) {
-            const o = this.hitObjects[i];
-            if (x >= o.x && x <= o.x + o.w && y >= o.y && y <= o.y + o.h) return o.hit
-          }
-          return null
-        }
-        reset() {
-          this.scenes = [];
-          this.pending = [];
-          this.idx = -1;
-          this.state = 'IDLE';
-          this.t = 0;
-          this.wait = 0;
-        }
-        enqueue(scenes) {
-          const copy = scenes.map(s => this.normalizeScene(s));
-          this.fit(this.scenes.length ? [this.scenes[this.scenes.length - 1], ...copy] : copy);
-          if (!this.scenes.length && copy.length) {
-            this.scenes.push(copy.shift());
-            this.idx = 0;
-            const firstScene = this.scenes[0];
-            // this.setStatus(firstScene.visualOnly ? '' : (firstScene.text || 'Ready.'))
-          }
-          if (copy.length) {
-            this.pending = copy;
-            this.state = 'CAMERA';
-            this.waitingForStep = false;
-            this.updateStepControls();
-          }
-        }
-        normalizeScene(s) {
-          const scene = Object.assign({
-            objects: [],
-            pause: false
-          }, s);
-          scene.objects = this.normalizeObjects(scene.objects);
-          return scene
-        }
-        normalizeObjects(objects = []) {
-          return objects.map((o, order) => this.normalizeObject(o, order))
-        }
-        normalizeObject(o, order = 0) {
-          const copy = Object.assign({}, o);
-          copy.layer = this.resolveLayer(copy);
-          copy.order = copy.order ?? order;
-          return copy
-        }
-        resolveLayer(o) {
-          if (Number.isFinite(o.layer)) return o.layer;
-          if (o.kind === 'flashRect' || o.kind === 'flashCircle' || o.kind === 'lFlash' || o.kind === 'cross') return LAYER.overlay;
-          if (o.kind === 'text') return LAYER.text;
-          if (o.kind === 'circle') return LAYER.dot;
-          if (o.kind === 'arrow' || o.kind === 'polylineArrow' || o.kind === 'line') return LAYER.arrow;
-          if (o.kind === 'rect') return LAYER.box;
-          return Number.isFinite(o.z) ? o.z : LAYER.background
-        }
-        sortObjects(objects = []) {
-          return [...objects].sort((a, b) => ((a.layer ?? 0) - (b.layer ?? 0)) || ((a.order ?? 0) - (b.order ?? 0)))
-        }
-        setStatus(txt) {
-          if (this.statusEl) this.statusEl.innerText = txt
-        }
-        loop(ts) {
-          if (!this.last) this.last = ts;
-          const dt = Math.min((ts - this.last) / 1000, this.options.maxFrameDelta);
-          this.last = ts;
-          if (!this.paused) this.update(dt);
-          this.draw();
-          requestAnimationFrame(t => this.loop(t))
-        }
-        update(dt) {
-          const f = 1 - Math.exp(-this.options.cameraSmoothing * dt);
-          this.cam.scale += (this.cam.targetScale - this.cam.scale) * f;
-          this.cam.x += (this.cam.targetX - this.cam.x) * f;
-          this.cam.y += (this.cam.targetY - this.cam.y) * f;
-          if (this.state === 'CAMERA') {
-            if (Math.hypot(this.cam.x - this.cam.targetX, this.cam.y - this.cam.targetY) < this.options.cameraSnapPx && Math.abs(this.cam.scale - this.cam.targetScale) < this.options.cameraSnapScale) this.next()
-          } else if (this.state === 'MORPH') {
-            this.t += this.options.morphSpeed * this.speedFactor * dt;
-            if (this.t >= 1) {
-              this.t = 1;
-              const arrivedScene = this.scenes[this.idx + 1];
-              const isVisualOnlyStep = !!arrivedScene?.visualOnly;
-              if (this.stepMode && !isVisualOnlyStep) {
-                this.state = 'STEP_WAIT';
-                this.waitingForStep = true;
-                this.updateStepControls();
-              } else if (arrivedScene?.pause && !isVisualOnlyStep) {
-                this.state = 'WAIT';
-                this.wait = this.options.waitSeconds / this.speedFactor
-              } else this.finish()
-            }
-          } else if (this.state === 'WAIT') {
-            this.wait -= dt;
-            if (this.wait <= 0) this.finish()
-          }
-        }
-        next() {
-          const s = this.pending.shift();
-          this.scenes.push(s);
-          if (s.fitCamera) this.fit([s]);
-          this.setStatus(s.visualOnly && !s.keepStatus ? '' : (s.text || 'Ready.'));
-          this.t = 0;
-          this.waitingForStep = false;
-          this.state = 'MORPH';
-          this.updateStepControls();
-        }
-        finish() {
-          this.idx++;
-          this.waitingForStep = false;
-          if (this.pending.length) this.next();
-          else {
-            const finalScene = this.scenes[this.idx];
-            if (finalScene) this.fit([finalScene]);
-            this.state = 'IDLE';
-            this.setStatus('Ready.');
-            this.updateStepControls();
-            if (app?.clearInputs) app.clearInputs()
-          }
-        }
-        ease(t) {
-          return t < .5 ? 2 * t * t : -1 + (4 - 2 * t) * t
-        }
-        current() {
-          return ((this.state === 'MORPH' || this.state === 'WAIT' || this.state === 'STEP_WAIT') && this.idx + 1 < this.scenes.length) ? this.interpolateScene(this.scenes[this.idx], this.scenes[this.idx + 1], this.ease(this.t)) : this.scenes[Math.max(this.idx, 0)]
-        }
-        interpolateScene(A, B, t) {
-          return Object.assign({}, B, {
-            objects: this.mixObjects(A.objects, B.objects, t)
-          })
-        }
-        mixObjects(a = [], b = [], t) {
-          const ma = new Map(a.map(o => [o.id, o])),
-            mb = new Map(b.map(o => [o.id, o])),
-            ids = new Set([...ma.keys(), ...mb.keys()]),
-            sourceIds = new Set(b.map(o => o.fromId).filter(x => x !== undefined)),
-            out = [];
-          ids.forEach(id => {
-            const A = ma.get(id),
-              B = mb.get(id);
-            if (A && B) out.push(this.mixObject(A, B, t));
-            else if (B) {
-              const S = B.fromId !== undefined ? ma.get(B.fromId) : null;
-              if (S) out.push(this.mixObject(S, B, t));
-              else {
-                const fadeT = Math.min(1, t / this.options.fadeCutoff);
-                out.push(Object.assign({}, B, {
-                  alpha: (B.alpha ?? 1) * fadeT
-                }))
-              }
-            } else if (A && !sourceIds.has(id) && t < this.options.fadeCutoff) out.push(Object.assign({}, A, {
-              alpha: (A.alpha ?? 1) * (1 - t / this.options.fadeCutoff)
-            }))
-          });
-          return this.sortObjects(out)
-        }
-        mixObject(A, B, t) {
-          const o = Object.assign({}, B);
-          ['x', 'y', 'x1', 'y1', 'x2', 'y2', 'w', 'h', 'r', 'alpha', 'lineWidth'].forEach(k => {
-            if (A[k] !== undefined && B[k] !== undefined) o[k] = A[k] + (B[k] - A[k]) * t
-          });
-          if (Array.isArray(A.points) && Array.isArray(B.points) && A.points.length === B.points.length) o.points = B.points.map((p, i) => ({
-            x: A.points[i].x + (p.x - A.points[i].x) * t,
-            y: A.points[i].y + (p.y - A.points[i].y) * t
-          }));
-          return o
-        }
-        bounds(scene) {
-          const fb = this.options.worldFallback;
-          let b = {
-            minX: fb.minX,
-            minY: fb.minY,
-            maxX: fb.maxX,
-            maxY: fb.maxY
-          };
-          for (const o of scene.objects || []) {
-            let minX = o.x ?? Math.min(o.x1 ?? Infinity, o.x2 ?? Infinity),
-              maxX = o.x !== undefined ? o.x + (o.w ?? 0) : Math.max(o.x1 ?? -Infinity, o.x2 ?? -Infinity);
-            let minY = o.y ?? Math.min(o.y1 ?? Infinity, o.y2 ?? Infinity),
-              maxY = o.y !== undefined ? o.y + (o.h ?? 0) : Math.max(o.y1 ?? -Infinity, o.y2 ?? -Infinity);
-            if (o.points) {
-              for (const p of o.points) {
-                minX = Math.min(minX, p.x);
-                maxX = Math.max(maxX, p.x);
-                minY = Math.min(minY, p.y);
-                maxY = Math.max(maxY, p.y)
-              }
-            }
-            if (!isFinite(minX) || !isFinite(maxX) || !isFinite(minY) || !isFinite(maxY)) continue;
-            b.minX = Math.min(b.minX, minX - 180);
-            b.maxX = Math.max(b.maxX, maxX + 230);
-            b.minY = Math.min(b.minY, minY - 200);
-            b.maxY = Math.max(b.maxY, maxY + 220)
-          }
-          return scene.bounds || b
-        }
-        fit(scenes) {
-          let B = {
-            minX: 1e9,
-            minY: 1e9,
-            maxX: -1e9,
-            maxY: -1e9
-          };
-          scenes.forEach(s => {
-            const b = this.bounds(s);
-            B.minX = Math.min(B.minX, b.minX);
-            B.maxX = Math.max(B.maxX, b.maxX);
-            B.minY = Math.min(B.minY, b.minY);
-            B.maxY = Math.max(B.maxY, b.maxY)
-          });
-          const sc = Math.min(this.options.maxFitScale, this.cv.width / (B.maxX - B.minX + this.options.fitPadding), this.cv.height / (B.maxY - B.minY + this.options.fitPadding));
-          this.cam.targetScale = sc;
-          this.cam.targetX = this.cv.width / 2 - ((B.minX + B.maxX) / 2) * sc;
-          this.cam.targetY = this.cv.height / 2 - ((B.minY + B.maxY) / 2) * sc
-        }
-        flashAlpha() {
-          return .3 + .7 * Math.abs(Math.sin(performance.now() / 110))
-        }
-        draw() {
-          const s = this.current(),
-            c = this.ctx;
-          c.clearRect(0, 0, this.cv.width, this.cv.height);
-          this.hitObjects = [];
-          c.save();
-          c.setTransform(this.cam.scale, 0, 0, this.cam.scale, this.cam.x, this.cam.y);
-          if (s)
-            for (const o of this.sortObjects(s.objects || [])) this.drawObject(o);
-          c.restore()
-        }
-        drawObject(o) {
-          const c = this.ctx;
-          c.save();
-          if (o.alpha !== undefined) c.globalAlpha *= o.alpha;
-          const st = o.style || {};
-          c.fillStyle = st.fill || '#fff';
-          c.strokeStyle = st.stroke || '#333';
-          c.lineWidth = o.lineWidth ?? st.lineWidth ?? 1;
-          c.font = st.font || '24px Arial';
-          c.textAlign = st.align || 'center';
-          c.textBaseline = st.baseline || 'middle';
-          if (o.kind === 'rect') {
-            this.roundOrRect(o, st);
-            if (st.stroke) c.stroke();
-            if (o.hit) this.hitObjects.push({
-              x: o.x,
-              y: o.y,
-              w: o.w,
-              h: o.h,
-              hit: o.hit
-            })
-          } else if (o.kind === 'text') {
-            c.fillStyle = st.fill || '#111';
-            c.fillText(String(o.text), o.x, o.y)
-          } else if (o.kind === 'circle') {
-            c.beginPath();
-            c.arc(o.x, o.y, o.r, 0, Math.PI * 2);
-            if (st.fill) c.fill();
-            if (st.stroke) c.stroke()
-          } else if (o.kind === 'line') {
-            c.beginPath();
-            c.moveTo(o.x1, o.y1);
-            c.lineTo(o.x2, o.y2);
-            c.stroke()
-          } else if (o.kind === 'arrow') {
-            this.arrow(o.x1, o.y1, o.x2, o.y2, st.stroke || st.fill || K.b, o.lineWidth ?? 3)
-          } else if (o.kind === 'polylineArrow') {
-            this.polylineArrow(o.points, st.stroke || K.b, o.lineWidth ?? 3)
-          } else if (o.kind === 'cross') {
-            this.cross(o.x, o.y, o.w, o.h)
-          } else if (o.kind === 'flashRect') {
-            this.flashRect(o.x, o.y, o.w, o.h, o.radius ?? 8)
-          } else if (o.kind === 'flashCircle') {
-            this.flashCircle(o.x, o.y, o.r)
-          } else if (o.kind === 'lFlash') {
-            this.lFlash(o)
-          }
-          c.restore()
-        }
-        roundOrRect(o, st) {
-          const c = this.ctx,
-            b = o.transparentBorder ?? 1,
-            ix = o.x + b,
-            iy = o.y + b,
-            iw = Math.max(0, o.w - 2 * b),
-            ih = Math.max(0, o.h - 2 * b),
-            ir = Math.max(0, (o.radius ?? 0) - b);
-          c.beginPath();
-          if (ir && c.roundRect) c.roundRect(ix, iy, iw, ih, ir);
- 		  else c.roundRect(ix, iy, iw, ih, 8);
-          if (st.fill !== false) c.fill();
-          if (st.stroke) {
-            c.beginPath();
-            if (o.radius && c.roundRect) c.roundRect(o.x, o.y, o.w, o.h, o.radius);
-            else c.rect(o.x, o.y, o.w, o.h)
-          }
-        }
-        arrow(x1, y1, x2, y2, col = K.b, lw = 3) {
-          const c = this.ctx;
-          c.save();
-          c.strokeStyle = col;
-          c.lineWidth = lw;
-          const a = Math.atan2(y2 - y1, x2 - x1);
-          const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
-          const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
-          const endX = x2 - shorten * Math.cos(a);
-          const endY = y2 - shorten * Math.sin(a);
-          c.beginPath();
-          c.moveTo(x1, y1);
-          c.lineTo(endX, endY);
-          c.stroke();
-          this.head(x1, y1, x2, y2, col);
-          c.restore();
-        }
-        polylineArrow(points, col = K.b, lw = 3) {
-          if (!points || points.length < 2) return;
-          const c = this.ctx;
-          c.save();
-          c.strokeStyle = col;
-          c.lineWidth = lw;
-          c.beginPath();
-          c.moveTo(points[0].x, points[0].y);
-          const r = VISUAL.drawing.polylineCornerRadius;
-          for (let i = 1; i < points.length - 1; i++) {
-            const pCurrent = points[i];
-            const pNext = points[i + 1];
-            c.arcTo(pCurrent.x, pCurrent.y, pNext.x, pNext.y, r);
-          }
-          const prev = points[points.length - 2];
-          const last = points[points.length - 1];
-          const a = Math.atan2(last.y - prev.y, last.x - prev.x);
-          const arrowHeadLength = VISUAL.drawing.arrowHeadLength;
-          const shorten = arrowHeadLength * VISUAL.drawing.arrowShaftShorteningFactor;
-          const endX = last.x - shorten * Math.cos(a);
-          const endY = last.y - shorten * Math.sin(a);
-          c.lineTo(endX, endY);
-          c.stroke();
-          this.head(prev.x, prev.y, last.x, last.y, col);
-          c.restore();
-        }
-        head(x1, y1, x2, y2, col = K.b) {
-          const c = this.ctx;
-          const a = Math.atan2(y2 - y1, x2 - x1);
-          const size = VISUAL.drawing.arrowHeadLength;
-          c.save();
-          c.fillStyle = col;
-          c.translate(x2, y2);
-          c.rotate(a);
-          c.beginPath();
-          c.moveTo(0, 0);
-          c.lineTo(-size * VISUAL.drawing.arrowHeadWidthFactor, -size / 2);
-          c.quadraticCurveTo(-size * VISUAL.drawing.arrowHeadControlFactor, 0, -size * VISUAL.drawing.arrowHeadWidthFactor, size / 2);
-          c.closePath();
-          c.fill();
-          c.restore();
-        }
-        flashRect(x, y, w, h, r = 8) {
-          const c = this.ctx;
-          c.save();
-          c.globalAlpha = this.flashAlpha();
-          c.strokeStyle = K.r;
-          c.lineWidth = VISUAL.drawing.flashLineWidth;
-          c.beginPath();
-          if (c.roundRect) c.roundRect(x, y, w, h, r);
-          else c.rect(x, y, w, h);
-          c.stroke();
-          c.restore()
-        }
-        flashCircle(x, y, r) {
-          const c = this.ctx;
-          c.save();
-          c.globalAlpha = this.flashAlpha();
-          c.strokeStyle = K.r;
-          c.lineWidth = VISUAL.drawing.flashLineWidth;
-          c.beginPath();
-          c.arc(x, y, r, 0, Math.PI * 2);
-          c.stroke();
-          c.restore()
-        }
-        cross(x, y, w, h) {
-          const c = this.ctx;
-          c.save();
-          c.globalAlpha = this.flashAlpha();
-          c.strokeStyle = K.r;
-          c.lineWidth = 6;
-          const p = VISUAL.drawing.crossPadding;
-          c.beginPath();
-          c.moveTo(x - p, y - p);
-          c.lineTo(x + w + p, y + h + p);
-          c.moveTo(x + w + p, y - p);
-          c.lineTo(x - p, y + h + p);
-          c.stroke();
-          c.restore()
-        }
-        lFlash(o) {
-          const c = this.ctx,
-            p = o.padding ?? 8,
-            r = o.radius ?? 8,
-            w = o.cell ?? 60,
-            nodeW = o.nodeW ?? 120,
-            x = o.x,
-            y = o.y,
-            elemY = o.elemY;
-          c.save();
-          c.globalAlpha = this.flashAlpha();
-          c.strokeStyle = K.r;
-          c.lineWidth = VISUAL.drawing.flashLineWidth;
-          c.beginPath();
-          c.moveTo(x - p + r, elemY - p);
-          c.lineTo(x + w + p - r, elemY - p);
-          c.arcTo(x + w + p, elemY - p, x + w + p, elemY - p + r, r);
-          c.lineTo(x + w + p, y - p - r);
-          c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r);
-          c.lineTo(x + nodeW + p - r, y - p);
-          c.arcTo(x + nodeW + p, y - p, x + nodeW + p, y - p + r, r);
-          c.lineTo(x + nodeW + p, y + w + p - r);
-          c.arcTo(x + nodeW + p, y + w + p, x + nodeW + p - r, y + w + p, r);
-          c.lineTo(x - p + r, y + w + p);
-          c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r);
-          c.lineTo(x - p, elemY - p + r);
-          c.arcTo(x - p, elemY - p, x - p + r, elemY - p, r);
-          c.closePath();
-          c.stroke();
-          c.restore()
-        }
-        setSpeed(v) {
-          this.speedFactor = 1 / v
-        }
-        togglePause() {
-          this.paused = !this.paused;
-          return this.paused
-        }
-        setStepMode(enabled) {
-          this.stepMode = !!enabled;
-          if (!this.stepMode && this.state === 'STEP_WAIT') {
-            this.waitingForStep = false;
-            this.finish();
-          }
-          this.updateStepControls();
-        }
-        nextStep() {
-          if (!this.stepMode || this.paused) return;
-          if (this.state === 'STEP_WAIT') {
-            this.waitingForStep = false;
-            this.finish();
-          }
-          this.updateStepControls();
-        }
-        updateStepControls() {
-          const step = document.getElementById('stepMode');
-          const label = document.getElementById('stepState');
-          const next = document.getElementById('btnNext');
-          if (step) step.checked = this.stepMode;
-          if (label) label.innerText = this.stepMode ? 'On' : 'Off';
-          const lbl = document.getElementById('stepModeLabel');
-          if (lbl) {
-            lbl.classList.toggle('step-toggle-on', !!this.stepMode);
-            lbl.style.pointerEvents = 'auto';
-            lbl.style.opacity = '1';
-          }
-          if (next) {
-            const canAdvance = this.stepMode && this.state === 'STEP_WAIT';
-            next.disabled = !canAdvance;
-            next.title = !this.stepMode ? 'Turn Step-by-step mode ON first.' : (canAdvance ? 'Advance to the next non-visual Java LinkedQueue step.' : 'Visual-only steps advance automatically. The button becomes available at the next Java LinkedQueue step.');
-            next.setAttribute('aria-label', next.title);
-          }
+
+      const UNINITIALIZED = '__UNINITIALIZED__';
+
+      /* =================================================================
+       * 2. PURE DATA MODEL & UNIFIED SNAPSHOT CONTRACT
+       * ================================================================= */
+      class QueueItem {
+        constructor(value, id = QueueItem.nextId++) {
+          this.value = value; this.id = id;
+          Object.freeze(this);
         }
       }
-      // Queue-specific view: converts logical snapshots into the generic scene objects consumed by VisualizationEngine.
-      class LinkedQueueView {
+      QueueItem.nextId = 1;
+
+      class LinkedQueueState {
+        constructor(items = []) {
+          this.items = Object.freeze([...items]);
+          Object.freeze(this);
+        }
+      }
+
+      const EMPTY_STATE = new LinkedQueueState([]);
+
+      const QueueUtils = {
+        getSize(st) { return st ? st.items.length : 0; },
+        getFirst(st) { return st && st.items.length > 0 ? st.items[0].value : null; },
+        getLast(st) { return st && st.items.length > 0 ? st.items[st.items.length - 1].value : null; },
+        toArray(st) { return st ? st.items.map(x => x.value) : []; }
+      };
+
+      class SnapshotRecorder {
+        constructor(initialState = EMPTY_STATE) {
+          this.snapshots = [];
+          this.defaultStats = initialState;
+        }
+
+        buildSnap(text, nodes, extra = {}) {
+          const clonedNodes = (nodes || []).map(n => ({ ...n }));
+          const originalText = String(text ?? '');
+          const visualOnly = extra.visualOnly !== undefined
+            ? Boolean(extra.visualOnly)
+            : /^\s*Visualization only:/i.test(originalText);
+
+          const statsState = extra.statsState !== undefined ? extra.statsState : this.defaultStats;
+          if (extra.statsState !== undefined) this.defaultStats = extra.statsState;
+
+          // Standalone marks are reads (green); real writes use emitAssignment or writeElement (red).
+          const readOnly = { ...extra };
+          const greenPtrs = [...(extra.redPtrs || [])], greenStruct = [...(extra.redStruct || [])];
+          const greenNext = [...(extra.redNext || [])], greenElement = [...(extra.redElement || [])];
+          const greenPNode = Boolean(extra.redPNode);
+          delete readOnly.redPtrs; delete readOnly.redStruct; delete readOnly.redNext;
+          delete readOnly.redElement; delete readOnly.redPNode;
+          extra = readOnly;
+
+          return {
+            nodes: clonedNodes,
+            firstId: extra.firstId !== undefined ? extra.firstId : (clonedNodes[0]?.id ?? null),
+            lastId: extra.lastId !== undefined ? extra.lastId : (clonedNodes.at(-1)?.id ?? null),
+            size: extra.size !== undefined ? extra.size : clonedNodes.length,
+            ptrs: (extra.ptrs || []).map(p => ({ ...p })),
+            pnode: extra.pnode ? { ...extra.pnode } : null,
+            statsState,
+            ...extra,
+            redPtrs: [],
+            redStruct: [],
+            redNext: [],
+            redElement: [...(extra.writeElement || [])],
+            greenPtrs, greenStruct, greenNext, greenElement, greenPNode,
+            flashPtrs: [...(extra.flashPtrs || [])],
+            flashStruct: [...(extra.flashStruct || [])],
+            flashElement: [...(extra.flashElement || [])],
+            flashNew: [...(extra.flashNew || [])],
+            crossNodes: [...(extra.crossNodes || [])],
+            crossPtrs: [...(extra.crossPtrs || [])],
+            overArrowNodeIds: [...(extra.overArrowNodeIds || [])],
+            visualOnly,
+            keepStatus: Boolean(extra.keepStatus),
+            text: (visualOnly && !extra.keepStatus) ? '' : originalText,
+            pause: Boolean(extra.pause)
+          };
+        }
+
+        emit(text, nodes, extra = {}) {
+          this.snapshots.push(this.buildSnap(text, nodes, extra));
+        }
+
+        cloneSnap(s) {
+          return {
+            ...s,
+            nodes: (s.nodes || []).map(n => ({ ...n })),
+            ptrs: (s.ptrs || []).map(p => ({ ...p })),
+            pnode: s.pnode ? { ...s.pnode } : null,
+            redPtrs: [...(s.redPtrs || [])],
+            redStruct: [...(s.redStruct || [])],
+            redNext: [...(s.redNext || [])],
+            redElement: [...(s.redElement || [])],
+            greenPtrs: [...(s.greenPtrs || [])],
+            greenStruct: [...(s.greenStruct || [])],
+            greenNext: [...(s.greenNext || [])],
+            greenElement: [...(s.greenElement || [])],
+            flashPtrs: [...(s.flashPtrs || [])],
+            flashStruct: [...(s.flashStruct || [])],
+            flashElement: [...(s.flashElement || [])],
+            flashNew: [...(s.flashNew || [])],
+            crossNodes: [...(s.crossNodes || [])],
+            crossPtrs: [...(s.crossPtrs || [])],
+            overArrowNodeIds: [...(s.overArrowNodeIds || [])]
+          };
+        }
+
+        clearHighlights(s) {
+          const q = this.cloneSnap(s);
+          q.redPtrs = []; q.redStruct = []; q.redNext = []; q.redElement = [];
+          q.redPNode = false;
+          q.greenPtrs = []; q.greenStruct = []; q.greenNext = []; q.greenElement = [];
+          q.greenPNode = false;
+          q.flashPtrs = []; q.flashStruct = []; delete q.flashNext;
+          q.flashPNode = false;
+          q.flashElement = []; q.flashNew = [];
+          return q;
+        }
+
+        applyColor(s, refOrRefs, color) {
+          if (!refOrRefs) return s;
+          const refs = Array.isArray(refOrRefs) ? refOrRefs : [refOrRefs];
+          const g = color === 'green';
+          const list = name => s[(g ? 'green' : 'red') + name];
+          const add = (arr, key) => { if (!arr.includes(key)) arr.push(key); };
+          for (const ref of refs) {
+            if (!ref) continue;
+            if (ref.kind === 'ptr') add(list('Ptrs'), ref.key);
+            else if (ref.kind === 'struct') add(list('Struct'), ref.key);
+            else if (ref.kind === 'next' && ref.key != null) add(list('Next'), ref.key);
+            else if (ref.kind === 'element' && ref.key != null) add(list('Element'), ref.key);
+            else if (ref.kind === 'pnode') s[g ? 'greenPNode' : 'redPNode'] = true;
+          }
+          return s;
+        }
+
+        findAccessRef(target, extra, nodes, hint = '') {
+          const id = target.key;
+          const ptr = (extra.ptrs || []).find(p => p.target === id);
+          if (ptr) return { kind: 'ptr', key: ptr.label };
+          if (extra.pnode && extra.pnode.target === id) return { kind: 'pnode' };
+          const isFirst = extra.firstId === id, isLast = extra.lastId === id;
+          if (isFirst && isLast) return { kind: 'struct', key: /\blast\b/.test(hint) ? 'last' : 'first' };
+          if (isLast) return { kind: 'struct', key: 'last' };
+          if (isFirst) return { kind: 'struct', key: 'first' };
+          return null;
+        }
+
+        applyFlash(s, ref) {
+          if (!ref) return s;
+          if (ref.kind === 'ptr') { if (!s.flashPtrs.includes(ref.key)) s.flashPtrs.push(ref.key); }
+          else if (ref.kind === 'struct') { if (!s.flashStruct.includes(ref.key)) s.flashStruct.push(ref.key); }
+          else if (ref.kind === 'next' && ref.key != null) s.flashNext = ref.key;
+          else if (ref.kind === 'pnode') s.flashPNode = true;
+          return s;
+        }
+
+        /**
+         * Strict 4-phase pointer assignment.
+         * Case A (direct assignment to a variable): 1) source green; 2) source green + red ring on target;
+         * 3) target updated in red, source green; 4) back to blue.
+         * Case B (field reached through another reference): 1) access reference green + red ring on the field;
+         * 2) source green + ring kept; 3) field updated in red, source green; 4) back to blue.
+         */
+        emitAssignment({ beforeNodes, beforeExtra = {}, afterNodes, afterExtra = {}, accessPtr, source, targets, phase1Text, phase2Text, phase3Text }) {
+          const baseBefore = this.clearHighlights(this.buildSnap(phase1Text, beforeNodes, { ...beforeExtra, visualOnly: false, pause: true }));
+          const baseAfter = this.clearHighlights(this.buildSnap(phase3Text, afterNodes, { ...afterExtra, visualOnly: false, pause: true }));
+          const sources = source ? (Array.isArray(source) ? source : [source]) : [];
+          const fieldTargets = targets.filter(t => t.kind === 'next');
+          const isCaseB = fieldTargets.length > 0;
+          const access = accessPtr !== undefined ? accessPtr
+            : (isCaseB ? this.findAccessRef(fieldTargets[0], beforeExtra, beforeNodes || [], phase1Text) : null);
+
+          const p1 = this.cloneSnap(baseBefore);
+          if (isCaseB) {
+            this.applyColor(p1, access, 'green');
+            targets.forEach(t => this.applyFlash(p1, t));
+          } else {
+            this.applyColor(p1, sources, 'green');
+          }
+          p1.text = phase1Text; p1.visualOnly = false; p1.pause = true;
+          this.snapshots.push(p1);
+
+          const p2 = this.cloneSnap(baseBefore);
+          this.applyColor(p2, sources, 'green');
+          targets.forEach(t => this.applyFlash(p2, t));
+          p2.text = phase2Text; p2.visualOnly = false; p2.pause = true;
+          this.snapshots.push(p2);
+
+          const p3 = this.cloneSnap(baseAfter);
+          this.applyColor(p3, sources, 'green');
+          targets.forEach(t => this.applyColor(p3, t, 'red'));
+          p3.text = phase3Text; p3.visualOnly = false; p3.pause = true;
+          this.snapshots.push(p3);
+
+          const p4 = this.cloneSnap(baseAfter);
+          p4.text = phase3Text; p4.visualOnly = true; p4.keepStatus = true; p4.pause = false;
+          this.snapshots.push(p4);
+        }
+      }
+
+      /* =================================================================
+       * 3. LINKED QUEUE ENGINE (FIFO STRATEGY)
+       * ================================================================= */
+      class LinkedQueueModel {
         constructor() {
-          this.c = VISUAL.node.cell;
-          this.nw = VISUAL.node.width;
+          this.state = EMPTY_STATE;
+          this.history = [];
+          this.maxHistory = 30;
         }
-        n(s, id) {
-          return (s.nodes || []).find(n => n.id === id);
+
+        pushHistory(prevState) {
+          if (prevState === this.state) return false;
+          this.history.push(prevState);
+          if (this.history.length > this.maxHistory) this.history.shift();
+          return true;
         }
-        obj(o, x) {
-          o.push(x);
+
+        restoreFromHistory() {
+          if (this.history.length === 0) return undefined;
+          this.state = this.history.pop();
+          return this.state;
         }
-        txt(o, id, text, x, y, font = VISUAL.fonts.value, fill = K.k, align = 'center', base = 'middle', layer = LAYER.text) {
-          this.obj(o, {
-            id,
-            kind: 'text',
-            text,
-            x,
-            y,
-            style: {
-              font,
-              fill,
-              align,
-              baseline: base
-            },
-            layer
+
+        buildNodes(items = this.state.items, y = V.originY, shift = 0) {
+          return items.map((item, i) => ({
+            id: item.id, e: item.value,
+            x: V.originX + shift + i * V.step, y,
+            next: i < items.length - 1 ? items[i + 1].id : null
+          }));
+        }
+
+        allocNode(item, x, y, next = UNINITIALIZED) {
+          return { id: item.id, e: item.value, x, y, next };
+        }
+
+        enqueue(value, recorder) {
+          const oldState = this.state;
+          const oldItems = oldState.items;
+          const oldSize = oldItems.length;
+          const newItem = new QueueItem(value);
+          const newId = newItem.id;
+          const oldNodes = this.buildNodes(oldItems);
+          const oldFirst = oldItems[0]?.id ?? null;
+          const oldLast = oldItems.at(-1)?.id ?? null;
+
+          recorder.emit('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
+            size: oldSize, firstId: oldFirst, lastId: oldLast, statsState: oldState
           });
-        }
-        rect(o, id, x, y, w, h, fill, hit = null, layer = LAYER.box) {
-          this.obj(o, {
-            id,
-            kind: 'rect',
-            x,
-            y,
-            w,
-            h,
-            style: {
-              fill
-            },
-            hit,
-            layer
+
+          const x = V.originX + oldSize * V.step;
+          const y = V.upY; // Exact position: originY (250) - tempNodeYOffset (160) = 90
+          const pnode = { x: x - 100, y, target: newId, label: 'newNode' };
+          const nn = this.allocNode(newItem, x, y, null);
+
+          recorder.emit(`A new node object is created with next = null (element = ${value}).`, [...oldNodes, nn], {
+            size: oldSize, pnode, firstId: oldFirst, lastId: oldLast,
+            straightLastArrow: oldSize === 1, flashNew: [newId], pause: true
           });
-        }
-        cir(o, id, x, y, r, fill, layer = LAYER.dot) {
-          this.obj(o, {
-            id,
-            kind: 'circle',
-            x,
-            y,
-            r,
-            style: {
-              fill
-            },
-            layer
-          });
-        }
-        ar(o, id, x1, y1, x2, y2, col = K.b, layer = LAYER.arrow, lw = 3) {
-          this.obj(o, {
-            id,
-            kind: 'arrow',
-            x1,
-            y1,
-            x2,
-            y2,
-            style: {
-              stroke: col,
-              fill: col
-            },
-            lineWidth: lw,
-            layer
-          });
-        }
-        poly(o, id, points, col = K.b, layer = LAYER.arrow, lw = 3) {
-          this.obj(o, {
-            id,
-            kind: 'polylineArrow',
-            points,
-            style: {
-              stroke: col
-            },
-            lineWidth: lw,
-            layer
-          });
-        }
-        det(o, id, x1, y1, x2, y2, col = K.b, amount = 1, layer = LAYER.arrow) {
-          if (Math.abs(amount) < .001) {
-            this.poly(o, id, [{
-                x: x1,
-                y: y1
-              },
-              {
-                x: x1 + (x2 - x1) / 3,
-                y: y1 + (y2 - y1) / 3
-              },
-              {
-                x: x1 + 2 * (x2 - x1) / 3,
-                y: y1 + 2 * (y2 - y1) / 3
-              },
-              {
-                x: x2,
-                y: y2
-              }
-            ], col, layer);
+
+          const nextItems = Object.freeze([...oldItems, newItem]);
+          const nextState = new LinkedQueueState(nextItems);
+
+          if (oldSize === 0) {
+            const nd = { ...nn, y: V.originY };
+            recorder.emitAssignment({
+              beforeNodes: [nd], beforeExtra: { size: 0, pnode, firstId: null, lastId: null },
+              afterNodes: [nd], afterExtra: { size: 0, pnode, firstId: newId, lastId: null },
+              source: { kind: 'pnode' }, targets: [{ kind: 'struct', key: 'first' }],
+              phase1Text: 'newNode is going to be stored in the first field.',
+              phase2Text: 'The first field is selected to be updated.',
+              phase3Text: 'The first field now references the new node object.'
+            });
+
+            recorder.emitAssignment({
+              beforeNodes: [nd], beforeExtra: { size: 0, pnode, firstId: newId, lastId: null },
+              afterNodes: [nd], afterExtra: { size: 0, pnode, firstId: newId, lastId: newId, statsState: nextState },
+              source: { kind: 'pnode' }, targets: [{ kind: 'struct', key: 'last' }],
+              phase1Text: 'newNode is going to be stored in the last field.',
+              phase2Text: 'The last field is selected to be updated.',
+              phase3Text: 'The last field now references the new node object.'
+            });
+
+            recorder.emit('The size field is incremented because one element reference was added.', [nd], {
+              size: 1, pnode, firstId: newId, lastId: newId, flashStruct: ['size'], pause: true
+            });
+
+            recorder.emit('The method returns, so the local variable newNode is removed from the call stack.', [nd], {
+              size: 1, pnode, firstId: newId, lastId: newId, flashPNodeCross: true, pause: true
+            });
+
+            recorder.emit('Visualization only: the completed LinkedQueue state is displayed.', [nd], {
+              size: 1, firstId: newId, lastId: newId
+            });
+
+            this.state = nextState;
             return;
           }
-          const d = VISUAL.stroke.detourOffset * amount;
-          const my = y1 + d;
-          this.poly(o, id, [{
-              x: x1,
-              y: y1
-            },
-            {
-              x: x1 + d,
-              y: my
-            },
-            {
-              x: x2 - d,
-              y: my
-            },
-            {
-              x: x2,
-              y: y2
-            }
-          ], col, layer);
-        }
-        ptr(n) {
-          return {
-            x: n.x + this.c + this.c / 2,
-            y: n.y + this.c / 2
-          };
-        }
-        scene(s) {
-          const o = [];
-          this.struct(o, s);
-          (s.nodes || []).forEach(n => this.node(o, s, n));
-          if (s.pnode) this.pnode(o, s);
-          this.structArrows(o, s);
-          this.links(o, s);
-          if (s.pnode) this.pnodeArrow(o, s);
-          this.over(o, s);
-          return {
-            text: s.text,
-            visualOnly: !!s.visualOnly,
-            pause: !!s.pause,
-            objects: o,
-            bounds: this.bounds(o)
-          };
-        }
-        col(s, tok, legacyGreen = false) {
-          if ((s.red || []).includes(tok)) return K.r;
-          return legacyGreen || (s.green || []).includes(tok) ? K.gr : K.b;
-        }
-        node(o, s, n) {
-          const w = this.c,
-            x = n.x,
-            y = n.y,
-            ey = y + VISUAL.node.elementYOffset,
-            id = 'node:' + n.id;
-          this.rect(o, id + ':elem', x, ey, w, w, K.g, {
-            value: n.e
-          });
-          this.txt(o, id + ':val', n.e, x + w / 2, ey + w / 2 + 2, VISUAL.fonts.value, K.r);
-          if (n.id === s.firstId) {
-            this.txt(o, id + ':first-label', (s.nodes || []).length > 1 ? 'first' : 'first/last', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
-          }
-          if ((s.nodes || []).length > 1 && s.firstId !== s.lastId && n.id === s.lastId) this.txt(o, id + ':last-label', 'last', x + w, y + w + 15, VISUAL.fonts.auxPointerLabel, K.k);
-          this.rect(o, id + ':left', x, y, w, w, K.c, {
-            value: n.e
-          });
-          this.rect(o, id + ':right', x + w, y, w, w, K.c, {
-            value: n.e
-          });
-          const elemCol = this.col(s, 'elem:' + n.id);
-          this.ar(o, id + ':elem-arrow', x + w / 2, y + w / 2, x + w / 2, ey + w, elemCol);
-          this.cir(o, id + ':elem-dot', x + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, elemCol);
-          this.cir(o, id + ':next-dot', x + w + w / 2, y + w / 2, VISUAL.drawing.nodeDotRadius, this.col(s, 'next:' + n.id));
-        }
-        struct(o, s) {
-          const x = VISUAL.struct.x,
-            y = VISUAL.struct.y,
-            w = this.c,
-            h = this.c;
-          this.txt(o, 'queue:label', 'queue', x - 135, y - 70, '26px monospace', K.k, 'right');
-          this.rect(o, 'queue:box', x - 125, y - 108, w, h, K.p);
-          this.cir(o, 'queue:dot', x - 125 + w / 2, y - 108 + h / 2, 8, K.v);
-          [
-            ['first', K.c, s.firstId],
-            ['last', K.c, s.lastId],
-            ['size', K.g, s.size]
-          ].forEach((r, i) => {
-            const yy = y + i * h,
-              id = 'st:' + r[0];
-            this.txt(o, id + ':label', r[0], x - 16, yy + h / 2, VISUAL.fonts.structLabel, K.k, 'right');
-            this.rect(o, id + ':box', x, yy, w, h, r[1]);
-            if (r[0] === 'size') this.txt(o, id + ':value', String(r[2]), x + w / 2, yy + h / 2 + 2, VISUAL.fonts.structValue, K.r);
-            else {
-              const col = this.col(s, r[0], (s.markFirstArrow && r[0] == 'first') || (s.markLastArrow && r[0] == 'last'));
-              this.cir(o, id + ':dot', x + w / 2, yy + h / 2, 8, col);
-            }
-          });
-        }
-        structArrows(o, s) {
-          const x = VISUAL.struct.x,
-            y = VISUAL.struct.y,
-            w = this.c,
-            h = this.c;
-          this.ar(o, 'a:queue', x - 125 + w / 2, y - 108 + h / 2, x, y + 8, K.v);
-          const first = this.n(s, s.firstId),
-            last = this.n(s, s.lastId);
-          if (first) {
-            const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
-            const col = this.col(s, 'first', s.markFirstArrow);
-            this.det(
-              o,
-              'a:first',
-              x + w / 2,
-              y + h / 2,
-              first.x,
-              first.y + h / 2,
-              col,
-              a
-            );
-          }
-          if (last) {
-            const col = this.col(s, 'last', s.markLastArrow);
-            const startY = y + h + h / 2,
-              targetY = last.y + h * .75;
-            if (((s.nodes && s.nodes.length === 1) || s.straightLastArrow) && !s.keepCurvedLastArrow) {
-              this.ar(o, 'a:last', x + w / 2, startY, last.x, targetY, col);
-            } else {
-              this.poly(o, 'a:last', [{
-                x: x + w / 2,
-                y: startY
-              }, {
-                x: last.x - 24,
-                y: startY
-              }, {
-                x: last.x,
-                y: targetY
-              }], col);
-            }
-          }
-        }
-        links(o, s) {
-          (s.nodes || []).forEach(n => {
-            if (n.next != null) {
-              const t = this.n(s, n.next);
-              if (t) {
-                const p = this.ptr(n),
-                  a = n.detourAmount ?? (n.detourNext ? 1 : 0);
-                this.det(
-                  o,
-                  'link:' + n.id,
-                  p.x,
-                  p.y,
-                  t.x,
-                  t.y + this.c / 2,
-                  this.col(s, 'next:' + n.id),
-                  a
-                );
-              }
-            }
-          });
-        }
-        pnode(o, s) {
-          const p = s.pnode,
-            under = VISUAL.layers.underBox;
-          this.txt(o, 'pn:label', p.label || 'newNode', p.x - 12, p.y + 40, VISUAL.fonts.pointerLabel, K.k, 'right', 'alphabetic', under.text);
-          this.rect(o, 'pn:box', p.x, p.y, VISUAL.pointerBox.width, VISUAL.pointerBox.height, K.c, null, under.box);
-          this.cir(o, 'pn:dot', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, 8, this.col(s, 'pnode'), under.dot);
-        }
-        pnodeArrow(o, s) {
-          const p = s.pnode,
-            t = this.n(s, p.target),
-            under = VISUAL.layers.underBox;
-          if (t) this.ar(o, 'pn:arrow', p.x + VISUAL.pointerBox.width / 2, p.y + VISUAL.pointerBox.height / 2, t.x, t.y + this.c / 2, this.col(s, 'pnode'), under.arrow);
-        }
-        over(o, s) {
-          const x = VISUAL.struct.x,
-            y = VISUAL.struct.y,
-            h = this.c;
-          if (s.flashFirst) this.obj(o, {
-            id: 'fl:first',
-            kind: 'flashCircle',
-            x: x + h / 2,
-            y: y + h / 2,
-            r: VISUAL.drawing.highlightRadius,
-            layer: LAYER.overlay
-          });
-          if (s.flashLast) this.obj(o, {
-            id: 'fl:last',
-            kind: 'flashCircle',
-            x: x + h / 2,
-            y: y + h + h / 2,
-            r: VISUAL.drawing.highlightRadius,
-            layer: LAYER.overlay
-          });
-          if (s.flashSize) this.obj(o, {
-            id: 'fl:size',
-            kind: 'flashCircle',
-            x: x + h / 2,
-            y: y + 2 * h + h / 2,
-            r: VISUAL.drawing.highlightRadius,
-            layer: LAYER.overlay
-          });
-          (s.nodes || []).forEach(n => {
-            const ey = n.y + VISUAL.node.elementYOffset;
-            if (n.flashNew) this.obj(o, {
-              id: 'fl:new:' + n.id,
-              kind: 'lFlash',
-              x: n.x,
-              y: n.y,
-              elemY: ey,
-              cell: this.c,
-              nodeW: this.nw,
-              layer: LAYER.overlay
-            });
-            if (n.flashNext || s.flashNext === n.id) this.obj(o, {
-              id: 'fl:next:' + n.id,
-              kind: 'flashCircle',
-              x: n.x + this.c + this.c / 2,
-              y: n.y + this.c / 2,
-              r: 29,
-              layer: LAYER.overlay
-            });
-            if (n.flashElement) this.obj(o, {
-              id: 'fl:elem:' + n.id,
-              kind: 'flashRect',
-              x: n.x - 1,
-              y: ey - 1,
-              w: this.c,
-              h: this.c,
-              radius: 8,
-              layer: LAYER.overlay
-            });
-            if (n.flashNodeCross) this.obj(o, {
-              id: 'cr:node:' + n.id,
-              kind: 'cross',
-              x: n.x,
-              y: n.y,
-              w: this.nw,
-              h: this.c,
-              layer: LAYER.overlay
-            });
-          });
-          if (s.flashPNodeCross && s.pnode) this.obj(o, {
-            id: 'cr:pnode',
-            kind: 'cross',
-            x: s.pnode.x,
-            y: s.pnode.y,
-            w: VISUAL.pointerBox.width,
-            h: VISUAL.pointerBox.height,
-            layer: LAYER.overlay
-          });
-        }
-        bounds(o) {
-          let b = {
-            minX: 20,
-            minY: 35,
-            maxX: 760,
-            maxY: 560
-          };
-          for (const q of o) {
-            let xs = [],
-              ys = [];
-            if (q.x !== undefined) {
-              xs.push(q.x, q.x + (q.w || 0));
-              ys.push(q.y, q.y + (q.h || 0));
-            }
-            if (q.x1 !== undefined) {
-              xs.push(q.x1, q.x2);
-              ys.push(q.y1, q.y2);
-            }
-            if (q.points) q.points.forEach(p => {
-              xs.push(p.x);
-              ys.push(p.y);
-            });
-            if (xs.length) {
-              b.minX = Math.min(b.minX, Math.min(...xs) - 180);
-              b.maxX = Math.max(b.maxX, Math.max(...xs) + 230);
-              b.minY = Math.min(b.minY, Math.min(...ys) - 200);
-              b.maxY = Math.max(b.maxY, Math.max(...ys) + 210);
-            }
-          }
-          return b;
-        }
-      }
-      class Viz extends VisualizationEngine {
-        constructor(id) {
-          super({
-            canvasId: id,
-            wrapId: 'wrap',
-            statusId: 'status-text',
-            onHit: h => {
-              document.getElementById('val').value = h.value;
-            },
-            options: {
-              worldFallback: {
-                minX: 20,
-                minY: 35,
-                maxX: 760,
-                maxY: 560
-              },
-              maxFitScale: 1.25
-            }
-          });
-          this.view = new LinkedQueueView();
-          this.cell = VISUAL.node.cell;
-          this.nodeW = VISUAL.node.width;
-          this.gap = VISUAL.node.cell;
-        }
-        get sn() {
-          return this.scenes;
-        }
-        set sn(v) {
-          this.scenes = v;
-        }
-        base() {
-          return {
-            x: VISUAL.list.originX,
-            y: VISUAL.list.originY,
-            up: VISUAL.list.originY - VISUAL.list.tempNodeYOffset
-          };
-        }
-        enqueue(snaps) {
-          super.enqueue(snaps.map(s => this.view.scene(s)));
-        }
-      }
 
-      function relink(nodes) {
-        nodes.forEach((n, i) => {
-          n.index = undefined;
-          n.next = i < nodes.length - 1 ? nodes[i + 1].id : null;
-        });
-      }
-      const app = {
-        values: [],
-        ids: [],
-        history: [],
-        viz: null,
-        init() {
-          this.viz = new Viz('cv');
-          this.randomFill();
-          this.ids = this.values.map(_ => nextId++);
-          this.showCurrent('Visualization only: The queue is initialized with sample values.');
-          this.updateUI();
-        },
-        baseNodes(vals = this.values, ids = this.ids, shift = 0, y = null) {
-          const yy = y ?? this.viz.base().y;
-          return vals.map((e, i) => ({
-            id: ids[i],
-            e,
-            x: VISUAL.list.originX + shift + i * VISUAL.node.step,
-            y: yy,
-            next: i < ids.length - 1 ? ids[i + 1] : null
-          }));
-        },
-        snapshot(text, nodes, extra = {}) {
-          nodes = nodes.map(n => ({
-            ...n
-          }));
-          if (!extra.preserveLinks) relink(nodes);
-          const originalText = String(text ?? '');
-          const visualOnly = extra.visualOnly !== undefined ? !!extra.visualOnly : /^\s*Visualization only:/i.test(originalText);
-          return {
-            nodes,
-            firstId: extra.firstId !== undefined ? extra.firstId : (nodes[0]?.id ?? null),
-            lastId: extra.lastId !== undefined ? extra.lastId : (nodes[nodes.length - 1]?.id ?? null),
-            size: extra.size ?? nodes.length,
-            ...extra,
-            visualOnly,
-            text: visualOnly && !extra.keepStatus ? '' : originalText
-          };
-        },
-        // Strict 4-phase assignment. Tokens: 'first', 'last', 'pnode', 'next:<id>', 'elem:<id>'.
-        // Case A (target is a variable/struct field): source green; + ring on target; target red; cleared.
-        // Case B (target is a node.next field): access reference green + ring on field; source green; field red; cleared.
-        assign(snaps, { beforeNodes, beforeExtra = {}, afterNodes, afterExtra = {}, access = [], source = [], targets, texts }) {
-          const flashOf = toks => {
-            const f = {};
-            toks.forEach(t => {
-              if (t === 'first') f.flashFirst = true;
-              else if (t === 'last') f.flashLast = true;
-              else if (t.startsWith('next:')) f.flashNext = +t.slice(5);
-            });
-            return f;
-          };
-          const isB = targets.some(t => t.startsWith('next:'));
-          const push = (nodes, extra, text, o) => snaps.push(this.snapshot(text, nodes, { ...extra, ...o, preserveLinks: true }));
-          push(beforeNodes, beforeExtra, texts[0], { green: isB ? access : source, ...(isB ? flashOf(targets) : {}), pause: true });
-          push(beforeNodes, beforeExtra, texts[1], { green: source, ...flashOf(targets), pause: true });
-          push(afterNodes, afterExtra, texts[2], { green: source, red: targets, pause: true });
-          push(afterNodes, afterExtra, texts[2], { visualOnly: true, keepStatus: true });
-        },
-        showCurrent(text = 'Visualization only: Ready.') {
-          this.viz.reset();
-          this.viz.enqueue([this.snapshot(text, this.baseNodes())]);
-        },
-        showInputError(inputId) {
-          const el = document.getElementById(inputId);
-          if (!el) return;
-          el.classList.remove('input-error');
-          void el.offsetWidth;
-          el.classList.add('input-error');
-          setTimeout(() => el.classList.remove('input-error'), 400);
-        },
-        v() {
-          let value = parseInt(document.getElementById('val').value);
-          if (isNaN(value)) this.showInputError('val');
-          return value;
-        },
-        save() {
-          this.history.push({
-            values: [...this.values],
-            ids: [...this.ids]
+          const linkedOld = oldNodes.map(n => n.id === oldLast ? { ...n, next: newId } : n);
+          recorder.emitAssignment({
+            beforeNodes: [...oldNodes, nn],
+            beforeExtra: { size: oldSize, pnode, firstId: oldFirst, lastId: oldLast, straightLastArrow: oldSize === 1 },
+            afterNodes: [...linkedOld, nn],
+            afterExtra: { size: oldSize, pnode, firstId: oldFirst, lastId: oldLast, straightLastArrow: oldSize === 1 },
+            accessPtr: { kind: 'struct', key: 'last' },
+            source: { kind: 'pnode' }, targets: [{ kind: 'next', key: oldLast }],
+            phase1Text: 'newNode is going to be stored in last.next.',
+            phase2Text: 'last.next is selected to be updated.',
+            phase3Text: 'last.next now references the new node object.'
           });
-          if (this.history.length > VISUAL.undo.maxHistoryEntries) this.history.shift();
-        },
-        enqueue() {
-          const e = this.v();
-          if (isNaN(e)) return;
-          this.save();
-          const oldVals = [...this.values],
-            oldIds = [...this.ids],
-            oldSize = oldVals.length,
-            newId = nextId++,
-            b = this.viz.base();
-          let snaps = [],
-            oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-          snaps.push(this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
-            size: oldSize
-          }));
-          const x = b.x + oldSize * VISUAL.node.step;
-          let pnode = {
-            x: x - VISUAL.list.tempPointerXOffset,
-            y: b.up,
-            target: newId,
-            label: 'newNode'
-          };
-          let newNode = {
-            id: newId,
-            e,
-            x,
-            y: b.up,
-            next: null,
-            flashNew: true
-          };
-          snaps.push(this.snapshot('A new node object is created with next = null.', [...oldNodes, newNode], {
-            size: oldSize,
-            pnode,
-            firstId: oldIds[0] ?? null,
-            lastId: oldIds.at(-1) ?? null,
-            straightLastArrow: oldSize === 1,
-            preserveLinks: true,
-            pause: true
-          }));
-          newNode = {
-            ...newNode,
-            flashNew: false
-          };
-          if (oldSize === 0) {
-            const nd = {
-              ...newNode,
-              y: b.y
-            };
-            this.assign(snaps, {
-              beforeNodes: [nd],
-              beforeExtra: { size: 0, pnode, firstId: null, lastId: null },
-              afterNodes: [nd],
-              afterExtra: { size: 0, pnode, firstId: newId, lastId: null },
-              source: ['pnode'], targets: ['first'],
-              texts: ['newNode is going to be stored in the first field.', 'The first field is selected to be updated.', 'The first field now references the new node object.']
-            });
-            this.assign(snaps, {
-              beforeNodes: [nd],
-              beforeExtra: { size: 0, pnode, firstId: newId, lastId: null },
-              afterNodes: [nd],
-              afterExtra: { size: 0, pnode, firstId: newId, lastId: newId },
-              source: ['pnode'], targets: ['last'],
-              texts: ['newNode is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now references the new node object.']
-            });
-            snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [nd], {
-              size: 1,
-              pnode,
-              firstId: newId,
-              lastId: newId,
-              flashSize: true,
-              preserveLinks: true,
-              pause: true
-            }));
-            snaps.push(this.snapshot('The method returns, so the local variable newNode is removed from the call stack.', [nd], {
-              size: 1,
-              pnode,
-              firstId: newId,
-              lastId: newId,
-              flashPNodeCross: true,
-              preserveLinks: true,
-              pause: true
-            }));
-            snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', [nd], {
-              size: 1,
-              firstId: newId,
-              lastId: newId,
-              preserveLinks: true
-            }));
-          } else {
-            const last = oldNodes.at(-1);
-            let linkedOld = oldNodes.map(n => ({
-              ...n
-            }));
-            linkedOld[linkedOld.length - 1].next = newId;
-            this.assign(snaps, {
-              beforeNodes: [...oldNodes, newNode],
-              beforeExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1 },
-              afterNodes: [...linkedOld, newNode],
-              afterExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1), straightLastArrow: oldSize === 1 },
-              access: ['last'], source: ['pnode'], targets: ['next:' + last.id],
-              texts: ['newNode is going to be stored in last.next.', 'last.next is selected to be updated.', 'last.next now references the new node object.']
-            });
-            let nd = {
-              ...newNode,
-              y: b.y
-            };
-            snaps.push(this.snapshot('Visualization only: the new node is drawn in its final queue position.', [...linkedOld, nd], {
-              size: oldSize,
-              pnode,
-              firstId: oldIds[0],
-              lastId: oldIds.at(-1),
-              straightLastArrow: oldSize === 1,
-              preserveLinks: true,
-              pause: true
-            }));
-            this.assign(snaps, {
-              beforeNodes: [...linkedOld, nd],
-              beforeExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: oldIds.at(-1) },
-              afterNodes: [...linkedOld, nd],
-              afterExtra: { size: oldSize, pnode, firstId: oldIds[0], lastId: newId },
-              source: ['pnode'], targets: ['last'],
-              texts: ['newNode is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now references the new node object.']
-            });
-            snaps.push(this.snapshot('The size field is incremented because one element reference was added.', [...linkedOld, nd], {
-              size: oldSize + 1,
-              pnode,
-              firstId: oldIds[0],
-              lastId: newId,
-              flashSize: true,
-              preserveLinks: true,
-              pause: true
-            }));
-            snaps.push(this.snapshot('The method returns, so the local variable newNode is removed from the call stack.', [...linkedOld, nd], {
-              size: oldSize + 1,
-              pnode,
-              firstId: oldIds[0],
-              lastId: newId,
-              flashPNodeCross: true,
-              preserveLinks: true,
-              pause: true
-            }));
-            snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', [...linkedOld, nd], {
-              size: oldSize + 1,
-              firstId: oldIds[0],
-              lastId: newId,
-              preserveLinks: true
-            }));
-          }
-          this.values = [...oldVals, e];
-          this.ids = [...oldIds, newId];
-          this.viz.enqueue(snaps);
-          this.updateUI();
-        },
-        dequeue() {
-          if (this.values.length === 0) return;
-          this.save();
-          const oldVals = [...this.values],
-            oldIds = [...this.ids],
-            oldSize = oldVals.length,
-            b = this.viz.base();
-          const removedId = oldIds[0],
-            newFirst = oldIds[1] ?? null;
-          let newLast = oldSize === 1 ? null : oldIds.at(-1);
-          const oldNodes = this.baseNodes(oldVals, oldIds, 0, b.y);
-          let snaps = [this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
-            size: oldSize
-          })];
-          this.assign(snaps, {
+
+          const nnDown = { ...nn, y: V.originY };
+          recorder.emit('Visualization only: the new node is drawn in its final queue position.', [...linkedOld, nnDown], {
+            size: oldSize, pnode, firstId: oldFirst, lastId: oldLast, straightLastArrow: oldSize === 1, pause: true
+          });
+
+          recorder.emitAssignment({
+            beforeNodes: [...linkedOld, nnDown],
+            beforeExtra: { size: oldSize, pnode, firstId: oldFirst, lastId: oldLast },
+            afterNodes: [...linkedOld, nnDown],
+            afterExtra: { size: oldSize, pnode, firstId: oldFirst, lastId: newId, statsState: nextState },
+            source: { kind: 'pnode' }, targets: [{ kind: 'struct', key: 'last' }],
+            phase1Text: 'newNode is going to be stored in the last field.',
+            phase2Text: 'The last field is selected to be updated.',
+            phase3Text: 'The last field now references the new node object.'
+          });
+
+          recorder.emit('The size field is incremented because one element reference was added.', [...linkedOld, nnDown], {
+            size: oldSize + 1, pnode, firstId: oldFirst, lastId: newId, flashStruct: ['size'], pause: true
+          });
+
+          recorder.emit('The method returns, so the local variable newNode is removed from the call stack.', [...linkedOld, nnDown], {
+            size: oldSize + 1, pnode, firstId: oldFirst, lastId: newId, flashPNodeCross: true, pause: true
+          });
+
+          recorder.emit('Visualization only: the completed LinkedQueue state is displayed.', [...linkedOld, nnDown], {
+            size: oldSize + 1, firstId: oldFirst, lastId: newId
+          });
+
+          this.state = nextState;
+        }
+
+        dequeue(recorder) {
+          const oldState = this.state;
+          const oldItems = oldState.items;
+          const oldSize = oldItems.length;
+          const oldNodes = this.buildNodes(oldItems);
+          const removedId = oldItems[0].id;
+          const removedVal = oldItems[0].value;
+          const last0 = oldItems.at(-1).id;
+          const newFirst = oldItems[1]?.id ?? null;
+          const newLast = oldSize === 1 ? null : last0;
+
+          recorder.emit('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
+            size: oldSize, firstId: removedId, lastId: last0, statsState: oldState
+          });
+
+          recorder.emitAssignment({
             beforeNodes: oldNodes,
-            beforeExtra: { size: oldSize, firstId: removedId, lastId: oldIds.at(-1) },
+            beforeExtra: { size: oldSize, firstId: removedId, lastId: last0 },
             afterNodes: oldNodes,
             afterExtra: {
               size: oldSize,
               firstId: newFirst,
-              lastId: oldIds.at(-1),
+              lastId: last0,
               detourFirst: newFirst !== null,
               firstDetourAmount: newFirst !== null ? 1 : 0
             },
-            source: ['first', 'next:' + removedId], targets: ['first'],
-            texts: [
-              newFirst !== null ? 'first.next is going to be read to update the first field.' : 'first.next (null) is going to be read to update the first field.',
-              'The first field is selected to be updated.',
-              newFirst !== null ? 'The first field now references the node after the removed node.' : 'The first field now stores null.'
-            ]
+            source: [{ kind: 'struct', key: 'first' }, { kind: 'next', key: removedId }],
+            targets: [{ kind: 'struct', key: 'first' }],
+            phase1Text: newFirst !== null
+              ? 'first.next is going to be read to update the first field.'
+              : 'first.next (null) is going to be read to update the first field.',
+            phase2Text: 'The first field is selected to be updated.',
+            phase3Text: newFirst !== null
+              ? 'The first field now references the node after the removed node.'
+              : 'The first field now stores null.'
           });
-          if (oldSize === 1) this.assign(snaps, {
-            beforeNodes: oldNodes,
-            beforeExtra: { size: oldSize, firstId: null, lastId: removedId },
-            afterNodes: oldNodes,
-            afterExtra: { size: oldSize, firstId: null, lastId: null },
-            source: [], targets: ['last'],
-            texts: ['The removed node was the only node; null is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now stores null.']
-          });
-          snaps.push(this.snapshot('The size field is decremented because one element reference was removed.', oldNodes, {
+
+          if (oldSize === 1) {
+            recorder.emitAssignment({
+              beforeNodes: oldNodes,
+              beforeExtra: { size: oldSize, firstId: null, lastId: removedId },
+              afterNodes: oldNodes,
+              afterExtra: { size: oldSize, firstId: null, lastId: null },
+              source: [],
+              targets: [{ kind: 'struct', key: 'last' }],
+              phase1Text: 'The removed node was the only node; null is going to be stored in the last field.',
+              phase2Text: 'The last field is selected to be updated.',
+              phase3Text: 'The last field now stores null.'
+            });
+          }
+
+          const newItems = Object.freeze(oldItems.slice(1));
+          const nextState = new LinkedQueueState(newItems);
+
+          recorder.emit('The size field is decremented because one element reference was removed.', oldNodes, {
             size: oldSize - 1,
             firstId: newFirst,
             lastId: newLast,
-            flashSize: true,
+            flashStruct: ['size'],
             detourFirst: newFirst !== null,
             firstDetourAmount: newFirst !== null ? 1 : 0,
             keepCurvedLastArrow: oldSize === 1,
-            preserveLinks: true,
+            statsState: nextState,
             pause: true
-          }));
-          snaps.push(this.snapshot('The unlinked node object is unreachable from the queue; the Java garbage collector may reclaim it later.', oldNodes.map(n => n.id === removedId ? {
-            ...n,
-            flashNodeCross: true
-          } : n), {
+          });
+
+          recorder.emit('The unlinked node object is unreachable from the queue; the Java garbage collector may reclaim it later.', oldNodes, {
             size: oldSize - 1,
             firstId: newFirst,
             lastId: newLast,
+            crossNodes: [removedId],
             detourFirst: newFirst !== null,
             firstDetourAmount: newFirst !== null ? 1 : 0,
-            preserveLinks: true,
             pause: true
-          }));
-          let remaining = oldNodes.filter(n => n.id !== removedId).map(n => ({
-            ...n
-          }));
-          snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', remaining, {
+          });
+
+          const remaining = oldNodes.filter(n => n.id !== removedId).map(n => ({ ...n }));
+          recorder.emit('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', remaining, {
             size: oldSize - 1,
             firstId: newFirst,
             lastId: newLast,
-            preserveLinks: true,
             pause: true
-          }));
-          const newVals = oldVals.slice(1),
-            newIds = oldIds.slice(1),
-            compact = this.baseNodes(newVals, newIds, 0, b.y);
-          snaps.push(this.snapshot('Visualization only: the remaining nodes are redrawn at the front of the queue.', compact, {
+          });
+
+          const compact = this.buildNodes(newItems);
+          recorder.emit('Visualization only: the remaining nodes are redrawn at the front of the queue.', compact, {
             size: oldSize - 1,
             firstId: newFirst,
             lastId: newLast,
-            preserveLinks: true,
             pause: true
-          }));
-          snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', compact, {
+          });
+
+          recorder.emit('Visualization only: the completed LinkedQueue state is displayed.', compact, {
             size: oldSize - 1,
             firstId: newFirst,
-            lastId: newLast,
-            preserveLinks: true
-          }));
-          this.values = newVals;
-          this.ids = newIds;
-          this.viz.enqueue(snaps);
-          this.updateUI();
-        },
-        first() {
-          if (this.values.length === 0) return;
-          const nodes = this.baseNodes(),
-            firstId = this.ids[0];
-          const snaps = [
-            this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', nodes, {
-              size: this.values.length
-            }),
-            this.snapshot('The algorithm reads queue.first to access the front node object directly.', nodes, {
-              size: this.values.length,
-              markFirstArrow: true,
-              pause: true
-            }),
-            this.snapshot('The front node element reference is read: ' + this.values[0] + '.', nodes.map(n => n.id === firstId ? {
-              ...n,
-              flashElement: true
-            } : n), {
-              size: this.values.length,
-              markFirstArrow: true,
-              green: ['elem:' + firstId],
-              pause: true
-            }),
-            this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', nodes, {
-              size: this.values.length
-            })
-          ];
-          this.viz.enqueue(snaps);
-          this.updateUI();
-        },
-        randomFill() {
-          this.values = [];
-          const sz = Math.floor(Math.random() * VISUAL.random.sizeRange) + VISUAL.random.minSize;
-          while (this.values.length < sz) {
-            const v = Math.floor(Math.random() * VISUAL.random.valueRange) + VISUAL.random.minValue;
-            if (!this.values.includes(v)) this.values.push(v);
-          }
-        },
-        newList() {
-          this.save();
-          this.values = [];
-          this.ids = [];
-          this.showCurrent('A new empty queue object is represented with first = null, last = null, and size = 0.');
-          this.updateUI();
-        },
-        random() {
-          this.save();
-          this.randomFill();
-          this.ids = this.values.map(_ => nextId++);
-          this.showCurrent('Visualization only: A random sample queue has been generated for demonstration.');
-          this.updateUI();
-        },
-        clear() {
-          this.save();
-          const oldVals = [...this.values],
-            oldIds = [...this.ids],
-            oldSize = oldVals.length,
-            originalNodes = this.baseNodes(oldVals, oldIds);
-          let snaps = [this.snapshot('Visualization only: the current LinkedQueue state is displayed before the operation begins.', originalNodes, {
-            firstId: oldIds[0] ?? null,
-            lastId: oldIds.at(-1) ?? null,
-            size: oldSize
-          })];
+            lastId: newLast
+          });
+
+          this.state = nextState;
+          return removedVal;
+        }
+
+        first(recorder) {
+          const st = this.state;
+          const items = st.items;
+          const nodes = this.buildNodes(items);
+          const firstId = items[0].id;
+          const lastId = items.at(-1).id;
+          const firstVal = items[0].value;
+
+          recorder.emit('Visualization only: the current LinkedQueue state is displayed before the operation begins.', nodes, {
+            size: items.length, firstId, lastId, statsState: st
+          });
+
+          recorder.emit('The algorithm reads queue.first to access the front node object directly.', nodes, {
+            size: items.length, firstId, lastId, redStruct: ['first'], pause: true
+          });
+
+          recorder.emit(`The front node element reference is read: ${firstVal}.`, nodes, {
+            size: items.length, firstId, lastId, redStruct: ['first'], redElement: [firstId], flashElement: [firstId], pause: true
+          });
+
+          recorder.emit(`first() returns ${firstVal}.`, nodes, {
+            size: items.length, firstId, lastId, visualOnly: true, keepStatus: true
+          });
+
+          return firstVal;
+        }
+
+        clear(recorder) {
+          const oldState = this.state;
+          const oldItems = oldState.items;
+          const oldSize = oldItems.length;
+          const oldNodes = this.buildNodes(oldItems);
+          const first0 = oldItems[0]?.id ?? null;
+          const last0 = oldItems.at(-1)?.id ?? null;
+
+          recorder.emit('Visualization only: the current LinkedQueue state is displayed before the operation begins.', oldNodes, {
+            size: oldSize, firstId: first0, lastId: last0, statsState: oldState
+          });
+
           if (oldSize === 0) {
-            snaps.push(this.snapshot('Clear returns immediately because first and last are null and size is 0.', originalNodes, {
-              firstId: null,
-              lastId: null,
-              size: 0,
-              pause: true
-            }));
-          } else {
-            this.assign(snaps, {
-              beforeNodes: originalNodes,
-              beforeExtra: { firstId: oldIds[0], lastId: oldIds.at(-1), size: oldSize },
-              afterNodes: originalNodes,
-              afterExtra: { firstId: null, lastId: oldIds.at(-1), size: oldSize },
-              source: [], targets: ['first'],
-              texts: ['null is going to be stored in the first field.', 'The first field is selected to be updated.', 'The first field now stores null.']
+            recorder.emit('Clear returns immediately because first and last are null and size is 0.', [], {
+              size: 0, firstId: null, lastId: null, redStruct: ['first', 'last'], pause: true
             });
-            this.assign(snaps, {
-              beforeNodes: originalNodes,
-              beforeExtra: { firstId: null, lastId: oldIds.at(-1), size: oldSize },
-              afterNodes: originalNodes,
-              afterExtra: { firstId: null, lastId: null, size: oldSize },
-              source: [], targets: ['last'],
-              texts: ['null is going to be stored in the last field.', 'The last field is selected to be updated.', 'The last field now stores null.']
-            });
-            snaps.push(this.snapshot('The size field is set to 0.', originalNodes, {
-              firstId: null,
-              lastId: null,
-              size: 0,
-              flashSize: true,
-              pause: true
-            }));
-            let currentNodes = originalNodes.map(n => ({
-              ...n
-            }));
-            for (let k = 0; k < oldSize; k++) {
-              const curId = oldIds[k];
-              snaps.push(this.snapshot(k === 0 ? 'After first and last are null, this node object is unreachable from the queue; the Java garbage collector may reclaim it later.' : 'After the previous node is unreachable, this next node object is also unreachable from the queue; the Java garbage collector may reclaim it later.', currentNodes.map(n => n.id === curId ? {
-                ...n,
-                flashNodeCross: true
-              } : n), {
-                firstId: null,
-                lastId: null,
-                size: 0,
-                preserveLinks: true,
-                pause: true
-              }));
-              currentNodes = currentNodes.filter(n => n.id !== curId);
-              snaps.push(this.snapshot('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', currentNodes, {
-                firstId: null,
-                lastId: null,
-                size: 0,
-                preserveLinks: true,
-                pause: true
-              }));
-            }
-            snaps.push(this.snapshot('Visualization only: the completed LinkedQueue state is displayed.', [], {
-              firstId: null,
-              lastId: null,
-              size: 0
-            }));
-            this.values = [];
-            this.ids = [];
+            return;
           }
-          this.viz.enqueue(snaps);
-          this.updateUI();
+
+          recorder.emitAssignment({
+            beforeNodes: oldNodes,
+            beforeExtra: { size: oldSize, firstId: first0, lastId: last0 },
+            afterNodes: oldNodes,
+            afterExtra: { size: oldSize, firstId: null, lastId: last0 },
+            source: [], targets: [{ kind: 'struct', key: 'first' }],
+            phase1Text: 'null is going to be stored in the first field.',
+            phase2Text: 'The first field is selected to be updated.',
+            phase3Text: 'The first field now stores null.'
+          });
+
+          recorder.emitAssignment({
+            beforeNodes: oldNodes,
+            beforeExtra: { size: oldSize, firstId: null, lastId: last0 },
+            afterNodes: oldNodes,
+            afterExtra: { size: oldSize, firstId: null, lastId: null },
+            source: [], targets: [{ kind: 'struct', key: 'last' }],
+            phase1Text: 'null is going to be stored in the last field.',
+            phase2Text: 'The last field is selected to be updated.',
+            phase3Text: 'The last field now stores null.'
+          });
+
+          recorder.emit('The size field is set to 0.', oldNodes, {
+            size: 0, firstId: null, lastId: null, flashStruct: ['size'], statsState: EMPTY_STATE, pause: true
+          });
+
+          let remain = oldNodes.map(n => ({ ...n }));
+          for (let k = 0; k < oldSize; k++) {
+            const curId = oldItems[k].id;
+            recorder.emit(
+              k === 0
+                ? 'After first and last are null, this node object is unreachable from the queue; the Java garbage collector may reclaim it later.'
+                : 'After the previous node is unreachable, this next node object is also unreachable from the queue; the Java garbage collector may reclaim it later.',
+              remain,
+              { size: 0, firstId: null, lastId: null, crossNodes: [curId], pause: true }
+            );
+            remain = remain.filter(n => n.id !== curId);
+            recorder.emit('Visualization only: the unreachable node object is removed from the drawing after being marked as unreachable and eligible for later garbage collection.', remain, {
+              size: 0, firstId: null, lastId: null, pause: true
+            });
+          }
+
+          recorder.emit('Visualization only: the completed LinkedQueue state is displayed.', [], {
+            size: 0, firstId: null, lastId: null
+          });
+
+          this.state = EMPTY_STATE;
+        }
+      }
+
+      /* =================================================================
+       * 4. FLAT CANVAS VISUALIZER (VIEW ENGINE)
+       * ================================================================= */
+      class Visualizer {
+        constructor(canvas, options = {}) {
+          this.canvas = canvas;
+          this.container = canvas.parentElement;
+          this.ctx = this.canvas.getContext('2d');
+          this.theme = options.theme || THEMES.light;
+          this.callbacks = options.callbacks || {};
+
+          this.dpr = window.devicePixelRatio || 1;
+          this.viewWidth = 800;
+          this.viewHeight = 600;
+          this.hasInitializedView = false;
+          this.camera = { scale: 1, targetScale: 1, x: 0, targetX: 0, y: 0, targetY: 0 };
+
+          this.snapshots = [];
+          this.currentSnapshotIndex = 0;
+          this.lastDrawnNodes = [];
+          this.hoveredNode = null;
+
+          this.state = 'IDLE';
+          this.isPaused = false;
+          this.stepMode = false;
+          this.singleStepTarget = null;
+          this.morphProgress = 0;
+          this.baseMorphSpeed = 2.5;
+          this.speedMultiplier = 1;
+          this.pauseTimer = 0;
+          this.autoFit = true;
+
+          this.rafId = null;
+          this.lastTime = null;
+          this.needsRender = false;
+          this.isDragging = false;
+          this.dragMoved = false;
+          this.pointerDownNode = null;
+          this.dragStart = { x: 0, y: 0 };
+          this.initialCamera = { x: 0, y: 0 };
+          this.initialPinchDist = 0;
+          this.initialScale = 1;
+
+          this.bindEvents();
+          this.resize();
+        }
+
+        bindEvents() {
+          if (typeof ResizeObserver !== 'undefined' && this.container) {
+            this.resizeObserver = new ResizeObserver(() => this.resize());
+            this.resizeObserver.observe(this.container);
+          } else {
+            window.addEventListener('resize', () => this.resize());
+          }
+          this.canvas.addEventListener('mousedown', e => this.onMouseDown(e));
+          this.canvas.addEventListener('mousemove', e => this.onMouseMove(e));
+          this.canvas.addEventListener('mouseup', () => this.onMouseUp());
+          this.canvas.addEventListener('mouseleave', () => this.onMouseLeave());
+          this.canvas.addEventListener('wheel', e => this.onWheel(e), { passive: false });
+          this.canvas.addEventListener('touchstart', e => this.onTouchStart(e), { passive: false });
+          this.canvas.addEventListener('touchmove', e => this.onTouchMove(e), { passive: false });
+          this.canvas.addEventListener('touchend', e => this.onTouchEnd(e));
+        }
+
+        setTheme(theme) { this.theme = theme; this.requestRender(); }
+        setAutoFit(enabled) { this.autoFit = enabled; }
+        setSpeed(mult) { this.speedMultiplier = mult; }
+        setStepMode(enabled) {
+          this.stepMode = enabled;
+          if (!enabled && this.state === 'STEP_WAIT') { this.isPaused = false; this.finalizeStep(); }
+          this.notifyState(); this.requestRender();
+        }
+        isBusy() { return this.state !== 'IDLE' || (this.isPaused && this.currentSnapshotIndex < this.snapshots.length - 1); }
+        requestRender() { this.needsRender = true; if (!this.rafId) this.rafId = requestAnimationFrame(t => this.loop(t)); }
+        notifyState() {
+          if (this.callbacks.onStateChange) {
+            this.callbacks.onStateChange({
+              state: this.state, isPaused: this.isPaused, stepMode: this.stepMode,
+              isBusy: this.isBusy(), index: this.currentSnapshotIndex, total: this.snapshots.length
+            });
+          }
+        }
+        notifySnapshot(snap) { if (this.callbacks.onSnapshotChange && snap?.statsState) this.callbacks.onSnapshotChange(snap.statsState); }
+        setStatus(text) { if (this.callbacks.onStatus) this.callbacks.onStatus(text); }
+
+        getNodeAtScreenPos(mx, my) {
+          const wx = (mx - this.camera.x) / this.camera.scale;
+          const wy = (my - this.camera.y) / this.camera.scale;
+          for (let i = this.lastDrawnNodes.length - 1; i >= 0; i--) {
+            const n = this.lastDrawnNodes[i];
+            const inBody = wx >= n.x && wx <= n.x + V.nodeW && wy >= n.y && wy <= n.y + V.cell;
+            const inElem = wx >= n.x && wx <= n.x + V.cell && wy >= n.y + V.elemOffsetY && wy <= n.y + V.elemOffsetY + V.cell;
+            if (inBody || inElem) return n;
+          }
+          return null;
+        }
+
+        updateHover(nextHover) {
+          const prevId = this.hoveredNode ? this.hoveredNode.id : null;
+          const nextId = nextHover ? nextHover.id : null;
+          this.hoveredNode = nextHover;
+          this.canvas.style.cursor = nextHover ? 'pointer' : 'default';
+          if (prevId !== nextId) this.requestRender();
+        }
+
+        onMouseDown(e) {
+          if (e.button !== 0) return;
+          const r = this.canvas.getBoundingClientRect();
+          const mx = e.clientX - r.left, my = e.clientY - r.top;
+          this.isDragging = true; this.dragMoved = false;
+          this.pointerDownNode = this.getNodeAtScreenPos(mx, my);
+          this.dragStart = { x: mx, y: my };
+          this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+        }
+        onMouseMove(e) {
+          const r = this.canvas.getBoundingClientRect();
+          const mx = e.clientX - r.left, my = e.clientY - r.top;
+          if (this.isDragging) {
+            const dx = mx - this.dragStart.x, dy = my - this.dragStart.y;
+            if (Math.hypot(dx, dy) > 4) this.dragMoved = true;
+            if (this.dragMoved) {
+              this.camera.targetX = this.initialCamera.x + dx;
+              this.camera.targetY = this.initialCamera.y + dy;
+              this.canvas.style.cursor = 'grabbing'; this.hoveredNode = null;
+              this.requestRender(); return;
+            }
+          }
+          this.updateHover(this.getNodeAtScreenPos(mx, my));
+        }
+        onMouseUp() {
+          if (this.isDragging && !this.dragMoved && this.pointerDownNode && this.callbacks.onNodeClick) {
+            this.callbacks.onNodeClick(this.pointerDownNode);
+          }
+          this.isDragging = false; this.pointerDownNode = null;
+          this.canvas.style.cursor = this.hoveredNode ? 'pointer' : 'default';
+        }
+        onMouseLeave() { this.isDragging = false; this.pointerDownNode = null; this.updateHover(null); }
+        onWheel(e) {
+          e.preventDefault();
+          const r = this.canvas.getBoundingClientRect();
+          this.zoomAt(this.camera.targetScale * Math.exp(-e.deltaY * 0.0012), e.clientX - r.left, e.clientY - r.top);
+        }
+        zoomAt(newScale, ax, ay) {
+          newScale = Math.min(Math.max(0.2, newScale), 4.0);
+          const wx = (ax - this.camera.targetX) / this.camera.targetScale;
+          const wy = (ay - this.camera.targetY) / this.camera.targetScale;
+          this.camera.targetScale = newScale;
+          this.camera.targetX = ax - wx * newScale;
+          this.camera.targetY = ay - wy * newScale;
+          this.requestRender();
+        }
+        zoomBy(m) { this.zoomAt(this.camera.targetScale * m, this.viewWidth / 2, this.viewHeight / 2); }
+        getTouchDistance(t) { return Math.hypot(t[0].clientX - t[1].clientX, t[0].clientY - t[1].clientY); }
+        onTouchStart(e) {
+          if (e.touches.length === 1) {
+            const t = e.touches[0], r = this.canvas.getBoundingClientRect();
+            const mx = t.clientX - r.left, my = t.clientY - r.top;
+            this.isDragging = true; this.dragMoved = false;
+            this.pointerDownNode = this.getNodeAtScreenPos(mx, my);
+            this.dragStart = { x: mx, y: my };
+            this.initialCamera = { x: this.camera.targetX, y: this.camera.targetY };
+          } else if (e.touches.length === 2) {
+            this.isDragging = false; this.pointerDownNode = null;
+            this.initialPinchDist = this.getTouchDistance(e.touches);
+            this.initialScale = this.camera.targetScale;
+          }
+        }
+        onTouchMove(e) {
+          e.preventDefault();
+          if (e.touches.length === 1 && this.isDragging) {
+            const t = e.touches[0], r = this.canvas.getBoundingClientRect();
+            const dx = (t.clientX - r.left) - this.dragStart.x, dy = (t.clientY - r.top) - this.dragStart.y;
+            if (Math.hypot(dx, dy) > 6) this.dragMoved = true;
+            if (this.dragMoved) {
+              this.camera.targetX = this.initialCamera.x + dx;
+              this.camera.targetY = this.initialCamera.y + dy;
+              this.requestRender();
+            }
+          } else if (e.touches.length === 2 && this.initialPinchDist > 0) {
+            const r = this.canvas.getBoundingClientRect();
+            const mx = ((e.touches[0].clientX + e.touches[1].clientX) / 2) - r.left;
+            const my = ((e.touches[0].clientY + e.touches[1].clientY) / 2) - r.top;
+            this.zoomAt(this.initialScale * (this.getTouchDistance(e.touches) / this.initialPinchDist), mx, my);
+          }
+        }
+        onTouchEnd(e) {
+          if (this.isDragging && !this.dragMoved && this.pointerDownNode && this.callbacks.onNodeClick) {
+            this.callbacks.onNodeClick(this.pointerDownNode);
+          }
+          if (e.touches.length === 0) { this.isDragging = false; this.pointerDownNode = null; this.initialPinchDist = 0; }
+        }
+
+        resize() {
+          const rect = (this.container || this.canvas).getBoundingClientRect();
+          if (rect.width <= 0 || rect.height <= 0) return;
+          this.dpr = window.devicePixelRatio || 1;
+          this.viewWidth = rect.width; this.viewHeight = rect.height;
+          this.canvas.width = Math.max(1, Math.floor(this.viewWidth * this.dpr));
+          this.canvas.height = Math.max(1, Math.floor(this.viewHeight * this.dpr));
+          if (!this.hasInitializedView) {
+            this.fitBoundsToScreen(this.getSceneBounds(null));
+            this.camera.scale = this.camera.targetScale;
+            this.camera.x = this.camera.targetX; this.camera.y = this.camera.targetY;
+            this.hasInitializedView = true;
+          } else if (this.autoFit && this.snapshots.length > 0) {
+            const snap = this.snapshots[Math.min(this.currentSnapshotIndex, this.snapshots.length - 1)];
+            if (snap?.bounds) this.fitBoundsToScreen(snap.bounds);
+          }
+          this.requestRender();
+        }
+
+        layoutScene(s) {
+          (s.nodes || []).forEach((n, i) => {
+            if (n.x == null) n.x = V.originX + i * V.step;
+            if (n.y == null) n.y = V.originY;
+          });
+        }
+
+        getSceneBounds(s) {
+          let minX = 20, maxX = 760, minY = 35, maxY = 560;
+          if (s) {
+            (s.nodes || []).forEach(n => {
+              minX = Math.min(minX, n.x - 160);
+              maxX = Math.max(maxX, n.x + V.nodeW + 170);
+              minY = Math.min(minY, n.y + V.elemOffsetY - 80);
+              maxY = Math.max(maxY, n.y + V.cell + 140);
+            });
+            (s.ptrs || []).forEach(p => {
+              minX = Math.min(minX, p.x - 90); maxX = Math.max(maxX, p.x + V.ptrW + 90);
+              minY = Math.min(minY, p.y - 50);
+            });
+            if (s.pnode) {
+              minX = Math.min(minX, s.pnode.x - 130); maxX = Math.max(maxX, s.pnode.x + V.ptrW + 90);
+              minY = Math.min(minY, s.pnode.y - 60); maxY = Math.max(maxY, s.pnode.y + V.ptrH + 100);
+            }
+          }
+          return { minX, maxX, minY, maxY };
+        }
+
+        fitCurrentQueue() {
+          const snap = this.snapshots[Math.min(this.currentSnapshotIndex, Math.max(0, this.snapshots.length - 1))];
+          this.fitBoundsToScreen(snap?.bounds || this.getSceneBounds(null));
+          this.requestRender();
+        }
+
+        fitBoundsToScreen(bounds) {
+          const w = (bounds.maxX - bounds.minX) + 120;
+          const h = (bounds.maxY - bounds.minY) + 100;
+          const scale = Math.min(1.18, Math.max(0.2, Math.min(this.viewWidth / w, this.viewHeight / h)));
+          this.camera.targetScale = scale;
+          this.camera.targetX = this.viewWidth / 2 - ((bounds.minX + bounds.maxX) / 2) * scale;
+          this.camera.targetY = this.viewHeight / 2 - ((bounds.minY + bounds.maxY) / 2) * scale;
+        }
+
+        enqueueOperation(rawSnapshots, instant = false) {
+          if (!rawSnapshots || rawSnapshots.length === 0) return;
+          const prepared = rawSnapshots.map(s => { this.layoutScene(s); return { ...s, bounds: this.getSceneBounds(s) }; });
+          const gBounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+          prepared.forEach(({ bounds }) => {
+            gBounds.minX = Math.min(gBounds.minX, bounds.minX); gBounds.minY = Math.min(gBounds.minY, bounds.minY);
+            gBounds.maxX = Math.max(gBounds.maxX, bounds.maxX); gBounds.maxY = Math.max(gBounds.maxY, bounds.maxY);
+          });
+          if (this.autoFit) this.fitBoundsToScreen(gBounds);
+
+          this.snapshots = prepared; this.currentSnapshotIndex = 0;
+          this.morphProgress = 0; this.pauseTimer = 0;
+          this.singleStepTarget = null; this.isPaused = false; this.hoveredNode = null;
+
+          if (instant || prepared.length === 1) {
+            this.currentSnapshotIndex = prepared.length - 1;
+            this.state = 'IDLE';
+            const last = this.snapshots[this.currentSnapshotIndex];
+            if (this.autoFit) this.fitBoundsToScreen(last.bounds);
+            this.setStatus(last.visualOnly && !last.keepStatus ? 'Ready.' : (last.text || 'Ready.'));
+            this.notifySnapshot(last); this.notifyState(); this.requestRender();
+            return;
+          }
+
+          const first = this.snapshots[0];
+          this.notifySnapshot(first);
+          this.setStatus(first.visualOnly ? '\u00A0' : (first.text || 'Ready.'));
+          if (this.autoFit) this.state = 'CAMERA'; else this.startMorphStep();
+          this.notifyState(); this.requestRender();
+        }
+
+        startMorphStep() {
+          if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+            this.state = 'IDLE'; this.singleStepTarget = null;
+            const last = this.snapshots[this.snapshots.length - 1];
+            if (this.autoFit && last) this.fitBoundsToScreen(last.bounds);
+            this.setStatus(last && last.keepStatus && last.text ? last.text : 'Ready.');
+            this.notifyState(); return;
+          }
+          const next = this.snapshots[this.currentSnapshotIndex + 1];
+          if (!next.visualOnly || next.keepStatus) this.setStatus(next.text || 'Ready.');
+          else this.setStatus('\u00A0');
+          this.notifySnapshot(next);
+          this.state = 'MORPH'; this.morphProgress = 0;
+          this.notifyState(); this.requestRender();
+        }
+
+        togglePause() {
+          if (this.state === 'STEP_WAIT') { this.isPaused = false; this.finalizeStep(); return false; }
+          if (this.state === 'IDLE' && this.currentSnapshotIndex >= this.snapshots.length - 1) return this.isPaused;
+          this.isPaused = !this.isPaused;
+          if (!this.isPaused) {
+            this.singleStepTarget = null;
+            if (this.state === 'IDLE' && this.currentSnapshotIndex < this.snapshots.length - 1) this.startMorphStep();
+          }
+          this.notifyState(); this.requestRender();
+          return this.isPaused;
+        }
+
+        stepForward() {
+          if (this.snapshots.length <= 1) return;
+          if (this.state === 'STEP_WAIT') { this.isPaused = false; this.finalizeStep(); return; }
+          this.isPaused = true;
+          if (this.state === 'CAMERA') {
+            this.camera.scale = this.camera.targetScale; this.camera.x = this.camera.targetX; this.camera.y = this.camera.targetY;
+            this.state = 'MORPH'; this.morphProgress = 0;
+          } else if (this.state === 'WAITING' || (this.state === 'MORPH' && this.morphProgress > 0.08)) {
+            if (this.currentSnapshotIndex < this.snapshots.length - 1) {
+              this.currentSnapshotIndex++; this.morphProgress = 0;
+              this.notifySnapshot(this.snapshots[this.currentSnapshotIndex]);
+            }
+          }
+          if (this.currentSnapshotIndex >= this.snapshots.length - 1) {
+            this.state = 'IDLE'; this.singleStepTarget = null;
+            const last = this.snapshots[this.currentSnapshotIndex];
+            if (this.autoFit) this.fitBoundsToScreen(last.bounds);
+            this.setStatus(last && last.keepStatus && last.text ? last.text : 'Ready.');
+            this.notifySnapshot(last); this.notifyState(); this.requestRender(); return;
+          }
+          if (this.stepMode) { this.isPaused = false; this.singleStepTarget = null; this.startMorphStep(); }
+          else { this.singleStepTarget = this.currentSnapshotIndex + 1; this.startMorphStep(); }
+        }
+
+        stepBackward() {
+          if (this.snapshots.length <= 1) return;
+          this.isPaused = true; this.singleStepTarget = null;
+          if (this.state === 'STEP_WAIT' || this.state === 'WAITING' || (this.state === 'MORPH' && this.morphProgress > 0.15)) {
+            if (this.state === 'STEP_WAIT' && this.currentSnapshotIndex < this.snapshots.length - 1) this.currentSnapshotIndex++;
+            if (this.stepMode && this.currentSnapshotIndex > 0) {
+              let t = this.currentSnapshotIndex - 1;
+              while (t > 0 && this.snapshots[t].visualOnly) t--;
+              this.currentSnapshotIndex = t;
+            } else if (this.currentSnapshotIndex > 0 && this.state === 'STEP_WAIT') this.currentSnapshotIndex--;
+            this.morphProgress = 0; this.state = 'IDLE';
+          } else if (this.currentSnapshotIndex > 0) {
+            let t = this.currentSnapshotIndex - 1;
+            if (this.stepMode) while (t > 0 && this.snapshots[t].visualOnly) t--;
+            this.currentSnapshotIndex = t; this.morphProgress = 0; this.state = 'IDLE';
+          }
+          const cur = this.snapshots[this.currentSnapshotIndex];
+          this.setStatus(cur.visualOnly && !cur.keepStatus ? '\u00A0' : (cur.text || 'Ready.'));
+          this.notifySnapshot(cur); this.notifyState(); this.requestRender();
+        }
+
+        skipToEnd() {
+          if (this.snapshots.length === 0) return;
+          this.isPaused = false; this.singleStepTarget = null;
+          this.currentSnapshotIndex = this.snapshots.length - 1;
+          this.morphProgress = 0; this.pauseTimer = 0; this.state = 'IDLE';
+          const last = this.snapshots[this.currentSnapshotIndex];
+          if (this.autoFit) this.fitBoundsToScreen(last.bounds);
+          this.setStatus(last && last.keepStatus && last.text ? last.text : 'Ready.');
+          this.notifySnapshot(last); this.notifyState(); this.requestRender();
+        }
+
+        isCameraSettled() {
+          return Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY) < 0.25 &&
+            Math.abs(this.camera.scale - this.camera.targetScale) < 0.0005;
+        }
+
+        hasActiveFlash(s) {
+          if (!s) return false;
+          if (s.flashNext != null || s.flashPNode || s.flashPNodeCross) return true;
+          return (s.flashPtrs?.length > 0) || (s.flashStruct?.length > 0) || (s.flashElement?.length > 0) ||
+            (s.flashNew?.length > 0) || (s.crossNodes?.length > 0) || (s.crossPtrs?.length > 0);
+        }
+
+        loop(timestamp) {
+          this.rafId = null;
+          if (this.lastTime === null) this.lastTime = timestamp;
+          const dt = Math.min(Math.max((timestamp - this.lastTime) / 1000, 0), 0.1);
+          this.lastTime = timestamp;
+          this.needsRender = false;
+          this.update(dt);
+          const scene = this.draw();
+          const playingSingleStep = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+          const animating = this.state !== 'IDLE' && this.state !== 'STEP_WAIT' && (!this.isPaused || playingSingleStep);
+          if (animating || !this.isCameraSettled() || this.hasActiveFlash(scene) || this.needsRender) {
+            this.rafId = requestAnimationFrame(t => this.loop(t));
+          } else this.lastTime = null;
+        }
+
+        update(dt) {
+          const cf = 1 - Math.exp(-10.0 * dt);
+          this.camera.scale += (this.camera.targetScale - this.camera.scale) * cf;
+          this.camera.x += (this.camera.targetX - this.camera.x) * cf;
+          this.camera.y += (this.camera.targetY - this.camera.y) * cf;
+          if (this.isCameraSettled()) {
+            this.camera.scale = this.camera.targetScale;
+            this.camera.x = this.camera.targetX; this.camera.y = this.camera.targetY;
+          }
+          const playingSingleStep = this.isPaused && this.singleStepTarget !== null && this.state === 'MORPH';
+          if (this.isPaused && !playingSingleStep) return;
+
+          if (this.state === 'CAMERA') {
+            if (Math.hypot(this.camera.x - this.camera.targetX, this.camera.y - this.camera.targetY) < 5 &&
+              Math.abs(this.camera.scale - this.camera.targetScale) < 0.01) this.startMorphStep();
+          } else if (this.state === 'MORPH') {
+            const nextSnap = this.snapshots[this.currentSnapshotIndex + 1];
+            this.morphProgress += this.baseMorphSpeed * this.speedMultiplier * dt;
+            if (this.morphProgress >= 1) {
+              this.morphProgress = 1;
+              const isVis = Boolean(nextSnap?.visualOnly);
+              if (playingSingleStep) {
+                this.currentSnapshotIndex = this.singleStepTarget; this.singleStepTarget = null;
+                this.morphProgress = 0; this.state = 'IDLE';
+                const cur = this.snapshots[this.currentSnapshotIndex];
+                if (this.autoFit && this.currentSnapshotIndex === this.snapshots.length - 1) this.fitBoundsToScreen(cur.bounds);
+                this.setStatus(cur && (!cur.visualOnly || cur.keepStatus) ? (cur.text || 'Ready.') : '\u00A0');
+                this.notifySnapshot(cur); this.notifyState();
+              } else if (this.stepMode && !isVis) {
+                this.state = 'STEP_WAIT'; this.notifySnapshot(nextSnap); this.notifyState();
+              } else if (nextSnap?.pause && !isVis) {
+                this.state = 'WAITING'; this.pauseTimer = 0.68 / this.speedMultiplier; this.notifySnapshot(nextSnap);
+              } else this.finalizeStep();
+            }
+          } else if (this.state === 'WAITING') {
+            this.pauseTimer -= dt;
+            if (this.pauseTimer <= 0) this.finalizeStep();
+          }
+        }
+
+        finalizeStep() {
+          this.currentSnapshotIndex++; this.morphProgress = 0;
+          const cur = this.snapshots[this.currentSnapshotIndex];
+          this.notifySnapshot(cur);
+          if (this.currentSnapshotIndex < this.snapshots.length - 1) this.startMorphStep();
+          else {
+            this.state = 'IDLE';
+            if (this.autoFit && cur) this.fitBoundsToScreen(cur.bounds);
+            this.setStatus(cur && cur.keepStatus && cur.text ? cur.text : 'Ready.');
+            this.notifyState();
+          }
+        }
+
+        currentScene() {
+          if (this.snapshots.length === 0) return null;
+          const idx = Math.min(this.currentSnapshotIndex, this.snapshots.length - 1);
+          if ((this.state === 'MORPH' || this.state === 'WAITING' || this.state === 'STEP_WAIT') && idx + 1 < this.snapshots.length) {
+            return this.interpolate(this.snapshots[idx], this.snapshots[idx + 1], this.easeInOut(this.morphProgress));
+          }
+          return this.snapshots[idx];
+        }
+
+        interpolate(a, b, t) {
+          const l = (x, y) => x + (y - x) * t;
+          const map = x => new Map((x.nodes || []).map(n => [n.id, n]));
+          const A = map(a), B = map(b);
+
+          const nextTip = (m, n) => {
+            if (!n || n.next === UNINITIALIZED || n.next == null) return null;
+            const to = m.get(n.next);
+            return to ? { x: to.x, y: to.y + V.cell / 2 } : null;
+          };
+
+          const nodes = [];
+          for (const id of new Set([...A.keys(), ...B.keys()])) {
+            const x = A.get(id), y = B.get(id);
+            if (x && y) {
+              let ntA = nextTip(A, x), ntB = nextTip(B, y);
+              if (!ntA && ntB && (x.next == null || x.next === UNINITIALIZED)) ntA = { x: x.x + V.cell + 30, y: x.y + V.cell / 2 };
+              else if (ntA && !ntB && y.next == null && t < 0.96) ntB = { x: y.x + V.cell + 30, y: y.y + V.cell / 2 };
+
+              const detA = x.detourAmount ?? (x.detourNext ? 1 : 0);
+              const detB = y.detourAmount ?? (y.detourNext ? 1 : 0);
+
+              nodes.push({
+                ...y, x: l(x.x, y.x), y: l(x.y, y.y), alpha: 1,
+                detourAmount: l(detA, detB),
+                ...((ntA && ntB) ? { nextTipX: l(ntA.x, ntB.x), nextTipY: l(ntA.y, ntB.y) } : {})
+              });
+            } else if (y) nodes.push({ ...y, alpha: Math.min(1, t * 1.6) });
+            else if (x && t < 0.85) nodes.push({ ...x, alpha: Math.max(0, 1 - t * 1.18) });
+          }
+
+          const ma = new Map((a.ptrs || []).map(p => [p.label, p]));
+          const mb = new Map((b.ptrs || []).map(p => [p.label, p]));
+          const ptrs = [];
+          for (const lbl of new Set([...ma.keys(), ...mb.keys()])) {
+            const x = ma.get(lbl), y = mb.get(lbl);
+            if (x && y) {
+              let tipA = x.target != null && A.get(x.target) ? { x: A.get(x.target).x, y: A.get(x.target).y } : null;
+              let tipB = y.target != null && B.get(y.target) ? { x: B.get(y.target).x, y: B.get(y.target).y } : null;
+              const nullFade = (!tipA && tipB) ? Math.max(0, 1 - t * 2) : (tipA && !tipB ? Math.max(0, (t - 0.5) * 2) : (!tipA && !tipB ? 1 : 0));
+              if (!tipA && tipB) tipA = { x: x.x + V.ptrW / 2, y: x.y + V.ptrH / 2 };
+              else if (tipA && !tipB && t < 0.96) tipB = { x: y.x + V.ptrW / 2, y: y.y + V.ptrH / 2 };
+              ptrs.push({
+                ...y, x: l(x.x, y.x), y: l(x.y, y.y), alpha: 1, nullAlpha: nullFade,
+                ...((tipA && tipB) ? { tipX: l(tipA.x, tipB.x), tipY: l(tipA.y, tipB.y) } : {})
+              });
+            } else if (y) ptrs.push({ ...y, alpha: Math.min(1, t * 1.6) });
+            else if (x && t < 0.85) ptrs.push({ ...x, alpha: Math.max(0, 1 - t * 1.4) });
+          }
+
+          let pnode = null;
+          if (a.pnode && b.pnode) {
+            const txA = A.get(a.pnode.target)?.x, tyA = A.get(a.pnode.target) ? A.get(a.pnode.target).y + V.cell / 2 : null;
+            const txB = B.get(b.pnode.target)?.x, tyB = B.get(b.pnode.target) ? B.get(b.pnode.target).y + V.cell / 2 : null;
+            pnode = {
+              ...b.pnode, x: l(a.pnode.x, b.pnode.x), y: l(a.pnode.y, b.pnode.y), alpha: 1,
+              ...((txA != null && txB != null) ? { tipX: l(txA, txB), tipY: l(tyA, tyB) } : {})
+            };
+          } else if (b.pnode) pnode = { ...b.pnode, alpha: Math.min(1, t * 1.6) };
+          else if (a.pnode && t < 0.85) pnode = { ...a.pnode, alpha: Math.max(0, 1 - t * 1.4) };
+
+          const stFirstPos = (s, m) => s.firstId != null && m.get(s.firstId) ? { x: m.get(s.firstId).x, y: m.get(s.firstId).y + V.cell / 2 } : null;
+          let fA = stFirstPos(a, A), fB = stFirstPos(b, B);
+          if (!fA && fB) fA = { x: V.structX + 30, y: V.structY + 30 };
+          else if (fA && !fB && t < 0.96) fB = { x: V.structX + 30, y: V.structY + 30 };
+
+          const stLastPts = (s, m) => {
+            if (s.lastId == null || !m.get(s.lastId)) return null;
+            const nd = m.get(s.lastId);
+            const sx = V.structX + 30, sy = V.structY + 90, ty = nd.y + V.cell * 0.75;
+            const straight = (((s.nodes && s.nodes.length === 1) || s.straightLastArrow) && !s.keepCurvedLastArrow);
+            return { mx: straight ? (sx + nd.x) / 2 : nd.x - 24, my: straight ? (sy + ty) / 2 : sy, tx: nd.x, ty };
+          };
+          let lA = stLastPts(a, A), lB = stLastPts(b, B);
+          if (!lA && lB) lA = { mx: V.structX + 30, my: V.structY + 90, tx: V.structX + 30, ty: V.structY + 90 };
+          else if (lA && !lB && t < 0.96) lB = { mx: V.structX + 30, my: V.structY + 90, tx: V.structX + 30, ty: V.structY + 90 };
+
+          const fdA = a.firstDetourAmount ?? (a.detourFirst ? 1 : 0);
+          const fdB = b.firstDetourAmount ?? (b.detourFirst ? 1 : 0);
+
+          return {
+            ...b, nodes, ptrs, pnode,
+            firstDetourAmount: l(fdA, fdB),
+            ...((fA && fB) ? { firstTipX: l(fA.x, fB.x), firstTipY: l(fA.y, fB.y) } : {}),
+            ...((lA && lB) ? { lastMidX: l(lA.mx, lB.mx), lastMidY: l(lA.my, lB.my), lastTipX: l(lA.tx, lB.tx), lastTipY: l(lA.ty, lB.ty) } : {})
+          };
+        }
+
+        drawDotGrid(ctx) {
+          let step = 36 * this.camera.scale;
+          while (step < 16) step *= 2;
+          while (step > 90) step /= 2;
+          const ox = ((this.camera.x % step) + step) % step, oy = ((this.camera.y % step) + step) % step;
+          ctx.fillStyle = this.theme.BG_DOT;
+          for (let x = ox; x < this.viewWidth; x += step) {
+            for (let y = oy; y < this.viewHeight; y += step) ctx.fillRect(x - 0.75, y - 0.75, 1.5, 1.5);
+          }
+        }
+
+        draw() {
+          const c = this.ctx;
+          c.setTransform(1, 0, 0, 1, 0, 0);
+          c.clearRect(0, 0, this.canvas.width, this.canvas.height);
+          c.save(); c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+          this.drawDotGrid(c);
+          c.restore();
+
+          const s = this.currentScene();
+          if (!s) return null;
+          this.lastDrawnNodes = s.nodes || [];
+
+          c.save();
+          c.setTransform(this.dpr * this.camera.scale, 0, 0, this.dpr * this.camera.scale, this.dpr * this.camera.x, this.dpr * this.camera.y);
+
+          const nodeMap = new Map((s.nodes || []).map(n => [n.id, n]));
+          const underNodes = (s.nodes || []).filter(n => !s.overArrowNodeIds.includes(n.id));
+          const overNodes = (s.nodes || []).filter(n => s.overArrowNodeIds.includes(n.id));
+
+          if (s.pnode && !s.pnodeOverArrow) this.drawPNode(s, s.pnode, nodeMap);
+          for (const p of s.ptrs || []) this.drawAuxPtr(s, p, nodeMap);
+
+          this.drawStruct(s);
+          for (const n of underNodes) this.drawNode(s, n);
+          this.drawStructArrows(s, nodeMap);
+          for (const n of underNodes) this.drawNodeLink(s, n, nodeMap);
+
+          if (s.pnode && s.pnodeOverArrow) this.drawPNode(s, s.pnode, nodeMap);
+          for (const n of overNodes) { this.drawNode(s, n); this.drawNodeLink(s, n, nodeMap); }
+
+          this.drawOverlays(s, nodeMap);
+          if (this.hoveredNode) {
+            const live = this.lastDrawnNodes.find(n => n.id === this.hoveredNode.id);
+            if (live) this.drawNodeTooltip(live, s);
+          }
+
+          c.restore();
+          return s;
+        }
+
+        refColor(red, green) { return red ? this.theme.RED : (green ? this.theme.GREEN : this.theme.PTR_BLUE); }
+        hasMark(val, key) { return Array.isArray(val) ? val.includes(key) : val === key; }
+
+        rect(x, y, w, h, fill, alpha = 1, stroke = null, lineWidth = 0, r = 7) {
+          w = 0.97 * w;
+          h = 0.97 * h;
+          x += 0.03 * w / 2;
+          y -= 0.03 * h / 2;
+          const c = this.ctx;
+          c.save(); c.globalAlpha *= alpha; c.beginPath(); c.roundRect(x, y, w, h, r);
+          if (fill && fill !== 'transparent') { c.fillStyle = fill; c.fill(); }
+          if (stroke && lineWidth > 0) { c.strokeStyle = stroke; c.lineWidth = lineWidth; c.stroke(); }
+          c.restore();
+        }
+
+        text(t, x, y, font = '24px Arial', align = 'center', color = this.theme.TEXT_DARK, alpha = 1, base = 'middle') {
+          const c = this.ctx;
+          c.save(); c.globalAlpha *= alpha; c.font = font; c.textAlign = align; c.textBaseline = base;
+          c.fillStyle = color; c.fillText(String(t), x, y);
+          c.restore();
+        }
+
+        dot(x, y, col = this.theme.PTR_BLUE, alpha = 1) {
+          const c = this.ctx;
+          c.save(); c.globalAlpha *= alpha; c.fillStyle = col;
+          c.beginPath(); c.arc(x, y, 7.5, 0, Math.PI * 2); c.fill();
+          c.restore();
+        }
+
+        arrow(x1, y1, x2, y2, col = this.theme.PTR_BLUE, alpha = 1) {
+          if (Math.hypot(x2 - x1, y2 - y1) < 3) return;
+          const c = this.ctx;
+          c.save(); c.globalAlpha *= alpha; c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 3;
+          const a = Math.atan2(y2 - y1, x2 - x1), head = 17, shorten = head * 0.8;
+          c.beginPath(); c.moveTo(x1, y1); c.lineTo(x2 - shorten * Math.cos(a), y2 - shorten * Math.sin(a)); c.stroke();
+          c.translate(x2, y2); c.rotate(a); c.beginPath();
+          c.moveTo(0, 0); c.lineTo(-head * 1.4, -head / 2);
+          c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2); c.closePath(); c.fill();
+          c.restore();
+        }
+
+        polylineArrow(points, col = this.theme.PTR_BLUE, alpha = 1) {
+          if (!points || points.length < 2) return;
+          const prev = points[points.length - 2], last = points[points.length - 1];
+          if (Math.hypot(last.x - prev.x, last.y - prev.y) < 3 && points.length === 2) return;
+          const c = this.ctx;
+          c.save(); c.globalAlpha *= alpha; c.strokeStyle = col; c.fillStyle = col; c.lineWidth = 3;
+          c.beginPath(); c.moveTo(points[0].x, points[0].y);
+          for (let i = 1; i < points.length - 1; i++) c.arcTo(points[i].x, points[i].y, points[i + 1].x, points[i + 1].y, 16);
+          const a = Math.atan2(last.y - prev.y, last.x - prev.x), head = 17, shorten = head * 0.8;
+          c.lineTo(last.x - shorten * Math.cos(a), last.y - shorten * Math.sin(a)); c.stroke();
+          c.translate(last.x, last.y); c.rotate(a); c.beginPath();
+          c.moveTo(0, 0); c.lineTo(-head * 1.4, -head / 2);
+          c.quadraticCurveTo(-head * 0.9, 0, -head * 1.4, head / 2); c.closePath(); c.fill();
+          c.restore();
+        }
+
+        detourArrow(x1, y1, x2, y2, col = this.theme.PTR_BLUE, amount = 1, alpha = 1) {
+          if (Math.hypot(x2 - x1, y2 - y1) < 3) return;
+          if (Math.abs(amount) < 0.005) { this.arrow(x1, y1, x2, y2, col, alpha); return; }
+          const d = V.detourOffset * amount, my = y1 + d;
+          this.polylineArrow([{ x: x1, y: y1 }, { x: x1 + d, y: my }, { x: x2 - d, y: my }, { x: x2, y: y2 }], col, alpha);
+        }
+
+        drawStruct(s) {
+          const x = V.structX, y = V.structY, c = V.cell;
+          this.text('queue', x - 135, y - 70, '26px monospace', 'right');
+          this.rect(x - 125, y - 108, c, c, this.theme.LIST_BG);
+          this.dot(x - 125 + c / 2, y - 108 + c / 2, this.theme.LIST_ARROW);
+          this.arrow(x - 125 + c / 2, y - 108 + c / 2, x, y + 8, this.theme.LIST_ARROW);
+
+          [['first', this.theme.NODE_PTR_BG, 'first'], ['last', this.theme.NODE_PTR_BG, 'last'], ['size', this.theme.ELEM_BG, 'size']].forEach(([lbl, bg, key], i) => {
+            const yy = y + i * c;
+            this.text(lbl, x - 16, yy + c / 2, '25px monospace', 'right');
+            this.rect(x, yy, c, c, bg);
+            if (key === 'size') {
+              this.text(String(s.size), x + c / 2, yy + c / 2 + 1, '700 30px "Segoe UI", Arial, sans-serif', 'center', this.theme.ELEM_TEXT);
+            } else {
+              const col = this.refColor(this.hasMark(s.redStruct, key), this.hasMark(s.greenStruct, key));
+              this.dot(x + c / 2, yy + c / 2, col);
+            }
+          });
+        }
+
+        drawStructArrows(s, nodeMap) {
+          const x = V.structX, y = V.structY, c = V.cell;
+          const f = s.firstId != null ? nodeMap.get(s.firstId) : null;
+          if (f || s.firstTipX != null) {
+            const tx = s.firstTipX ?? f.x, ty = s.firstTipY ?? (f.y + c / 2);
+            const col = this.refColor(this.hasMark(s.redStruct, 'first'), this.hasMark(s.greenStruct, 'first'));
+            const a = s.firstDetourAmount ?? (s.detourFirst ? 1 : 0);
+            this.detourArrow(x + c / 2, y + c / 2, tx, ty, col, a);
+          }
+
+          const l = s.lastId != null ? nodeMap.get(s.lastId) : null;
+          if (l || s.lastTipX != null) {
+            const sx = x + c / 2, sy = y + c + c / 2;
+            const tx = s.lastTipX ?? l.x, ty = s.lastTipY ?? (l.y + c * 0.75);
+            const straight = ((s.nodes && s.nodes.length === 1) || s.straightLastArrow) && !s.keepCurvedLastArrow;
+            const mx = s.lastMidX ?? (straight ? (sx + tx) / 2 : tx - 24);
+            const my = s.lastMidY ?? (straight ? (sy + ty) / 2 : sy);
+            const col = this.refColor(this.hasMark(s.redStruct, 'last'), this.hasMark(s.greenStruct, 'last'));
+            this.polylineArrow([{ x: sx, y: sy }, { x: mx, y: my }, { x: tx, y: ty }], col);
+          }
+        }
+
+        drawNode(s, n) {
+          const a = n.alpha ?? 1, x = n.x, y = n.y, w = V.cell, ey = y + V.elemOffsetY;
+          const isHovered = this.hoveredNode && this.hoveredNode.id === n.id;
+          if (isHovered) {
+            this.rect(x - 4, y - 4, V.nodeW + 8, w + 8, 'transparent', 1, this.theme.RING_FOCUS, 2.5, 9);
+            this.rect(x - 4, ey - 4, w + 8, w + 8, 'transparent', 1, this.theme.RING_FOCUS, 2.5, 9);
+          }
+
+          this.rect(x, ey, w, w, this.theme.ELEM_BG, a);
+          const valStr = String(n.e), fs = valStr.length > 4 ? 22 : 28;
+          this.text(valStr, x + w / 2, ey + w / 2 + 1, `700 ${fs}px "Segoe UI", Arial, sans-serif`, 'center', this.theme.ELEM_TEXT, a);
+
+          // Exact original LinkedQueue node labels below nodes (x + w, y + w + 15)
+          if (n.id === s.firstId) {
+            const lbl = (s.nodes || []).length > 1 && s.firstId !== s.lastId ? 'first' : 'first/last';
+            this.text(lbl, x + w, y + w + 15, '22px monospace', 'center', this.theme.TEXT_DARK, a, 'middle');
+          } else if (n.id === s.lastId) {
+            this.text('last', x + w, y + w + 15, '22px monospace', 'center', this.theme.TEXT_DARK, a, 'middle');
+          }
+
+          this.rect(x, y, w, w, this.theme.NODE_PTR_BG, a);
+          this.rect(x + w, y, w, w, this.theme.NODE_PTR_BG, a);
+
+          const elemCol = this.refColor(this.hasMark(s.redElement, n.id), this.hasMark(s.greenElement, n.id));
+          this.arrow(x + w / 2, y + w / 2, x + w / 2, ey + w, elemCol, a);
+          this.dot(x + w / 2, y + w / 2, elemCol, a);
+
+          if (n.next !== UNINITIALIZED) {
+            const nextCol = this.refColor(this.hasMark(s.redNext, n.id), this.hasMark(s.greenNext, n.id));
+            this.dot(x + w + w / 2, y + w / 2, nextCol, a);
+          }
+        }
+
+        drawNodeLink(s, n, nodeMap) {
+          if (n.next === UNINITIALIZED) return;
+          const t = n.next != null ? nodeMap.get(n.next) : null;
+          if (!t && n.nextTipX == null) return;
+          const sx = n.x + V.cell + V.cell / 2, sy = n.y + V.cell / 2;
+          const tx = n.nextTipX ?? t.x, ty = n.nextTipY ?? (t.y + V.cell / 2);
+          const col = this.refColor(this.hasMark(s.redNext, n.id), this.hasMark(s.greenNext, n.id));
+          const a = n.detourAmount ?? (n.detourNext ? 1 : 0);
+          this.detourArrow(sx, sy, tx, ty, col, a, n.alpha ?? 1);
+        }
+
+        drawPNode(s, p, nodeMap) {
+          const alpha = p.alpha ?? 1, col = this.refColor(s.redPNode, s.greenPNode);
+          this.text(p.label || 'newNode', p.x - 12, p.y + 38, '22px monospace', 'right', this.theme.TEXT_DARK, alpha, 'alphabetic');
+          this.rect(p.x, p.y, V.ptrW, V.ptrH, this.theme.NODE_PTR_BG, alpha);
+          this.dot(p.x + V.ptrW / 2, p.y + V.ptrH / 2, col, alpha);
+          const t = p.target != null ? nodeMap.get(p.target) : null;
+          const tx = p.tipX ?? t?.x, ty = p.tipY ?? (t ? t.y + V.cell / 2 : null);
+          if (tx != null && ty != null) this.arrow(p.x + V.ptrW / 2, p.y + V.ptrH / 2, tx, ty, col, alpha);
+        }
+
+        drawAuxPtr(s, p, nodeMap) {
+          const alpha = p.alpha ?? 1, col = this.refColor(this.hasMark(s.redPtrs, p.label), this.hasMark(s.greenPtrs, p.label));
+          const initialized = p.target !== UNINITIALIZED;
+          this.text(p.label, p.x + V.ptrW / 2, p.y - 10, '21px monospace', 'center', this.theme.TEXT_DARK, alpha, 'alphabetic');
+          this.rect(p.x, p.y, V.ptrW, V.ptrH, this.theme.NODE_PTR_BG, alpha);
+          if (initialized) {
+            this.dot(p.x + V.ptrW / 2, p.y + V.ptrH / 2, col, alpha);
+            const t = p.target != null ? nodeMap.get(p.target) : null;
+            const tx = p.tipX ?? t?.x, ty = p.tipY ?? t?.y;
+            if (tx != null && ty != null) this.arrow(p.x + V.ptrW / 2, p.y + V.ptrH / 2, tx, ty, col, alpha);
+          }
+        }
+
+        flashCircle(x, y, r = 28) {
+          const c = this.ctx;
+          c.save(); c.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(performance.now() / 110));
+          c.strokeStyle = this.theme.RED; c.lineWidth = 5;
+          c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.stroke(); c.restore();
+        }
+
+        roundFrame(x, y, w, h) {
+          const c = this.ctx;
+          c.save(); c.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(performance.now() / 110));
+          c.strokeStyle = this.theme.RED; c.lineWidth = 5;
+          c.beginPath(); c.roundRect(x, y, w, h, 8); c.stroke(); c.restore();
+        }
+
+        lFlash(x, y) {
+          const c = this.ctx, p = 8, r = 8, w = V.cell, nw = V.nodeW, ey = y + V.elemOffsetY;
+          c.save(); c.globalAlpha = 0.35 + 0.65 * Math.abs(Math.sin(performance.now() / 110));
+          c.strokeStyle = this.theme.RED; c.lineWidth = 5; c.beginPath();
+          c.moveTo(x - p + r, ey - p); c.lineTo(x + w + p - r, ey - p);
+          c.arcTo(x + w + p, ey - p, x + w + p, ey - p + r, r); c.lineTo(x + w + p, y - p - r);
+          c.arcTo(x + w + p, y - p, x + w + p + r, y - p, r); c.lineTo(x + nw + p - r, y - p);
+          c.arcTo(x + nw + p, y - p, x + nw + p, y - p + r, r); c.lineTo(x + nw + p, y + w + p - r);
+          c.arcTo(x + nw + p, y + w + p, x + nw + p - r, y + w + p, r); c.lineTo(x - p + r, y + w + p);
+          c.arcTo(x - p, y + w + p, x - p, y + w + p - r, r); c.lineTo(x - p, ey - p + r);
+          c.arcTo(x - p, ey - p, x - p + r, ey - p, r); c.closePath(); c.stroke(); c.restore();
+        }
+
+        cross(x, y, w, h) {
+          const c = this.ctx;
+          c.save(); c.globalAlpha = 0.45 + 0.55 * Math.abs(Math.sin(performance.now() / 110));
+          c.strokeStyle = this.theme.RED; c.lineWidth = 6; c.beginPath();
+          c.moveTo(x - 7, y - 7); c.lineTo(x + w + 7, y + h + 7);
+          c.moveTo(x + w + 7, y - 7); c.lineTo(x - 7, y + h + 7);
+          c.stroke(); c.restore();
+        }
+
+        drawOverlays(s) {
+          const sx = V.structX, sy = V.structY, c = V.cell;
+          if (this.hasMark(s.flashStruct, 'first')) this.flashCircle(sx + c / 2, sy + c / 2);
+          if (this.hasMark(s.flashStruct, 'last')) this.flashCircle(sx + c / 2, sy + c + c / 2);
+          if (this.hasMark(s.flashStruct, 'size')) this.flashCircle(sx + c / 2, sy + 2 * c + c / 2);
+
+          for (const n of s.nodes || []) {
+            if (this.hasMark(s.flashNew, n.id)) this.lFlash(n.x, n.y);
+            if (this.hasMark(s.flashNext, n.id)) this.flashCircle(n.x + c + c / 2, n.y + c / 2, 29);
+            if (this.hasMark(s.flashElement, n.id)) this.roundFrame(n.x - 2, n.y + V.elemOffsetY - 2, c + 4, c + 4);
+            if (this.hasMark(s.crossNodes, n.id)) this.cross(n.x, n.y, V.nodeW, c);
+          }
+
+          if (s.pnode) {
+            if (s.flashPNode) this.flashCircle(s.pnode.x + V.ptrW / 2, s.pnode.y + V.ptrH / 2);
+            if (s.flashPNodeCross) this.cross(s.pnode.x, s.pnode.y, V.ptrW, V.ptrH);
+          }
+          for (const p of s.ptrs || []) {
+            if (this.hasMark(s.flashPtrs, p.label)) this.flashCircle(p.x + V.ptrW / 2, p.y + V.ptrH / 2);
+            if (this.hasMark(s.crossPtrs, p.label)) this.cross(p.x, p.y, V.ptrW, V.ptrH);
+          }
+        }
+
+        drawNodeTooltip(node, scene) {
+          const ctx = this.ctx;
+          const nextNode = node.next != null && node.next !== UNINITIALIZED
+            ? (scene.nodes || []).find(n => n.id === node.next)
+            : null;
+          const roles = [];
+          if (node.id === scene.firstId) roles.push('first');
+          if (node.id === scene.lastId) roles.push('last');
+          const rolePrefix = roles.length ? `[${roles.join('/')}] ` : '';
+          const label = `${rolePrefix}element -> ${node.e} | next -> ${nextNode ? nextNode.e : 'null'}`;
+          const invScale = 1 / this.camera.scale;
+          ctx.save();
+          ctx.translate(node.x + V.nodeW / 2, node.y + V.elemOffsetY - (34 * invScale));
+          ctx.scale(invScale, invScale);
+          ctx.font = '600 12.5px "Segoe UI", Arial, sans-serif';
+          const w = ctx.measureText(label).width + 18, h = 26;
+          ctx.fillStyle = this.theme.PILL_BG; ctx.strokeStyle = this.theme.PILL_BORDER; ctx.lineWidth = 1.25;
+          ctx.beginPath(); ctx.roundRect(-w / 2, -h, w, h, 5); ctx.fill(); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(-5, -1); ctx.lineTo(5, -1); ctx.lineTo(0, 5); ctx.closePath();
+          ctx.fillStyle = this.theme.PILL_BG; ctx.fill();
+          ctx.fillStyle = this.theme.PTR_BLUE; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText(label, 0, -h / 2);
+          ctx.restore();
+        }
+
+        easeInOut(t) { return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t; }
+      }
+
+      /* =================================================================
+       * 5. APPLICATION CONTROLLER (UI & ORCHESTRATION)
+       * ================================================================= */
+      const app = {
+        model: new LinkedQueueModel(),
+        viz: null,
+        isDark: false,
+        logs: [],
+
+        init() {
+          this.viz = new Visualizer(document.getElementById('queueCanvas'), {
+            theme: THEMES.light,
+            callbacks: {
+              onStatus: text => { document.getElementById('status-text').innerText = text; },
+              onNodeClick: node => {
+                document.getElementById('val').value = node.e;
+                this.viz.setStatus(`Selected node (element ${node.e})`);
+              },
+              onStateChange: info => this.syncPlaybackUI(info),
+              onSnapshotChange: st => this.updateStats(st)
+            }
+          });
+
+          this.bindUIEvents();
+          this.buildRandomSample(false);
         },
-        undo() {
-          if (!this.history.length) return;
-          const h = this.history.pop();
-          this.values = h.values;
-          this.ids = h.ids;
-          this.showCurrent("Visualization only: The previous queue state has been restored by the app's undo utility.");
-          this.updateUI();
+
+        bindUIEvents() {
+          const valInp = document.getElementById('val');
+
+          valInp.addEventListener('keydown', e => { if (e.key === 'Enter') this.handleEnqueue(); });
+
+          document.getElementById('btnEnqueue').addEventListener('click', () => this.handleEnqueue());
+          document.getElementById('btnDequeue').addEventListener('click', () => this.handleDequeue());
+          document.getElementById('btnFirst').addEventListener('click', () => this.handleFirst());
+          document.getElementById('btnEmpty').addEventListener('click', () => this.handleEmpty());
+          document.getElementById('btnClear').addEventListener('click', () => this.handleClear());
+          document.getElementById('btnRandom').addEventListener('click', () => this.buildRandomSample(true));
+          document.getElementById('btnUndo').addEventListener('click', () => this.handleUndo());
+
+          document.getElementById('speedSlider').addEventListener('input', e => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('speedLabel').innerText = val.toFixed(2).replace(/\.00$/, '.0') + 'x';
+            this.viz.setSpeed(val);
+          });
+
+          document.getElementById('btnPause').addEventListener('click', () => this.viz.togglePause());
+          document.getElementById('btnStepBack').addEventListener('click', () => this.viz.stepBackward());
+          document.getElementById('btnStepFwd').addEventListener('click', () => this.viz.stepForward());
+          document.getElementById('btnSkip').addEventListener('click', () => this.viz.skipToEnd());
+
+          document.getElementById('chkStepMode').addEventListener('change', e => {
+            document.getElementById('stepModeLabel').classList.toggle('step-active', e.target.checked);
+            this.viz.setStepMode(e.target.checked);
+          });
+          document.getElementById('chkAutoFit').addEventListener('change', e => this.viz.setAutoFit(e.target.checked));
+
+          document.getElementById('btnZoomIn').addEventListener('click', () => this.viz.zoomBy(1.25));
+          document.getElementById('btnZoomOut').addEventListener('click', () => this.viz.zoomBy(0.8));
+          document.getElementById('btnFitView').addEventListener('click', () => this.viz.fitCurrentQueue());
+
+          document.getElementById('btnToggleLegend').addEventListener('click', () => {
+            const collapsed = document.getElementById('legend').classList.toggle('collapsed');
+            document.getElementById('btnToggleLegend').innerText = collapsed ? '+' : '−';
+          });
+          document.getElementById('btnDrawer').addEventListener('click', () => document.getElementById('info-drawer').classList.toggle('open'));
+          document.getElementById('btnClearLog').addEventListener('click', () => { this.logs = []; this.renderLog(); });
+          document.getElementById('btnTheme').addEventListener('click', () => this.toggleTheme());
+          document.getElementById('btnHelp').addEventListener('click', () => this.toggleModal(true));
+          document.getElementById('btnCloseModal').addEventListener('click', () => this.toggleModal(false));
+
+          window.addEventListener('click', e => { if (e.target === document.getElementById('helpModal')) this.toggleModal(false); });
+          window.addEventListener('keydown', e => {
+            const modalOpen = document.getElementById('helpModal').style.display === 'block';
+            if (e.key === 'Escape' && modalOpen) { this.toggleModal(false); return; }
+            if (document.activeElement === valInp || modalOpen) return;
+            if (e.code === 'Space' && !document.getElementById('btnPause').disabled) { e.preventDefault(); this.viz.togglePause(); }
+            else if (e.key === 'ArrowRight' && !document.getElementById('btnStepFwd').disabled) this.viz.stepForward();
+            else if (e.key === 'ArrowLeft' && !document.getElementById('btnStepBack').disabled) this.viz.stepBackward();
+            else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z' && !document.getElementById('btnUndo').disabled) {
+              e.preventDefault(); this.handleUndo();
+            }
+          });
         },
-        speed() {
-          this.viz.setSpeed(parseFloat(document.getElementById('speed').value));
+
+        toggleTheme() {
+          this.isDark = !this.isDark;
+          document.body.classList.toggle('dark', this.isDark);
+          this.viz.setTheme(this.isDark ? THEMES.dark : THEMES.light);
+          document.getElementById('btnTheme').innerText = this.isDark ? 'Light' : 'Dark';
         },
-        pause() {
-          const p = this.viz.togglePause();
-          document.getElementById('btnPause').innerText = p ? 'Resume' : 'Pause';
-        },
-        toggleStep() {
-          const enabled = !!document.getElementById('stepMode')?.checked;
-          this.viz.setStepMode(enabled);
-          const label = document.getElementById('stepState');
-          if (label) label.innerText = enabled ? 'On' : 'Off';
-          this.updateUI();
-        },
-        nextStep() {
-          this.viz.nextStep();
-        },
-        toggleModal() {
+
+        toggleModal(show) {
           const m = document.getElementById('helpModal');
-          m.style.display = m.style.display === 'block' ? 'none' : 'block';
+          m.style.display = (show !== undefined ? show : m.style.display !== 'block') ? 'block' : 'none';
         },
-        updateUI() {
-          document.getElementById('btnUndo').disabled = this.history.length === 0;
-          const step = document.getElementById('stepMode');
-          if (step) step.disabled = false;
-          const label = document.getElementById('stepState');
-          if (label) label.innerText = step?.checked ? 'On' : 'Off';
-          if (this.viz?.updateStepControls) this.viz.updateStepControls();
+
+        addLog(entry) {
+          const time = new Date().toLocaleTimeString([], { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+          this.logs.unshift(`[${time}] ${entry}`);
+          if (this.logs.length > 40) this.logs.pop();
+          this.renderLog();
         },
+
+        renderLog() {
+          const list = document.getElementById('op-log');
+          list.innerHTML = '';
+          this.logs.forEach(item => { const li = document.createElement('li'); li.textContent = item; list.appendChild(li); });
+        },
+
+        flashInputError(id, msg) {
+          const el = document.getElementById(id);
+          el.classList.remove('input-error'); void el.offsetWidth; el.classList.add('input-error');
+          this.viz.setStatus(msg);
+          setTimeout(() => el.classList.remove('input-error'), 600);
+        },
+
+        parseValue() {
+          const v = parseInt(document.getElementById('val').value, 10);
+          if (Number.isNaN(v)) { this.flashInputError('val', 'Please enter an element integer.'); return null; }
+          return v;
+        },
+
         clearInputs() {
           document.getElementById('val').value = '';
+        },
+
+        syncPlaybackUI({ state, isPaused, isBusy, index, total }) {
+          const isEmpty = this.model.state.items.length === 0;
+          ['btnEnqueue', 'btnEmpty', 'btnClear', 'btnRandom']
+            .forEach(id => { document.getElementById(id).disabled = isBusy; });
+          document.getElementById('btnDequeue').disabled = isBusy || isEmpty;
+          document.getElementById('btnFirst').disabled = isBusy || isEmpty;
+          document.getElementById('btnUndo').disabled = isBusy || this.model.history.length === 0;
+
+          const hasSteps = total > 1;
+          const atEnd = index >= total - 1 && state === 'IDLE';
+          const btnPause = document.getElementById('btnPause');
+          btnPause.disabled = !hasSteps || atEnd;
+          btnPause.classList.toggle('step-wait', state === 'STEP_WAIT');
+          btnPause.innerText = state === 'STEP_WAIT' ? 'Next' : (isPaused ? 'Resume' : 'Pause');
+
+          document.getElementById('btnStepBack').disabled = !hasSteps || (index === 0 && state === 'IDLE');
+          document.getElementById('btnStepFwd').disabled = !hasSteps || atEnd;
+          document.getElementById('btnSkip').disabled = !hasSteps || atEnd;
+          document.getElementById('step-counter').innerText = total > 1 ? `Step: ${Math.min(index + 1, total)}/${total}` : 'Step: -';
+        },
+
+        updateStats(st) {
+          const size = QueueUtils.getSize(st), first = QueueUtils.getFirst(st), last = QueueUtils.getLast(st), arr = QueueUtils.toArray(st);
+          document.getElementById('queue-stats').innerText = `Size: ${size} | First: ${first !== null ? first : '-'} | Last: ${last !== null ? last : '-'}`;
+          document.getElementById('queue-array').innerText = arr.length ? arr.join(' → ') : 'empty';
+          document.getElementById('queue-size').innerText = String(size);
+          document.getElementById('queue-first').innerText = first !== null ? String(first) : 'null';
+          document.getElementById('queue-last').innerText = last !== null ? String(last) : 'null';
+        },
+
+        updateActionButtons() {
+          const isBusy = this.viz.isBusy();
+          const isEmpty = this.model.state.items.length === 0;
+          document.getElementById('btnUndo').disabled = isBusy || this.model.history.length === 0;
+          document.getElementById('btnDequeue').disabled = isBusy || isEmpty;
+          document.getElementById('btnFirst').disabled = isBusy || isEmpty;
+        },
+
+        runOp(fn, { instant = false, logText = null, recordHistory = true } = {}) {
+          if (this.viz.isBusy()) return;
+          const prevState = this.model.state;
+          const recorder = new SnapshotRecorder(prevState);
+          const result = fn(recorder);
+          if (recordHistory) this.model.pushHistory(prevState);
+          this.viz.enqueueOperation(recorder.snapshots, instant);
+          this.updateActionButtons();
+          const msg = typeof logText === 'function' ? logText(result) : logText;
+          if (msg) this.addLog(msg);
+        },
+
+        handleEnqueue() {
+          if (this.viz.isBusy()) return;
+          const v = this.parseValue(); if (v === null) return;
+          const instant = document.getElementById('chkInstant').checked; this.clearInputs();
+          this.runOp(r => this.model.enqueue(v, r), { instant, recordHistory: true, logText: `Enqueue ${v}` });
+        },
+
+        handleDequeue() {
+          if (this.viz.isBusy() || this.model.state.items.length === 0) return;
+          const instant = document.getElementById('chkInstant').checked; this.clearInputs();
+          this.runOp(r => this.model.dequeue(r), { instant, recordHistory: true, logText: v => `Dequeue -> ${v}` });
+        },
+
+        handleFirst() {
+          if (this.viz.isBusy() || this.model.state.items.length === 0) return;
+          const instant = document.getElementById('chkInstant').checked;
+          this.runOp(r => this.model.first(r), { instant, recordHistory: false, logText: v => `First -> ${v}` });
+        },
+
+        handleClear() {
+          const instant = document.getElementById('chkInstant').checked;
+          const hadItems = this.model.state.items.length > 0;
+          this.runOp(r => this.model.clear(r), { instant, recordHistory: hadItems, logText: hadItems ? 'Clear queue' : null });
+        },
+
+        handleEmpty() {
+          if (this.viz.isBusy()) return;
+          const prevState = this.model.state;
+          this.model.state = EMPTY_STATE;
+          this.model.pushHistory(prevState);
+          const recorder = new SnapshotRecorder(EMPTY_STATE);
+          recorder.emit('A new empty queue object is represented with first = null, last = null, and size = 0.', [], {
+            firstId: null, lastId: null, size: 0, statsState: EMPTY_STATE, visualOnly: false
+          });
+          this.viz.enqueueOperation(recorder.snapshots, true);
+          this.updateActionButtons();
+          this.addLog('Empty queue');
+        },
+
+        buildRandomSample(recordHistory = true) {
+          if (this.viz.isBusy()) return;
+          const prevState = this.model.state;
+          const count = 2 + Math.floor(Math.random() * 4);
+          const vals = [];
+          while (vals.length < count) {
+            const v = 1 + Math.floor(Math.random() * 9);
+            if (!vals.includes(v)) vals.push(v);
+          }
+
+          const items = vals.map(v => new QueueItem(v));
+          const nextState = new LinkedQueueState(items);
+          this.model.state = nextState;
+          if (recordHistory) this.model.pushHistory(prevState);
+
+          const recorder = new SnapshotRecorder(nextState);
+          recorder.emit('Visualization only: a random LinkedQueue is displayed.', this.model.buildNodes(), {
+            firstId: items[0]?.id ?? null, lastId: items.at(-1)?.id ?? null, size: items.length, statsState: nextState
+          });
+
+          this.viz.enqueueOperation(recorder.snapshots, true);
+          this.updateActionButtons();
+          if (recordHistory) this.addLog(`Build random [${vals.join(', ')}]`);
+        },
+
+        handleUndo() {
+          if (this.viz.isBusy() || this.model.history.length === 0) return;
+          const restored = this.model.restoreFromHistory();
+          const recorder = new SnapshotRecorder(restored);
+          recorder.emit('Undo successful.', this.model.buildNodes(), {
+            firstId: restored.items[0]?.id ?? null, lastId: restored.items.at(-1)?.id ?? null,
+            size: restored.items.length, statsState: restored, visualOnly: false
+          });
+          this.viz.enqueueOperation(recorder.snapshots, true);
+          this.updateActionButtons();
+          this.addLog('Undo');
         }
       };
-      window.app = app;
-      window.onload = () => {
-        app.init();
-        const chk = document.getElementById('chkStepMode');
-        const label = document.getElementById('stepModeLabel');
-        if (chk) chk.disabled = false;
-        if (label) {
-          label.style.pointerEvents = 'auto';
-          label.style.opacity = '1';
-        };
-      }
-      window.onclick = e => {
-        if (e.target === document.getElementById('helpModal')) app.toggleModal();
-      };
-    </script>
-  </body>
+
+      window.addEventListener('DOMContentLoaded', () => app.init());
+    })();
+  </script>
+</body>
 
 </html>
