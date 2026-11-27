@@ -534,8 +534,8 @@
         }
 
         traverseSingle(index, items, nodes, firstId, lastId, recorder) {
-          let pCur = this.makePtr('current', null, nodes, { x: V.originX - 60, y: V.originY - V.auxYOffset });
-          recorder.emit('Local traversal variable current starts as null.', nodes, {
+          let pCur = this.makePtr('current', UNINITIALIZED, nodes, { x: V.originX - 60, y: V.originY - V.auxYOffset });
+          recorder.emit('Local traversal variable current starts uninitialized.', nodes, {
             size: items.length, firstId, lastId, ptrs: [pCur], pause: true
           });
 
@@ -557,7 +557,7 @@
             recorder.emitAssignment({
               beforeNodes: nodes, beforeExtra: { size: items.length, firstId, lastId, ptrs: [pCur] },
               afterNodes: nodes, afterExtra: { size: items.length, firstId, lastId, ptrs: [pCurNext] },
-              source: { kind: 'next', key: curId }, targets: [{ kind: 'ptr', key: 'current' }],
+              source: [{ kind: 'ptr', key: 'current' }, { kind: 'next', key: curId }], targets: [{ kind: 'ptr', key: 'current' }],
               phase1Text: 'current.next is going to advance current.',
               phase2Text: 'current is selected to be updated.',
               phase3Text: 'current now references the next node.'
@@ -575,9 +575,9 @@
           let prevId = null;
           let curId = null;
           let pPrev = this.makePtr('previous', null, nodes, { x: V.originX - 185, y: V.originY - V.auxYOffset });
-          let pCur = this.makePtr('current', null, nodes, { x: V.originX - 60, y: V.originY - V.auxYOffset });
+          let pCur = this.makePtr('current', UNINITIALIZED, nodes, { x: V.originX - 60, y: V.originY - V.auxYOffset });
 
-          recorder.emit('Local traversal variables previous and current start as null.', nodes, {
+          recorder.emit('Local traversal variable previous starts as null and current starts uninitialized.', nodes, {
             size: items.length, firstId, lastId, ptrs: [pPrev, pCur], pause: true
           });
 
@@ -612,7 +612,7 @@
             recorder.emitAssignment({
               beforeNodes: nodes, beforeExtra: { size: items.length, firstId, lastId, ptrs: [pPrevUpd, pCur] },
               afterNodes: nodes, afterExtra: { size: items.length, firstId, lastId, ptrs: [pPrevUpd, pCurUpd] },
-              source: { kind: 'next', key: oldCur }, targets: [{ kind: 'ptr', key: 'current' }],
+              source: [{ kind: 'ptr', key: 'current' }, { kind: 'next', key: oldCur }], targets: [{ kind: 'ptr', key: 'current' }],
               phase1Text: 'current.next is going to advance current.',
               phase2Text: 'current is selected to be updated.',
               phase3Text: 'current now references the next node.'
@@ -1150,9 +1150,18 @@
           });
 
           if (items.length === 0) {
-            const itNull = { x: V.originX + 130, y: itY, target: null };
-            recorder.emit('LinkedListIterator is initialized with current = null because the list is empty.', nodes, {
-              size: 0, firstId: null, lastId: null, iterator: itNull, pause: true
+            const itUninitialized = { x: V.originX + 130, y: itY, target: UNINITIALIZED };
+            const itNull = { ...itUninitialized, target: null };
+            recorder.emit('LinkedListIterator is created with uninitialized current.', nodes, {
+              size: 0, firstId: null, lastId: null, iterator: itUninitialized, pause: true
+            });
+            recorder.emitAssignment({
+              beforeNodes: nodes, beforeExtra: { size: 0, firstId: null, lastId: null, iterator: itUninitialized },
+              afterNodes: nodes, afterExtra: { size: 0, firstId: null, lastId: null, iterator: itNull },
+              source: { kind: 'struct', key: 'first' }, targets: [{ kind: 'iterator' }],
+              phase1Text: 'list.first is going to initialize iterator.current.',
+              phase2Text: 'iterator.current is selected to be updated.',
+              phase3Text: 'iterator.current now stores null.'
             });
             recorder.emit('Iteration is complete because current is null.', nodes, {
               size: 0, firstId: null, lastId: null, iterator: itNull, crossIterator: true, pause: true
@@ -1161,8 +1170,8 @@
             return [];
           }
 
-          const initIt = { x: V.originX - 100, y: itY, target: null };
-          recorder.emit('LinkedListIterator is created with current = null.', nodes, {
+          const initIt = { x: V.originX - 100, y: itY, target: UNINITIALIZED };
+          recorder.emit('LinkedListIterator is created with uninitialized current.', nodes, {
             size: items.length, firstId, lastId, iterator: initIt, pause: true
           });
 
@@ -1190,7 +1199,7 @@
             recorder.emitAssignment({
               beforeNodes: nodes, beforeExtra: { size: items.length, firstId, lastId, iterator: it },
               afterNodes: nodes, afterExtra: { size: items.length, firstId, lastId, iterator: itArrowUpdated },
-              source: { kind: 'next', key: curId }, targets: [{ kind: 'iterator' }],
+              source: [{ kind: 'iterator' }, { kind: 'next', key: curId }], targets: [{ kind: 'iterator' }],
               phase1Text: nextId != null ? 'iterator.current.next is going to advance iterator.current.' : 'iterator.current.next (null) is going to set iterator.current to null.',
               phase2Text: 'iterator.current is selected to be updated.',
               phase3Text: nextId != null ? 'iterator.current now references the next node.' : 'iterator.current now stores null.'
@@ -2052,12 +2061,15 @@
 
         drawAuxPtr(s, p, nodeMap) {
           const alpha = p.alpha ?? 1, col = this.refColor(this.hasMark(s.redPtrs, p.label), this.hasMark(s.greenPtrs, p.label));
+          const initialized = p.target !== UNINITIALIZED;
           this.text(p.label, p.x + V.ptrW / 2, p.y - 10, '21px monospace', 'center', this.theme.TEXT_DARK, alpha, 'alphabetic');
           this.rect(p.x, p.y, V.ptrW, V.ptrH, this.theme.NODE_PTR_BG, alpha);
-          this.dot(p.x + V.ptrW / 2, p.y + V.ptrH / 2, col, alpha);
-          const t = p.target != null ? nodeMap.get(p.target) : null;
-          const tx = p.tipX ?? t?.x, ty = p.tipY ?? t?.y;
-          if (tx != null && ty != null) this.arrow(p.x + V.ptrW / 2, p.y + V.ptrH / 2, tx, ty, col, alpha);
+          if (initialized) {
+            this.dot(p.x + V.ptrW / 2, p.y + V.ptrH / 2, col, alpha);
+            const t = p.target != null ? nodeMap.get(p.target) : null;
+            const tx = p.tipX ?? t?.x, ty = p.tipY ?? t?.y;
+            if (tx != null && ty != null) this.arrow(p.x + V.ptrW / 2, p.y + V.ptrH / 2, tx, ty, col, alpha);
+          }
         }
 
         drawIterator(s, it, nodeMap) {
@@ -2070,11 +2082,12 @@
 
           this.text('current', cx + V.ptrW / 2, cy - 10, '22px monospace', 'center', this.theme.TEXT_DARK, alpha, 'alphabetic');
           this.rect(cx, cy, V.ptrW, V.ptrH, this.theme.NODE_PTR_BG, alpha);
-          this.dot(cx + V.ptrW / 2, cy + V.ptrH / 2, col, alpha);
+          const initialized = it.target !== UNINITIALIZED;
+          if (initialized) this.dot(cx + V.ptrW / 2, cy + V.ptrH / 2, col, alpha);
 
           const t = it.target != null ? nodeMap.get(it.target) : null;
           const tx = it.tipX ?? t?.x, ty = it.tipY ?? t?.y;
-          if (tx != null && ty != null) this.arrow(cx + V.ptrW / 2, cy + V.ptrH / 2, tx, ty, col, alpha);
+          if (initialized && tx != null && ty != null) this.arrow(cx + V.ptrW / 2, cy + V.ptrH / 2, tx, ty, col, alpha);
         }
 
         flashCircle(x, y, r = 28) {

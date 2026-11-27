@@ -778,6 +778,7 @@
                 tooltipBorder: '#444C56'
             };
 
+            const UNINITIALIZED = '__UNINITIALIZED__';
             let K = LIGHT_THEME;
 
             const LAYER = Object.freeze({
@@ -1895,10 +1896,11 @@
                     this.txt(o, 'it:cl', 'current', cx + 30, cy - 10, VISUAL.fonts.pointerLabel, K.k, 'center', 'alphabetic', itL.text);
                     this.rect(o, 'it:cur', cx, cy, w, h, K.c, null, itL.box);
                     const iteratorColor = this.refColor(s, 'iterator:current');
-                    this.cir(o, 'it:cd', cx + w / 2, cy + h / 2, 8, iteratorColor, itL.dot);
+                    const initialized = it.target !== UNINITIALIZED;
+                    if (initialized) this.cir(o, 'it:cd', cx + w / 2, cy + h / 2, 8, iteratorColor, itL.dot);
                     this.ar(o, 'it:a1', ix + w / 2, iy + h / 2, cx, cy + h / 2, K.v, itL.arrow);
                     const t = this.nodeById(s, it.target);
-                    if (t) this.ar(o, 'it:a2', cx + w / 2, cy + h / 2, t.x, t.y, iteratorColor, itL.arrow);
+                    if (initialized && t) this.ar(o, 'it:a2', cx + w / 2, cy + h / 2, t.x, t.y, iteratorColor, itL.arrow);
                 }
 
                 setOperationExtras(o, s) {
@@ -2545,7 +2547,7 @@
                                     firstId: firstAfter, size: curSize, finder,
                                     detourFirst: firstNeedsDetour, firstDetourAmount: firstNeedsDetour ? 1 : 0
                                 },
-                                source: ['next:' + cur], targets: ['first'],
+                                source: ['finder:current', 'next:' + cur], targets: ['first'],
                                 texts: ['current.next is going to be read to update set.first.', 'set.first is selected to be updated.', 'set.first now references current.next.']
                             });
                         } else {
@@ -2559,7 +2561,7 @@
                                 beforeExtra: { firstId: curFirst, size: curSize, finder },
                                 afterNodes: linked,
                                 afterExtra: { firstId: curFirst, size: curSize, finder },
-                                access: ['finder:previous'], source: ['next:' + cur], targets: ['next:' + res.prev],
+                                access: ['finder:previous'], source: ['finder:current', 'next:' + cur], targets: ['next:' + res.prev],
                                 texts: ['current.next is going to be read to update previous.next.', 'previous.next is selected to be updated.', 'previous.next now references current.next.']
                             });
                         }
@@ -2657,16 +2659,29 @@
 
                     const snaps = [this.snapshot('Starting SortedLinkedSetIterator...', nodes, { size })];
                     let iterator = {
-                        target: ids[0] ?? null,
+                        target: UNINITIALIZED,
                         x: (nodes[0]?.x ?? b.x + VISUAL.node.step) - 100,
                         y: b.y - 150
                     };
 
-                    snaps.push(this.snapshot(
-                        size ? 'Iterator created: current = first.' : 'Iterator created: current = null (empty set).',
-                        nodes,
-                        { size, iterator, pause: true }
-                    ));
+                    snaps.push(this.snapshot('Iterator created with uninitialized current.', nodes, { size, iterator, pause: true }));
+                    const initializedIterator = { ...iterator, target: ids[0] ?? null };
+                    this.emitAssignment(snaps, {
+                        beforeNodes: nodes,
+                        beforeExtra: { size, iterator },
+                        afterNodes: nodes,
+                        afterExtra: { size, iterator: initializedIterator },
+                        source: ['first'],
+                        targets: ['iterator:current'],
+                        texts: [
+                            'set.first is going to initialize iterator.current.',
+                            'iterator.current is selected to be updated.',
+                            initializedIterator.target == null
+                                ? 'iterator.current now stores null.'
+                                : 'iterator.current now references the first node.'
+                        ]
+                    });
+                    iterator = initializedIterator;
 
                     for (let k = 0; k < size; k++) {
                         const cur = ids[k], next = ids[k + 1] ?? null;
@@ -2681,7 +2696,7 @@
                             beforeExtra: { size, iterator },
                             afterNodes: nodes,
                             afterExtra: { size, iterator: nextIterator },
-                            source: ['next:' + cur],
+                            source: ['iterator:current', 'next:' + cur],
                             targets: ['iterator:current'],
                             texts: [
                                 'current.next is going to be read to update iterator.current.',
