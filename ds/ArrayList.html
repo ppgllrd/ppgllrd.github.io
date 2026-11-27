@@ -1154,16 +1154,16 @@
             fill: K.k,
             baseline: 'alphabetic'
           });
-          this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, K.b);
           const hiddenObjectIds = new Set(s.hideObjectIds || []),
             hiddenObjectIndices = new Set(s.hideObjectIndices || []),
-            greenObjectArrows = new Set(s.greenObjectArrows || []);
+            greenObjectArrows = new Set(s.greenObjectArrows || []),
+            redObjectArrows = new Set(s.redObjectArrows || []);
+          const referenceColor = redObjectArrows.has(cell.i) ? K.r : (greenObjectArrows.has(cell.i) ? K.gr : K.b);
+          this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, referenceColor);
           if (cell.v !== '?' && !hiddenObjectIds.has(cell.id) && !hiddenObjectIndices.has(cell.i)) {
             const objY = cell.y + w + 30,
-              arrowColor = greenObjectArrows.has(cell.i) ? K.gr : K.b,
               arrowWidth = greenObjectArrows.has(cell.i) ? 4 : 3;
-            this.paintDot(cell.x + m.cellCenter, cell.y + m.cellCenter, m.dotRadius, arrowColor);
-            this.arrow(cell.x + m.cellCenter, cell.y + m.cellCenter, cell.x + m.cellCenter, objY, arrowColor, arrowWidth);
+            this.arrow(cell.x + m.cellCenter, cell.y + m.cellCenter, cell.x + m.cellCenter, objY, referenceColor, arrowWidth);
             this.paintRect(cell.x, objY, w, w, K.g);
             this.paintText(String(cell.v), cell.x + m.cellCenter, objY + m.cellCenter + 2, {
               font: '30px Arial',
@@ -1219,13 +1219,16 @@
         }
         drawRefArrows(s) {
           const m = this.layoutMetrics();
+          const redObjectArrows = new Set(s.redObjectArrows || []),
+            greenObjectArrows = new Set(s.greenObjectArrows || []);
           (s.refArrows || []).forEach(r => {
             const slot = (s.cells || []).find(c => c.i === r.from);
             const obj = (s.objBoxes || []).find(o => o.id === r.objId);
             if (!slot || !obj) return;
             const tipX = r.tipX ?? (obj.x + m.cellCenter);
             const tipY = r.tipY ?? (obj.y + this.cell + 30);
-            this.arrow(slot.x + m.cellCenter, slot.y + m.cellCenter, tipX, tipY, K.b, 3)
+            const color = redObjectArrows.has(r.from) ? K.r : (greenObjectArrows.has(r.from) ? K.gr : K.b);
+            this.arrow(slot.x + m.cellCenter, slot.y + m.cellCenter, tipX, tipY, color, 3)
           })
         }
         drawPtrs(s) {
@@ -1366,6 +1369,32 @@
             visualOnly,
             text: visualOnly ? '' : originalText
           };
+        }
+        emitReferenceAssignment(snaps, {
+          beforeVals,
+          afterVals,
+          cap,
+          source = null,
+          target,
+          beforeExtra = {},
+          afterExtra = {},
+          texts
+        }) {
+          const push = (vals, extra, text, targetColor = false, flashTarget = false, sourceColor = true, visualOnly = false) => {
+            snaps.push(this.snapshot(text, vals, cap, {
+              ...extra,
+              greenObjectArrows: sourceColor && source !== null ? [source] : [],
+              redObjectArrows: targetColor ? [target] : [],
+              flashRefDots: flashTarget ? [target] : [],
+              visualOnly,
+              pause: !visualOnly
+            }));
+          };
+
+          push(beforeVals, beforeExtra, texts[0]);
+          push(beforeVals, beforeExtra, texts[1], false, true);
+          push(afterVals, afterExtra, texts[2], true, false);
+          push(afterVals, afterExtra, texts[2], false, false, false, true);
         }
         init() {
           this.viz = new JavaArrayListView('cv');
@@ -1593,6 +1622,7 @@
               }));
             let changed = [];
             for (let j = old.length - 1; j >= idx; j--) {
+              const beforeChanged = [...changed];
               changed.push({
                 from: j + 1,
                 objId: 'shiftObj' + j
@@ -1602,14 +1632,30 @@
                 from: k,
                 objId: 'shiftObj' + k
               });
-              snaps.push(this.snapshot('The reference in cell ' + (j + 1) + ' is changed to point to the object previously referenced by cell ' + j, work, cap, {
+              const beforeExtra = {
                 size: old.length,
                 objBoxes: oldObjs,
-                refArrows: [...changed, ...unchanged],
+                refArrows: [
+                  ...beforeChanged,
+                  ...(j + 1 < old.length ? [{ from: j + 1, objId: 'shiftObj' + (j + 1) }] : []),
+                  ...unchanged
+                ],
                 hideObjectIndices: hide,
-                flashRefDots: [j + 1],
-                pause: true
-              }));
+              };
+              this.emitReferenceAssignment(snaps, {
+                beforeVals: work,
+                afterVals: work,
+                cap,
+                source: j,
+                target: j + 1,
+                beforeExtra,
+                afterExtra: { ...beforeExtra, refArrows: [...changed, ...unchanged] },
+                texts: [
+                  'The reference in cell ' + j + ' is read as the source.',
+                  'The pointer in cell ' + (j + 1) + ' is selected as the destination.',
+                  'Cell ' + (j + 1) + ' now points to the object currently referenced by cell ' + j + '.'
+                ]
+              });
             }
             snaps.push(this.snapshot('For an instant, the insertion cell and the next cell both reference the leftmost shifted object', work, cap, {
               size: old.length,
@@ -1853,6 +1899,7 @@
           }));
           let changed = [];
           for (let j = idx + 1; j < old.length; j++) {
+            const beforeChanged = [...changed];
             changed.push({
               from: j - 1,
               objId: 'shiftObj' + j
@@ -1862,14 +1909,26 @@
               from: k,
               objId: 'shiftObj' + k
             });
-            snaps.push(this.snapshot('Cell ' + (j - 1) + ' is overwritten to reference the object currently at cell ' + j, work, cap, {
+            const beforeExtra = {
               size: old.length,
               objBoxes: objs,
-              refArrows: [...changed, ...unchanged],
+              refArrows: [...beforeChanged, { from: j - 1, objId: 'shiftObj' + (j - 1) }, ...unchanged],
               hideObjectIndices: hide,
-              flashRefDots: [j - 1],
-              pause: true
-            }));
+            };
+            this.emitReferenceAssignment(snaps, {
+              beforeVals: work,
+              afterVals: work,
+              cap,
+              source: j,
+              target: j - 1,
+              beforeExtra,
+              afterExtra: { ...beforeExtra, refArrows: [...changed, ...unchanged] },
+              texts: [
+                'The reference in cell ' + j + ' is read as the source.',
+                'The pointer in cell ' + (j - 1) + ' is selected as the destination.',
+                'Cell ' + (j - 1) + ' now points to the object currently referenced by cell ' + j + '.'
+              ]
+            });
           }
           snaps.push(this.snapshot('Before values move left, two references point to the last value: the old last cell and the new last cell', work, cap, {
             size: old.length,
