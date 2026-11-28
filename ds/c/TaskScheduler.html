@@ -1014,7 +1014,9 @@
         }
 
         makePtr(label, target, nodes, slot = 0, fixed = null, extra = {}) {
-          const n = (nodes || []).find(x => x.uid === target);
+          const n = (target != null && target !== UNINITIALIZED)
+            ? (nodes || []).find(x => x.uid === target)
+            : null;
           const anchorX = n ? n.x : extra.targetX;
           const anchorY = n ? n.y : extra.targetY;
           let x = fixed?.x;
@@ -1248,17 +1250,17 @@
             statsState: st
           });
 
-          const pfNull = this.makePtr('p_first', null, nodes, 0, firstPos);
-          recorder.emit('Function-local pointer p_first is created as NULL.', nodes, {
+          const pfUninit = this.makePtr('p_first', UNINITIALIZED, nodes, 0, firstPos);
+          recorder.emit('Function-local pointer p_first is declared (uninitialized).', nodes, {
             lastUid,
-            ptrs: [pfNull],
+            ptrs: [pfUninit],
             pause: true
           });
 
           const pf = this.makePtr('p_first', f.uid, nodes, 0, firstPos);
           recorder.emitAssignment({
             beforeNodes: nodes,
-            beforeExtra: { lastUid, ptrs: [pfNull] },
+            beforeExtra: { lastUid, ptrs: [pfUninit] },
             afterNodes: nodes,
             afterExtra: { lastUid, ptrs: [pf] },
             source: [{ kind: 'last' }, { kind: 'next', key: lastUid }],
@@ -1333,17 +1335,17 @@
             statsState: oldState
           });
 
-          const pfNull = this.makePtr('p_first', null, oldNodes, 0, firstPos);
-          recorder.emit('Function-local pointer p_first is created as NULL.', oldNodes, {
+          const pfUninit = this.makePtr('p_first', UNINITIALIZED, oldNodes, 0, firstPos);
+          recorder.emit('Function-local pointer p_first is declared (uninitialized).', oldNodes, {
             lastUid: last.uid,
-            ptrs: [pfNull],
+            ptrs: [pfUninit],
             pause: true
           });
 
           const pf = this.makePtr('p_first', first.uid, oldNodes, 0, firstPos);
           recorder.emitAssignment({
             beforeNodes: oldNodes,
-            beforeExtra: { lastUid: last.uid, ptrs: [pfNull] },
+            beforeExtra: { lastUid: last.uid, ptrs: [pfUninit] },
             afterNodes: oldNodes,
             afterExtra: { lastUid: last.uid, ptrs: [pf] },
             source: [{ kind: 'last' }, { kind: 'next', key: last.uid }],
@@ -1547,10 +1549,10 @@
           const makeScalar = val => ({ label: 'size', value: val, ...scalarPos });
           let count = 0;
 
-          const pfNull = this.makePtr('p_first', null, nodes, 0, firstPos);
-          recorder.emit('Local variable size = 0 and pointer p_first = NULL are initialized.', nodes, {
+          const pfUninit = this.makePtr('p_first', UNINITIALIZED, nodes, 0, firstPos);
+          recorder.emit('Local variable size = 0 and pointer p_first (uninitialized) are declared.', nodes, {
             lastUid,
-            ptrs: [pfNull],
+            ptrs: [pfUninit],
             scalars: [makeScalar(0)],
             flashScalars: ['size'],
             pause: true
@@ -1559,7 +1561,7 @@
           const pf = this.makePtr('p_first', firstUid, nodes, 0, firstPos);
           recorder.emitAssignment({
             beforeNodes: nodes,
-            beforeExtra: { lastUid, ptrs: [pfNull], scalars: [makeScalar(0)] },
+            beforeExtra: { lastUid, ptrs: [pfUninit], scalars: [makeScalar(0)] },
             afterNodes: nodes,
             afterExtra: { lastUid, ptrs: [pf], scalars: [makeScalar(0)] },
             source: [{ kind: 'last' }, { kind: 'next', key: lastUid }],
@@ -1683,18 +1685,18 @@
 
           const firstUid = items[0].uid;
           const firstPos = { x: V.originX - 155, y: V.originY - 29 };
-          const pfNull = this.makePtr('p_first', null, nodes, 0, firstPos);
+          const pfUninit = this.makePtr('p_first', UNINITIALIZED, nodes, 0, firstPos);
 
-          recorder.emit('Function-local pointer p_first is created as NULL.', nodes, {
+          recorder.emit('Function-local pointer p_first is declared (uninitialized).', nodes, {
             lastUid,
-            ptrs: [pfNull],
+            ptrs: [pfUninit],
             pause: true
           });
 
           const pf = this.makePtr('p_first', firstUid, nodes, 0, firstPos);
           recorder.emitAssignment({
             beforeNodes: nodes,
-            beforeExtra: { lastUid, ptrs: [pfNull] },
+            beforeExtra: { lastUid, ptrs: [pfUninit] },
             afterNodes: nodes,
             afterExtra: { lastUid, ptrs: [pf] },
             source: [{ kind: 'last' }, { kind: 'next', key: lastUid }],
@@ -1908,16 +1910,16 @@
             statsState: oldState
           });
 
-          const pfNull = this.makePtr('p_first', null, remain, 0, firstPos);
-          recorder.emit('Function-local pointer p_first is created as NULL.', remain, stateExtra({
-            ptrs: [pfNull],
+          const pfUninit = this.makePtr('p_first', UNINITIALIZED, remain, 0, firstPos);
+          recorder.emit('Function-local pointer p_first is declared (uninitialized).', remain, stateExtra({
+            ptrs: [pfUninit],
             pause: true
           }));
 
           const pf = this.makePtr('p_first', firstUid, remain, 0, firstPos);
           recorder.emitAssignment({
             beforeNodes: remain,
-            beforeExtra: stateExtra({ ptrs: [pfNull] }),
+            beforeExtra: stateExtra({ ptrs: [pfUninit] }),
             afterNodes: remain,
             afterExtra: stateExtra({ ptrs: [pf] }),
             source: [{ kind: 'last' }, { kind: 'next', key: lastUid }],
@@ -2860,7 +2862,7 @@
           const ma = new Map((a.ptrs || []).map(p => [p.label, p]));
           const mb = new Map((b.ptrs || []).map(p => [p.label, p]));
           const ptrTipPos = (s, m, p) => {
-            if (!p || p.target == null) return null;
+            if (!p || p.target == null || p.target === UNINITIALIZED) return null;
             const n = m.get(p.target);
             if (n) return { x: n.x, y: n.y };
             if (p.targetX != null && p.targetY != null) return { x: p.targetX, y: p.targetY };
@@ -2878,17 +2880,24 @@
               const nullFadeOut = !tipA && tipB ? Math.max(0, 1 - t * 2) : 0;
               const nullFadeIn = tipA && !tipB ? Math.max(0, (t - 0.5) * 2) : (!tipA && !tipB ? 1 : 0);
 
-              if (!tipA && tipB && x.target == null) {
+              if (!tipA && tipB && (x.target == null || x.target === UNINITIALIZED)) {
                 tipA = { x: x.x + V.ptrBoxW / 2, y: x.y + V.ptrBoxH / 2 };
-              } else if (tipA && !tipB && y.target == null && t < 0.96) {
+              } else if (tipA && !tipB && (y.target == null || y.target === UNINITIALIZED) && t < 0.96) {
                 tipB = { x: y.x + V.ptrBoxW / 2, y: y.y + V.ptrBoxH / 2 };
               }
+
+              const dotAlpha = x.target === UNINITIALIZED && y.target !== UNINITIALIZED
+                ? Math.min(1, t * 1.6)
+                : (x.target !== UNINITIALIZED && y.target === UNINITIALIZED
+                    ? Math.max(0, 1 - t * 1.6)
+                    : (y.target === UNINITIALIZED ? 0 : 1));
 
               ptrs.push({
                 ...y,
                 x: l(x.x, y.x),
                 y: l(x.y, y.y),
                 alpha: 1,
+                dotAlpha,
                 nullAlpha: Math.max(nullFadeOut, nullFadeIn),
                 ...((tipA && tipB) ? { tipX: l(tipA.x, tipB.x), tipY: l(tipA.y, tipB.y) } : {})
               });
@@ -3297,11 +3306,15 @@
           this.text(p.label, p.x - 12, cy, '19px monospace', 'right', this.theme.TEXT_DARK, alpha);
           this.rect(p.x, p.y, V.ptrBoxW, V.ptrBoxH, this.theme.NODE_PTR_BG, alpha);
 
-          const target = p.target != null ? nodeMap.get(p.target) : null;
-          const dangling = Boolean(p.forceDangling) || (p.target != null && !target && p.targetX != null);
+          const isUninit = p.target === UNINITIALIZED;
+          const target = (!isUninit && p.target != null) ? nodeMap.get(p.target) : null;
+          const dangling = Boolean(p.forceDangling) || (!isUninit && p.target != null && !target && p.targetX != null);
           const col = this.refColor(this.hasMark(s.redPtrs, p.label), this.hasMark(s.greenPtrs, p.label), dangling);
 
-          this.dot(cx, cy, col, alpha);
+          const dotAlpha = p.dotAlpha ?? (isUninit ? 0 : 1);
+          if (dotAlpha > 0.01) {
+            this.dot(cx, cy, col, alpha * dotAlpha);
+          }
 
           const tx = p.tipX ?? (target ? target.x : (dangling ? p.targetX : null));
           const ty = p.tipY ?? (target ? target.y : (dangling ? p.targetY : null));
@@ -3309,7 +3322,6 @@
           if (tx != null && ty != null) {
             this.arrow(cx, cy, tx, ty, col, dangling, alpha);
           }
-
         }
 
         drawScalar(sc) {
