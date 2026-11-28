@@ -877,7 +877,7 @@
                     return s;
                 }
 
-                // Finds the pointer (aux pointer, p_first or p_playing) used to reach a node whose field is assigned.
+                // Finds the pointer (aux pointer, p_first or p_playing) used to reach a node whose field is read or assigned.
                 findAccessRef(target, extra, nodes) {
                     const id = target.key;
                     const ptr = (extra.ptrs || []).find(p => p.target === id && nodes.some(n => n.id === id));
@@ -885,6 +885,27 @@
                     if (extra.first === id) return { kind: 'struct', key: 'first' };
                     if (extra.playing === id) return { kind: 'struct', key: 'playing' };
                     return null;
+                }
+
+                // Expands any field reference (like p_current->p_next) to include its base pointer (p_current) so both highlight in green when read.
+                expandReadRefs(refs, extra, nodes, excludeTargets = [], explicitAccess = undefined) {
+                    const expanded = [];
+                    const isExcluded = ref => excludeTargets.some(t => t && t.kind === ref.kind && t.key === ref.key);
+                    const pushUnique = ref => {
+                        if (!ref || isExcluded(ref)) return;
+                        if (!expanded.some(r => r.kind === ref.kind && r.key === ref.key)) expanded.push(ref);
+                    };
+                    for (const ref of refs) {
+                        if (!ref) continue;
+                        if (ref.kind === 'prev' || ref.kind === 'next') {
+                            const acc = explicitAccess !== undefined
+                                ? (Array.isArray(explicitAccess) ? explicitAccess : (explicitAccess ? [explicitAccess] : []))
+                                : [this.findAccessRef(ref, extra, nodes)];
+                            acc.forEach(pushUnique);
+                        }
+                        pushUnique(ref);
+                    }
+                    return expanded;
                 }
 
                 applyFlash(s, ref) {
@@ -928,7 +949,9 @@
                     const baseAfter = this.clearHighlights(
                         this.buildSnap(phase3Text, afterNodes, { ...afterExtra, visualOnly: false, pause: true })
                     );
-                    const sources = Array.isArray(source) ? source : [source];
+                    const rawSources = Array.isArray(source) ? source : [source];
+                    const sourcesBefore = this.expandReadRefs(rawSources, beforeExtra, beforeNodes || [], [], accessPtr);
+                    const sourcesAfter = this.expandReadRefs(rawSources, afterExtra, afterNodes || [], targets, accessPtr);
                     const fieldTargets = targets.filter(t => t.kind === 'prev' || t.kind === 'next');
                     let access = accessPtr === undefined
                         ? (fieldTargets.length ? this.findAccessRef(fieldTargets[0], beforeExtra, beforeNodes || []) : null)
@@ -941,7 +964,7 @@
                         accessList.forEach(ap => this.applyColor(p1, ap, 'green'));
                         targets.forEach(t => this.applyFlash(p1, t));
                     } else {
-                        sources.forEach(src => this.applyColor(p1, src, 'green'));
+                        sourcesBefore.forEach(src => this.applyColor(p1, src, 'green'));
                     }
                     p1.text = phase1Text;
                     p1.visualOnly = false;
@@ -949,7 +972,10 @@
                     this.snapshots.push(p1);
 
                     const p2 = this.cloneSnap(baseBefore);
-                    sources.forEach(src => this.applyColor(p2, src, 'green'));
+                    if (isCaseB) {
+                        accessList.forEach(ap => this.applyColor(p2, ap, 'green'));
+                    }
+                    sourcesBefore.forEach(src => this.applyColor(p2, src, 'green'));
                     targets.forEach(t => this.applyFlash(p2, t));
                     p2.text = phase2Text;
                     p2.visualOnly = false;
@@ -957,7 +983,7 @@
                     this.snapshots.push(p2);
 
                     const p3 = this.cloneSnap(baseAfter);
-                    sources.forEach(src => this.applyColor(p3, src, 'green'));
+                    sourcesAfter.forEach(src => this.applyColor(p3, src, 'green'));
                     targets.forEach(t => this.applyColor(p3, t, 'red'));
                     p3.text = phase3Text;
                     p3.visualOnly = false;
@@ -1008,11 +1034,12 @@
                 }
 
                 makePtr(label, target, nodes, lane = 0, fixed = null) {
-                    const n = (nodes || []).find(x => x.id === target);
+                    const isUninit = target === UNINITIALIZED;
+                    const n = isUninit ? null : (nodes || []).find(x => x.id === target);
                     const sameLane = label === 'p_current' || label === 'p_previous' || label === 'p_toDelete' || label === 'p_target';
                     const trailing = label === 'p_previous' || label === 'p_toDelete';
                     const lastNode = (nodes || []).at(-1);
-                    const nullAtEnd = (label === 'p_current' || label === 'p_target') && target == null && lastNode;
+                    const nullAtEnd = !isUninit && (label === 'p_current' || label === 'p_target') && target == null && lastNode;
                     const nodeX = n ? n.x - 48 : null;
                     const initialNullX = trailing ? V.x - 155 : V.x - 48;
                     const x = fixed?.x ?? (nodeX ?? (nullAtEnd ? lastNode.x + 3 * V.cell + V.cell / 2 - V.ptrW / 2 : initialNullX));
@@ -1047,7 +1074,7 @@
                         });
                     }
 
-                    let nn = this.allocNode(name, id, V.x, V.tempY, UNINITIALIZED, UNINITIALIZED);
+                    let nn = this.allocNode(UNINITIALIZED, id, V.x, V.tempY, UNINITIALIZED, UNINITIALIZED);
                     let all = [nn, ...shifted];
                     const pn = this.makePtr('p_node', id, all, 0, { x: nn.x - 82, y: nn.y - 72 });
 
@@ -1059,13 +1086,13 @@
                         pause: true
                     });
 
-                    nn = { ...nn };
+                    nn = { ...nn, name };
                     all = [nn, ...shifted];
                     recorder.emit('The song name is copied into p_node->songName.', all, {
                         first: oldFirst,
                         playing,
                         ptrs: [pn],
-                        flashName: id,
+                        flashNameBox: id,
                         pause: true
                     });
 
@@ -1190,10 +1217,10 @@
                     let prev = null;
                     const initCurPos = { x: V.x - 48, y: V.auxY };
                     const initPrevPos = { x: V.x - 165, y: V.auxY };
-                    let pcur = this.makePtr('p_current', null, old, 0, initCurPos);
+                    let pcur = this.makePtr('p_current', UNINITIALIZED, old, 0, initCurPos);
                     let pprev = this.makePtr('p_previous', null, old, 1, initPrevPos);
 
-                    recorder.emit('Function-local pointers p_previous and p_current are created as NULL', old, {
+                    recorder.emit('Function-local pointers p_previous (NULL) and p_current (uninitialized) are created.', old, {
                         first,
                         playing,
                         ptrs: [pcur, pprev],
@@ -1266,7 +1293,7 @@
                         });
                     }
 
-                    let nn = this.allocNode(name, id, V.x + oldItems.length * V.step, V.tempY, UNINITIALIZED, UNINITIALIZED);
+                    let nn = this.allocNode(UNINITIALIZED, id, V.x + oldItems.length * V.step, V.tempY, UNINITIALIZED, UNINITIALIZED);
                     let all = [...old, nn];
                     const pn = this.makePtr('p_node', id, all, 2, { x: nn.x - 82, y: nn.y - 72 });
                     let ptrs = [pcur, pprev, pn];
@@ -1278,11 +1305,13 @@
                         flashNode: id,
                         pause: true
                     });
+                    nn = { ...nn, name };
+                    all = [...old, nn];
                     recorder.emit('The song name is copied into p_node->songName.', all, {
                         first,
                         playing,
                         ptrs,
-                        flashName: id,
+                        flashNameBox: id,
                         pause: true
                     });
 
@@ -1415,10 +1444,10 @@
 
                     const initCurPos = { x: V.x - 48, y: V.auxY };
                     const initPrevPos = { x: V.x - 165, y: V.auxY };
-                    let pcur = this.makePtr('p_current', null, base, 0, initCurPos);
+                    let pcur = this.makePtr('p_current', UNINITIALIZED, base, 0, initCurPos);
                     let pprev = this.makePtr('p_previous', null, base, 1, initPrevPos);
 
-                    recorder.emit('Function-local pointers p_previous and p_current are created as NULL', base, {
+                    recorder.emit('Function-local pointers p_previous (NULL) and p_current (uninitialized) are created.', base, {
                         first: initialFirst,
                         playing,
                         ptrs: [pcur, pprev],
@@ -1536,7 +1565,7 @@
                         });
                     }
 
-                    let nn = this.allocNode(name, id, V.x + pos * V.step, V.tempY, UNINITIALIZED, UNINITIALIZED);
+                    let nn = this.allocNode(UNINITIALIZED, id, V.x + pos * V.step, V.tempY, UNINITIALIZED, UNINITIALIZED);
                     let all = [...shifted, nn];
                     const pn = this.makePtr('p_node', id, all, 2, { x: nn.x - 82, y: nn.y - 72 });
                     const ptrs = [pcur, pprev, pn];
@@ -1548,11 +1577,13 @@
                         flashNode: id,
                         pause: true
                     });
+                    nn = { ...nn, name };
+                    all = [...shifted, nn];
                     recorder.emit('The song name is copied into p_node->songName.', all, {
                         first: initialFirst,
                         playing,
                         ptrs,
-                        flashName: id,
+                        flashNameBox: id,
                         pause: true
                     });
 
@@ -1706,8 +1737,8 @@
                     });
 
                     const initTargetPos = { x: V.x - 48, y: V.auxY };
-                    let pt = this.makePtr('p_target', null, base, 0, initTargetPos);
-                    recorder.emit('Function-local pointer p_target is created as NULL', base, {
+                    let pt = this.makePtr('p_target', UNINITIALIZED, base, 0, initTargetPos);
+                    recorder.emit('Function-local pointer p_target is created (uninitialized).', base, {
                         first,
                         playing,
                         ptrs: [pt],
@@ -1816,8 +1847,7 @@
                     const targetNodeObj = shifted.find(n => n.id === target);
                     const previous = after ? target : targetNodeObj.prev;
                     const next = after ? targetNodeObj.next : target;
-
-                    let nn = this.allocNode(newSong, id, V.x + insertPos * V.step, V.tempY, UNINITIALIZED, UNINITIALIZED);
+                    let nn = this.allocNode(UNINITIALIZED, id, V.x + insertPos * V.step, V.tempY, UNINITIALIZED, UNINITIALIZED);
                     let all = [...shifted, nn];
                     const pn = this.makePtr('p_node', id, all, 1, { x: nn.x - 82, y: nn.y - 72 });
                     const ptrs = [pt, pn];
@@ -1829,11 +1859,13 @@
                         flashNode: id,
                         pause: true
                     });
+                    nn = { ...nn, name: newSong };
+                    all = [...shifted, nn];
                     recorder.emit('The song name is copied into p_node->songName.', all, {
                         first,
                         playing,
                         ptrs,
-                        flashName: id,
+                        flashNameBox: id,
                         pause: true
                     });
 
@@ -1889,6 +1921,7 @@
                                 beforeExtra: { first: newFirst, playing, ptrs },
                                 afterNodes: [...linked, nnBoth],
                                 afterExtra: { first: newFirst, playing, ptrs },
+                                accessPtr: [{ kind: 'ptr', key: 'p_target' }, { kind: 'next', key: target }],
                                 source: { kind: 'ptr', key: 'p_node' },
                                 targets: [{ kind: 'prev', key: next }],
                                 phase1Text: 'p_node is going to be used to update p_target->p_next->p_previous.',
@@ -1932,6 +1965,7 @@
                                 beforeExtra: { first: newFirst, playing, ptrs },
                                 afterNodes: [...linked, nnBoth],
                                 afterExtra: { first: newFirst, playing, ptrs, statsState: nextState },
+                                accessPtr: [{ kind: 'ptr', key: 'p_target' }, { kind: 'prev', key: target }],
                                 source: { kind: 'ptr', key: 'p_node' },
                                 targets: [{ kind: 'next', key: previous }],
                                 phase1Text: 'p_node is going to be used to update p_target->p_previous->p_next.',
@@ -2003,8 +2037,8 @@
                     });
 
                     const initDelPos = { x: V.x - 48, y: V.auxY };
-                    let pd = this.makePtr('p_toDelete', null, nodes, 0, initDelPos);
-                    recorder.emit('Function-local pointer p_toDelete is created as NULL', nodes, {
+                    let pd = this.makePtr('p_toDelete', UNINITIALIZED, nodes, 0, initDelPos);
+                    recorder.emit('Function-local pointer p_toDelete is created (uninitialized).', nodes, {
                         first,
                         playing,
                         ptrs: [pd],
@@ -2014,7 +2048,7 @@
                     pd = this.makePtr('p_toDelete', id, nodes, 0, initDelPos);
                     recorder.emitAssignment({
                         beforeNodes: nodes,
-                        beforeExtra: { first, playing, ptrs: [this.makePtr('p_toDelete', null, nodes, 0, initDelPos)] },
+                        beforeExtra: { first, playing, ptrs: [this.makePtr('p_toDelete', UNINITIALIZED, nodes, 0, initDelPos)] },
                         afterNodes: nodes,
                         afterExtra: { first, playing, ptrs: [pd] },
                         source: { kind: 'struct', key: 'first' },
@@ -2144,8 +2178,8 @@
                     });
 
                     const initDelPos = { x: V.x - 48, y: V.auxY };
-                    let pd = this.makePtr('p_toDelete', null, nodes, 0, initDelPos);
-                    recorder.emit('Function-local pointer p_toDelete is created as NULL', nodes, {
+                    let pd = this.makePtr('p_toDelete', UNINITIALIZED, nodes, 0, initDelPos);
+                    recorder.emit('Function-local pointer p_toDelete is created (uninitialized).', nodes, {
                         first: first0,
                         playing,
                         ptrs: [pd],
@@ -2240,42 +2274,49 @@
 
                     const before = oldItems[pos - 1]?.id ?? null;
                     const after = oldItems[pos + 1]?.id ?? null;
-                    const pbInit = this.makePtr('p_beforeDeleted', null, nodes, 1, { x: pd.x - 155, y: V.auxY });
-                    const paInit = this.makePtr('p_afterDeleted', null, nodes, 2, { x: pd.x + 155, y: V.auxY });
+                    const pbInit = this.makePtr('p_before', UNINITIALIZED, nodes, 1, { x: pd.x - 155, y: V.auxY });
+                    const paInit = this.makePtr('p_after', UNINITIALIZED, nodes, 2, { x: pd.x + 155, y: V.auxY });
 
-                    const pbAssigned = this.makePtr('p_beforeDeleted', before, nodes, 1, pbInit);
+                    recorder.emit('Function-local pointers p_before and p_after are created (uninitialized).', nodes, {
+                        first: first0,
+                        playing,
+                        ptrs: [pd, pbInit, paInit],
+                        pause: true
+                    });
+
+                    const pbAssigned = this.makePtr('p_before', before, nodes, 1, pbInit);
                     recorder.emitAssignment({
                         beforeNodes: nodes,
-                        beforeExtra: { first: first0, playing, ptrs: [pd, pbInit] },
+                        beforeExtra: { first: first0, playing, ptrs: [pd, pbInit, paInit] },
                         afterNodes: nodes,
-                        afterExtra: { first: first0, playing, ptrs: [pd, pbAssigned] },
+                        afterExtra: { first: first0, playing, ptrs: [pd, pbAssigned, paInit] },
                         source: { kind: 'prev', key: id },
-                        targets: [{ kind: 'ptr', key: 'p_beforeDeleted' }],
+                        targets: [{ kind: 'ptr', key: 'p_before' }],
                         phase1Text: before != null
-                            ? 'p_toDelete->p_previous is going to be used to initialize p_beforeDeleted.'
-                            : 'p_toDelete->p_previous (NULL) is going to be used to initialize p_beforeDeleted.',
-                        phase2Text: 'p_beforeDeleted is selected to be updated.',
+                            ? 'p_toDelete->p_previous is going to be used to initialize p_before.'
+                            : 'p_toDelete->p_previous (NULL) is going to be used to initialize p_before.',
+                        phase2Text: 'p_before is selected to be updated.',
                         phase3Text: before != null
-                            ? 'p_beforeDeleted now points to the preceding node.'
-                            : 'p_beforeDeleted stores NULL.'
+                            ? 'p_before now points to the preceding node.'
+                            : 'p_before stores NULL.'
                     });
                     const pb = pbAssigned;
 
-                    const paAssigned = this.makePtr('p_afterDeleted', after, nodes, 2, paInit);
+                    const paAssigned = this.makePtr('p_after', after, nodes, 2, paInit);
                     recorder.emitAssignment({
                         beforeNodes: nodes,
                         beforeExtra: { first: first0, playing, ptrs: [pd, pb, paInit] },
                         afterNodes: nodes,
                         afterExtra: { first: first0, playing, ptrs: [pd, pb, paAssigned] },
                         source: { kind: 'next', key: id },
-                        targets: [{ kind: 'ptr', key: 'p_afterDeleted' }],
+                        targets: [{ kind: 'ptr', key: 'p_after' }],
                         phase1Text: after != null
-                            ? 'p_toDelete->p_next is going to be used to initialize p_afterDeleted.'
-                            : 'p_toDelete->p_next (NULL) is going to be used to initialize p_afterDeleted.',
-                        phase2Text: 'p_afterDeleted is selected to be updated.',
+                            ? 'p_toDelete->p_next is going to be used to initialize p_after.'
+                            : 'p_toDelete->p_next (NULL) is going to be used to initialize p_after.',
+                        phase2Text: 'p_after is selected to be updated.',
                         phase3Text: after != null
-                            ? 'p_afterDeleted now points to the following node.'
-                            : 'p_afterDeleted stores NULL.'
+                            ? 'p_after now points to the following node.'
+                            : 'p_after stores NULL.'
                     });
                     const pa = paAssigned;
                     const ptrs = [pd, pb, pa];
@@ -2290,14 +2331,14 @@
                             beforeExtra: { first: first0, playing, ptrs },
                             afterNodes: linked,
                             afterExtra: { first, playing, ptrs, firstBypass: after != null },
-                            source: { kind: 'ptr', key: 'p_afterDeleted' },
+                            source: { kind: 'ptr', key: 'p_after' },
                             targets: [{ kind: 'struct', key: 'first' }],
                             phase1Text: after != null
-                                ? 'p_afterDeleted is going to be used to update p_first.'
-                                : 'p_afterDeleted (NULL) is going to be used to update p_first.',
+                                ? 'p_after is going to be used to update p_first.'
+                                : 'p_after (NULL) is going to be used to update p_first.',
                             phase2Text: 'p_first is selected to be updated.',
                             phase3Text: after != null
-                                ? 'p_first now bypasses p_toDelete and points to p_afterDeleted.'
+                                ? 'p_first now bypasses p_toDelete and points to p_after.'
                                 : 'p_first now stores NULL.'
                         });
                     } else {
@@ -2312,15 +2353,15 @@
                             beforeExtra: { first, playing, ptrs },
                             afterNodes: linked,
                             afterExtra: { first, playing, ptrs },
-                            source: { kind: 'ptr', key: 'p_afterDeleted' },
+                            source: { kind: 'ptr', key: 'p_after' },
                             targets: [{ kind: 'next', key: before }],
                             phase1Text: after != null
-                                ? 'p_afterDeleted is going to be used to update p_beforeDeleted->p_next.'
-                                : 'p_afterDeleted (NULL) is going to be used to update p_beforeDeleted->p_next.',
-                            phase2Text: 'p_beforeDeleted->p_next is selected to be updated.',
+                                ? 'p_after is going to be used to update p_before->p_next.'
+                                : 'p_after (NULL) is going to be used to update p_before->p_next.',
+                            phase2Text: 'p_before->p_next is selected to be updated.',
                             phase3Text: after != null
-                                ? 'p_beforeDeleted->p_next now bypasses p_toDelete.'
-                                : 'p_beforeDeleted->p_next now stores NULL.'
+                                ? 'p_before->p_next now bypasses p_toDelete.'
+                                : 'p_before->p_next now stores NULL.'
                         });
                     }
 
@@ -2336,15 +2377,15 @@
                             beforeExtra: { first, playing, ptrs, firstBypass: before == null && after != null },
                             afterNodes: linked,
                             afterExtra: { first, playing, ptrs, firstBypass: before == null && after != null },
-                            source: { kind: 'ptr', key: 'p_beforeDeleted' },
+                            source: { kind: 'ptr', key: 'p_before' },
                             targets: [{ kind: 'prev', key: after }],
                             phase1Text: before != null
-                                ? 'p_beforeDeleted is going to be used to update p_afterDeleted->p_previous.'
-                                : 'p_beforeDeleted (NULL) is going to be used to update p_afterDeleted->p_previous.',
-                            phase2Text: 'p_afterDeleted->p_previous is selected to be updated.',
+                                ? 'p_before is going to be used to update p_after->p_previous.'
+                                : 'p_before (NULL) is going to be used to update p_after->p_previous.',
+                            phase2Text: 'p_after->p_previous is selected to be updated.',
                             phase3Text: before != null
-                                ? 'p_afterDeleted->p_previous now bypasses p_toDelete.'
-                                : 'p_afterDeleted->p_previous now stores NULL.'
+                                ? 'p_after->p_previous now bypasses p_toDelete.'
+                                : 'p_after->p_previous now stores NULL.'
                         });
                     }
 
@@ -2406,7 +2447,7 @@
                         first,
                         playing,
                         ptrs,
-                        crossPtrs: ['p_toDelete', 'p_beforeDeleted', 'p_afterDeleted'],
+                        crossPtrs: ['p_toDelete', 'p_before', 'p_after'],
                         statsState: nextState,
                         pause: true
                     });
@@ -2456,6 +2497,7 @@
                             beforeExtra: { first, playing: st.playingId },
                             afterNodes: nodes,
                             afterExtra: { first, playing: targetId, statsState: nextState },
+                            accessPtr: { kind: 'struct', key: 'playing' },
                             source: { kind: dirField, key: st.playingId },
                             targets: [{ kind: 'struct', key: 'playing' }],
                             phase1Text: `p_playing->${fieldName} is going to be used to update p_playing.`,
@@ -2472,6 +2514,7 @@
                             {
                                 first,
                                 playing: st.playingId,
+                                redStruct: ['playing'],
                                 [d > 0 ? 'redNext' : 'redPrev']: [st.playingId],
                                 pause: true
                             }
@@ -2525,8 +2568,8 @@
                     });
 
                     const initCurPos = { x: V.x - 48, y: V.auxY };
-                    let p = this.makePtr('p_current', null, nodes, 0, initCurPos);
-                    recorder.emit('Function-local pointer p_current is created as NULL', nodes, {
+                    let p = this.makePtr('p_current', UNINITIALIZED, nodes, 0, initCurPos);
+                    recorder.emit('Function-local pointer p_current is created (uninitialized).', nodes, {
                         first,
                         playing,
                         ptrs: [p],
@@ -2655,14 +2698,20 @@
                         sorted = true;
                         let ns = this.buildNodes(names.map((nm, idx) => new SongNode(nm, ids[idx])));
                         const passStartPos = previousPassPtr ? { x: previousPassPtr.x, y: previousPassPtr.y } : { x: V.x - 48, y: V.auxY };
-                        let pcur = this.makePtr('p_current', null, ns, 0, passStartPos);
+                        let pcur = this.makePtr('p_current', pass === 1 ? UNINITIALIZED : previousPassPtr.target, ns, 0, passStartPos);
 
-                        recorder.emit(`Pass ${pass}: sorted = true; initializing p_current from p_first`, ns, {
-                            first,
-                            playing,
-                            ptrs: [pcur],
-                            pause: true
-                        });
+                        recorder.emit(
+                            pass === 1
+                                ? `Pass ${pass}: sorted = true; local pointer p_current is created (uninitialized).`
+                                : `Pass ${pass}: sorted = true; initializing p_current from p_first`,
+                            ns,
+                            {
+                                first,
+                                playing,
+                                ptrs: [pcur],
+                                pause: true
+                            }
+                        );
 
                         const pcurAtFirst = this.makePtr('p_current', first, ns, 0, passStartPos);
                         recorder.emitAssignment({
@@ -2781,7 +2830,7 @@
                                 ? `Pass ${pass} finished with no swaps (sorted = true).`
                                 : `Pass ${pass} finished (sorted = false); starting another pass.`,
                             ns,
-                            { first, playing, ptrs: [pcur], redNext: [ids.at(-1)], pause: true }
+                            { first, playing, ptrs: [pcur], redPtrs: ['p_current'], redNext: [ids.at(-1)], pause: true }
                         );
 
                         if (sorted) {
@@ -2864,10 +2913,10 @@
 
                     const initCurPos = { x: V.x - 48, y: V.auxY };
                     const initDelPos = { x: V.x - 165, y: V.auxY };
-                    let pcur = this.makePtr('p_current', null, remain, 0, initCurPos);
+                    let pcur = this.makePtr('p_current', UNINITIALIZED, remain, 0, initCurPos);
                     let pd = this.makePtr('p_toDelete', null, remain, 1, initDelPos);
 
-                    recorder.emit('Function-local pointers p_current and p_toDelete are created as NULL', remain, stateExtra({
+                    recorder.emit('Function-local pointers p_current (uninitialized) and p_toDelete (NULL) are created.', remain, stateExtra({
                         ptrs: [pcur, pd],
                         pause: true
                     }));
@@ -3704,7 +3753,7 @@
                     const mb = new Map((b.ptrs || []).map(p => [p.label, p]));
                     const ptrs = [];
                     const ptrTipPos = (s, m, p) => {
-                        if (!p || p.target == null) return null;
+                        if (!p || p.target == null || p.target === UNINITIALIZED) return null;
                         const n = m.get(p.target);
                         if (n) return { x: n.x, y: n.y };
                         const g = s.ghost && s.ghost[p.target];
@@ -3717,8 +3766,8 @@
                         if (x && y) {
                             let tipA = ptrTipPos(a, A, x);
                             let tipB = ptrTipPos(b, B, y);
-                            if (!tipA && tipB && x.target == null) tipA = { x: x.x + 31, y: x.y + 28 };
-                            else if (tipA && !tipB && y.target == null && t < 0.96) tipB = { x: y.x + 31, y: y.y + 28 };
+                            if (!tipA && tipB && (x.target == null || x.target === UNINITIALIZED)) tipA = { x: x.x + 31, y: x.y + 28 };
+                            else if (tipA && !tipB && (y.target == null || y.target === UNINITIALIZED) && t < 0.96) tipB = { x: y.x + 31, y: y.y + 28 };
                             ptrs.push({
                                 ...y,
                                 x: l(x.x, y.x),
@@ -4060,10 +4109,12 @@
                     if (n.prev !== UNINITIALIZED) this.dot(x + V.cell / 2, y + V.cell / 2, prevDot, a);
                     if (n.next !== UNINITIALIZED) this.dot(x + 3 * V.cell + V.cell / 2, y + V.cell / 2, nextDot, a);
 
-                    const name = String(n.name);
-                    const fs = name.length > 18 ? 13 : name.length > 13 ? 16 : 20;
-                    if (!s.swapMove || !s.swapMove.ids.includes(n.id)) {
-                        this.text(name, x + 2 * V.cell, y + V.cell / 2, `700 ${fs}px "Segoe UI", Arial, sans-serif`, 'center', this.theme.SONG_TEXT, a);
+                    if (n.name !== UNINITIALIZED) {
+                        const name = String(n.name);
+                        const fs = name.length > 18 ? 13 : name.length > 13 ? 16 : 20;
+                        if (!s.swapMove || !s.swapMove.ids.includes(n.id)) {
+                            this.text(name, x + 2 * V.cell, y + V.cell / 2, `700 ${fs}px "Segoe UI", Arial, sans-serif`, 'center', this.theme.SONG_TEXT, a);
+                        }
                     }
 
                     this.text('p_prev', x + V.cell / 2, y - 13, '15px monospace', 'center', this.theme.TEXT_DARK, a);
@@ -4100,6 +4151,8 @@
                     const alpha = p.alpha ?? 1;
                     this.text(p.label, p.x + V.ptrW / 2, p.y - 12, '19px monospace', 'center', this.theme.TEXT_DARK, alpha);
                     this.rect(p.x, p.y, V.ptrW, V.cell, this.theme.NODE_PTR_BG, alpha);
+                    if (p.target === UNINITIALIZED) return;
+
                     const n = (s.nodes || []).find(q => q.id === p.target);
                     const g = s.ghost && s.ghost[p.target];
                     const isDangling = p.target != null && !n && Boolean(g);
